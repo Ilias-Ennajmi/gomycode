@@ -152,15 +152,11 @@
     <div id="psTabBrands" style="display:none;">
       <div class="ps-topbar"><div class="ps-title ps-h">Bibliothèque</div></div>
       <div class="ps-libsection">
-        <div class="ps-libsection-title">Tiers de marques</div>
-        <div class="ps-panel" id="psTierPanel"></div>
-      </div>
-      <div class="ps-libsection">
         <div class="ps-libsection-title" style="display:flex;justify-content:space-between;align-items:center;">
-          <span>Assets — liens utiles</span>
+          <span>Marques</span>
           <button class="ps-btn" id="psAddAsset" style="font-size:11px;"><i class="ti ti-plus" aria-hidden="true"></i> Ajouter un lien</button>
         </div>
-        <div class="ps-panel" id="psAssetsPanel"></div>
+        <div class="ps-brandgrid" id="psBrandGrid"></div>
       </div>
       <div class="ps-libsection">
         <div class="ps-libsection-title">Axes récurrents — Feed</div>
@@ -184,15 +180,43 @@
     </div>
 
     <div id="psTabStats" style="display:none;">
-      <div class="ps-topbar"><div class="ps-title ps-h">Vue d'ensemble</div></div>
-      <div class="ps-panel" id="psStatsPanel"></div>
-      <div class="ps-libsection" style="margin-top:18px;">
-        <div class="ps-libsection-title">Équilibre de rotation des marques</div>
-        <div class="ps-panel" id="psRotationPanel"></div>
+      <div class="ps-topbar">
+        <div class="ps-title ps-h">Vue d'ensemble</div>
+        <div class="ps-seg" id="psStatsSeg">
+          <button data-stats-tab="apercu" class="active">Aperçu</button>
+          <button data-stats-tab="marques">Marques</button>
+          <button data-stats-tab="contenu">Contenu</button>
+        </div>
       </div>
-      <div class="ps-libsection">
-        <div class="ps-libsection-title">Aperçu feed (semaine affichée)</div>
-        <div class="ps-panel"><div class="ps-gridpreview" id="psGridPreview"></div></div>
+
+      <div id="psStatsSubApercu">
+        <div class="ps-panel" id="psStatsPanel"></div>
+        <div class="ps-libsection" style="margin-top:18px;">
+          <div class="ps-libsection-title">Équilibre de rotation des marques</div>
+          <div class="ps-panel" id="psRotationPanel"></div>
+        </div>
+        <div class="ps-libsection">
+          <div class="ps-libsection-title">Aperçu feed (semaine affichée)</div>
+          <div class="ps-panel"><div class="ps-gridpreview" id="psGridPreview"></div></div>
+        </div>
+      </div>
+
+      <div id="psStatsSubMarques" style="display:none;">
+        <div class="ps-libsection">
+          <div class="ps-libsection-title">Posts &amp; stories par marque (cumulé)</div>
+          <div class="ps-panel" id="psBrandChartPanel"></div>
+        </div>
+      </div>
+
+      <div id="psStatsSubContenu" style="display:none;">
+        <div class="ps-libsection">
+          <div class="ps-libsection-title">Répartition par statut</div>
+          <div class="ps-panel" id="psStatusChartPanel"></div>
+        </div>
+        <div class="ps-libsection">
+          <div class="ps-libsection-title">Répartition par catégorie</div>
+          <div class="ps-panel" id="psCategoryChartPanel"></div>
+        </div>
       </div>
     </div>
   </div>

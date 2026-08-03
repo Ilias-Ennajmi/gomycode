@@ -368,7 +368,7 @@
       tagHtml +
       (late ? '<span class="ps-tag ps-late">En retard</span>' : "") +
       checklistHtml + linkHtml +
-      '<div class="ps-card-foot"><span class="ps-dot" style="background:'+(STATUS_COLORS[card.status]||"#999")+';"></span><span class="ps-statustext">'+card.status+'</span>' +
+      '<div class="ps-card-foot"><span class="ps-dot ps-dot-cycle" title="Cliquer pour changer le statut" style="background:'+(STATUS_COLORS[card.status]||"#999")+';"></span><span class="ps-statustext">'+card.status+'</span>' +
       '<span class="ps-avatar" style="background:'+avatarColor+';" title="'+escapeHtml(card.responsable||"")+'">'+avatarInitials(card.responsable)+'</span></div>';
     el.addEventListener("dragstart", function(e){
       e.dataTransfer.setData("text/plain", dateKey+"::"+card.id);
@@ -391,6 +391,14 @@
         save();
         render();
       });
+    });
+    el.querySelector(".ps-dot-cycle").addEventListener("click", function(e){
+      e.stopPropagation();
+      var order = ["Idée","En préparation","Prêt","Publié"];
+      var idx = order.indexOf(card.status);
+      card.status = order[(idx + 1) % order.length];
+      save();
+      render();
     });
     el.querySelector(".ps-card-dup").addEventListener("click", function(e){
       e.stopPropagation();
@@ -710,22 +718,14 @@
   document.getElementById("psToday").addEventListener("click", function(){ currentMonday = mondayOf(initialAnchor); render(); });
 
   var tabColors = { "Tier 1": "var(--cat-brands)", "Tier 2": "var(--cat-planet)", "Tier 3": "var(--text-3)" };
-  function renderTiers(){
-    var panel = document.getElementById("psTierPanel");
-    var rows = [];
+  function allBrandDefs(){
+    var defs = [];
     [["Tier 1", TIER1], ["Tier 2", TIER2], ["Tier 3", TIER3]].forEach(function(group){
       group[1].forEach(function(item){
-        rows.push({tier:group[0], name:item[0], pct:item[1]});
+        defs.push({ tier: group[0], name: item[0], pct: item[1] });
       });
     });
-    panel.innerHTML = rows.map(function(r){
-      return '<div class="ps-tierrow">' +
-        '<span class="ps-tierbadge" style="background:'+tabColors[r.tier]+';">'+r.tier+'</span>' +
-        '<span style="min-width:120px;font-weight:500;">'+r.name+'</span>' +
-        '<div class="ps-tierbar-bg"><div class="ps-tierbar-fill" style="width:'+Math.min(100, r.pct*2.4)+'%;background:'+tabColors[r.tier]+';"></div></div>' +
-        '<span class="ps-tierpct">'+r.pct+'%</span>' +
-      '</div>';
-    }).join("");
+    return defs;
   }
 
   function renderStatsTab(){
@@ -892,7 +892,7 @@
     if (tab === "production") { renderKanban(); return; }
     if (tab === "campaigns") { renderCampaigns(); return; }
     if (tab === "brands") { renderLibrary(); return; }
-    if (tab === "stats") { renderStatsTab(); renderRotationPanel(); renderGridPreview(); return; }
+    if (tab === "stats") { renderStatsSubTab(currentStatsSubTab); return; }
   }
 
   function switchTab(tab){
@@ -951,6 +951,112 @@
       return '<div class="ps-gridpreview-cell" style="background:'+(CAT_COLORS[c.category]||"#ccc")+';">'+escapeHtml(c.title)+'</div>';
     }).join("");
   }
+
+  // ---------- Stats analytics (cumulative across the whole generated calendar) ----------
+  function forEachCard(fn){
+    Object.keys(state.weeks).sort().forEach(function(wk){
+      Object.keys(state.weeks[wk]).sort().forEach(function(dateKey){
+        state.weeks[wk][dateKey].forEach(function(c){ fn(c, dateKey); });
+      });
+    });
+  }
+
+  function computeBrandBreakdown(){
+    var counts = {};
+    forEachCard(function(c){
+      if (!c.brand) return;
+      if (!counts[c.brand]) counts[c.brand] = { feed:0, story:0 };
+      if (c.kind === "Feed") counts[c.brand].feed++; else counts[c.brand].story++;
+    });
+    var brandColor = {};
+    allBrandDefs().forEach(function(b){ brandColor[b.name] = tabColors[b.tier]; });
+    return Object.keys(counts).map(function(name){
+      var c = counts[name];
+      return { label: name, count: c.feed + c.story, feed: c.feed, story: c.story, color: brandColor[name] || "var(--text-3)" };
+    }).sort(function(a,b){ return b.count - a.count; });
+  }
+
+  function computeStatusBreakdown(){
+    var order = ["Idée","En préparation","Prêt","Publié"];
+    var counts = {};
+    order.forEach(function(s){ counts[s] = 0; });
+    forEachCard(function(c){ if (counts[c.status] !== undefined) counts[c.status]++; });
+    return order.map(function(s){ return { label: s, count: counts[s], color: STATUS_COLORS[s] }; });
+  }
+
+  function computeCategoryBreakdown(){
+    var order = ["Campaigns Content","Brands Collections Content","Planet Sport Content","Educational Content"];
+    var labels = { "Campaigns Content":"Campaigns", "Brands Collections Content":"Brands", "Planet Sport Content":"Planet Sport", "Educational Content":"Educational" };
+    var counts = {};
+    order.forEach(function(c){ counts[c] = 0; });
+    forEachCard(function(c){ if (counts[c.category] !== undefined) counts[c.category]++; });
+    return order.map(function(c){ return { label: labels[c], count: counts[c], color: CAT_COLORS[c] }; });
+  }
+
+  function renderBarChart(container, rows, opts){
+    opts = opts || {};
+    if (!rows.length || !rows.some(function(r){ return r.count > 0; })) {
+      container.innerHTML = '<div style="color:var(--text-2);font-size:12.5px;">Pas encore de données.</div>';
+      return;
+    }
+    var max = Math.max.apply(null, rows.map(function(r){ return r.count; })) || 1;
+    container.innerHTML = '<div class="ps-barchart">' + rows.map(function(r){
+      var pct = Math.round((r.count / max) * 100);
+      var countText = (opts.showSplit && r.feed !== undefined) ? (r.feed+" Feed · "+r.story+" Stories") : (r.count+"");
+      return '<div class="ps-barchart-row">' +
+        '<div class="ps-barchart-label">'+escapeHtml(r.label)+'</div>' +
+        '<div class="ps-barchart-track"><div class="ps-barchart-bar" style="width:'+pct+'%;background:'+r.color+';"></div></div>' +
+        '<div class="ps-barchart-count">'+countText+'</div>' +
+      '</div>';
+    }).join("") + '</div>';
+  }
+
+  function renderDonutChart(container, segments){
+    var total = segments.reduce(function(sum, seg){ return sum + seg.count; }, 0);
+    if (!total) {
+      container.innerHTML = '<div style="color:var(--text-2);font-size:12.5px;">Pas encore de données.</div>';
+      return;
+    }
+    var radius = 46, circumference = 2 * Math.PI * radius, offset = 0;
+    var circles = segments.filter(function(s){ return s.count > 0; }).map(function(seg){
+      var frac = seg.count / total;
+      var dash = frac * circumference;
+      var circle = '<circle r="'+radius+'" cx="60" cy="60" fill="transparent" stroke-width="16" style="stroke:'+seg.color+';" ' +
+        'stroke-dasharray="'+dash.toFixed(2)+' '+(circumference-dash).toFixed(2)+'" ' +
+        'stroke-dashoffset="'+(-offset).toFixed(2)+'" transform="rotate(-90 60 60)"></circle>';
+      offset += dash;
+      return circle;
+    }).join("");
+    var legend = segments.map(function(seg){
+      var pct = Math.round((seg.count/total)*100);
+      return '<div class="ps-donut-legend-item"><span class="ps-donut-legend-dot" style="background:'+seg.color+';"></span>'+escapeHtml(seg.label)+'<span class="ps-donut-legend-count">'+seg.count+' ('+pct+'%)</span></div>';
+    }).join("");
+    container.innerHTML = '<div class="ps-donutwrap">' +
+      '<svg width="120" height="120" viewBox="0 0 120 120">'+circles+'</svg>' +
+      '<div class="ps-donut-legend">'+legend+'</div>' +
+    '</div>';
+  }
+
+  var currentStatsSubTab = "apercu";
+  function renderStatsSubTab(tab){
+    currentStatsSubTab = tab;
+    document.getElementById("psStatsSubApercu").style.display = tab === "apercu" ? "" : "none";
+    document.getElementById("psStatsSubMarques").style.display = tab === "marques" ? "" : "none";
+    document.getElementById("psStatsSubContenu").style.display = tab === "contenu" ? "" : "none";
+    if (tab === "apercu") { renderStatsTab(); renderRotationPanel(); renderGridPreview(); }
+    if (tab === "marques") { renderBarChart(document.getElementById("psBrandChartPanel"), computeBrandBreakdown(), { showSplit: true }); }
+    if (tab === "contenu") {
+      renderDonutChart(document.getElementById("psStatusChartPanel"), computeStatusBreakdown());
+      renderBarChart(document.getElementById("psCategoryChartPanel"), computeCategoryBreakdown());
+    }
+  }
+  document.getElementById("psStatsSeg").addEventListener("click", function(e){
+    var btn = e.target.closest("button");
+    if (!btn) return;
+    document.querySelectorAll("#psStatsSeg button").forEach(function(b){ b.classList.remove("active"); });
+    btn.classList.add("active");
+    renderStatsSubTab(btn.dataset.statsTab);
+  });
 
   function bootApp(){
     load(function(){
@@ -1629,36 +1735,65 @@
   }
 
   // ---------- Library (Bibliothèque) ----------
-  function renderAssets(){
-    var panel = document.getElementById("psAssetsPanel");
-    if (!state.assets.length) {
-      panel.innerHTML = '<div style="color:var(--text-2);font-size:12.5px;">Aucun lien pour le moment — Drive, Figma, guide de marque, packs logo...</div>';
-      return;
-    }
-    panel.innerHTML = "";
-    state.assets.forEach(function(asset){
-      var row = document.createElement("div");
-      row.className = "ps-tierrow";
-      row.innerHTML =
-        '<i class="ti ti-link" aria-hidden="true" style="color:var(--text-3);"></i>' +
-        '<a href="'+escapeHtml(asset.url)+'" target="_blank" rel="noopener" style="flex:1;color:var(--accent-dark);text-decoration:none;font-weight:500;">'+escapeHtml(asset.title)+'</a>' +
-        '<div class="ps-card-del" title="Supprimer" style="position:static;display:flex;"><i class="ti ti-x" aria-hidden="true" style="font-size:11px;"></i></div>';
-      row.querySelector(".ps-card-del").addEventListener("click", function(){
-        var idx = state.assets.indexOf(asset);
-        state.assets.splice(idx,1);
-        save(); renderAssets();
+  function brandLinkRowHtml(asset){
+    return '<div class="ps-brandlink" data-asset-id="'+asset.id+'">' +
+      '<i class="ti ti-link" aria-hidden="true"></i>' +
+      '<a href="'+escapeHtml(asset.url)+'" target="_blank" rel="noopener">'+escapeHtml(asset.title)+'</a>' +
+      '<div class="ps-card-del" title="Supprimer" style="position:static;display:flex;"><i class="ti ti-x" aria-hidden="true" style="font-size:10px;"></i></div>' +
+    '</div>';
+  }
+
+  function renderBrandGrid(){
+    var grid = document.getElementById("psBrandGrid");
+    var defs = allBrandDefs();
+    var cardsHtml = defs.map(function(b){
+      var brandAssets = state.assets.filter(function(a){ return a.brand === b.name; });
+      var linksHtml = brandAssets.length ? brandAssets.map(brandLinkRowHtml).join("") : '<div class="ps-brandlink-empty">Aucun lien</div>';
+      return '<div class="ps-brandcard" data-brand="'+escapeHtml(b.name)+'">' +
+        '<div class="ps-brandcard-head">' +
+          '<span class="ps-tierbadge" style="background:'+tabColors[b.tier]+';">'+b.tier+'</span>' +
+          '<span class="ps-brandcard-name">'+escapeHtml(b.name)+'</span>' +
+        '</div>' +
+        '<div class="ps-tierbar-bg"><div class="ps-tierbar-fill" style="width:'+Math.min(100, b.pct*2.4)+'%;background:'+tabColors[b.tier]+';"></div></div>' +
+        '<div class="ps-tierpct" style="text-align:right;margin:2px 0 8px;">'+b.pct+'% du catalogue</div>' +
+        '<div class="ps-brandlinks">'+linksHtml+'</div>' +
+        '<button class="ps-btn ps-brand-addlink" style="font-size:10.5px;padding:4px 9px;margin-top:8px;">+ Lien</button>' +
+      '</div>';
+    }).join("");
+
+    var generalAssets = state.assets.filter(function(a){ return !a.brand; });
+    var generalLinksHtml = generalAssets.length ? generalAssets.map(brandLinkRowHtml).join("") : '<div class="ps-brandlink-empty">Aucun lien</div>';
+    cardsHtml += '<div class="ps-brandcard" data-brand="">' +
+      '<div class="ps-brandcard-head"><span class="ps-brandcard-name">Général</span></div>' +
+      '<div class="ps-brandlinks">'+generalLinksHtml+'</div>' +
+      '<button class="ps-btn ps-brand-addlink" style="font-size:10.5px;padding:4px 9px;margin-top:8px;">+ Lien</button>' +
+    '</div>';
+
+    grid.innerHTML = cardsHtml;
+
+    grid.querySelectorAll(".ps-brandcard").forEach(function(card){
+      var brand = card.dataset.brand || null;
+      card.querySelector(".ps-brand-addlink").addEventListener("click", function(){ openAssetModal(brand); });
+      card.querySelectorAll(".ps-brandlink").forEach(function(linkEl){
+        linkEl.querySelector(".ps-card-del").addEventListener("click", function(){
+          var idx = state.assets.findIndex(function(a){ return a.id === linkEl.dataset.assetId; });
+          if (idx > -1) { state.assets.splice(idx,1); save(); renderBrandGrid(); }
+        });
       });
-      panel.appendChild(row);
     });
   }
 
-  document.getElementById("psAddAsset").addEventListener("click", function(){
+  function openAssetModal(presetBrand){
     var root = document.getElementById("psModalRoot");
     var wrap = document.createElement("div");
     wrap.className = "ps-modal-backdrop";
+    var brandOptions = ['<option value="">Général</option>'].concat(allBrandDefs().map(function(b){
+      return '<option value="'+escapeHtml(b.name)+'"'+(b.name===presetBrand?" selected":"")+'>'+escapeHtml(b.name)+'</option>';
+    })).join("");
     wrap.innerHTML =
       '<div class="ps-modal">' +
         '<div class="ps-modal-head"><i class="ti ti-link" aria-hidden="true"></i>Ajouter un lien</div>' +
+        '<div class="ps-field"><label>Marque</label><select id="asBrand">'+brandOptions+'</select></div>' +
         '<div class="ps-field"><label>Titre</label><input type="text" id="asTitle" placeholder="Ex: Guide de marque Planet Sport"></div>' +
         '<div class="ps-field"><label>URL</label><input type="text" id="asUrl" placeholder="https://..."></div>' +
         '<div class="ps-modal-actions"><button class="ps-btn" id="asCancel">Annuler</button><button class="ps-btn primary" id="asSave">Ajouter</button></div>' +
@@ -1670,16 +1805,18 @@
       var title = wrap.querySelector("#asTitle").value.trim();
       var url = wrap.querySelector("#asUrl").value.trim();
       if (!title || !url) { root.removeChild(wrap); return; }
-      state.assets.push({ id:"asset-"+Date.now(), title: title, url: url });
+      var brandVal = wrap.querySelector("#asBrand").value;
+      state.assets.push({ id:"asset-"+Date.now(), title: title, url: url, brand: brandVal || null });
       save();
       root.removeChild(wrap);
-      renderAssets();
+      renderBrandGrid();
     });
-  });
+  }
+
+  document.getElementById("psAddAsset").addEventListener("click", function(){ openAssetModal(null); });
 
   function renderLibrary(){
-    renderAssets();
-    renderTiers();
+    renderBrandGrid();
     var feedAxes = [
       ["Campaigns Content","Sales / Campagne active — 2x/semaine"],
       ["Brands Collections Content","Tier 1 (2x), Tier 2 (1x) — rotation"],

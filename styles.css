@@ -61,6 +61,7 @@
   .ps-card-format { color:var(--text-2); font-size:10.5px; }
   .ps-card-foot { display:flex; align-items:center; margin-top:6px; }
   .ps-dot { width:6px; height:6px; border-radius:50%; margin-right:5px; flex-shrink:0; }
+  .ps-dot-cycle { width:9px; height:9px; cursor:pointer; }
   .ps-statustext { font-size:9.5px; color:var(--text-2); font-weight:500; }
 
   .ps-zone-label { font-size:9px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-3); font-weight:600; margin:2px 0 1px; }
@@ -201,3 +202,25 @@
   .ps-authbox .ps-field label { font-family:'Inter'; }
   .ps-authbox .ps-btn { font-family:'Inter'; }
   .ps-autherror { color:#A32D2D; font-size:12px; margin-bottom:10px; background:#FCEBEB; border-radius:8px; padding:7px 10px; }
+
+  .ps-brandgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:12px; }
+  .ps-brandcard { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px; display:flex; flex-direction:column; }
+  .ps-brandcard-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .ps-brandcard-name { font-weight:600; font-size:13px; }
+  .ps-brandlinks { display:flex; flex-direction:column; gap:6px; max-height:140px; overflow-y:auto; margin-bottom:4px; }
+  .ps-brandlink { display:flex; align-items:center; gap:6px; font-size:11.5px; position:relative; }
+  .ps-brandlink a { flex:1; color:var(--accent-dark); text-decoration:none; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ps-brandlink-empty { font-size:11px; color:var(--text-3); }
+
+  .ps-barchart { display:flex; flex-direction:column; gap:10px; }
+  .ps-barchart-row { display:flex; align-items:center; gap:10px; }
+  .ps-barchart-label { min-width:130px; font-size:12.5px; font-weight:500; }
+  .ps-barchart-track { flex:1; background:var(--canvas); border-radius:6px; height:14px; overflow:hidden; }
+  .ps-barchart-bar { height:100%; border-radius:6px; transition:width .3s ease; }
+  .ps-barchart-count { min-width:80px; text-align:right; font-size:11.5px; color:var(--text-2); }
+
+  .ps-donutwrap { display:flex; align-items:center; gap:28px; flex-wrap:wrap; }
+  .ps-donut-legend { display:flex; flex-direction:column; gap:8px; }
+  .ps-donut-legend-item { display:flex; align-items:center; gap:8px; font-size:12.5px; }
+  .ps-donut-legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .ps-donut-legend-count { color:var(--text-2); margin-left:auto; padding-left:14px; }
