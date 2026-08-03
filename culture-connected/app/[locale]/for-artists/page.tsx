@@ -10,6 +10,7 @@ import { PlaceholderPanel } from '@/components/ui/PlaceholderPanel';
 import { Reveal } from '@/components/ui/Reveal';
 import { StatCounter } from '@/components/ui/StatCounter';
 import { ContactSection } from '@/components/layout/ContactSection';
+import { PurposeSection } from '@/components/sections/PurposeSection';
 
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
   const { locale } = params;
@@ -71,22 +72,7 @@ export default function ForArtistsPage({ params }: { params: { locale: Locale } 
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
-        <div className="rounded-[clamp(20px,3vw,30px)] bg-inv p-[clamp(28px,4vw,48px)] text-onInv">
-          <Reveal as="h2" className="mb-[clamp(22px,3vw,36px)] font-sora text-[clamp(26px,3.4vw,38px)] font-bold leading-[1.05] tracking-[-.035em]">
-            {t(c.mechanicHeading, locale)}
-          </Reveal>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-5">
-            {c.mechanicSteps.map((step, i) => (
-              <Reveal key={step.step} index={i}>
-                <div className="mb-3 font-mono text-[11px] text-red">{step.step}</div>
-                <div className="font-sora text-[17px] font-semibold leading-[1.25]">{t(step.title, locale)}</div>
-                <p className="m-0 mt-2 font-sora text-[14px] font-light leading-[1.55] opacity-[.62]">{t(step.body, locale)}</p>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
+      <PurposeSection locale={locale} />
 
       <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
         <div className="mb-[clamp(20px,3vw,32px)] flex flex-wrap items-baseline justify-between gap-[14px]">

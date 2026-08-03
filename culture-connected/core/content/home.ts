@@ -108,6 +108,14 @@ export const homeContent = {
     moreLabel: { en: '+ MORE TBC' } satisfies Localized,
   },
 
+  workHeading: { en: 'Recent work', fr: 'Travaux récents' } satisfies Localized,
+  workFilters: {
+    all: { en: 'All', fr: 'Tout' } satisfies Localized,
+    artist: { en: 'Artists', fr: 'Artistes' } satisfies Localized,
+    promoter: { en: 'Promoters', fr: 'Promoteurs' } satisfies Localized,
+  },
+  workLink: { en: 'all case studies →' } satisfies Localized,
+
   processHeading: { en: 'How it goes', fr: 'Comment ça se passe' } satisfies Localized,
   processLink: { en: 'the full process →' } satisfies Localized,
   processSteps: [

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import { locales, isLocale, type Locale } from '@/core/i18n/config';
 import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 import { SetHtmlLang } from './SetHtmlLang';
 
 export function generateStaticParams() {
@@ -22,6 +23,7 @@ export default function LocaleLayout({ children, params }: LocaleLayoutProps) {
       <SetHtmlLang locale={locale} />
       <Header locale={locale} />
       {children}
+      <Footer locale={locale} />
     </>
   );
 }

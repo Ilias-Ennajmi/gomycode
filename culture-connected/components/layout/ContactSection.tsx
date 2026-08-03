@@ -1,6 +1,4 @@
-import Link from 'next/link';
-import { contactShared, footerContent } from '@/core/content/contact';
-import { localeHref } from '@/core/i18n/paths';
+import { contactShared } from '@/core/content/contact';
 import { t, type Localized } from '@/core/i18n/localized';
 import type { Locale } from '@/core/i18n/config';
 import { Reveal } from '../ui/Reveal';
@@ -29,15 +27,6 @@ export function ContactSection({ locale, heading }: ContactSectionProps) {
           </p>
         </div>
         <ContactForm locale={locale} />
-      </div>
-      <div className="mt-7 flex flex-wrap items-center justify-between gap-3 font-mono text-[11px] text-muted">
-        <Link href={localeHref(locale, '/')} className="no-underline">
-          {footerContent.domain}
-        </Link>
-        <span>{footerContent.city}</span>
-        <a href={footerContent.instagramUrl} className="no-underline">
-          {footerContent.instagramHandle}
-        </a>
       </div>
     </section>
   );

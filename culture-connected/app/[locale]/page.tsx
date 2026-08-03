@@ -13,6 +13,7 @@ import { StatCounter } from '@/components/ui/StatCounter';
 import { ProcessSteps } from '@/components/ui/ProcessSteps';
 import { ContactSection } from '@/components/layout/ContactSection';
 import { PillarMarker } from '@/components/sections/PillarMarker';
+import { CaseStudiesPreview } from '@/components/sections/CaseStudiesPreview';
 
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
   const { locale } = params;
@@ -191,6 +192,8 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
           </div>
         </Reveal>
       </section>
+
+      <CaseStudiesPreview locale={locale} />
 
       <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
         <div className="mb-[clamp(22px,3vw,34px)] flex flex-wrap items-baseline justify-between gap-[14px]">

@@ -5,6 +5,8 @@ export interface CaseStudy {
   anchor: string;
   index: string;
   category: string;
+  /** Which roster half this client sits in, matching the Home page roster split. */
+  side: 'artist' | 'promoter';
   name: string;
   summary: Localized;
   imageLabel: Localized;
@@ -34,6 +36,7 @@ export const caseStudies: CaseStudy[] = [
     anchor: 'enzo',
     index: '01',
     category: 'ARTIST',
+    side: 'artist',
     name: 'Enzo Siffredi',
     summary: { en: 'Follower growth that translates into gig demand.' },
     imageLabel: { en: 'campaign creative' },
@@ -53,6 +56,7 @@ export const caseStudies: CaseStudy[] = [
     anchor: 'arkadyan',
     index: '02',
     category: 'ARTIST',
+    side: 'artist',
     name: 'Arkadyan',
     summary: { en: 'A tour announcement worked city by city.' },
     imageLabel: { en: 'tour poster / date list' },
@@ -72,6 +76,7 @@ export const caseStudies: CaseStudy[] = [
     anchor: 'reyou',
     index: '03',
     category: 'ARTIST',
+    side: 'artist',
     name: 'Re.You',
     summary: { en: 'Streams bought properly, then kept.' },
     imageLabel: { en: 'release artwork' },
@@ -89,6 +94,7 @@ export const caseStudies: CaseStudy[] = [
     anchor: 'umbra',
     index: '04',
     category: 'EVENT',
+    side: 'promoter',
     name: 'Umbra Dance',
     summary: { en: 'A list built before the tickets existed.' },
     imageLabel: { en: 'event key visual' },
@@ -106,6 +112,7 @@ export const caseStudies: CaseStudy[] = [
     anchor: 'eden',
     index: '05',
     category: 'VENUE',
+    side: 'promoter',
     name: 'Eden Nightclub',
     summary: { en: 'Weekly programme, weekly numbers.' },
     imageLabel: { en: 'club night footage' },
@@ -123,6 +130,7 @@ export const caseStudies: CaseStudy[] = [
     anchor: 'leone',
     index: '06',
     category: 'POINT OF SALE',
+    side: 'promoter',
     name: 'Leone',
     summary: { en: 'A restaurant that became a music address.' },
     imageLabel: { en: 'venue content grid' },

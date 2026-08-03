@@ -61,34 +61,6 @@ export const forArtistsContent = {
     },
   ],
 
-  mechanicHeading: { en: 'The streaming mechanic', fr: 'La mécanique streaming' } satisfies Localized,
-  mechanicSteps: [
-    {
-      step: 'STEP 01',
-      title: { en: 'Ad drives a save' } satisfies Localized,
-      body: { en: 'Creative built for sound-on scroll, aimed at listeners of adjacent artists.' } satisfies Localized,
-    },
-    {
-      step: 'STEP 02',
-      title: { en: 'Save becomes a listener' } satisfies Localized,
-      body: {
-        en: 'Saves feed release radar and algorithmic playlists, which is where the volume comes from.',
-      } satisfies Localized,
-    },
-    {
-      step: 'STEP 03',
-      title: { en: 'Listener becomes data' } satisfies Localized,
-      body: { en: 'That audience seeds lookalikes and retargeting pools for the next release.' } satisfies Localized,
-    },
-    {
-      step: 'STEP 04',
-      title: { en: 'Data sells tickets' } satisfies Localized,
-      body: {
-        en: 'The same pool, filtered by city, is the cheapest ticket audience you will ever buy.',
-      } satisfies Localized,
-    },
-  ],
-
   proofHeading: { en: 'Proof', fr: 'Preuves' } satisfies Localized,
   proofNote: { en: 'FIGURES PENDING FINAL DECK' } satisfies Localized,
   proofStats: [
