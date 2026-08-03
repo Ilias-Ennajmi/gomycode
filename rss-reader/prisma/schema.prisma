@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // SQLite for local dev. Swap to "postgresql" + a Neon DATABASE_URL for prod.
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#6366f1")
+  icon      String?
+  order     Int      @default(0)
+  feeds     Feed[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Feed {
+  id          String    @id @default(cuid())
+  title       String
+  url         String    @unique
+  siteUrl     String?
+  description String?
+  faviconUrl  String?
+  coverUrl    String?
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  articles    Article[]
+  lastFetched DateTime?
+  errorCount  Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([categoryId])
+}
+
+model Article {
+  id          String    @id @default(cuid())
+  feedId      String
+  feed        Feed      @relation(fields: [feedId], references: [id], onDelete: Cascade)
+  title       String
+  link        String
+  summary     String?
+  content     String?
+  imageUrl    String?
+  author      String?
+  publishedAt DateTime
+  isRead      Boolean   @default(false)
+  isSaved     Boolean   @default(false)
+  readAt      DateTime?
+  savedAt     DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@unique([feedId, link])
+  @@index([feedId])
+  @@index([isRead])
+  @@index([isSaved])
+  @@index([publishedAt])
+}
+
+model Setting {
+  key   String @id
+  value String
+}
