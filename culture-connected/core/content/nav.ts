@@ -1,0 +1,17 @@
+import type { Localized } from '@/core/i18n/localized';
+
+export interface NavItem {
+  href: string;
+  label: Localized;
+}
+
+export const navItems: NavItem[] = [
+  { href: '/for-artists', label: { en: 'For artists', fr: 'Artistes' } },
+  { href: '/for-promoters', label: { en: 'For promoters', fr: 'Promoteurs' } },
+  { href: '/case-studies', label: { en: 'Case studies', fr: 'Études de cas' } },
+  { href: '/about', label: { en: 'About', fr: 'À propos' } },
+];
+
+export const contactNavLabel: Localized = { en: 'Contact', fr: 'Contact' };
+
+export const wordmark = 'culture connected';

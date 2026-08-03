@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
-import { locales, isLocale, type Locale } from '@/lib/i18n/config';
+import { locales, isLocale, type Locale } from '@/core/i18n/config';
 import { Header } from '@/components/layout/Header';
 import { SetHtmlLang } from './SetHtmlLang';
 

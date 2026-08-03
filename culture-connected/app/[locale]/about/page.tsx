@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import type { Locale } from '@/lib/i18n/config';
-import { t } from '@/lib/i18n/localized';
-import { aboutContent } from '@/lib/content/about';
-import { navItems } from '@/lib/content/nav';
+import type { Locale } from '@/core/i18n/config';
+import { t } from '@/core/i18n/localized';
+import { aboutContent } from '@/core/content/about';
+import { navItems } from '@/core/content/nav';
 import { AccentHeading } from '@/components/ui/AccentHeading';
 import { PlaceholderPanel } from '@/components/ui/PlaceholderPanel';
 import { Reveal } from '@/components/ui/Reveal';

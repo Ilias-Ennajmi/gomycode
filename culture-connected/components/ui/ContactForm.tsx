@@ -1,9 +1,9 @@
 'use client';
 
 import { type CSSProperties, type FormEvent, useState } from 'react';
-import { contactShared } from '@/lib/content/contact';
-import type { Locale } from '@/lib/i18n/config';
-import { t } from '@/lib/i18n/localized';
+import { contactShared } from '@/core/content/contact';
+import type { Locale } from '@/core/i18n/config';
+import { t } from '@/core/i18n/localized';
 
 const fieldClass =
   'rounded-xl border-none bg-white/[.22] p-[15px] font-sora text-[14px] font-light leading-[1.2] text-white';

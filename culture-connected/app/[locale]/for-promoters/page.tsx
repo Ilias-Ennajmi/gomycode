@@ -1,15 +1,15 @@
 import type { Metadata } from 'next';
-import type { Locale } from '@/lib/i18n/config';
-import { localeHref } from '@/lib/i18n/paths';
-import { t } from '@/lib/i18n/localized';
-import { forPromotersContent } from '@/lib/content/forPromoters';
-import { navItems } from '@/lib/content/nav';
+import type { Locale } from '@/core/i18n/config';
+import { localeHref } from '@/core/i18n/paths';
+import { t } from '@/core/i18n/localized';
+import { forPromotersContent } from '@/core/content/forPromoters';
+import { navItems } from '@/core/content/nav';
 import { AccentHeading } from '@/components/ui/AccentHeading';
 import { Button } from '@/components/ui/Button';
 import { Reveal } from '@/components/ui/Reveal';
 import { StatCounter } from '@/components/ui/StatCounter';
 import { ContactSection } from '@/components/layout/ContactSection';
-import type { Localized } from '@/lib/i18n/localized';
+import type { Localized } from '@/core/i18n/localized';
 
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
   const { locale } = params;

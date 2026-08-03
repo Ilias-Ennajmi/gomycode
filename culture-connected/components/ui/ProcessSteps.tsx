@@ -1,6 +1,6 @@
-import type { Locale } from '@/lib/i18n/config';
-import type { Localized } from '@/lib/i18n/localized';
-import { t } from '@/lib/i18n/localized';
+import type { Locale } from '@/core/i18n/config';
+import type { Localized } from '@/core/i18n/localized';
+import { t } from '@/core/i18n/localized';
 import { Reveal } from './Reveal';
 
 export interface ProcessStepData {

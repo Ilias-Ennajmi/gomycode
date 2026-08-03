@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Sora, DM_Mono } from 'next/font/google';
-import { themeInitScript } from '@/lib/theme';
+import { themeInitScript } from '@/core/theme';
 import './globals.css';
 
 const sora = Sora({

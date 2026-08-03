@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import type { Locale } from '@/lib/i18n/config';
-import { localeHref } from '@/lib/i18n/paths';
-import { t } from '@/lib/i18n/localized';
-import { caseStudiesPageContent, caseStudies } from '@/lib/content/caseStudies';
-import { navItems } from '@/lib/content/nav';
+import type { Locale } from '@/core/i18n/config';
+import { localeHref } from '@/core/i18n/paths';
+import { t } from '@/core/i18n/localized';
+import { caseStudiesPageContent, caseStudies } from '@/core/content/caseStudies';
+import { navItems } from '@/core/content/nav';
 import { AccentHeading } from '@/components/ui/AccentHeading';
 import { PlaceholderPanel } from '@/components/ui/PlaceholderPanel';
 import { Reveal } from '@/components/ui/Reveal';

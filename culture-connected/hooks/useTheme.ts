@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { THEME_STORAGE_KEY, type Theme } from '@/lib/theme';
+import { THEME_STORAGE_KEY, type Theme } from '@/core/theme';
 
 export function useTheme() {
   const [theme, setThemeState] = useState<Theme>('light');

@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import { contactShared, footerContent } from '@/lib/content/contact';
-import { localeHref } from '@/lib/i18n/paths';
-import { t, type Localized } from '@/lib/i18n/localized';
-import type { Locale } from '@/lib/i18n/config';
+import { contactShared, footerContent } from '@/core/content/contact';
+import { localeHref } from '@/core/i18n/paths';
+import { t, type Localized } from '@/core/i18n/localized';
+import type { Locale } from '@/core/i18n/config';
 import { Reveal } from '../ui/Reveal';
 import { ContactForm } from '../ui/ContactForm';
 

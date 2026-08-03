@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { navItems, wordmark, contactNavLabel } from '@/lib/content/nav';
-import { localeHref } from '@/lib/i18n/paths';
-import { t } from '@/lib/i18n/localized';
-import type { Locale } from '@/lib/i18n/config';
+import { navItems, wordmark, contactNavLabel } from '@/core/content/nav';
+import { localeHref } from '@/core/i18n/paths';
+import { t } from '@/core/i18n/localized';
+import type { Locale } from '@/core/i18n/config';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { LangToggle } from '../ui/LangToggle';
 

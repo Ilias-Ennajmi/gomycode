@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import type { Locale } from '@/lib/i18n/config';
-import { localeHref } from '@/lib/i18n/paths';
-import { t } from '@/lib/i18n/localized';
-import { homeContent } from '@/lib/content/home';
+import type { Locale } from '@/core/i18n/config';
+import { localeHref } from '@/core/i18n/paths';
+import { t } from '@/core/i18n/localized';
+import { homeContent } from '@/core/content/home';
 import { AccentHeading } from '@/components/ui/AccentHeading';
 import { Button } from '@/components/ui/Button';
 import { PlaceholderPanel } from '@/components/ui/PlaceholderPanel';

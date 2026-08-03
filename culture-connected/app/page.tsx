@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { defaultLocale } from '@/lib/i18n/config';
+import { defaultLocale } from '@/core/i18n/config';
 
 /**
  * Static export has no server to inspect Accept-Language at request time,

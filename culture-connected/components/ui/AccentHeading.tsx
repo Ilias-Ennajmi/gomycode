@@ -1,7 +1,7 @@
 import type { ElementType } from 'react';
-import type { Locale } from '@/lib/i18n/config';
-import { t } from '@/lib/i18n/localized';
-import type { AccentHeading as AccentHeadingData } from '@/lib/content/types';
+import type { Locale } from '@/core/i18n/config';
+import { t } from '@/core/i18n/localized';
+import type { AccentHeading as AccentHeadingData } from '@/core/content/types';
 
 interface AccentHeadingProps {
   heading: AccentHeadingData;

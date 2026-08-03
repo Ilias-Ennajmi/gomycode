@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { Locale } from '@/lib/i18n/config';
+import type { Locale } from '@/core/i18n/config';
 
 /**
  * Real route-based language switch: swaps the /en or /fr path segment and
