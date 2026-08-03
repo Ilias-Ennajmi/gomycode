@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planet Sport — Calendrier éditorial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="psAuthScreen" class="ps-authscreen" style="display:none;">
+  <div class="ps-authbox">
+    <div class="ps-logo" style="margin:0 auto 14px;"><span>PS</span></div>
+    <div class="ps-brand-name" style="text-align:center;font-size:18px;margin-bottom:2px;">Planet Sport</div>
+    <div class="ps-brand-sub" style="text-align:center;margin-bottom:22px;">Content Studio</div>
+    <div class="ps-field"><label>Email</label><input type="email" id="authEmail" autocomplete="username"></div>
+    <div class="ps-field"><label>Mot de passe</label><input type="password" id="authPassword" autocomplete="current-password"></div>
+    <div id="authError" class="ps-autherror" style="display:none;"></div>
+    <button class="ps-btn primary" id="authSubmit" style="width:100%;">Se connecter</button>
+  </div>
+</div>
+
+<div id="psConfigScreen" class="ps-authscreen" style="display:none;">
+  <div class="ps-authbox">
+    <div class="ps-brand-name" style="margin-bottom:10px;">Configuration requise</div>
+    <div style="font-size:13px;color:var(--text-2,#5B6472);line-height:1.6;">
+      Supabase n'est pas encore branché. Renseignez <code>SUPABASE_URL</code> et <code>SUPABASE_ANON_KEY</code> dans <code>config.js</code>, puis rechargez la page.
+      Voir le README pour la procédure complète.
+    </div>
+  </div>
+</div>
+
+<div id="psRoot" style="display:none;">
+  <h2 style="position:absolute;width:1px;height:1px;overflow:hidden;">Calendrier éditorial Planet Sport Maroc</h2>
+
+  <div class="ps-sidebar">
+    <div class="ps-brand">
+      <div class="ps-logo"><span>PS</span></div>
+      <div class="ps-brand-text">
+        <div class="ps-brand-name">Planet Sport</div>
+        <div class="ps-brand-sub">Content Studio</div>
+      </div>
+    </div>
+
+    <div class="ps-navbtn" id="psSearchBtn" style="cursor:pointer;"><i class="ti ti-search" aria-hidden="true"></i><span>Rechercher</span><span style="margin-left:auto;font-size:10px;color:var(--text-3);">⌘K</span></div>
+
+    <div class="ps-navgroup-label">Planifier</div>
+    <div class="ps-navbtn active" data-tab="calendar"><i class="ti ti-calendar-event" aria-hidden="true"></i><span>Calendrier</span></div>
+    <div class="ps-navbtn" data-tab="influence"><i class="ti ti-users" aria-hidden="true"></i><span>Influence</span></div>
+
+    <div class="ps-navgroup-label">Créer</div>
+    <div class="ps-navbtn" data-tab="ideas"><i class="ti ti-bulb" aria-hidden="true"></i><span>Idéation</span></div>
+    <div class="ps-navbtn" data-tab="production"><i class="ti ti-layout-kanban" aria-hidden="true"></i><span>Production</span></div>
+    <div class="ps-navbtn" data-tab="campaigns"><i class="ti ti-discount-2" aria-hidden="true"></i><span>Campagnes</span></div>
+
+    <div class="ps-navgroup-label">Ressources</div>
+    <div class="ps-navbtn" data-tab="brands"><i class="ti ti-tags" aria-hidden="true"></i><span>Bibliothèque</span></div>
+    <div class="ps-navbtn" data-tab="stats"><i class="ti ti-chart-bar" aria-hidden="true"></i><span>Stats</span></div>
+
+    <div class="ps-syncstatus" id="psSyncStatus"></div>
+    <div class="ps-darktoggle" id="psLogoutRow" style="cursor:pointer;">
+      <span><i class="ti ti-logout" aria-hidden="true" style="margin-right:6px;"></i>Se déconnecter</span>
+    </div>
+    <div class="ps-darktoggle">
+      <span><i class="ti ti-moon" aria-hidden="true" style="margin-right:6px;"></i>Mode sombre</span>
+      <div class="ps-switch" id="psDarkSwitch"><div class="ps-switch-knob"></div></div>
+    </div>
+  </div>
+
+  <div class="ps-main">
+    <div id="psTabCalendar">
+      <div class="ps-topbar">
+        <div class="ps-title ps-h">Calendrier éditorial</div>
+        <div class="ps-seg" id="psViewSeg">
+          <button data-view="week" class="active">Semaine</button>
+          <button data-view="month">Mois</button>
+          <button data-view="list">Liste</button>
+        </div>
+      </div>
+
+      <div class="ps-toolbar" style="justify-content:space-between;margin-bottom:16px;">
+        <div class="ps-toolbar">
+          <button class="ps-iconbtn" id="psPrev" aria-label="Semaine précédente"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
+          <div class="ps-weekrange ps-h" id="psWeekLabel"></div>
+          <button class="ps-iconbtn" id="psNext" aria-label="Semaine suivante"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+          <button class="ps-todaybtn" id="psToday">Semaine actuelle</button>
+        </div>
+        <div class="ps-toolbar">
+          <div class="ps-filterwrap">
+            <button class="ps-iconbtn" id="psFilterBtn" aria-label="Filtrer"><i class="ti ti-filter" aria-hidden="true"></i></button>
+            <div class="ps-filterpanel" id="psFilterPanel" style="display:none;">
+              <div class="ps-field"><label>Recherche (titre / marque)</label><input type="text" id="fSearch" placeholder="Ex: Adidas"></div>
+              <div class="ps-field"><label>Statut</label><select id="fStatus"><option value="">Tous</option><option>Idée</option><option>En préparation</option><option>Prêt</option><option>Publié</option></select></div>
+              <div class="ps-field"><label>Responsable</label><select id="fResp"><option value="">Tous</option><option>À assigner</option><option>Ilias</option><option>Agence</option><option>Équipe Boutique</option></select></div>
+              <button class="ps-btn" id="fClear" style="width:100%;">Effacer les filtres</button>
+            </div>
+          </div>
+          <button class="ps-iconbtn" id="psExportBtn" aria-label="Exporter en texte" title="Copier la semaine en texte"><i class="ti ti-copy" aria-hidden="true"></i></button>
+          <button class="ps-iconbtn" id="psDupWeekBtn" aria-label="Dupliquer la semaine" title="Dupliquer vers la semaine suivante"><i class="ti ti-copy-plus" aria-hidden="true"></i></button>
+          <div class="ps-filterwrap">
+            <button class="ps-iconbtn" id="psKeyBtn" aria-label="Légende des couleurs" title="Légende des couleurs"><i class="ti ti-palette" aria-hidden="true"></i></button>
+            <div class="ps-filterpanel" id="psKeyPanel" style="display:none;width:220px;">
+              <div id="psKeyList" style="display:flex;flex-direction:column;gap:7px;font-size:12px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ps-stats" id="psStats"></div>
+
+      <div id="psWeekView">
+        <div class="ps-grid" id="psGrid"></div>
+      </div>
+      <div id="psMonthView" style="display:none;"></div>
+      <div id="psListView" style="display:none;"></div>
+    </div>
+
+    <div id="psTabInfluence" style="display:none;">
+      <div class="ps-topbar">
+        <div class="ps-title ps-h">Influence</div>
+        <button class="ps-btn primary" id="psAddInfluencer"><i class="ti ti-plus" aria-hidden="true"></i> Nouvel influenceur</button>
+      </div>
+      <div class="ps-panel" id="psInfluencePanel"></div>
+    </div>
+
+    <div id="psTabIdeas" style="display:none;">
+      <div class="ps-topbar">
+        <div class="ps-title ps-h">Idéation</div>
+        <button class="ps-btn primary" id="psAddIdea"><i class="ti ti-plus" aria-hidden="true"></i> Nouvelle idée</button>
+      </div>
+      <div class="ps-panel" id="psIdeasPanel"></div>
+    </div>
+
+    <div id="psTabProduction" style="display:none;">
+      <div class="ps-topbar">
+        <div class="ps-title ps-h">Contenu à produire</div>
+        <button class="ps-btn primary" id="psAddProd"><i class="ti ti-plus" aria-hidden="true"></i> Ajouter</button>
+      </div>
+      <div class="ps-kanban" id="psKanban"></div>
+    </div>
+
+    <div id="psTabCampaigns" style="display:none;">
+      <div class="ps-topbar">
+        <div class="ps-title ps-h">Campagnes</div>
+        <button class="ps-btn primary" id="psAddCampaign"><i class="ti ti-plus" aria-hidden="true"></i> Nouvelle campagne</button>
+      </div>
+      <div id="psCampaignsPanel"></div>
+    </div>
+
+    <div id="psTabBrands" style="display:none;">
+      <div class="ps-topbar"><div class="ps-title ps-h">Bibliothèque</div></div>
+      <div class="ps-libsection">
+        <div class="ps-libsection-title">Tiers de marques</div>
+        <div class="ps-panel" id="psTierPanel"></div>
+      </div>
+      <div class="ps-libsection">
+        <div class="ps-libsection-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>Assets — liens utiles</span>
+          <button class="ps-btn" id="psAddAsset" style="font-size:11px;"><i class="ti ti-plus" aria-hidden="true"></i> Ajouter un lien</button>
+        </div>
+        <div class="ps-panel" id="psAssetsPanel"></div>
+      </div>
+      <div class="ps-libsection">
+        <div class="ps-libsection-title">Axes récurrents — Feed</div>
+        <div class="ps-panel" id="psAxesFeedPanel"></div>
+      </div>
+      <div class="ps-libsection">
+        <div class="ps-libsection-title">Axes récurrents — Stories</div>
+        <div class="ps-panel" id="psAxesStoryPanel"></div>
+      </div>
+      <div class="ps-libsection">
+        <div class="ps-libsection-title">Import</div>
+        <div class="ps-panel">
+          <div style="font-size:12.5px;color:var(--text-2);margin-bottom:10px;">Colonnes attendues : Date (JJ/MM/AAAA), Type (Feed/Story 1/Story 2/Story 3), Titre, Format, Statut, Responsable</div>
+          <input type="file" id="psCsvInput" accept=".csv" style="font-size:12px;">
+        </div>
+      </div>
+      <div class="ps-libsection">
+        <div class="ps-libsection-title">Charte de marque — pense-bête</div>
+        <div class="ps-panel" id="psChartePanel"></div>
+      </div>
+    </div>
+
+    <div id="psTabStats" style="display:none;">
+      <div class="ps-topbar"><div class="ps-title ps-h">Vue d'ensemble</div></div>
+      <div class="ps-panel" id="psStatsPanel"></div>
+      <div class="ps-libsection" style="margin-top:18px;">
+        <div class="ps-libsection-title">Équilibre de rotation des marques</div>
+        <div class="ps-panel" id="psRotationPanel"></div>
+      </div>
+      <div class="ps-libsection">
+        <div class="ps-libsection-title">Aperçu feed (semaine affichée)</div>
+        <div class="ps-panel"><div class="ps-gridpreview" id="psGridPreview"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="psModalRoot"></div>
+  <div id="psSearchModalRoot"></div>
+  <div id="psToastRoot"></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
