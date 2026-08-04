@@ -10,8 +10,33 @@ export const aboutContent = {
     suffix: { en: '.', fr: '.' },
   } satisfies AccentHeading,
   intro: {
-    en: 'Marketers and creators based in Marrakech, working across Morocco, MENA, Europe, Ibiza and Dubai. We take on a limited number of artists and venues at a time, because the work is hands on.',
+    en: 'Marketers and creators based in London, working across MENA, Europe, Ibiza and Dubai. We take on a limited number of artists and venues at a time, because the work is hands on.',
   } satisfies Localized,
+
+  howWeWorkHeading: { en: 'How we work', fr: 'Comment on travaille' } satisfies Localized,
+  howWeWork: [
+    {
+      marker: 'circle-red',
+      heading: { en: 'Hands on, not hands off' } satisfies Localized,
+      body: {
+        en: 'A limited roster at any one time. No junior account run on autopilot while a senior sells the pitch.',
+      } satisfies Localized,
+    },
+    {
+      marker: 'square-inv',
+      heading: { en: 'Judged on tracked numbers' } satisfies Localized,
+      body: {
+        en: 'Reporting ties back to streams, signups and tickets sold, not platform-reported reach or impressions.',
+      } satisfies Localized,
+    },
+    {
+      marker: 'ring-red',
+      heading: { en: 'Electronic music and events, only' } satisfies Localized,
+      body: {
+        en: 'Not a generalist shop. Every account is a touring artist, a label, a club or a promoter, so the playbook fits.',
+      } satisfies Localized,
+    },
+  ] as const,
 
   team: [
     {
@@ -95,7 +120,7 @@ export const aboutContent = {
       } satisfies Localized,
     },
     {
-      question: { en: 'Do you work outside Morocco?' } satisfies Localized,
+      question: { en: 'Do you work outside the UK?' } satisfies Localized,
       answer: {
         en: 'Yes. Campaigns have run across MENA, Europe, Ibiza and Dubai. Media buying is remote, content shoots travel.',
       } satisfies Localized,

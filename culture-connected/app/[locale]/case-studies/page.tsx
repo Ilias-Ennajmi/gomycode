@@ -12,7 +12,7 @@ import { ContactSection } from '@/components/layout/ContactSection';
 
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
   const { locale } = params;
-  return { title: `culture connected — ${t(navItems[2].label, locale)}` };
+  return { title: `culture connected — ${t(navItems[3].label, locale)}` };
 }
 
 export default function CaseStudiesPage({ params }: { params: { locale: Locale } }) {

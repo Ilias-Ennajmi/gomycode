@@ -8,8 +8,27 @@ import { AccentHeading } from '@/components/ui/AccentHeading';
 import { Button } from '@/components/ui/Button';
 import { Reveal } from '@/components/ui/Reveal';
 import { StatCounter } from '@/components/ui/StatCounter';
+import { Marquee } from '@/components/ui/Marquee';
 import { ContactSection } from '@/components/layout/ContactSection';
+import { homeContent } from '@/core/content/home';
 import type { Localized } from '@/core/i18n/localized';
+
+function VenueLogoRow() {
+  return (
+    <div className="flex gap-4 pr-4">
+      {homeContent.roster.promoters.chips.map((name, i) => (
+        <div
+          key={i}
+          className="flex h-[46px] w-[160px] flex-none items-center justify-center rounded-full bg-chip"
+        >
+          <span className="whitespace-nowrap px-3 font-mono text-[10px] uppercase tracking-[.1em] text-muted">
+            {name}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
   const { locale } = params;
@@ -72,6 +91,14 @@ export default function ForPromotersPage({ params }: { params: { locale: Locale 
             </Button>
           </Reveal>
         </div>
+        <Reveal className="mt-[clamp(24px,3vw,36px)] flex flex-wrap items-center gap-[10px]">
+          <span className="font-mono text-[11px] tracking-[.1em] text-muted">{t(c.venueTypesLabel, locale)}</span>
+          {c.venueTypes.map((type) => (
+            <span key={type} className="rounded-full bg-chip px-[15px] py-[9px] font-sora text-[13px] text-ink">
+              {type}
+            </span>
+          ))}
+        </Reveal>
       </section>
 
       <section id="venue" className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(28px,4vw,48px)]">
@@ -152,6 +179,12 @@ export default function ForPromotersPage({ params }: { params: { locale: Locale 
           ))}
         </div>
       </section>
+
+      <Marquee
+        row={<VenueLogoRow />}
+        durationClass="animate-marq-32"
+        className="mt-[clamp(52px,7vw,84px)] bg-surface py-[22px]"
+      />
 
       <ContactSection locale={locale} heading={c.contactHeading} />
     </>

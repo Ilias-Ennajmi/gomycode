@@ -14,6 +14,9 @@ export const forPromotersContent = {
   ctaVenue: { en: 'Venue objective', fr: 'Objectif lieu' } satisfies Localized,
   ctaEvent: { en: 'Event objective', fr: 'Objectif event' } satisfies Localized,
 
+  venueTypesLabel: { en: 'WHO THIS IS FOR', fr: 'POUR QUI' } satisfies Localized,
+  venueTypes: ['Clubs', 'Festivals', 'Restaurants & nights', 'Promoters', 'Tour stops'],
+
   objectiveA: {
     eyebrow: { en: 'OBJECTIVE A / ONGOING' } satisfies Localized,
     heading: { en: 'Notoriety and fill rate', fr: 'Notoriété et taux de remplissage' } satisfies Localized,

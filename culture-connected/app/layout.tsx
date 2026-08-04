@@ -21,7 +21,7 @@ const dmMono = DM_Mono({
 export const metadata: Metadata = {
   title: 'culture connected',
   description:
-    'Culture Connected is a Marrakech music marketing agency working with touring electronic and urban artists, labels, nightlife venues and event promoters.',
+    'Culture Connected is a London music marketing agency working with touring electronic and urban artists, labels, nightlife venues and event promoters internationally.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

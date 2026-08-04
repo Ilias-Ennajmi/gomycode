@@ -14,7 +14,7 @@ export const purposeContent = {
     { en: 'Not on the sidelines.', fr: 'Pas sur la touche.' } satisfies Localized,
   ],
   paragraph: {
-    en: 'Marketers and creators based in Marrakech, working across Morocco, MENA, Europe, Ibiza and Dubai. We take on a limited number of artists and venues at a time, because the work is hands on.',
+    en: 'Marketers and creators based in London, working across MENA, Europe, Ibiza and Dubai. We take on a limited number of artists and venues at a time, because the work is hands on.',
   } satisfies Localized,
   cta: { en: 'Learn more about us', fr: 'En savoir plus sur nous' } satisfies Localized,
 };

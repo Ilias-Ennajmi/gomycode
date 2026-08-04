@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { navItems, wordmark, contactNavLabel } from '@/core/content/nav';
+import { navItems, wordmark, contactNavLabel, blogNavLabel } from '@/core/content/nav';
 import { localeHref } from '@/core/i18n/paths';
 import { t } from '@/core/i18n/localized';
 import type { Locale } from '@/core/i18n/config';
@@ -38,6 +38,12 @@ export function Header({ locale }: { locale: Locale }) {
       <div className="flex items-center gap-[10px]">
         <LangToggle locale={locale} />
         <ThemeToggle />
+        <Link
+          href={localeHref(locale, '/blog')}
+          className="rounded-full border border-line bg-transparent px-[18px] py-3 font-sora text-[13px] font-medium text-ink no-underline"
+        >
+          {t(blogNavLabel, locale)}
+        </Link>
         <Link
           href="#contact"
           className="rounded-full bg-inv px-[18px] py-3 font-sora text-[13px] font-semibold text-onInv no-underline"

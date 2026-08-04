@@ -1,5 +1,6 @@
 import type { Localized } from '@/core/i18n/localized';
 import type { AccentHeading, StatItem } from './types';
+import type { ServiceIconName } from '@/components/ui/ServiceIcon';
 
 export const forArtistsContent = {
   eyebrow: { en: 'For artists and labels' } satisfies Localized,
@@ -19,6 +20,7 @@ export const forArtistsContent = {
   handleItems: [
     {
       number: '01',
+      icon: 'audience' as ServiceIconName,
       heading: { en: 'Audience growth' } satisfies Localized,
       body: {
         en: 'Follower and community growth built on people who already listen to your lane, not bought reach.',
@@ -26,6 +28,7 @@ export const forArtistsContent = {
     },
     {
       number: '02',
+      icon: 'streams' as ServiceIconName,
       heading: { en: 'Ad optimisation for streams' } satisfies Localized,
       body: {
         en: 'Save-to-listener mechanics on Spotify: ads pointed at saves, saves converted into monthly listeners.',
@@ -33,6 +36,7 @@ export const forArtistsContent = {
     },
     {
       number: '03',
+      icon: 'release' as ServiceIconName,
       heading: { en: 'Release promotion' } satisfies Localized,
       body: {
         en: 'Pre-save waves, launch-day push, sustain phase. Creative cut for each platform, not resized once.',
@@ -40,6 +44,7 @@ export const forArtistsContent = {
     },
     {
       number: '04',
+      icon: 'touring' as ServiceIconName,
       heading: { en: 'Touring support' } satisfies Localized,
       body: {
         en: "City-by-city campaigns around tour dates, geo-fenced on the venue and the promoter's own audience.",
@@ -47,6 +52,7 @@ export const forArtistsContent = {
     },
     {
       number: '05',
+      icon: 'retarget' as ServiceIconName,
       heading: { en: 'Retargeting' } satisfies Localized,
       body: {
         en: 'Video viewers, profile visitors and site traffic worked a second and third time, at a lower cost.',
@@ -54,6 +60,7 @@ export const forArtistsContent = {
     },
     {
       number: '06',
+      icon: 'lookalike' as ServiceIconName,
       heading: { en: 'Lookalike audiences' } satisfies Localized,
       body: {
         en: 'Built from real listeners and ticket buyers, refreshed as the data set grows through the campaign.',

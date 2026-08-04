@@ -9,10 +9,11 @@ import { Reveal } from '@/components/ui/Reveal';
 import { ProcessSteps } from '@/components/ui/ProcessSteps';
 import { FaqAccordion } from '@/components/ui/FaqAccordion';
 import { ContactSection } from '@/components/layout/ContactSection';
+import { PillarMarker } from '@/components/sections/PillarMarker';
 
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
   const { locale } = params;
-  return { title: `culture connected — ${t(navItems[3].label, locale)}` };
+  return { title: `culture connected — ${t(navItems[4].label, locale)}` };
 }
 
 export default function AboutPage({ params }: { params: { locale: Locale } }) {
@@ -37,7 +38,24 @@ export default function AboutPage({ params }: { params: { locale: Locale } }) {
         </Reveal>
       </section>
 
-      <section id="team" className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)]">
+      <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(40px,6vw,64px)]">
+        <Reveal as="h2" className="mb-[clamp(22px,3vw,32px)] font-sora text-[clamp(28px,3.8vw,40px)] font-bold leading-[1.05] tracking-[-.035em] text-ink">
+          {t(c.howWeWorkHeading, locale)}
+        </Reveal>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
+          {c.howWeWork.map((item, i) => (
+            <Reveal key={item.heading.en} index={i} className="rounded-3xl bg-surface p-[clamp(24px,3vw,32px)]">
+              <PillarMarker marker={item.marker} />
+              <h3 className="m-0 mb-[10px] font-sora text-[19px] font-semibold leading-[1.2] tracking-[-.02em] text-ink">
+                {t(item.heading, locale)}
+              </h3>
+              <p className="m-0 font-sora text-[14px] font-light leading-[1.55] text-muted">{t(item.body, locale)}</p>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      <section id="team" className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
         <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-4">
           {c.team.map((member, i) => (
             <Reveal key={member.name + member.role.en} index={i} className="overflow-hidden rounded-3xl bg-surface">

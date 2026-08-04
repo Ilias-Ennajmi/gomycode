@@ -2,7 +2,7 @@ import type { Localized } from '@/core/i18n/localized';
 import type { AccentHeading, StatItem } from './types';
 
 export const homeContent = {
-  eyebrow: { en: 'Marrakech / Music marketing' } satisfies Localized,
+  eyebrow: { en: 'London / Music marketing' } satisfies Localized,
   heading: {
     prefix: { en: 'We fill rooms and ', fr: 'On remplit les salles et on ' },
     accent: { en: 'stack streams', fr: 'empile les streams' },

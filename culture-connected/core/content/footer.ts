@@ -8,8 +8,8 @@ import type { Localized } from '@/core/i18n/localized';
  */
 export const footerCopy = {
   tagline: {
-    en: 'Marrakech music marketing for touring artists, labels, venues and promoters.',
-    fr: 'Marketing musical à Marrakech pour les artistes en tournée, labels, lieux et promoteurs.',
+    en: 'London music marketing for touring artists, labels, venues and promoters.',
+    fr: 'Marketing musical basé à Londres pour les artistes en tournée, labels, lieux et promoteurs.',
   } satisfies Localized,
   pagesHeading: { en: 'Pages', fr: 'Pages' } satisfies Localized,
   contactHeading: { en: 'Get in touch', fr: 'Contact' } satisfies Localized,

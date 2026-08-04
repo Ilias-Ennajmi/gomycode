@@ -15,7 +15,7 @@ export const contactShared = {
 
 export const footerContent = {
   domain: 'cultureconnected.agency',
-  city: 'Marrakech',
+  city: 'London',
   instagramHandle: '@cultureconnected_',
   instagramUrl: 'https://instagram.com/cultureconnected_',
 };
