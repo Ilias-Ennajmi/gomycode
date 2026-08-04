@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { caseStudies } from '@/core/content/caseStudies';
 import { homeContent } from '@/core/content/home';
@@ -12,8 +12,20 @@ import { Reveal } from '../ui/Reveal';
 
 type Filter = 'all' | 'artist' | 'promoter';
 
+function ArrowIcon({ direction }: { direction: 'prev' | 'next' }) {
+  const d = direction === 'prev' ? 'M10 3L5 8l5 5' : 'M6 3l5 5-5 5';
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d={d} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function CaseStudiesPreview({ locale }: { locale: Locale }) {
   const [filter, setFilter] = useState<Filter>('all');
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(false);
+  const trackRef = useRef<HTMLDivElement>(null);
   const c = homeContent;
 
   const filters: { key: Filter; label: string }[] = [
@@ -24,37 +36,94 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
 
   const items = filter === 'all' ? caseStudies : caseStudies.filter((study) => study.side === filter);
 
+  const updateScrollState = useCallback(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    setCanPrev(el.scrollLeft > 4);
+    setCanNext(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return undefined;
+    updateScrollState();
+    el.addEventListener('scroll', updateScrollState, { passive: true });
+    window.addEventListener('resize', updateScrollState);
+    return () => {
+      el.removeEventListener('scroll', updateScrollState);
+      window.removeEventListener('resize', updateScrollState);
+    };
+  }, [updateScrollState]);
+
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    el.scrollTo({ left: 0 });
+    updateScrollState();
+  }, [filter, updateScrollState]);
+
+  function scrollByCard(direction: 1 | -1) {
+    const track = trackRef.current;
+    if (!track) return;
+    const card = track.firstElementChild as HTMLElement | null;
+    const gap = 16;
+    const step = card ? card.getBoundingClientRect().width + gap : track.clientWidth;
+    track.scrollBy({ left: direction * step, behavior: 'smooth' });
+  }
+
   return (
     <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
       <div className="mb-[clamp(22px,3vw,34px)] flex flex-wrap items-center justify-between gap-4">
         <Reveal as="h2" className="font-sora text-[clamp(28px,3.6vw,40px)] font-bold leading-none tracking-[-.035em] text-ink">
           {t(c.workHeading, locale)}
         </Reveal>
-        <Reveal className="flex flex-wrap gap-1 rounded-full bg-chip p-[5px] font-mono text-[11px] uppercase tracking-[.1em]">
-          {filters.map((f) => (
+        <Reveal className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap gap-1 rounded-full bg-chip p-[5px] font-mono text-[11px] uppercase tracking-[.1em]">
+            {filters.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => setFilter(f.key)}
+                aria-pressed={filter === f.key}
+                className={`cursor-pointer rounded-full border-none px-[15px] py-[9px] ${
+                  filter === f.key ? 'bg-inv text-onInv' : 'bg-transparent text-muted'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
             <button
-              key={f.key}
               type="button"
-              onClick={() => setFilter(f.key)}
-              aria-pressed={filter === f.key}
-              className={`cursor-pointer rounded-full border-none px-[15px] py-[9px] ${
-                filter === f.key ? 'bg-inv text-onInv' : 'bg-transparent text-muted'
-              }`}
+              onClick={() => scrollByCard(-1)}
+              disabled={!canPrev}
+              aria-label={t(c.workPrev, locale)}
+              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-line text-ink disabled:cursor-not-allowed disabled:opacity-30"
             >
-              {f.label}
+              <ArrowIcon direction="prev" />
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => scrollByCard(1)}
+              disabled={!canNext}
+              aria-label={t(c.workNext, locale)}
+              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-line text-ink disabled:cursor-not-allowed disabled:opacity-30"
+            >
+              <ArrowIcon direction="next" />
+            </button>
+          </div>
         </Reveal>
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
+      <div ref={trackRef} className="no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-2">
         {items.map((study, i) => (
           <Reveal
             key={study.anchor}
             index={i}
             as={Link}
             href={`${localeHref(locale, '/case-studies')}#${study.anchor}`}
-            className="block text-inherit no-underline"
+            className="block w-[clamp(220px,26vw,300px)] flex-none snap-start text-inherit no-underline"
           >
             <PlaceholderPanel
               label={t(study.imageLabel, locale)}

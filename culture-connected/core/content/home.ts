@@ -115,6 +115,8 @@ export const homeContent = {
     promoter: { en: 'Promoters', fr: 'Promoteurs' } satisfies Localized,
   },
   workLink: { en: 'all case studies →' } satisfies Localized,
+  workPrev: { en: 'Previous case studies', fr: 'Études de cas précédentes' } satisfies Localized,
+  workNext: { en: 'Next case studies', fr: 'Études de cas suivantes' } satisfies Localized,
 
   processHeading: { en: 'How it goes', fr: 'Comment ça se passe' } satisfies Localized,
   processLink: { en: 'the full process →' } satisfies Localized,

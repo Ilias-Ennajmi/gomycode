@@ -14,6 +14,7 @@ import { ProcessSteps } from '@/components/ui/ProcessSteps';
 import { ContactSection } from '@/components/layout/ContactSection';
 import { PillarMarker } from '@/components/sections/PillarMarker';
 import { CaseStudiesPreview } from '@/components/sections/CaseStudiesPreview';
+import { PurposeSection } from '@/components/sections/PurposeSection';
 
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
   const { locale } = params;
@@ -192,6 +193,8 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
           </div>
         </Reveal>
       </section>
+
+      <PurposeSection locale={locale} />
 
       <CaseStudiesPreview locale={locale} />
 

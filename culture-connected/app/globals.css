@@ -95,6 +95,15 @@ button {
   color: var(--red);
 }
 
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-marq-32,
   .animate-marq-30 {
