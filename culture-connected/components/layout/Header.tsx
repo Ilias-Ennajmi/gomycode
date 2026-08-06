@@ -30,6 +30,15 @@ export function Header({ locale }: { locale: Locale }) {
     setOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open]);
+
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-bg">
       <div className="flex items-center justify-between gap-3 px-[clamp(18px,4vw,52px)] py-[14px]">
@@ -78,7 +87,7 @@ export function Header({ locale }: { locale: Locale }) {
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
           aria-label={open ? 'Close menu' : 'Open menu'}
-          className="flex h-9 w-9 flex-none cursor-pointer items-center justify-center rounded-full border border-line text-ink md:hidden"
+          className="flex h-11 w-11 flex-none cursor-pointer items-center justify-center rounded-full border border-line text-ink md:hidden"
         >
           <MenuIcon open={open} />
         </button>

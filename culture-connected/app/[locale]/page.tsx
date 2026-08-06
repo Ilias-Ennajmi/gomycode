@@ -98,7 +98,7 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
 
       <PlaceholderPanel
         label={t(c.heroMediaLabel, locale)}
-        className="mx-[clamp(18px,4vw,52px)] h-[clamp(240px,46vw,520px)] rounded-[clamp(18px,3vw,28px)] overflow-hidden p-[clamp(14px,2vw,24px)]"
+        className="mx-[clamp(18px,4vw,52px)] h-[clamp(160px,46vw,520px)] rounded-[clamp(18px,3vw,28px)] overflow-hidden p-[clamp(14px,2vw,24px)]"
         labelClassName="px-[14px] py-[9px] text-[11px]"
       />
 

@@ -6,7 +6,7 @@ import type { Locale } from '@/core/i18n/config';
 import { t } from '@/core/i18n/localized';
 
 const fieldClass =
-  'rounded-xl border-none bg-white/[.22] p-[15px] font-sora text-[14px] font-light leading-[1.2] text-white';
+  'rounded-xl border-none bg-white/[.22] p-[15px] font-sora text-[16px] font-light leading-[1.2] text-white md:text-[14px]';
 
 /**
  * Client-side mirror of the prototype's contact form: three required fields,

@@ -76,6 +76,12 @@ button {
   scroll-margin-top: 92px;
 }
 
+@media (max-width: 767px) {
+  [id] {
+    scroll-margin-top: 68px;
+  }
+}
+
 .placeholder-stripes {
   background-image: repeating-linear-gradient(115deg, var(--ph1) 0 16px, var(--ph2) 16px 32px);
 }

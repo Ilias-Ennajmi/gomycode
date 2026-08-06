@@ -67,7 +67,7 @@ export default function ForArtistsPage({ params }: { params: { locale: Locale } 
 
       <PlaceholderPanel
         label={t(c.mediaLabel, locale)}
-        className="mx-[clamp(18px,4vw,52px)] h-[clamp(200px,34vw,400px)] rounded-[clamp(18px,3vw,28px)] p-[clamp(14px,2vw,24px)]"
+        className="mx-[clamp(18px,4vw,52px)] h-[clamp(140px,34vw,400px)] rounded-[clamp(18px,3vw,28px)] p-[clamp(14px,2vw,24px)]"
         labelClassName="px-[14px] py-[9px] text-[11px]"
       />
 

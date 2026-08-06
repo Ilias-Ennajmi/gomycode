@@ -85,7 +85,7 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
                 type="button"
                 onClick={() => setFilter(f.key)}
                 aria-pressed={filter === f.key}
-                className={`cursor-pointer rounded-full border-none px-[15px] py-[9px] ${
+                className={`cursor-pointer rounded-full border-none px-[15px] py-[13px] md:py-[9px] ${
                   filter === f.key ? 'bg-inv text-onInv' : 'bg-transparent text-muted'
                 }`}
               >
@@ -99,7 +99,7 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
               onClick={() => scrollByCard(-1)}
               disabled={!canPrev}
               aria-label={t(c.workPrev, locale)}
-              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-line text-ink disabled:cursor-not-allowed disabled:opacity-30"
+              className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-line text-ink disabled:cursor-not-allowed disabled:opacity-30 md:h-9 md:w-9"
             >
               <ArrowIcon direction="prev" />
             </button>
@@ -108,7 +108,7 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
               onClick={() => scrollByCard(1)}
               disabled={!canNext}
               aria-label={t(c.workNext, locale)}
-              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-line text-ink disabled:cursor-not-allowed disabled:opacity-30"
+              className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-line text-ink disabled:cursor-not-allowed disabled:opacity-30 md:h-9 md:w-9"
             >
               <ArrowIcon direction="next" />
             </button>
