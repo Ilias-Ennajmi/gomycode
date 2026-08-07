@@ -12,7 +12,7 @@ interface PlaceholderPanelProps {
 export function PlaceholderPanel({ label, className = '', labelClassName = '' }: PlaceholderPanelProps) {
   return (
     <div className={`placeholder-stripes flex items-end ${className}`}>
-      <span className={`rounded-full bg-bg font-mono text-muted ${labelClassName}`}>{label}</span>
+      {label ? <span className={`rounded-full bg-bg font-mono text-muted ${labelClassName}`}>{label}</span> : null}
     </div>
   );
 }

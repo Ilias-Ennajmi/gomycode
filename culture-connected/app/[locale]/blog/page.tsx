@@ -6,6 +6,7 @@ import { blogNavLabel } from '@/core/content/nav';
 import { AccentHeading } from '@/components/ui/AccentHeading';
 import { PlaceholderPanel } from '@/components/ui/PlaceholderPanel';
 import { Reveal } from '@/components/ui/Reveal';
+import { Eyebrow } from '@/components/ui/Eyebrow';
 import { ContactSection } from '@/components/layout/ContactSection';
 
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
@@ -21,7 +22,7 @@ export default function BlogPage({ params }: { params: { locale: Locale } }) {
     <>
       <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pb-[clamp(28px,4vw,48px)] pt-[clamp(48px,7vw,92px)]">
         <Reveal className="mb-[clamp(18px,3vw,30px)] font-mono text-[11px] uppercase tracking-[.16em] text-red">
-          {t(c.eyebrow, locale)}
+          <Eyebrow>{t(c.eyebrow, locale)}</Eyebrow>
         </Reveal>
         <Reveal>
           <AccentHeading

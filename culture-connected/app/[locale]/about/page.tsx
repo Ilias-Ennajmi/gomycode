@@ -8,6 +8,7 @@ import { PlaceholderPanel } from '@/components/ui/PlaceholderPanel';
 import { Reveal } from '@/components/ui/Reveal';
 import { ProcessSteps } from '@/components/ui/ProcessSteps';
 import { FaqAccordion } from '@/components/ui/FaqAccordion';
+import { Eyebrow } from '@/components/ui/Eyebrow';
 import { ContactSection } from '@/components/layout/ContactSection';
 import { PillarMarker } from '@/components/sections/PillarMarker';
 
@@ -24,7 +25,7 @@ export default function AboutPage({ params }: { params: { locale: Locale } }) {
     <>
       <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pb-[clamp(24px,3vw,44px)] pt-[clamp(48px,7vw,92px)]">
         <Reveal className="mb-[clamp(18px,3vw,30px)] font-mono text-[11px] uppercase tracking-[.16em] text-red">
-          {t(c.eyebrow, locale)}
+          <Eyebrow>{t(c.eyebrow, locale)}</Eyebrow>
         </Reveal>
         <Reveal>
           <AccentHeading
@@ -44,7 +45,11 @@ export default function AboutPage({ params }: { params: { locale: Locale } }) {
         </Reveal>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
           {c.howWeWork.map((item, i) => (
-            <Reveal key={item.heading.en} index={i} className="rounded-3xl bg-surface p-[clamp(24px,3vw,32px)]">
+            <Reveal
+              key={item.heading.en}
+              index={i}
+              className={`rounded-3xl bg-surface p-[clamp(24px,3vw,32px)] ${i % 2 === 1 ? 'lg:translate-y-6' : ''}`}
+            >
               <PillarMarker marker={item.marker} />
               <h3 className="m-0 mb-[10px] font-sora text-[19px] font-semibold leading-[1.2] tracking-[-.02em] text-ink">
                 {t(item.heading, locale)}

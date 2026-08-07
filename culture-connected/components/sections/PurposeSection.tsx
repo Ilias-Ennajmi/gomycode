@@ -4,6 +4,7 @@ import { t } from '@/core/i18n/localized';
 import type { Locale } from '@/core/i18n/config';
 import { Reveal } from '../ui/Reveal';
 import { Button } from '../ui/Button';
+import { Eyebrow } from '../ui/Eyebrow';
 
 export function PurposeSection({ locale }: { locale: Locale }) {
   const c = purposeContent;
@@ -11,7 +12,7 @@ export function PurposeSection({ locale }: { locale: Locale }) {
   return (
     <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
       <Reveal className="mb-[clamp(18px,3vw,28px)] font-mono text-[11px] uppercase tracking-[.16em] text-red">
-        {t(c.eyebrow, locale)}
+        <Eyebrow>{t(c.eyebrow, locale)}</Eyebrow>
       </Reveal>
 
       <Reveal
