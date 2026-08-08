@@ -10,7 +10,7 @@ import { Reveal } from '@/components/ui/Reveal';
 import { StatCounter } from '@/components/ui/StatCounter';
 import { Marquee } from '@/components/ui/Marquee';
 import { Eyebrow } from '@/components/ui/Eyebrow';
-import { Watermark } from '@/components/ui/Watermark';
+import { StatTicket } from '@/components/ui/StatTicket';
 import { ContactSection } from '@/components/layout/ContactSection';
 import { homeContent } from '@/core/content/home';
 import type { Localized } from '@/core/i18n/localized';
@@ -69,9 +69,8 @@ export default function ForPromotersPage({ params }: { params: { locale: Locale 
 
   return (
     <>
-      <section className="relative mx-auto max-w-[1440px] overflow-hidden px-[clamp(18px,4vw,52px)] pb-[clamp(28px,4vw,48px)] pt-[clamp(48px,7vw,92px)]">
-        <Watermark className="bottom-0 left-[clamp(18px,4vw,52px)]">{t(c.heading.accent, locale)}</Watermark>
-        <div className="relative z-10">
+      <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pb-[clamp(28px,4vw,48px)] pt-[clamp(48px,7vw,92px)]">
+        <div>
           <Reveal className="mb-[clamp(18px,3vw,30px)] font-mono text-[11px] uppercase tracking-[.16em] text-red">
             <Eyebrow>{t(c.eyebrow, locale)}</Eyebrow>
           </Reveal>
@@ -163,20 +162,35 @@ export default function ForPromotersPage({ params }: { params: { locale: Locale 
           </Reveal>
           <span className="font-mono text-[11px] text-muted">{t(c.proofNote, locale)}</span>
         </div>
-        <div className="flex flex-wrap gap-4 lg:flex-nowrap">
-          {c.proofStats.map((stat, i) => (
+        <div className="flex flex-wrap items-start gap-4">
+          <Reveal
+            key={c.proofStats[0].sublabel}
+            index={0}
+            as="a"
+            href={`${localeHref(locale, '/case-studies')}#${c.proofStats[0].anchor}`}
+            className="block flex-none no-underline"
+          >
+            <StatTicket
+              value={c.proofStats[0].value}
+              decimals={c.proofStats[0].decimals}
+              suffix={c.proofStats[0].suffix}
+              label={t(c.proofStats[0].label, locale)}
+              sublabel={c.proofStats[0].sublabel}
+            />
+          </Reveal>
+          {c.proofStats.slice(1).map((stat, i) => (
             <Reveal
               key={stat.sublabel}
-              index={i}
+              index={i + 1}
               as="a"
               href={`${localeHref(locale, '/case-studies')}#${stat.anchor}`}
-              className={`block min-w-[220px] flex-1 rounded-3xl bg-surface p-[clamp(24px,3vw,32px)] no-underline ${i % 2 === 1 ? 'lg:-ml-6 lg:mt-8' : ''}`}
+              className="block min-w-[220px] flex-1 self-center rounded-3xl bg-surface p-[clamp(24px,3vw,32px)] no-underline"
             >
               <StatCounter
                 value={stat.value}
                 decimals={stat.decimals}
                 suffix={stat.suffix}
-                className="font-sora text-[clamp(48px,6.4vw,80px)] font-bold leading-[.9] tracking-[-.05em] text-red"
+                className="font-sora text-[clamp(38px,4.4vw,52px)] font-bold leading-[.9] tracking-[-.05em] text-red"
               />
               <div className="mt-[14px] font-sora text-[16px] font-medium leading-[1.3] text-ink">{t(stat.label, locale)}</div>
               <div className="mt-[10px] font-mono text-[11px] text-muted">{stat.sublabel}</div>

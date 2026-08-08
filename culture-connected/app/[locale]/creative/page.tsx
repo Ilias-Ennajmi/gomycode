@@ -10,7 +10,6 @@ import { HeroMediaPanel } from '@/components/ui/HeroMediaPanel';
 import { Reveal } from '@/components/ui/Reveal';
 import { ServiceIcon } from '@/components/ui/ServiceIcon';
 import { Eyebrow } from '@/components/ui/Eyebrow';
-import { Watermark } from '@/components/ui/Watermark';
 import { ContactSection } from '@/components/layout/ContactSection';
 
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
@@ -24,9 +23,8 @@ export default function CreativePage({ params }: { params: { locale: Locale } })
 
   return (
     <>
-      <section className="relative mx-auto max-w-[1440px] overflow-hidden px-[clamp(18px,4vw,52px)] pb-[clamp(28px,4vw,48px)] pt-[clamp(48px,7vw,92px)]">
-        <Watermark className="bottom-0 left-[clamp(18px,4vw,52px)]">{t(c.heading.accent, locale)}</Watermark>
-        <div className="relative z-10">
+      <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pb-[clamp(28px,4vw,48px)] pt-[clamp(48px,7vw,92px)]">
+        <div>
           <Reveal className="mb-[clamp(18px,3vw,30px)] font-mono text-[11px] uppercase tracking-[.16em] text-red">
             <Eyebrow>{t(c.eyebrow, locale)}</Eyebrow>
           </Reveal>
@@ -62,23 +60,33 @@ export default function CreativePage({ params }: { params: { locale: Locale } })
         <Reveal as="h2" className="mb-[clamp(22px,3vw,34px)] font-sora text-[clamp(28px,3.8vw,44px)] font-bold leading-[1.05] tracking-[-.035em] text-ink">
           {t(c.servicesHeading, locale)}
         </Reveal>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(360px,1fr))] gap-4">
-          {c.services.map((item, i) => (
-            <Reveal
-              key={item.number}
-              index={i}
-              className={`rounded-3xl bg-surface p-[clamp(24px,3vw,32px)] ${i % 2 === 1 ? 'lg:translate-y-6' : ''}`}
-            >
-              <div className="mb-4 flex items-center gap-3">
-                <ServiceIcon name={item.icon} className="h-6 w-6 text-red" />
-                <span className="font-mono text-[11px] text-red">{item.number}</span>
-              </div>
-              <h3 className="m-0 mb-[10px] font-sora text-[22px] font-semibold leading-[1.15] tracking-[-.02em] text-ink">
-                {t(item.heading, locale)}
-              </h3>
-              <p className="m-0 font-sora text-[15px] font-light leading-[1.6] text-muted">{t(item.body, locale)}</p>
-            </Reveal>
-          ))}
+        <div className="flex flex-col gap-4">
+          <Reveal index={0} className="rounded-3xl bg-inv p-[clamp(24px,3vw,32px)] text-onInv">
+            <div className="mb-4 flex items-center gap-3">
+              <ServiceIcon name={c.services[0].icon} className="h-6 w-6 text-red" />
+              <span className="font-mono text-[11px] text-red">{c.services[0].number}</span>
+            </div>
+            <h3 className="m-0 mb-[10px] font-sora text-[22px] font-semibold leading-[1.15] tracking-[-.02em]">
+              {t(c.services[0].heading, locale)}
+            </h3>
+            <p className="m-0 max-w-[520px] font-sora text-[15px] font-light leading-[1.6] opacity-70">
+              {t(c.services[0].body, locale)}
+            </p>
+          </Reveal>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(360px,1fr))] gap-4">
+            {c.services.slice(1).map((item, i) => (
+              <Reveal key={item.number} index={i + 1} className="rounded-3xl bg-surface p-[clamp(24px,3vw,32px)] text-ink">
+                <div className="mb-4 flex items-center gap-3">
+                  <ServiceIcon name={item.icon} className="h-6 w-6 text-red" />
+                  <span className="font-mono text-[11px] text-red">{item.number}</span>
+                </div>
+                <h3 className="m-0 mb-[10px] font-sora text-[22px] font-semibold leading-[1.15] tracking-[-.02em]">
+                  {t(item.heading, locale)}
+                </h3>
+                <p className="m-0 font-sora text-[15px] font-light leading-[1.6] opacity-70">{t(item.body, locale)}</p>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </section>
 

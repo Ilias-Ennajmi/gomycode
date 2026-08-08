@@ -12,7 +12,7 @@ import { Reveal } from '@/components/ui/Reveal';
 import { StatCounter } from '@/components/ui/StatCounter';
 import { ProcessSteps } from '@/components/ui/ProcessSteps';
 import { Eyebrow } from '@/components/ui/Eyebrow';
-import { Watermark } from '@/components/ui/Watermark';
+import { StatTicket } from '@/components/ui/StatTicket';
 import { ContactSection } from '@/components/layout/ContactSection';
 import { PillarMarker } from '@/components/sections/PillarMarker';
 import { CaseStudiesPreview } from '@/components/sections/CaseStudiesPreview';
@@ -59,9 +59,8 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
 
   return (
     <>
-      <section className="relative mx-auto grid max-w-[1440px] grid-cols-[repeat(auto-fit,minmax(320px,1fr))] items-end gap-[clamp(24px,4vw,52px)] overflow-hidden px-[clamp(18px,4vw,52px)] pb-[clamp(32px,4vw,58px)] pt-[clamp(48px,7vw,92px)]">
-        <Watermark className="bottom-0 left-[clamp(18px,4vw,52px)]">{t(c.heading.accent, locale)}</Watermark>
-        <div className="relative z-10 min-w-0">
+      <section className="mx-auto grid max-w-[1440px] grid-cols-[repeat(auto-fit,minmax(320px,1fr))] items-end gap-[clamp(24px,4vw,52px)] px-[clamp(18px,4vw,52px)] pb-[clamp(32px,4vw,58px)] pt-[clamp(48px,7vw,92px)]">
+        <div className="min-w-0">
           <Reveal className="mb-[clamp(18px,3vw,32px)] font-mono text-[11px] uppercase tracking-[.16em] text-red">
             <Eyebrow>{t(c.eyebrow, locale)}</Eyebrow>
           </Reveal>
@@ -73,7 +72,7 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
             />
           </Reveal>
         </div>
-        <div className="relative z-10 max-w-[420px] pb-[10px]">
+        <div className="max-w-[420px] pb-[10px]">
           <Reveal
             as="p"
             className="m-0 mb-[22px] font-sora text-[16px] font-light leading-[1.55] text-muted"
@@ -114,52 +113,82 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
         <Reveal as="h2" className="mb-[clamp(22px,3vw,32px)] font-sora text-[clamp(30px,4.2vw,44px)] font-bold leading-[1.05] tracking-[-.035em] text-ink">
           {t(c.pillarsHeading, locale)}
         </Reveal>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-4">
-          {c.pillars.map((pillar, i) => (
-            <Reveal
-              key={pillar.heading.en}
-              index={i}
-              className={`rounded-3xl bg-surface p-[clamp(24px,3vw,32px)] ${i % 2 === 1 ? 'lg:translate-y-6' : ''}`}
-            >
-              <PillarMarker marker={pillar.marker} />
-              <h3 className="m-0 mb-[10px] font-sora text-[23px] font-semibold leading-[1.15] tracking-[-.02em] text-ink">
-                {t(pillar.heading, locale)}
-              </h3>
-              <p className="m-0 font-sora text-[15px] font-light leading-[1.6] text-muted">{t(pillar.body, locale)}</p>
-            </Reveal>
-          ))}
+        <div className="flex flex-col gap-4">
+          <Reveal
+            key={c.pillars[0].heading.en}
+            index={0}
+            className="rounded-3xl bg-inv p-[clamp(24px,3vw,32px)] text-onInv"
+          >
+            <PillarMarker marker={c.pillars[0].marker} />
+            <h3 className="m-0 mb-[10px] font-sora text-[23px] font-semibold leading-[1.15] tracking-[-.02em]">
+              {t(c.pillars[0].heading, locale)}
+            </h3>
+            <p className="m-0 max-w-[520px] font-sora text-[15px] font-light leading-[1.6] opacity-70">
+              {t(c.pillars[0].body, locale)}
+            </p>
+          </Reveal>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-4">
+            {c.pillars.slice(1).map((pillar, i) => (
+              <Reveal key={pillar.heading.en} index={i + 1} className="rounded-3xl bg-surface p-[clamp(24px,3vw,32px)] text-ink">
+                <PillarMarker marker={pillar.marker} />
+                <h3 className="m-0 mb-[10px] font-sora text-[23px] font-semibold leading-[1.15] tracking-[-.02em]">
+                  {t(pillar.heading, locale)}
+                </h3>
+                <p className="m-0 font-sora text-[15px] font-light leading-[1.6] opacity-70">{t(pillar.body, locale)}</p>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </section>
 
       <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
-        <div className="rounded-[clamp(20px,3vw,30px)] bg-inv p-[clamp(28px,4vw,48px)] text-onInv">
-          <div className="mb-[clamp(24px,3vw,36px)] flex flex-wrap items-baseline justify-between gap-[14px]">
-            <Reveal as="h2" className="font-sora text-[clamp(28px,3.6vw,40px)] font-bold leading-none tracking-[-.035em]">
-              {t(c.proofHeading, locale)}
-            </Reveal>
-            <Link href={localeHref(locale, '/case-studies')} className="font-mono text-[12px] text-red no-underline">
-              {t(c.proofLink, locale)}
-            </Link>
-          </div>
-          <div className="flex flex-wrap gap-7 lg:flex-nowrap">
-            {c.proofStats.map((stat, i) => (
-              <Reveal
-                key={stat.sublabel}
-                index={i}
-                as={Link}
-                href={`${localeHref(locale, '/case-studies')}#${stat.anchor}`}
-                className={`block min-w-[180px] flex-1 text-inherit no-underline ${i % 2 === 1 ? 'lg:-ml-6 lg:mt-8' : ''}`}
-              >
-                <StatCounter
-                  value={stat.value}
-                  decimals={stat.decimals}
-                  suffix={stat.suffix}
-                  className="font-sora text-[clamp(52px,8vw,104px)] font-bold leading-[.85] tracking-[-.05em] text-red"
-                />
-                <div className="mt-[14px] font-sora text-[15px] font-medium leading-[1.35]">{t(stat.label, locale)}</div>
-                <div className="mt-2 font-mono text-[11px] opacity-50">{stat.sublabel}</div>
+        <div className="torn-edge-bottom relative overflow-hidden rounded-t-[clamp(20px,3vw,30px)] bg-inv p-[clamp(28px,4vw,48px)] pb-[clamp(48px,6vw,72px)] text-onInv">
+          <div className="halftone-overlay pointer-events-none absolute inset-0 z-0 text-onInv" />
+          <div className="relative z-[1]">
+            <div className="mb-[clamp(24px,3vw,36px)] flex flex-wrap items-baseline justify-between gap-[14px]">
+              <Reveal as="h2" className="font-sora text-[clamp(28px,3.6vw,40px)] font-bold leading-none tracking-[-.035em]">
+                {t(c.proofHeading, locale)}
               </Reveal>
-            ))}
+              <Link href={localeHref(locale, '/case-studies')} className="font-mono text-[12px] text-red no-underline">
+                {t(c.proofLink, locale)}
+              </Link>
+            </div>
+            <div className="flex flex-wrap items-start gap-7">
+              <Reveal
+                key={c.proofStats[0].sublabel}
+                index={0}
+                as={Link}
+                href={`${localeHref(locale, '/case-studies')}#${c.proofStats[0].anchor}`}
+                className="block flex-none no-underline"
+              >
+                <StatTicket
+                  value={c.proofStats[0].value}
+                  decimals={c.proofStats[0].decimals}
+                  suffix={c.proofStats[0].suffix}
+                  label={t(c.proofStats[0].label, locale)}
+                  sublabel={c.proofStats[0].sublabel}
+                  notchColor="var(--inv)"
+                />
+              </Reveal>
+              {c.proofStats.slice(1).map((stat, i) => (
+                <Reveal
+                  key={stat.sublabel}
+                  index={i + 1}
+                  as={Link}
+                  href={`${localeHref(locale, '/case-studies')}#${stat.anchor}`}
+                  className="block min-w-[180px] flex-1 self-center text-inherit no-underline"
+                >
+                  <StatCounter
+                    value={stat.value}
+                    decimals={stat.decimals}
+                    suffix={stat.suffix}
+                    className="font-sora text-[clamp(40px,5vw,56px)] font-bold leading-[.9] tracking-[-.05em] text-red"
+                  />
+                  <div className="mt-[14px] font-sora text-[15px] font-medium leading-[1.35]">{t(stat.label, locale)}</div>
+                  <div className="mt-2 font-mono text-[11px] opacity-50">{stat.sublabel}</div>
+                </Reveal>
+              ))}
+            </div>
           </div>
         </div>
       </section>

@@ -101,6 +101,51 @@ button {
   color: var(--red);
 }
 
+.torn-edge-bottom {
+  clip-path: polygon(
+    0% 0%,
+    100% 0%,
+    100% 94%,
+    93.33% 100%,
+    86.67% 94%,
+    80% 100%,
+    73.33% 94%,
+    66.67% 100%,
+    60% 94%,
+    53.33% 100%,
+    46.67% 94%,
+    40% 100%,
+    33.33% 94%,
+    26.67% 100%,
+    20% 94%,
+    13.33% 100%,
+    6.67% 94%,
+    0% 100%
+  );
+}
+
+.halftone-overlay {
+  background-image: radial-gradient(currentColor 1px, transparent 1.6px);
+  background-size: 9px 9px;
+  opacity: 0.12;
+}
+
+.ticket-notch {
+  position: relative;
+}
+
+.ticket-notch::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -9px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--notch-color, var(--bg));
+  transform: translateY(-50%);
+}
+
 .no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;

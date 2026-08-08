@@ -43,20 +43,27 @@ export default function AboutPage({ params }: { params: { locale: Locale } }) {
         <Reveal as="h2" className="mb-[clamp(22px,3vw,32px)] font-sora text-[clamp(28px,3.8vw,40px)] font-bold leading-[1.05] tracking-[-.035em] text-ink">
           {t(c.howWeWorkHeading, locale)}
         </Reveal>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
-          {c.howWeWork.map((item, i) => (
-            <Reveal
-              key={item.heading.en}
-              index={i}
-              className={`rounded-3xl bg-surface p-[clamp(24px,3vw,32px)] ${i % 2 === 1 ? 'lg:translate-y-6' : ''}`}
-            >
-              <PillarMarker marker={item.marker} />
-              <h3 className="m-0 mb-[10px] font-sora text-[19px] font-semibold leading-[1.2] tracking-[-.02em] text-ink">
-                {t(item.heading, locale)}
-              </h3>
-              <p className="m-0 font-sora text-[14px] font-light leading-[1.55] text-muted">{t(item.body, locale)}</p>
-            </Reveal>
-          ))}
+        <div className="flex flex-col gap-4">
+          <Reveal index={0} className="rounded-3xl bg-inv p-[clamp(24px,3vw,32px)] text-onInv">
+            <PillarMarker marker={c.howWeWork[0].marker} />
+            <h3 className="m-0 mb-[10px] font-sora text-[19px] font-semibold leading-[1.2] tracking-[-.02em]">
+              {t(c.howWeWork[0].heading, locale)}
+            </h3>
+            <p className="m-0 max-w-[520px] font-sora text-[14px] font-light leading-[1.55] opacity-70">
+              {t(c.howWeWork[0].body, locale)}
+            </p>
+          </Reveal>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
+            {c.howWeWork.slice(1).map((item, i) => (
+              <Reveal key={item.heading.en} index={i + 1} className="rounded-3xl bg-surface p-[clamp(24px,3vw,32px)] text-ink">
+                <PillarMarker marker={item.marker} />
+                <h3 className="m-0 mb-[10px] font-sora text-[19px] font-semibold leading-[1.2] tracking-[-.02em]">
+                  {t(item.heading, locale)}
+                </h3>
+                <p className="m-0 font-sora text-[14px] font-light leading-[1.55] opacity-70">{t(item.body, locale)}</p>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </section>
 
