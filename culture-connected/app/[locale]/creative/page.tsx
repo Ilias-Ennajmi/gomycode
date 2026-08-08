@@ -10,7 +10,40 @@ import { HeroMediaPanel } from '@/components/ui/HeroMediaPanel';
 import { Reveal } from '@/components/ui/Reveal';
 import { ServiceIcon } from '@/components/ui/ServiceIcon';
 import { Eyebrow } from '@/components/ui/Eyebrow';
+import { MobileCarousel } from '@/components/ui/MobileCarousel';
 import { ContactSection } from '@/components/layout/ContactSection';
+import type { Localized } from '@/core/i18n/localized';
+import type { ServiceIconName } from '@/components/ui/ServiceIcon';
+
+interface ServiceItem {
+  number: string;
+  icon: ServiceIconName;
+  heading: Localized;
+  body: Localized;
+}
+
+function ServiceCard({
+  item,
+  locale,
+  className = '',
+}: {
+  item: ServiceItem;
+  locale: Locale;
+  className?: string;
+}) {
+  return (
+    <div className={`rounded-3xl bg-surface p-[clamp(24px,3vw,32px)] text-ink ${className}`}>
+      <div className="mb-4 flex items-center gap-3">
+        <ServiceIcon name={item.icon} className="h-6 w-6 text-red" />
+        <span className="font-mono text-[11px] text-red">{item.number}</span>
+      </div>
+      <h3 className="m-0 mb-[10px] font-sora text-[22px] font-semibold leading-[1.15] tracking-[-.02em]">
+        {t(item.heading, locale)}
+      </h3>
+      <p className="m-0 font-sora text-[15px] font-light leading-[1.6] opacity-70">{t(item.body, locale)}</p>
+    </div>
+  );
+}
 
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
   const { locale } = params;
@@ -73,20 +106,20 @@ export default function CreativePage({ params }: { params: { locale: Locale } })
               {t(c.services[0].body, locale)}
             </p>
           </Reveal>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(360px,1fr))] gap-4">
+          <div className="hidden md:grid md:grid-cols-[repeat(auto-fit,minmax(360px,1fr))] md:gap-4">
             {c.services.slice(1).map((item, i) => (
-              <Reveal key={item.number} index={i + 1} className="rounded-3xl bg-surface p-[clamp(24px,3vw,32px)] text-ink">
-                <div className="mb-4 flex items-center gap-3">
-                  <ServiceIcon name={item.icon} className="h-6 w-6 text-red" />
-                  <span className="font-mono text-[11px] text-red">{item.number}</span>
-                </div>
-                <h3 className="m-0 mb-[10px] font-sora text-[22px] font-semibold leading-[1.15] tracking-[-.02em]">
-                  {t(item.heading, locale)}
-                </h3>
-                <p className="m-0 font-sora text-[15px] font-light leading-[1.6] opacity-70">{t(item.body, locale)}</p>
+              <Reveal key={item.number} index={i + 1}>
+                <ServiceCard item={item} locale={locale} />
               </Reveal>
             ))}
           </div>
+          <MobileCarousel count={c.services.length - 1}>
+            {c.services.slice(1).map((item, i) => (
+              <Reveal key={item.number} index={i + 1} className="w-[86vw] max-w-[340px] flex-none snap-start">
+                <ServiceCard item={item} locale={locale} />
+              </Reveal>
+            ))}
+          </MobileCarousel>
         </div>
       </section>
 

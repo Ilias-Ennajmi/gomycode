@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { locales, isLocale, type Locale } from '@/core/i18n/config';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
+import { ScrollProgress } from '@/components/ui/ScrollProgress';
+import { MobileStickyCta } from '@/components/ui/MobileStickyCta';
 import { SetHtmlLang } from './SetHtmlLang';
 
 export function generateStaticParams() {
@@ -21,9 +23,11 @@ export default function LocaleLayout({ children, params }: LocaleLayoutProps) {
   return (
     <>
       <SetHtmlLang locale={locale} />
+      <ScrollProgress />
       <Header locale={locale} />
       {children}
       <Footer locale={locale} />
+      <MobileStickyCta locale={locale} />
     </>
   );
 }

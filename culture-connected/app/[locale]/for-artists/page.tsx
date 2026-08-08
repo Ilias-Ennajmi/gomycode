@@ -13,9 +13,42 @@ import { ServiceIcon } from '@/components/ui/ServiceIcon';
 import { Marquee } from '@/components/ui/Marquee';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { StatTicket } from '@/components/ui/StatTicket';
+import { MobileCarousel } from '@/components/ui/MobileCarousel';
 import { ContactSection } from '@/components/layout/ContactSection';
 import { PurposeSection } from '@/components/sections/PurposeSection';
 import { homeContent } from '@/core/content/home';
+import type { Localized } from '@/core/i18n/localized';
+import type { ServiceIconName } from '@/components/ui/ServiceIcon';
+
+interface HandleItem {
+  number: string;
+  icon: ServiceIconName;
+  heading: Localized;
+  body: Localized;
+}
+
+function HandleCard({
+  item,
+  locale,
+  className = '',
+}: {
+  item: HandleItem;
+  locale: Locale;
+  className?: string;
+}) {
+  return (
+    <div className={`rounded-3xl bg-surface p-[clamp(24px,3vw,32px)] text-ink ${className}`}>
+      <div className="mb-4 flex items-center gap-3">
+        <ServiceIcon name={item.icon} className="h-6 w-6 text-red" />
+        <span className="font-mono text-[11px] text-red">{item.number}</span>
+      </div>
+      <h3 className="m-0 mb-[10px] font-sora text-[22px] font-semibold leading-[1.15] tracking-[-.02em]">
+        {t(item.heading, locale)}
+      </h3>
+      <p className="m-0 font-sora text-[15px] font-light leading-[1.6] opacity-70">{t(item.body, locale)}</p>
+    </div>
+  );
+}
 
 function ArtistRow() {
   return (
@@ -91,20 +124,20 @@ export default function ForArtistsPage({ params }: { params: { locale: Locale } 
               {t(c.handleItems[0].body, locale)}
             </p>
           </Reveal>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(360px,1fr))] gap-4">
+          <div className="hidden md:grid md:grid-cols-[repeat(auto-fit,minmax(360px,1fr))] md:gap-4">
             {c.handleItems.slice(1).map((item, i) => (
-              <Reveal key={item.number} index={i + 1} className="rounded-3xl bg-surface p-[clamp(24px,3vw,32px)] text-ink">
-                <div className="mb-4 flex items-center gap-3">
-                  <ServiceIcon name={item.icon} className="h-6 w-6 text-red" />
-                  <span className="font-mono text-[11px] text-red">{item.number}</span>
-                </div>
-                <h3 className="m-0 mb-[10px] font-sora text-[22px] font-semibold leading-[1.15] tracking-[-.02em]">
-                  {t(item.heading, locale)}
-                </h3>
-                <p className="m-0 font-sora text-[15px] font-light leading-[1.6] opacity-70">{t(item.body, locale)}</p>
+              <Reveal key={item.number} index={i + 1}>
+                <HandleCard item={item} locale={locale} />
               </Reveal>
             ))}
           </div>
+          <MobileCarousel count={c.handleItems.length - 1}>
+            {c.handleItems.slice(1).map((item, i) => (
+              <Reveal key={item.number} index={i + 1} className="w-[86vw] max-w-[340px] flex-none snap-start">
+                <HandleCard item={item} locale={locale} />
+              </Reveal>
+            ))}
+          </MobileCarousel>
         </div>
       </section>
 
@@ -123,7 +156,7 @@ export default function ForArtistsPage({ params }: { params: { locale: Locale } 
             index={0}
             as="a"
             href={`${localeHref(locale, '/case-studies')}#${c.proofStats[0].anchor}`}
-            className="block flex-none no-underline"
+            className="block flex-none no-underline transition-transform duration-150 active:scale-[0.97]"
           >
             <StatTicket
               value={c.proofStats[0].value}
@@ -139,7 +172,7 @@ export default function ForArtistsPage({ params }: { params: { locale: Locale } 
               index={i + 1}
               as="a"
               href={`${localeHref(locale, '/case-studies')}#${stat.anchor}`}
-              className="block min-w-[220px] flex-1 self-center rounded-3xl bg-surface p-[clamp(24px,3vw,32px)] no-underline"
+              className="block min-w-[220px] flex-1 self-center rounded-3xl bg-surface p-[clamp(24px,3vw,32px)] no-underline transition-transform duration-150 active:scale-[0.97]"
             >
               <StatCounter
                 value={stat.value}

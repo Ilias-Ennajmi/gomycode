@@ -9,8 +9,43 @@ import { Reveal } from '@/components/ui/Reveal';
 import { ProcessSteps } from '@/components/ui/ProcessSteps';
 import { FaqAccordion } from '@/components/ui/FaqAccordion';
 import { Eyebrow } from '@/components/ui/Eyebrow';
+import { MobileCarousel } from '@/components/ui/MobileCarousel';
 import { ContactSection } from '@/components/layout/ContactSection';
 import { PillarMarker } from '@/components/sections/PillarMarker';
+import type { Localized } from '@/core/i18n/localized';
+
+interface TeamMember {
+  name: string;
+  role: Localized;
+  bio: Localized;
+}
+
+function TeamCard({
+  member,
+  locale,
+  portraitLabel,
+  className = '',
+}: {
+  member: TeamMember;
+  locale: Locale;
+  portraitLabel: string;
+  className?: string;
+}) {
+  return (
+    <div className={`overflow-hidden rounded-3xl bg-surface ${className}`}>
+      <PlaceholderPanel
+        label={portraitLabel}
+        className="h-[clamp(180px,20vw,240px)] p-[14px]"
+        labelClassName="px-[10px] py-[7px] text-[10px]"
+      />
+      <div className="p-[22px]">
+        <div className="font-sora text-[18px] font-semibold leading-[1.2] text-ink">{member.name}</div>
+        <div className="mt-[6px] font-mono text-[11px] text-red">{t(member.role, locale)}</div>
+        <p className="m-0 mt-3 font-sora text-[14px] font-light leading-[1.55] text-muted">{t(member.bio, locale)}</p>
+      </div>
+    </div>
+  );
+}
 
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
   const { locale } = params;
@@ -68,22 +103,20 @@ export default function AboutPage({ params }: { params: { locale: Locale } }) {
       </section>
 
       <section id="team" className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-4">
+        <div className="hidden md:grid md:grid-cols-[repeat(auto-fit,minmax(300px,1fr))] md:gap-4">
           {c.team.map((member, i) => (
-            <Reveal key={member.name + member.role.en} index={i} className="overflow-hidden rounded-3xl bg-surface">
-              <PlaceholderPanel
-                label={t(c.portraitLabel, locale)}
-                className="h-[clamp(180px,20vw,240px)] p-[14px]"
-                labelClassName="px-[10px] py-[7px] text-[10px]"
-              />
-              <div className="p-[22px]">
-                <div className="font-sora text-[18px] font-semibold leading-[1.2] text-ink">{member.name}</div>
-                <div className="mt-[6px] font-mono text-[11px] text-red">{t(member.role, locale)}</div>
-                <p className="m-0 mt-3 font-sora text-[14px] font-light leading-[1.55] text-muted">{t(member.bio, locale)}</p>
-              </div>
+            <Reveal key={member.name + member.role.en} index={i}>
+              <TeamCard member={member} locale={locale} portraitLabel={t(c.portraitLabel, locale)} />
             </Reveal>
           ))}
         </div>
+        <MobileCarousel count={c.team.length}>
+          {c.team.map((member, i) => (
+            <Reveal key={member.name + member.role.en} index={i} className="w-[80vw] max-w-[300px] flex-none snap-start">
+              <TeamCard member={member} locale={locale} portraitLabel={t(c.portraitLabel, locale)} />
+            </Reveal>
+          ))}
+        </MobileCarousel>
         <Reveal as="p" className="m-0 mt-4 font-mono text-[11px] font-normal leading-[1.6] text-muted">
           {t(c.teamNote, locale)}
         </Reveal>

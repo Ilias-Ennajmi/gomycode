@@ -64,7 +64,7 @@ export function ContactForm({ locale }: { locale: Locale }) {
       />
       <button
         type="submit"
-        className="cursor-pointer rounded-xl border-none bg-white p-4 font-sora text-[14px] font-semibold text-red"
+        className="cursor-pointer rounded-xl border-none bg-white p-4 font-sora text-[14px] font-semibold text-red transition-transform duration-150 active:scale-[0.97]"
       >
         {t(contactShared.sendButton, locale)}
       </button>

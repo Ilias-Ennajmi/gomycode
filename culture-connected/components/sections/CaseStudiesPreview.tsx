@@ -85,7 +85,7 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
                 type="button"
                 onClick={() => setFilter(f.key)}
                 aria-pressed={filter === f.key}
-                className={`cursor-pointer rounded-full border-none px-[15px] py-[13px] md:py-[9px] ${
+                className={`cursor-pointer rounded-full border-none px-[15px] py-[13px] transition-transform duration-150 active:scale-[0.96] md:py-[9px] ${
                   filter === f.key ? 'bg-inv text-onInv' : 'bg-transparent text-muted'
                 }`}
               >
@@ -99,7 +99,7 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
               onClick={() => scrollByCard(-1)}
               disabled={!canPrev}
               aria-label={t(c.workPrev, locale)}
-              className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-line text-ink disabled:cursor-not-allowed disabled:opacity-30 md:h-9 md:w-9"
+              className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-line text-ink transition-transform duration-150 active:scale-90 disabled:cursor-not-allowed disabled:opacity-30 md:h-9 md:w-9"
             >
               <ArrowIcon direction="prev" />
             </button>
@@ -108,7 +108,7 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
               onClick={() => scrollByCard(1)}
               disabled={!canNext}
               aria-label={t(c.workNext, locale)}
-              className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-line text-ink disabled:cursor-not-allowed disabled:opacity-30 md:h-9 md:w-9"
+              className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-line text-ink transition-transform duration-150 active:scale-90 disabled:cursor-not-allowed disabled:opacity-30 md:h-9 md:w-9"
             >
               <ArrowIcon direction="next" />
             </button>
@@ -123,7 +123,7 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
             index={i}
             as={Link}
             href={`${localeHref(locale, '/case-studies')}#${study.anchor}`}
-            className="block w-[clamp(220px,26vw,300px)] flex-none snap-start text-inherit no-underline"
+            className="block w-[clamp(220px,26vw,300px)] flex-none snap-start text-inherit no-underline transition-transform duration-150 active:scale-[0.97]"
           >
             <PlaceholderPanel
               label={t(study.imageLabel, locale)}

@@ -159,7 +159,7 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
                 index={0}
                 as={Link}
                 href={`${localeHref(locale, '/case-studies')}#${c.proofStats[0].anchor}`}
-                className="block flex-none no-underline"
+                className="block flex-none no-underline transition-transform duration-150 active:scale-[0.97]"
               >
                 <StatTicket
                   value={c.proofStats[0].value}
@@ -176,7 +176,7 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
                   index={i + 1}
                   as={Link}
                   href={`${localeHref(locale, '/case-studies')}#${stat.anchor}`}
-                  className="block min-w-[180px] flex-1 self-center text-inherit no-underline"
+                  className="block min-w-[180px] flex-1 self-center text-inherit no-underline transition-transform duration-150 active:scale-[0.97]"
                 >
                   <StatCounter
                     value={stat.value}

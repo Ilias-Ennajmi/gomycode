@@ -12,8 +12,8 @@ import { Marquee } from '@/components/ui/Marquee';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { StatTicket } from '@/components/ui/StatTicket';
 import { ContactSection } from '@/components/layout/ContactSection';
+import { ObjectivePanels } from '@/components/sections/ObjectivePanels';
 import { homeContent } from '@/core/content/home';
-import type { Localized } from '@/core/i18n/localized';
 
 function VenueLogoRow() {
   return (
@@ -35,32 +35,6 @@ function VenueLogoRow() {
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
   const { locale } = params;
   return { title: `culture connected — ${t(navItems[1].label, locale)}` };
-}
-
-function ObjectiveRow({
-  number,
-  title,
-  body,
-  locale,
-  muted,
-}: {
-  number: string;
-  title: Localized;
-  body: Localized;
-  locale: Locale;
-  muted?: boolean;
-}) {
-  return (
-    <div className="flex gap-[14px] border-t border-line pt-3">
-      <span className="font-mono text-[11px] leading-[1.6] text-red">{number}</span>
-      <div>
-        <div className="font-sora text-[15px] font-semibold leading-[1.3]">{t(title, locale)}</div>
-        <div className={`font-sora text-[14px] font-light leading-[1.5] ${muted ? 'opacity-[.62]' : 'text-muted'}`}>
-          {t(body, locale)}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export default function ForPromotersPage({ params }: { params: { locale: Locale } }) {
@@ -89,7 +63,7 @@ export default function ForPromotersPage({ params }: { params: { locale: Locale 
               <Button href="#venue" variant="solid" className="whitespace-nowrap px-6 py-4 text-[14px]">
                 {t(c.ctaVenue, locale)}
               </Button>
-              <Button href="#event" variant="outline" className="whitespace-nowrap px-6 py-[15px] text-[14px]">
+              <Button href="#venue" variant="outline" className="whitespace-nowrap px-6 py-[15px] text-[14px]">
                 {t(c.ctaEvent, locale)}
               </Button>
             </Reveal>
@@ -106,36 +80,7 @@ export default function ForPromotersPage({ params }: { params: { locale: Locale 
       </section>
 
       <section id="venue" className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(28px,4vw,48px)]">
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-4">
-          <Reveal className="rounded-[clamp(20px,3vw,28px)] bg-surface p-[clamp(26px,3.4vw,40px)]">
-            <div className="mb-[14px] font-mono text-[11px] tracking-[.1em] text-red">{t(c.objectiveA.eyebrow, locale)}</div>
-            <h2 className="m-0 mb-[14px] font-sora text-[clamp(26px,3.2vw,36px)] font-bold leading-[1.05] tracking-[-.035em] text-ink">
-              {t(c.objectiveA.heading, locale)}
-            </h2>
-            <p className="m-0 mb-[26px] font-sora text-[15px] font-light leading-[1.6] text-muted">
-              {t(c.objectiveA.body, locale)}
-            </p>
-            <div className="flex flex-col gap-3">
-              {c.objectiveA.rows.map((row) => (
-                <ObjectiveRow key={row.number} {...row} locale={locale} />
-              ))}
-            </div>
-          </Reveal>
-          <Reveal id="event" className="rounded-[clamp(20px,3vw,28px)] bg-inv p-[clamp(26px,3.4vw,40px)] text-onInv">
-            <div className="mb-[14px] font-mono text-[11px] tracking-[.1em] text-red">{t(c.objectiveB.eyebrow, locale)}</div>
-            <h2 className="m-0 mb-[14px] font-sora text-[clamp(26px,3.2vw,36px)] font-bold leading-[1.05] tracking-[-.035em]">
-              {t(c.objectiveB.heading, locale)}
-            </h2>
-            <p className="m-0 mb-[26px] font-sora text-[15px] font-light leading-[1.6] opacity-[.68]">
-              {t(c.objectiveB.body, locale)}
-            </p>
-            <div className="flex flex-col gap-3">
-              {c.objectiveB.rows.map((row) => (
-                <ObjectiveRow key={row.number} {...row} locale={locale} muted />
-              ))}
-            </div>
-          </Reveal>
-        </div>
+        <ObjectivePanels objectiveA={c.objectiveA} objectiveB={c.objectiveB} locale={locale} />
         <Reveal as="p" className="m-0 mt-[18px] max-w-[640px] font-mono text-[11px] font-normal leading-[1.6] text-muted">
           {t(c.provisionalNote, locale)}
         </Reveal>
@@ -168,7 +113,7 @@ export default function ForPromotersPage({ params }: { params: { locale: Locale 
             index={0}
             as="a"
             href={`${localeHref(locale, '/case-studies')}#${c.proofStats[0].anchor}`}
-            className="block flex-none no-underline"
+            className="block flex-none no-underline transition-transform duration-150 active:scale-[0.97]"
           >
             <StatTicket
               value={c.proofStats[0].value}
@@ -184,7 +129,7 @@ export default function ForPromotersPage({ params }: { params: { locale: Locale 
               index={i + 1}
               as="a"
               href={`${localeHref(locale, '/case-studies')}#${stat.anchor}`}
-              className="block min-w-[220px] flex-1 self-center rounded-3xl bg-surface p-[clamp(24px,3vw,32px)] no-underline"
+              className="block min-w-[220px] flex-1 self-center rounded-3xl bg-surface p-[clamp(24px,3vw,32px)] no-underline transition-transform duration-150 active:scale-[0.97]"
             >
               <StatCounter
                 value={stat.value}

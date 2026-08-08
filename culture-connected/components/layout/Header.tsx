@@ -87,7 +87,7 @@ export function Header({ locale }: { locale: Locale }) {
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
           aria-label={open ? 'Close menu' : 'Open menu'}
-          className="flex h-11 w-11 flex-none cursor-pointer items-center justify-center rounded-full border border-line text-ink md:hidden"
+          className="flex h-11 w-11 flex-none cursor-pointer items-center justify-center rounded-full border border-line text-ink transition-transform duration-150 active:scale-90 md:hidden"
         >
           <MenuIcon open={open} />
         </button>
@@ -104,7 +104,7 @@ export function Header({ locale }: { locale: Locale }) {
                   key={item.href}
                   href={href}
                   onClick={() => setOpen(false)}
-                  className={`rounded-xl px-[14px] py-[11px] no-underline ${active ? 'bg-chip text-ink' : 'text-muted'}`}
+                  className={`rounded-xl px-[14px] py-[11px] no-underline transition-transform duration-150 active:scale-[0.97] ${active ? 'bg-chip text-ink' : 'text-muted'}`}
                 >
                   {t(item.label, locale)}
                 </Link>
