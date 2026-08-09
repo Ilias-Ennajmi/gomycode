@@ -1,8 +1,10 @@
-# Giveaway Winner Picker
+# Planet Sport Giveaway Picker
 
-A self-contained, single-page web app for running giveaway draws with a slot-machine-style
-name animation, sequential multi-winner rounds, sound effects, confetti, and video/image
-export of the whole session. No build step, no dependencies.
+A single-page web app for running giveaway draws with a slot-machine-style name animation,
+sequential multi-winner rounds, sound effects, confetti, and video/image export of the whole
+session. No build step, no JS dependencies. Bebas Neue is self-hosted (works fully offline);
+Inter loads from Google Fonts, so an internet connection is needed for that font specifically
+(everything else, including recording, works with no network at all).
 
 ## Run it
 
@@ -21,16 +23,21 @@ Then open the printed local URL.
 
 ## How it works
 
-1. **Setup screen** — paste account names (one per line or comma-separated), choose how
-   many winners to pick, and optionally allow the same name to win more than once.
-2. Click **Start Giveaway** — recording begins immediately and a slot-machine reel spins
-   through the names, decelerating with a bounce before locking on a winner.
-3. For multiple winners, the app **automatically continues** to the next round (removing
+1. **Home screen** — set the giveaway name, date, and accent color, then click **Start New
+   Giveaway**.
+2. **Participants screen** — paste account names (one per line or comma-separated), choose
+   how many winners to pick, and optionally allow the same name to win more than once.
+3. Click **Start Giveaway** — recording begins immediately, a branded 3‑2‑1 countdown plays,
+   then a slot-machine reel spins through the names, decelerating with a bounce before
+   locking on a winner.
+4. For multiple winners, the app **automatically continues** to the next round (removing
    already-picked names unless duplicates are allowed) until all winners are picked.
-4. A **final results screen** lists every winner. Recording stops here, and you can:
+5. A **final results screen** lists every winner with a staggered entrance animation.
+   Recording stops here, and you can:
    - **Download Video** — the full session (every round + final screen) as a `.webm` file.
-   - **Download Final Screen** — a PNG snapshot of the winners screen, for sharing.
-   - **New Giveaway** — reset and run another draw (your name list is remembered).
+   - **Download Final Screen** — a PNG snapshot of the winners screen, watermarked with the
+     logo, giveaway name, and date, for sharing.
+   - **New Giveaway** — reset and return to the home screen (your settings are remembered).
 
 ## Notes
 
