@@ -2,9 +2,10 @@
 
 A single-page web app for running giveaway draws with a slot-machine-style name animation,
 sequential multi-winner rounds, sound effects, confetti, and video/image export of the whole
-session. No build step, no JS dependencies. Bebas Neue is self-hosted (works fully offline);
-Inter loads from Google Fonts, so an internet connection is needed for that font specifically
-(everything else, including recording, works with no network at all).
+session. No build step, no JS dependencies. Bebas Neue and Inter both load from Google Fonts,
+so an internet connection is needed for the correct fonts to render (everything else, including
+the animation, recording, and canvas rendering, works with no network at all — it just falls
+back to the system font).
 
 ## Run it
 
