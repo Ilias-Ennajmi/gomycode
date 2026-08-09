@@ -7,7 +7,9 @@
   const homeScreen = document.getElementById("home-screen");
   const homeStartBtn = document.getElementById("home-start-btn");
   const muteBtn = document.getElementById("mute-btn");
+  const giveawayNameInput = document.getElementById("giveaway-name");
   const giveawayDateInput = document.getElementById("giveaway-date");
+  const swatchRow = document.getElementById("swatch-row");
   const setupScreen = document.getElementById("setup-screen");
   const backToHomeBtn = document.getElementById("back-to-home-btn");
   const namesInput = document.getElementById("names-input");
@@ -24,23 +26,66 @@
 
   const NAMES_STORAGE_KEY = "giveaway-picker-names";
   const DATE_STORAGE_KEY = "giveaway-picker-date";
+  const NAME_STORAGE_KEY = "giveaway-picker-giveaway-name";
+  const COLOR_STORAGE_KEY = "giveaway-picker-accent";
   const MUTE_STORAGE_KEY = "giveaway-picker-muted";
+  const DEFAULT_GIVEAWAY_NAME = "Planet Sport Giveaway";
 
   // ---------- Brand palette (mirrors CSS custom properties in style.css) ----------
   const COLOR = {
+    ink: "#17140f",
     black: "#0a0a0a",
     white: "#ffffff",
-    amber: "#f5a623",
-    amberDark: "#d98e12",
+    accent: "#f5a623",
+    accentDark: "#d98e12",
+    gray50: "#f6f6f4",
     gray200: "#e4e2dc",
     gray500: "#8a8880",
+    gray700: "#57544c",
   };
 
+  function shadeHex(hex, factor) {
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.max(0, Math.min(255, Math.round(((n >> 16) & 255) * factor)));
+    const g = Math.max(0, Math.min(255, Math.round(((n >> 8) & 255) * factor)));
+    const b = Math.max(0, Math.min(255, Math.round((n & 255) * factor)));
+    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+  }
+
+  function applyAccentColor(hex) {
+    COLOR.accent = hex;
+    COLOR.accentDark = shadeHex(hex, 0.78);
+    document.documentElement.style.setProperty("--ps-accent", hex);
+    document.documentElement.style.setProperty("--ps-accent-dark", COLOR.accentDark);
+    if (swatchRow) {
+      swatchRow.querySelectorAll(".swatch").forEach((btn) => {
+        btn.setAttribute(
+          "aria-pressed",
+          btn.dataset.color.toLowerCase() === hex.toLowerCase() ? "true" : "false"
+        );
+      });
+    }
+  }
+
+  const savedColor = localStorage.getItem(COLOR_STORAGE_KEY);
+  applyAccentColor(savedColor || COLOR.accent);
+
+  if (swatchRow) {
+    swatchRow.addEventListener("click", (e) => {
+      const btn = e.target.closest(".swatch");
+      if (!btn) return;
+      const hex = btn.dataset.color;
+      applyAccentColor(hex);
+      localStorage.setItem(COLOR_STORAGE_KEY, hex);
+    });
+  }
+
   const TITLE_FONT = "Bebas Neue, -apple-system, sans-serif";
-  const BODY_FONT = "-apple-system, Segoe UI, Roboto, sans-serif";
+  const BODY_FONT = "Inter, -apple-system, Segoe UI, Roboto, sans-serif";
 
   if (document.fonts && document.fonts.load) {
     document.fonts.load('400 40px "Bebas Neue"').catch(() => {});
+    document.fonts.load('600 16px "Inter"').catch(() => {});
   }
 
   // ---------- Canvas / DPR + responsive sizing ----------
@@ -124,6 +169,7 @@
   const SETTLE_MS = 420;
   const REVEAL_MS = 1700;
   const FINAL_INTRO_MS = 900;
+  const ROW_STAGGER_MS = 120;
 
   let revealStartTime = 0;
   let finalStartTime = 0;
@@ -196,7 +242,7 @@
     playTone(isFinal ? 880 : 523.25, 0.14, "square", 0.14, 0);
   }
 
-  // ---------- Home screen: giveaway date ----------
+  // ---------- Home screen: giveaway name / date ----------
   function todayISO() {
     const d = new Date();
     const tzOffsetMs = d.getTimezoneOffset() * 60000;
@@ -214,6 +260,14 @@
     });
   }
 
+  const savedName = localStorage.getItem(NAME_STORAGE_KEY);
+  giveawayNameInput.value = savedName || DEFAULT_GIVEAWAY_NAME;
+  giveawayNameInput.addEventListener("change", () => {
+    const val = giveawayNameInput.value.trim() || DEFAULT_GIVEAWAY_NAME;
+    giveawayNameInput.value = val;
+    localStorage.setItem(NAME_STORAGE_KEY, val);
+  });
+
   const savedDate = localStorage.getItem(DATE_STORAGE_KEY);
   giveawayDateInput.value = savedDate || todayISO();
   giveawayDateInput.addEventListener("change", () => {
@@ -221,19 +275,29 @@
   });
 
   // ---------- Screen navigation ----------
+  function showScreen(el) {
+    el.classList.remove("screen-hidden");
+  }
+  function hideScreen(el) {
+    el.classList.add("screen-hidden");
+  }
+
   homeStartBtn.addEventListener("click", () => {
+    const nameVal = giveawayNameInput.value.trim() || DEFAULT_GIVEAWAY_NAME;
+    giveawayNameInput.value = nameVal;
+    localStorage.setItem(NAME_STORAGE_KEY, nameVal);
     if (giveawayDateInput.value) {
       localStorage.setItem(DATE_STORAGE_KEY, giveawayDateInput.value);
     }
     const ac = getAudioCtx();
     if (ac && ac.state === "suspended") ac.resume();
-    homeScreen.hidden = true;
-    setupScreen.hidden = false;
+    hideScreen(homeScreen);
+    showScreen(setupScreen);
   });
 
   backToHomeBtn.addEventListener("click", () => {
-    setupScreen.hidden = true;
-    homeScreen.hidden = false;
+    hideScreen(setupScreen);
+    showScreen(homeScreen);
   });
 
   // ---------- Name parsing ----------
@@ -337,8 +401,8 @@
     const ac = getAudioCtx();
     if (ac && ac.state === "suspended") ac.resume();
 
-    setupScreen.hidden = true;
-    controlsOverlay.hidden = true;
+    hideScreen(setupScreen);
+    hideScreen(controlsOverlay);
     videoBlobUrl = null;
     finalImageBlobUrl = null;
 
@@ -448,7 +512,7 @@
   }
 
   function spawnConfettiBurst(cx, cy, count) {
-    const colors = [COLOR.amber, COLOR.white, "#ffd166", "#3a3936"];
+    const colors = [COLOR.accent, COLOR.ink, "#ffd166", "#4cc9f0", COLOR.accentDark];
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 2.5 + Math.random() * 5.5;
@@ -524,8 +588,8 @@
   // ---------- Drawing ----------
   function drawBackground() {
     const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, "#141414");
-    g.addColorStop(1, COLOR.black);
+    g.addColorStop(0, "#ffffff");
+    g.addColorStop(1, "#fbfaf8");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
   }
@@ -533,7 +597,7 @@
   function drawHeader(text) {
     ctx.save();
     ctx.textAlign = "center";
-    ctx.fillStyle = COLOR.gray200;
+    ctx.fillStyle = COLOR.gray700;
     ctx.font = `600 ${HEADER_FONT_PX}px ${BODY_FONT}`;
     ctx.fillText(text, W / 2, Math.max(44, H * 0.1));
     ctx.restore();
@@ -550,7 +614,7 @@
       playCountdownBeep(step === COUNTDOWN_STEPS);
     }
 
-    drawLogoMark(W / 2, H * 0.32, Math.min(90, W * 0.22), COLOR.amber, COLOR.white, COLOR.black);
+    drawLogoMark(W / 2, H * 0.32, Math.min(90, W * 0.22), COLOR.accent, COLOR.black, COLOR.white);
 
     const label = COUNTDOWN_STEPS - step > 0 ? String(COUNTDOWN_STEPS - step) : "GO!";
     const stepElapsed = elapsed - step * COUNTDOWN_STEP_MS;
@@ -562,7 +626,7 @@
     ctx.textBaseline = "middle";
     ctx.translate(W / 2, H / 2 + 20);
     ctx.scale(scale, scale);
-    ctx.fillStyle = COLOR.amber;
+    ctx.fillStyle = COLOR.accent;
     ctx.font = `400 ${Math.min(160, W * 0.34)}px ${TITLE_FONT}`;
     ctx.fillText(label, 0, 0);
     ctx.restore();
@@ -593,7 +657,7 @@
     roundRect(reelX, reelY, reelWidth, reelHeight, 20);
     ctx.clip();
 
-    ctx.fillStyle = "rgba(255,255,255,0.05)";
+    ctx.fillStyle = COLOR.gray50;
     ctx.fillRect(reelX, reelY, reelWidth, reelHeight);
 
     const baseIndex = Math.floor(offset / ROW_HEIGHT);
@@ -613,7 +677,7 @@
       const y = reelY + (row + 0.5) * ROW_HEIGHT - partial;
       const distFromCenter = Math.abs(y - centerY);
       const scale = Math.max(0.72, 1 - distFromCenter / (reelHeight * 1.4));
-      const alpha = Math.max(0.25, 1 - distFromCenter / (reelHeight * 0.9));
+      const alpha = Math.max(0.3, 1 - distFromCenter / (reelHeight * 0.9));
 
       for (let b = 0; b < blurCopies; b++) {
         const blurOffset = b === 0 ? 0 : (b - 1.5) * 6;
@@ -622,7 +686,7 @@
         ctx.translate(reelX + reelWidth / 2, y + blurOffset);
         ctx.scale(scale, scale);
         ctx.font = `700 ${REEL_FONT_PX}px ${BODY_FONT}`;
-        ctx.fillStyle = COLOR.white;
+        ctx.fillStyle = COLOR.ink;
         ctx.fillText(truncate(name, 24), 0, 0);
         ctx.restore();
       }
@@ -630,14 +694,14 @@
 
     // fade top/bottom
     const fadeTop = ctx.createLinearGradient(0, reelY, 0, reelY + reelHeight * 0.35);
-    fadeTop.addColorStop(0, "rgba(10,10,10,0.95)");
-    fadeTop.addColorStop(1, "rgba(10,10,10,0)");
+    fadeTop.addColorStop(0, "rgba(255,255,255,0.97)");
+    fadeTop.addColorStop(1, "rgba(255,255,255,0)");
     ctx.fillStyle = fadeTop;
     ctx.fillRect(reelX, reelY, reelWidth, reelHeight * 0.35);
 
     const fadeBottom = ctx.createLinearGradient(0, reelY + reelHeight * 0.65, 0, reelY + reelHeight);
-    fadeBottom.addColorStop(0, "rgba(10,10,10,0)");
-    fadeBottom.addColorStop(1, "rgba(10,10,10,0.95)");
+    fadeBottom.addColorStop(0, "rgba(255,255,255,0)");
+    fadeBottom.addColorStop(1, "rgba(255,255,255,0.97)");
     ctx.fillStyle = fadeBottom;
     ctx.fillRect(reelX, reelY + reelHeight * 0.65, reelWidth, reelHeight * 0.35);
 
@@ -645,16 +709,16 @@
 
     // border + center highlight band
     ctx.save();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = "rgba(255,255,255,0.18)";
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = COLOR.gray200;
     roundRect(reelX, reelY, reelWidth, reelHeight, 20);
     ctx.stroke();
 
     const bandY = centerY - ROW_HEIGHT / 2;
-    ctx.strokeStyle = COLOR.amber;
+    ctx.strokeStyle = COLOR.accent;
     ctx.lineWidth = 2.5;
-    ctx.shadowColor = COLOR.amber;
-    ctx.shadowBlur = 14;
+    ctx.shadowColor = COLOR.accent;
+    ctx.shadowBlur = 10;
     ctx.strokeRect(reelX + 6, bandY, reelWidth - 12, ROW_HEIGHT);
     ctx.restore();
 
@@ -680,21 +744,30 @@
     const pop = t < 0.25 ? easeOutQuad(t / 0.25) : 1;
     const scale = 0.85 + pop * 0.15;
 
+    // Soft colored spotlight behind the winner name (replaces the
+    // shadowBlur glow, which only reads well on a dark background).
+    ctx.save();
+    const spotR = Math.max(160, REVEAL_FONT_PX * 4);
+    const spot = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, spotR);
+    spot.addColorStop(0, hexToRgba(COLOR.accent, 0.22));
+    spot.addColorStop(1, hexToRgba(COLOR.accent, 0));
+    ctx.fillStyle = spot;
+    ctx.fillRect(W / 2 - spotR, H / 2 - spotR, spotR * 2, spotR * 2);
+    ctx.restore();
+
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.translate(W / 2, H / 2);
     ctx.scale(scale, scale);
-    ctx.shadowColor = "rgba(245,166,35,0.85)";
-    ctx.shadowBlur = 40;
-    ctx.fillStyle = COLOR.white;
+    ctx.fillStyle = COLOR.ink;
     ctx.font = `400 ${REVEAL_FONT_PX}px ${TITLE_FONT}`;
     ctx.fillText(truncate(currentWinnerName, 22), 0, -10);
     ctx.restore();
 
     ctx.save();
     ctx.textAlign = "center";
-    ctx.fillStyle = COLOR.amber;
+    ctx.fillStyle = COLOR.accentDark;
     ctx.font = `600 ${HEADER_FONT_PX}px ${BODY_FONT}`;
     ctx.fillText(
       `Winner ${winners.length} of ${winnersWanted}`,
@@ -707,53 +780,69 @@
     drawConfetti();
   }
 
-  function drawFinal(now) {
-    const t = Math.min(1, (now - finalStartTime) / FINAL_INTRO_MS);
-    const introScale = 0.9 + easeOutQuad(t) * 0.1;
+  function hexToRgba(hex, alpha) {
+    const n = parseInt(hex.slice(1), 16);
+    const r = (n >> 16) & 255;
+    const g = (n >> 8) & 255;
+    const b = n & 255;
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
 
+  function drawFinal(now) {
     const topY = Math.max(70, H * 0.12);
-    drawLogoMark(W / 2 - 90, topY, 34, COLOR.amber, COLOR.white, COLOR.black);
+    drawLogoMark(W / 2 - 90, topY, 34, COLOR.accent, COLOR.black, COLOR.white);
 
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = COLOR.white;
+    ctx.fillStyle = COLOR.ink;
     ctx.font = `400 ${FINAL_TITLE_PX}px ${TITLE_FONT}`;
     ctx.fillText("WINNERS", W / 2 + 20, topY);
     ctx.restore();
 
     const dateStr = formatDateNice(giveawayDateInput.value);
-    if (dateStr) {
-      ctx.save();
-      ctx.textAlign = "center";
-      ctx.fillStyle = COLOR.amber;
-      ctx.font = `600 ${Math.max(12, HEADER_FONT_PX - 4)}px ${BODY_FONT}`;
-      ctx.fillText(`PLANET SPORT GIVEAWAY — ${dateStr}`, W / 2, topY + FINAL_TITLE_PX * 0.6 + 10);
-      ctx.restore();
-    }
+    const nameStr = giveawayNameInput.value.trim() || DEFAULT_GIVEAWAY_NAME;
+    const subtitle = dateStr ? `${nameStr.toUpperCase()} — ${dateStr}` : nameStr.toUpperCase();
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.fillStyle = COLOR.accentDark;
+    ctx.font = `600 ${Math.max(12, HEADER_FONT_PX - 4)}px ${BODY_FONT}`;
+    ctx.fillText(subtitle, W / 2, topY + FINAL_TITLE_PX * 0.6 + 10);
+    ctx.restore();
 
     const medals = ["🥇", "🥈", "🥉"];
     const startY = topY + FINAL_TITLE_PX + 56;
     const lineHeight = FINAL_ROW_PX + 32;
     const cardWidth = Math.min(520, W - 40);
 
-    ctx.save();
-    ctx.translate(W / 2, 0);
-    ctx.scale(introScale, introScale);
-    ctx.translate(-W / 2, 0);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     winners.forEach((name, i) => {
+      const rowElapsed = now - finalStartTime - i * ROW_STAGGER_MS;
+      const rt = Math.max(0, Math.min(1, rowElapsed / FINAL_INTRO_MS));
+      if (rt <= 0) return;
+      const rowScale = 0.85 + easeOutQuad(rt) * 0.15;
+      const rowAlpha = rt;
+      const rowOffsetY = (1 - easeOutQuad(rt)) * 16;
+
       const y = startY + i * lineHeight;
       const label = (medals[i] || `#${i + 1}`) + "  " + truncate(name, 30);
-      ctx.fillStyle = "rgba(255,255,255,0.08)";
-      roundRect(W / 2 - cardWidth / 2, y - lineHeight / 2 + 6, cardWidth, lineHeight - 12, 14);
+
+      ctx.save();
+      ctx.globalAlpha = rowAlpha;
+      ctx.translate(W / 2, y + rowOffsetY);
+      ctx.scale(rowScale, rowScale);
+      ctx.fillStyle = COLOR.gray50;
+      roundRect(-cardWidth / 2, -lineHeight / 2 + 6, cardWidth, lineHeight - 12, 14);
       ctx.fill();
-      ctx.fillStyle = COLOR.white;
+      ctx.strokeStyle = COLOR.gray200;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = COLOR.ink;
       ctx.font = `700 ${FINAL_ROW_PX}px ${BODY_FONT}`;
-      ctx.fillText(label, W / 2, y);
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
     });
-    ctx.restore();
 
     if (now - lastFinaleBurst > 700) {
       lastFinaleBurst = now;
@@ -806,7 +895,9 @@
       }
     } else if (state === STATE.FINAL) {
       drawFinal(now);
-      if (now - finalStartTime >= FINAL_INTRO_MS && controlsOverlay.hidden) {
+      const lastRowDone =
+        now - finalStartTime - (winners.length - 1) * ROW_STAGGER_MS >= FINAL_INTRO_MS;
+      if (lastRowDone && controlsOverlay.classList.contains("screen-hidden")) {
         onReachedFinalScreen();
       }
     }
@@ -815,8 +906,8 @@
   }
 
   function onReachedFinalScreen() {
-    // Grab a snapshot (already includes the logo + date watermark drawn by
-    // drawFinal) for the "download final screen" image.
+    // Grab a snapshot (already includes the logo + name/date watermark
+    // drawn by drawFinal) for the "download final screen" image.
     canvas.toBlob((blob) => {
       if (blob) {
         if (finalImageBlobUrl) URL.revokeObjectURL(finalImageBlobUrl);
@@ -826,7 +917,7 @@
     }, "image/png");
 
     stopRecording();
-    controlsOverlay.hidden = false;
+    showScreen(controlsOverlay);
   }
 
   // ---------- Controls ----------
@@ -866,9 +957,9 @@
     downloadVideoBtn.disabled = true;
     downloadImageBtn.disabled = true;
     recordingNote.hidden = true;
-    controlsOverlay.hidden = true;
-    setupScreen.hidden = true;
-    homeScreen.hidden = false;
+    hideScreen(controlsOverlay);
+    hideScreen(setupScreen);
+    showScreen(homeScreen);
     ctx.clearRect(0, 0, W, H);
   }
 

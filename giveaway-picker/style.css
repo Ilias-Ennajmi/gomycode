@@ -6,15 +6,26 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/Inter-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --ps-black: #0a0a0a;
   --ps-white: #ffffff;
-  --ps-amber: #f5a623;
-  --ps-amber-dark: #d98e12;
+  --ps-ink: #17140f;
+  --ps-accent: #f5a623;
+  --ps-accent-dark: #d98e12;
+  --ps-surface: #fbfaf8;
   --ps-gray-50: #f6f6f4;
+  --ps-gray-100: #efeee9;
   --ps-gray-200: #e4e2dc;
   --ps-gray-500: #8a8880;
-  --ps-gray-700: #3a3936;
+  --ps-gray-700: #57544c;
   --tap-min: 44px;
 }
 
@@ -32,9 +43,9 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--ps-black);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: var(--ps-black);
+  background: var(--ps-white);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--ps-ink);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -49,7 +60,7 @@ html, body {
   width: 100vw;
   height: 100vh;
   display: block;
-  background: var(--ps-black);
+  background: var(--ps-white);
 }
 
 /* ---------- Overlays (home / setup) ---------- */
@@ -62,15 +73,25 @@ html, body {
   padding: 16px;
   z-index: 10;
   overflow-y: auto;
+  opacity: 1;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.overlay.screen-hidden {
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
 }
 
 .panel {
   width: 100%;
   max-width: 440px;
   background: var(--ps-white);
-  border-radius: 18px;
-  padding: 24px 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--ps-gray-100);
+  border-radius: 20px;
+  padding: 28px 22px;
+  box-shadow: 0 1px 2px rgba(23, 20, 15, 0.04), 0 12px 32px rgba(23, 20, 15, 0.08),
+    0 28px 60px rgba(23, 20, 15, 0.06);
   margin: auto;
 }
 
@@ -108,6 +129,7 @@ html, body {
   color: var(--ps-white);
   padding: 0 4px;
   margin-left: 2px;
+  border-radius: 3px;
 }
 
 /* ---------- Home screen ---------- */
@@ -129,53 +151,114 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
-.home-heading {
-  font-family: "Bebas Neue", sans-serif;
-  font-size: clamp(30px, 9vw, 40px);
+.mute-btn:hover {
+  box-shadow: 0 4px 12px rgba(23, 20, 15, 0.1);
+}
+
+.mute-btn:active {
+  transform: scale(0.92);
+}
+
+#giveaway-name.home-heading-input {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--ps-ink);
+  text-align: center;
+  font-family: "Bebas Neue", -apple-system, sans-serif;
+  letter-spacing: 0.03em;
+  font-size: clamp(28px, 9vw, 38px);
   line-height: 1.05;
-  margin: 14px 0 4px;
+  margin: 14px 0 2px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  min-height: 0;
+}
+
+.home-heading-input:focus {
+  outline: 2px solid var(--ps-accent);
+  outline-offset: 2px;
+  background: var(--ps-gray-50);
 }
 
 .home-tagline {
   color: var(--ps-gray-700);
   font-size: 14px;
-  margin: 0 0 20px;
+  margin: 6px 0 22px;
 }
 
-.date-field {
+.field-block {
   text-align: left;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
-.date-field label {
+.field-block label {
   display: block;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   color: var(--ps-gray-700);
   margin-bottom: 6px;
 }
 
-.giveaway-date-display {
-  font-family: "Bebas Neue", sans-serif;
-  font-size: clamp(20px, 6vw, 24px);
-  color: var(--ps-amber-dark);
-  margin: 0 0 20px;
-  letter-spacing: 0.02em;
-}
-
+input[type="text"],
 input[type="date"] {
   width: 100%;
   padding: 12px 14px;
   border-radius: 10px;
   border: 1px solid var(--ps-gray-200);
   background: var(--ps-gray-50);
-  color: var(--ps-black);
+  color: var(--ps-ink);
+  font-family: "Inter", sans-serif;
   font-size: 16px;
   min-height: var(--tap-min);
+}
+
+/* ---------- Accent color picker ---------- */
+.color-field {
+  text-align: left;
+  margin-bottom: 22px;
+}
+
+.color-field > label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ps-gray-700);
+  margin-bottom: 8px;
+}
+
+.swatch-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.swatch {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  transition: transform 0.12s ease;
+}
+
+.swatch:hover {
+  transform: scale(1.08);
+}
+
+.swatch[aria-pressed="true"] {
+  border-color: var(--ps-ink);
+  box-shadow: 0 0 0 2px var(--ps-white), 0 0 0 4px var(--ps-ink);
 }
 
 /* ---------- Setup form ---------- */
@@ -186,7 +269,7 @@ input[type="date"] {
 }
 
 .subtitle {
-  margin: 0 0 20px;
+  margin: 0 0 22px;
   text-align: center;
   color: var(--ps-gray-700);
   font-size: 14px;
@@ -195,7 +278,7 @@ input[type="date"] {
 label {
   display: block;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 6px;
   color: var(--ps-gray-700);
 }
@@ -212,15 +295,15 @@ textarea {
   border-radius: 12px;
   border: 1px solid var(--ps-gray-200);
   background: var(--ps-gray-50);
-  color: var(--ps-black);
+  color: var(--ps-ink);
   padding: 12px 14px;
   font-size: 16px;
-  font-family: inherit;
+  font-family: "Inter", sans-serif;
   line-height: 1.5;
 }
 
 textarea:focus, input:focus {
-  outline: 2px solid var(--ps-amber);
+  outline: 2px solid var(--ps-accent);
   outline-offset: 1px;
 }
 
@@ -247,7 +330,8 @@ input[type="number"] {
   border-radius: 10px;
   border: 1px solid var(--ps-gray-200);
   background: var(--ps-gray-50);
-  color: var(--ps-black);
+  color: var(--ps-ink);
+  font-family: "Inter", sans-serif;
   font-size: 16px;
   min-height: var(--tap-min);
 }
@@ -266,7 +350,7 @@ input[type="number"] {
 .checkbox-label input {
   width: 20px;
   height: 20px;
-  accent-color: var(--ps-amber);
+  accent-color: var(--ps-accent);
 }
 
 .error {
@@ -286,10 +370,14 @@ input[type="number"] {
   border-radius: 12px;
   padding: 14px 20px;
   font-size: 15px;
-  font-weight: 700;
-  font-family: inherit;
+  font-weight: 600;
+  font-family: "Inter", sans-serif;
   min-height: var(--tap-min);
-  transition: transform 0.1s ease, opacity 0.15s ease;
+  transition: transform 0.1s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn:hover {
+  box-shadow: 0 6px 16px rgba(23, 20, 15, 0.1);
 }
 
 .btn:active {
@@ -299,21 +387,22 @@ input[type="number"] {
 .btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .btn-primary {
   width: 100%;
-  margin-top: 20px;
-  background: var(--ps-amber);
+  margin-top: 22px;
+  background: var(--ps-accent);
   color: var(--ps-black);
-  box-shadow: 0 8px 24px rgba(245, 166, 35, 0.35);
+  box-shadow: 0 8px 24px rgba(245, 166, 35, 0.3);
 }
 
 .btn-secondary {
   width: 100%;
   background: var(--ps-white);
   border: 1px solid var(--ps-gray-200);
-  color: var(--ps-black);
+  color: var(--ps-ink);
 }
 
 .back-link {
@@ -321,12 +410,17 @@ input[type="number"] {
   text-align: center;
   margin-top: 14px;
   font-size: 13px;
+  font-family: "Inter", sans-serif;
   color: var(--ps-gray-500);
   background: none;
   border: none;
   cursor: pointer;
   min-height: var(--tap-min);
   width: 100%;
+}
+
+.back-link:hover {
+  color: var(--ps-ink);
 }
 
 /* ---------- Post-game controls ---------- */
@@ -341,7 +435,14 @@ input[type="number"] {
   gap: 10px;
   padding: 16px;
   padding-bottom: calc(16px + env(safe-area-inset-bottom));
-  background: linear-gradient(0deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+  background: linear-gradient(0deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0));
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+
+.controls-overlay.screen-hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .controls-row {
@@ -350,17 +451,21 @@ input[type="number"] {
   gap: 10px;
 }
 
+.controls-row .btn {
+  box-shadow: 0 4px 16px rgba(23, 20, 15, 0.12);
+}
+
 .recording-note {
   width: 100%;
   text-align: center;
   font-size: 12px;
-  color: var(--ps-gray-200);
+  color: var(--ps-gray-700);
 }
 
 /* ---------- Tablet / desktop enhancements ---------- */
 @media (min-width: 640px) {
   .panel {
-    padding: 36px 32px;
+    padding: 40px 36px;
   }
 
   .row {
