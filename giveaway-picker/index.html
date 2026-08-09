@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Giveaway Winner Picker</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎉</text></svg>" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<canvas id="stage"></canvas>
+
+<section id="setup-screen" class="overlay">
+  <div class="panel">
+    <h1>🎉 Giveaway Winner Picker</h1>
+    <p class="subtitle">Paste your entrants, pick how many winners, and go.</p>
+
+    <label for="names-input">Account names <span class="hint">(one per line, or comma-separated)</span></label>
+    <textarea id="names-input" placeholder="@alice&#10;@bob&#10;@carol&#10;..."></textarea>
+    <div id="names-count" class="names-count">0 unique names</div>
+
+    <div class="row">
+      <div class="field">
+        <label for="winners-count">Number of winners</label>
+        <input type="number" id="winners-count" min="1" value="1" />
+      </div>
+      <div class="field checkbox-field">
+        <label class="checkbox-label">
+          <input type="checkbox" id="allow-duplicates" />
+          Allow the same name to win more than once
+        </label>
+      </div>
+    </div>
+
+    <div id="setup-error" class="error" hidden></div>
+
+    <button id="start-btn" class="btn btn-primary">Start Giveaway</button>
+  </div>
+</section>
+
+<div id="controls-overlay" class="controls-overlay" hidden>
+  <button id="download-video-btn" class="btn btn-primary">⬇ Download Video</button>
+  <button id="download-image-btn" class="btn btn-secondary">🖼 Download Final Screen</button>
+  <button id="restart-btn" class="btn btn-secondary">↺ New Giveaway</button>
+  <div id="recording-note" class="recording-note" hidden></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
