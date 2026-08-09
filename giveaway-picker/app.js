@@ -4,7 +4,12 @@
   // ---------- DOM ----------
   const canvas = document.getElementById("stage");
   const ctx = canvas.getContext("2d");
+  const homeScreen = document.getElementById("home-screen");
+  const homeStartBtn = document.getElementById("home-start-btn");
+  const muteBtn = document.getElementById("mute-btn");
+  const giveawayDateInput = document.getElementById("giveaway-date");
   const setupScreen = document.getElementById("setup-screen");
+  const backToHomeBtn = document.getElementById("back-to-home-btn");
   const namesInput = document.getElementById("names-input");
   const namesCountEl = document.getElementById("names-count");
   const winnersCountInput = document.getElementById("winners-count");
@@ -17,12 +22,63 @@
   const restartBtn = document.getElementById("restart-btn");
   const recordingNote = document.getElementById("recording-note");
 
-  const STORAGE_KEY = "giveaway-picker-names";
+  const NAMES_STORAGE_KEY = "giveaway-picker-names";
+  const DATE_STORAGE_KEY = "giveaway-picker-date";
+  const MUTE_STORAGE_KEY = "giveaway-picker-muted";
 
-  // ---------- Canvas / DPR setup ----------
+  // ---------- Brand palette (mirrors CSS custom properties in style.css) ----------
+  const COLOR = {
+    black: "#0a0a0a",
+    white: "#ffffff",
+    amber: "#f5a623",
+    amberDark: "#d98e12",
+    gray200: "#e4e2dc",
+    gray500: "#8a8880",
+  };
+
+  const TITLE_FONT = "Bebas Neue, -apple-system, sans-serif";
+  const BODY_FONT = "-apple-system, Segoe UI, Roboto, sans-serif";
+
+  if (document.fonts && document.fonts.load) {
+    document.fonts.load('400 40px "Bebas Neue"').catch(() => {});
+  }
+
+  // ---------- Canvas / DPR + responsive sizing ----------
   let dpr = Math.max(1, window.devicePixelRatio || 1);
   let W = window.innerWidth;
   let H = window.innerHeight;
+
+  let ROW_HEIGHT = 78;
+  let REEL_FONT_PX = 30;
+  let REVEAL_FONT_PX = 52;
+  let HEADER_FONT_PX = 22;
+  let FINAL_TITLE_PX = 40;
+  let FINAL_ROW_PX = 24;
+
+  function computeResponsiveSizes() {
+    if (W < 420) {
+      ROW_HEIGHT = 52;
+      REEL_FONT_PX = 20;
+      REVEAL_FONT_PX = 32;
+      HEADER_FONT_PX = 17;
+      FINAL_TITLE_PX = 30;
+      FINAL_ROW_PX = 19;
+    } else if (W < 640) {
+      ROW_HEIGHT = 62;
+      REEL_FONT_PX = 24;
+      REVEAL_FONT_PX = 40;
+      HEADER_FONT_PX = 19;
+      FINAL_TITLE_PX = 34;
+      FINAL_ROW_PX = 21;
+    } else {
+      ROW_HEIGHT = 78;
+      REEL_FONT_PX = 30;
+      REVEAL_FONT_PX = 52;
+      HEADER_FONT_PX = 22;
+      FINAL_TITLE_PX = 40;
+      FINAL_ROW_PX = 24;
+    }
+  }
 
   function resize() {
     dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -33,6 +89,7 @@
     canvas.style.width = W + "px";
     canvas.style.height = H + "px";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    computeResponsiveSizes();
   }
   window.addEventListener("resize", resize);
   resize();
@@ -40,6 +97,7 @@
   // ---------- State ----------
   const STATE = {
     IDLE: "idle",
+    COUNTDOWN: "countdown",
     SPINNING: "spinning",
     REVEAL: "reveal",
     FINAL: "final",
@@ -51,12 +109,15 @@
   let winnersWanted = 1;
   let allowDuplicates = false;
 
+  let countdownStartTime = 0;
+  const COUNTDOWN_STEP_MS = 700;
+  const COUNTDOWN_STEPS = 3; // 3, 2, 1
+
   let roundStartTime = 0;
   let currentWinnerName = null;
   let strip = [];
   let targetScroll = 0;
   let overshootPx = 46;
-  const ROW_HEIGHT = 78;
   const VISIBLE_ROWS = 7;
   const CENTER_ROW = Math.floor(VISIBLE_ROWS / 2);
   const SPIN_MS = 3600;
@@ -82,6 +143,20 @@
 
   // ---------- Audio ----------
   let audioCtx = null;
+  let muted = localStorage.getItem(MUTE_STORAGE_KEY) === "1";
+
+  function updateMuteBtn() {
+    muteBtn.textContent = muted ? "🔇" : "🔊";
+    muteBtn.setAttribute("aria-label", muted ? "Unmute" : "Mute");
+  }
+  updateMuteBtn();
+
+  muteBtn.addEventListener("click", () => {
+    muted = !muted;
+    localStorage.setItem(MUTE_STORAGE_KEY, muted ? "1" : "0");
+    updateMuteBtn();
+  });
+
   function getAudioCtx() {
     if (!audioCtx) {
       const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -91,6 +166,7 @@
   }
 
   function playTone(freq, duration, type, gain, when) {
+    if (muted) return;
     const ac = getAudioCtx();
     if (!ac) return;
     const osc = ac.createOscillator();
@@ -115,6 +191,50 @@
     playTone(783.99, 0.18, "triangle", 0.16, 0.12);
     playTone(1046.5, 0.32, "triangle", 0.18, 0.24);
   }
+
+  function playCountdownBeep(isFinal) {
+    playTone(isFinal ? 880 : 523.25, 0.14, "square", 0.14, 0);
+  }
+
+  // ---------- Home screen: giveaway date ----------
+  function todayISO() {
+    const d = new Date();
+    const tzOffsetMs = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOffsetMs).toISOString().slice(0, 10);
+  }
+
+  function formatDateNice(iso) {
+    if (!iso) return "";
+    const [y, m, d] = iso.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    return dt.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+
+  const savedDate = localStorage.getItem(DATE_STORAGE_KEY);
+  giveawayDateInput.value = savedDate || todayISO();
+  giveawayDateInput.addEventListener("change", () => {
+    localStorage.setItem(DATE_STORAGE_KEY, giveawayDateInput.value);
+  });
+
+  // ---------- Screen navigation ----------
+  homeStartBtn.addEventListener("click", () => {
+    if (giveawayDateInput.value) {
+      localStorage.setItem(DATE_STORAGE_KEY, giveawayDateInput.value);
+    }
+    const ac = getAudioCtx();
+    if (ac && ac.state === "suspended") ac.resume();
+    homeScreen.hidden = true;
+    setupScreen.hidden = false;
+  });
+
+  backToHomeBtn.addEventListener("click", () => {
+    setupScreen.hidden = true;
+    homeScreen.hidden = false;
+  });
 
   // ---------- Name parsing ----------
   function parseNames(raw) {
@@ -141,7 +261,7 @@
   namesInput.addEventListener("input", updateNamesCount);
 
   // Restore last-used names
-  const savedNames = localStorage.getItem(STORAGE_KEY);
+  const savedNames = localStorage.getItem(NAMES_STORAGE_KEY);
   if (savedNames) {
     namesInput.value = savedNames;
     updateNamesCount();
@@ -207,7 +327,7 @@
       return;
     }
 
-    localStorage.setItem(STORAGE_KEY, namesInput.value);
+    localStorage.setItem(NAMES_STORAGE_KEY, namesInput.value);
 
     winnersWanted = count;
     pool = shuffle(names);
@@ -217,7 +337,7 @@
     const ac = getAudioCtx();
     if (ac && ac.state === "suspended") ac.resume();
 
-    setupScreen.style.display = "none";
+    setupScreen.hidden = true;
     controlsOverlay.hidden = true;
     videoBlobUrl = null;
     finalImageBlobUrl = null;
@@ -293,18 +413,25 @@
     // highlight row (index CENTER_ROW) once partial scroll reaches 0.
     targetScroll = (targetIndex - CENTER_ROW) * ROW_HEIGHT;
 
-    roundStartTime = performance.now();
-    state = STATE.SPINNING;
+    countdownStartTime = performance.now();
+    state = STATE.COUNTDOWN;
+    lastCountdownStep = -1;
     lastTickRow = -1;
   }
 
   let lastTickRow = -1;
+  let lastCountdownStep = -1;
 
   function easeOutCubic(t) {
     return 1 - Math.pow(1 - t, 3);
   }
   function easeOutQuad(t) {
     return 1 - (1 - t) * (1 - t);
+  }
+  function easeOutBack(t) {
+    const c1 = 1.70158;
+    const c3 = c1 + 1;
+    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
   }
 
   function currentScrollOffset(now) {
@@ -321,7 +448,7 @@
   }
 
   function spawnConfettiBurst(cx, cy, count) {
-    const colors = ["#ff6ec7", "#7c6cff", "#ffd166", "#06d6a0", "#4cc9f0"];
+    const colors = [COLOR.amber, COLOR.white, "#ffd166", "#3a3936"];
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 2.5 + Math.random() * 5.5;
@@ -366,11 +493,39 @@
     }
   }
 
+  // ---------- Planet Sport logo mark (canvas) ----------
+  function drawLogoMark(cx, cy, size, ringColor, planetColor, crescentColor) {
+    const r = size * 0.32;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.strokeStyle = ringColor;
+    ctx.lineWidth = size * 0.09;
+    ctx.beginPath();
+    ctx.save();
+    ctx.rotate((-18 * Math.PI) / 180);
+    ctx.scale(1, 0.32);
+    ctx.arc(0, size * 0.06, size * 0.5, 0, Math.PI * 2);
+    ctx.restore();
+    ctx.stroke();
+
+    ctx.translate(-size * 0.07, -size * 0.08);
+    ctx.fillStyle = planetColor;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = crescentColor;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, -Math.PI / 2, Math.PI / 2, false);
+    ctx.fill();
+    ctx.restore();
+  }
+
   // ---------- Drawing ----------
   function drawBackground() {
     const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, "#141034");
-    g.addColorStop(1, "#0b0f2b");
+    g.addColorStop(0, "#141414");
+    g.addColorStop(1, COLOR.black);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
   }
@@ -378,9 +533,38 @@
   function drawHeader(text) {
     ctx.save();
     ctx.textAlign = "center";
-    ctx.fillStyle = "#c9c7ff";
-    ctx.font = "600 18px -apple-system, Segoe UI, Roboto, sans-serif";
-    ctx.fillText(text, W / 2, Math.max(48, H * 0.12));
+    ctx.fillStyle = COLOR.gray200;
+    ctx.font = `600 ${HEADER_FONT_PX}px ${BODY_FONT}`;
+    ctx.fillText(text, W / 2, Math.max(44, H * 0.1));
+    ctx.restore();
+  }
+
+  function drawCountdown(now) {
+    const elapsed = now - countdownStartTime;
+    const step = Math.min(
+      COUNTDOWN_STEPS,
+      Math.floor(elapsed / COUNTDOWN_STEP_MS)
+    );
+    if (step !== lastCountdownStep) {
+      lastCountdownStep = step;
+      playCountdownBeep(step === COUNTDOWN_STEPS);
+    }
+
+    drawLogoMark(W / 2, H * 0.32, Math.min(90, W * 0.22), COLOR.amber, COLOR.white, COLOR.black);
+
+    const label = COUNTDOWN_STEPS - step > 0 ? String(COUNTDOWN_STEPS - step) : "GO!";
+    const stepElapsed = elapsed - step * COUNTDOWN_STEP_MS;
+    const t = Math.min(1, stepElapsed / 220);
+    const scale = 0.6 + easeOutBack(t) * 0.4;
+
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.translate(W / 2, H / 2 + 20);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = COLOR.amber;
+    ctx.font = `400 ${Math.min(160, W * 0.34)}px ${TITLE_FONT}`;
+    ctx.fillText(label, 0, 0);
     ctx.restore();
   }
 
@@ -388,7 +572,7 @@
     const centerY = H / 2;
     const visibleRows = VISIBLE_ROWS;
     const reelHeight = ROW_HEIGHT * visibleRows;
-    const reelWidth = Math.min(560, W - 48);
+    const reelWidth = Math.min(560, W - 32);
     const reelX = W / 2 - reelWidth / 2;
     const reelY = centerY - reelHeight / 2;
 
@@ -437,8 +621,8 @@
         ctx.globalAlpha = alpha * (blurCopies > 1 ? 0.35 : 1);
         ctx.translate(reelX + reelWidth / 2, y + blurOffset);
         ctx.scale(scale, scale);
-        ctx.font = "700 30px -apple-system, Segoe UI, Roboto, sans-serif";
-        ctx.fillStyle = "#ffffff";
+        ctx.font = `700 ${REEL_FONT_PX}px ${BODY_FONT}`;
+        ctx.fillStyle = COLOR.white;
         ctx.fillText(truncate(name, 24), 0, 0);
         ctx.restore();
       }
@@ -446,14 +630,14 @@
 
     // fade top/bottom
     const fadeTop = ctx.createLinearGradient(0, reelY, 0, reelY + reelHeight * 0.35);
-    fadeTop.addColorStop(0, "rgba(11,15,43,0.95)");
-    fadeTop.addColorStop(1, "rgba(11,15,43,0)");
+    fadeTop.addColorStop(0, "rgba(10,10,10,0.95)");
+    fadeTop.addColorStop(1, "rgba(10,10,10,0)");
     ctx.fillStyle = fadeTop;
     ctx.fillRect(reelX, reelY, reelWidth, reelHeight * 0.35);
 
     const fadeBottom = ctx.createLinearGradient(0, reelY + reelHeight * 0.65, 0, reelY + reelHeight);
-    fadeBottom.addColorStop(0, "rgba(11,15,43,0)");
-    fadeBottom.addColorStop(1, "rgba(11,15,43,0.95)");
+    fadeBottom.addColorStop(0, "rgba(10,10,10,0)");
+    fadeBottom.addColorStop(1, "rgba(10,10,10,0.95)");
     ctx.fillStyle = fadeBottom;
     ctx.fillRect(reelX, reelY + reelHeight * 0.65, reelWidth, reelHeight * 0.35);
 
@@ -467,9 +651,9 @@
     ctx.stroke();
 
     const bandY = centerY - ROW_HEIGHT / 2;
-    ctx.strokeStyle = "#ff6ec7";
+    ctx.strokeStyle = COLOR.amber;
     ctx.lineWidth = 2.5;
-    ctx.shadowColor = "#ff6ec7";
+    ctx.shadowColor = COLOR.amber;
     ctx.shadowBlur = 14;
     ctx.strokeRect(reelX + 6, bandY, reelWidth - 12, ROW_HEIGHT);
     ctx.restore();
@@ -501,21 +685,21 @@
     ctx.textBaseline = "middle";
     ctx.translate(W / 2, H / 2);
     ctx.scale(scale, scale);
-    ctx.shadowColor = "rgba(255,110,199,0.8)";
+    ctx.shadowColor = "rgba(245,166,35,0.85)";
     ctx.shadowBlur = 40;
-    ctx.fillStyle = "#fff";
-    ctx.font = "800 52px -apple-system, Segoe UI, Roboto, sans-serif";
+    ctx.fillStyle = COLOR.white;
+    ctx.font = `400 ${REVEAL_FONT_PX}px ${TITLE_FONT}`;
     ctx.fillText(truncate(currentWinnerName, 22), 0, -10);
     ctx.restore();
 
     ctx.save();
     ctx.textAlign = "center";
-    ctx.fillStyle = "#c9c7ff";
-    ctx.font = "600 18px -apple-system, Segoe UI, Roboto, sans-serif";
+    ctx.fillStyle = COLOR.amber;
+    ctx.font = `600 ${HEADER_FONT_PX}px ${BODY_FONT}`;
     ctx.fillText(
       `Winner ${winners.length} of ${winnersWanted}`,
       W / 2,
-      H / 2 + 60
+      H / 2 + REVEAL_FONT_PX * 0.9 + 16
     );
     ctx.restore();
 
@@ -527,16 +711,31 @@
     const t = Math.min(1, (now - finalStartTime) / FINAL_INTRO_MS);
     const introScale = 0.9 + easeOutQuad(t) * 0.1;
 
+    const topY = Math.max(70, H * 0.12);
+    drawLogoMark(W / 2 - 90, topY, 34, COLOR.amber, COLOR.white, COLOR.black);
+
     ctx.save();
     ctx.textAlign = "center";
-    ctx.fillStyle = "#fff";
-    ctx.font = "800 34px -apple-system, Segoe UI, Roboto, sans-serif";
-    ctx.fillText("🎉 Winners! 🎉", W / 2, Math.max(90, H * 0.16));
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = COLOR.white;
+    ctx.font = `400 ${FINAL_TITLE_PX}px ${TITLE_FONT}`;
+    ctx.fillText("WINNERS", W / 2 + 20, topY);
     ctx.restore();
 
+    const dateStr = formatDateNice(giveawayDateInput.value);
+    if (dateStr) {
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.fillStyle = COLOR.amber;
+      ctx.font = `600 ${Math.max(12, HEADER_FONT_PX - 4)}px ${BODY_FONT}`;
+      ctx.fillText(`PLANET SPORT GIVEAWAY — ${dateStr}`, W / 2, topY + FINAL_TITLE_PX * 0.6 + 10);
+      ctx.restore();
+    }
+
     const medals = ["🥇", "🥈", "🥉"];
-    const startY = Math.max(150, H * 0.28);
-    const lineHeight = 56;
+    const startY = topY + FINAL_TITLE_PX + 56;
+    const lineHeight = FINAL_ROW_PX + 32;
+    const cardWidth = Math.min(520, W - 40);
 
     ctx.save();
     ctx.translate(W / 2, 0);
@@ -548,10 +747,10 @@
       const y = startY + i * lineHeight;
       const label = (medals[i] || `#${i + 1}`) + "  " + truncate(name, 30);
       ctx.fillStyle = "rgba(255,255,255,0.08)";
-      roundRect(W / 2 - 260, y - lineHeight / 2 + 6, 520, lineHeight - 12, 14);
+      roundRect(W / 2 - cardWidth / 2, y - lineHeight / 2 + 6, cardWidth, lineHeight - 12, 14);
       ctx.fill();
-      ctx.fillStyle = "#fff";
-      ctx.font = "700 24px -apple-system, Segoe UI, Roboto, sans-serif";
+      ctx.fillStyle = COLOR.white;
+      ctx.font = `700 ${FINAL_ROW_PX}px ${BODY_FONT}`;
       ctx.fillText(label, W / 2, y);
     });
     ctx.restore();
@@ -571,7 +770,15 @@
     rafRunning = true;
     drawBackground();
 
-    if (state === STATE.SPINNING) {
+    if (state === STATE.COUNTDOWN) {
+      drawHeader(`Get ready — winner ${winners.length + 1} of ${winnersWanted}`);
+      drawCountdown(now);
+      if (now - countdownStartTime >= (COUNTDOWN_STEPS + 1) * COUNTDOWN_STEP_MS) {
+        roundStartTime = now;
+        state = STATE.SPINNING;
+        lastTickRow = -1;
+      }
+    } else if (state === STATE.SPINNING) {
       drawHeader(`Picking winner ${winners.length + 1} of ${winnersWanted}…`);
       drawReel(now);
       const elapsed = now - roundStartTime;
@@ -608,7 +815,8 @@
   }
 
   function onReachedFinalScreen() {
-    // Grab a clean snapshot for the "download final screen" image.
+    // Grab a snapshot (already includes the logo + date watermark drawn by
+    // drawFinal) for the "download final screen" image.
     canvas.toBlob((blob) => {
       if (blob) {
         if (finalImageBlobUrl) URL.revokeObjectURL(finalImageBlobUrl);
@@ -634,7 +842,7 @@
   });
 
   restartBtn.addEventListener("click", () => {
-    resetToSetup();
+    resetToHome();
   });
 
   function triggerDownload(url, filename) {
@@ -646,7 +854,7 @@
     a.remove();
   }
 
-  function resetToSetup() {
+  function resetToHome() {
     state = STATE.IDLE;
     confetti = [];
     winners = [];
@@ -659,7 +867,8 @@
     downloadImageBtn.disabled = true;
     recordingNote.hidden = true;
     controlsOverlay.hidden = true;
-    setupScreen.style.display = "flex";
+    setupScreen.hidden = true;
+    homeScreen.hidden = false;
     ctx.clearRect(0, 0, W, H);
   }
 

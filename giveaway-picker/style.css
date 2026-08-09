@@ -1,3 +1,23 @@
+@font-face {
+  font-family: "Bebas Neue";
+  src: url("fonts/BebasNeue-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --ps-black: #0a0a0a;
+  --ps-white: #ffffff;
+  --ps-amber: #f5a623;
+  --ps-amber-dark: #d98e12;
+  --ps-gray-50: #f6f6f4;
+  --ps-gray-200: #e4e2dc;
+  --ps-gray-500: #8a8880;
+  --ps-gray-700: #3a3936;
+  --tap-min: 44px;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -12,9 +32,15 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #0b0f2b;
+  background: var(--ps-black);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: #f5f5ff;
+  color: var(--ps-black);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.title-font {
+  font-family: "Bebas Neue", -apple-system, sans-serif;
+  letter-spacing: 0.03em;
 }
 
 #stage {
@@ -23,105 +49,207 @@ html, body {
   width: 100vw;
   height: 100vh;
   display: block;
+  background: var(--ps-black);
 }
 
+/* ---------- Overlays (home / setup) ---------- */
 .overlay {
   position: fixed;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 16px;
   z-index: 10;
+  overflow-y: auto;
 }
 
 .panel {
   width: 100%;
-  max-width: 480px;
-  background: rgba(18, 16, 48, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 20px;
-  padding: 32px;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  max-width: 440px;
+  background: var(--ps-white);
+  border-radius: 18px;
+  padding: 24px 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  margin: auto;
 }
 
-.panel h1 {
+/* ---------- Logo ---------- */
+.logo-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.logo-mark svg {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.logo-mark .logo-text {
+  font-family: "Bebas Neue", sans-serif;
+  font-size: 28px;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.logo-mark .logo-text .light {
+  font-weight: 400;
+}
+
+.logo-mark .logo-text .bold {
+  font-weight: 400;
+  font-family: "Bebas Neue", sans-serif;
+  background: var(--ps-black);
+  color: var(--ps-white);
+  padding: 0 4px;
+  margin-left: 2px;
+}
+
+/* ---------- Home screen ---------- */
+#home-screen .panel {
+  text-align: center;
+}
+
+.mute-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  border-radius: 50%;
+  border: 1px solid var(--ps-gray-200);
+  background: var(--ps-white);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-heading {
+  font-family: "Bebas Neue", sans-serif;
+  font-size: clamp(30px, 9vw, 40px);
+  line-height: 1.05;
+  margin: 14px 0 4px;
+}
+
+.home-tagline {
+  color: var(--ps-gray-700);
+  font-size: 14px;
+  margin: 0 0 20px;
+}
+
+.date-field {
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.date-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ps-gray-700);
+  margin-bottom: 6px;
+}
+
+.giveaway-date-display {
+  font-family: "Bebas Neue", sans-serif;
+  font-size: clamp(20px, 6vw, 24px);
+  color: var(--ps-amber-dark);
+  margin: 0 0 20px;
+  letter-spacing: 0.02em;
+}
+
+input[type="date"] {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--ps-gray-200);
+  background: var(--ps-gray-50);
+  color: var(--ps-black);
+  font-size: 16px;
+  min-height: var(--tap-min);
+}
+
+/* ---------- Setup form ---------- */
+.panel h1.title-font {
   margin: 0 0 6px;
-  font-size: 26px;
+  font-size: clamp(26px, 8vw, 32px);
   text-align: center;
 }
 
 .subtitle {
-  margin: 0 0 22px;
+  margin: 0 0 20px;
   text-align: center;
-  color: #b8b6e8;
+  color: var(--ps-gray-700);
   font-size: 14px;
 }
 
 label {
   display: block;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 6px;
-  color: #d9d8ff;
+  color: var(--ps-gray-700);
 }
 
 .hint {
   font-weight: 400;
-  color: #8f8dc4;
+  color: var(--ps-gray-500);
 }
 
 textarea {
   width: 100%;
-  min-height: 140px;
+  min-height: 130px;
   resize: vertical;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(0, 0, 0, 0.25);
-  color: #fff;
+  border: 1px solid var(--ps-gray-200);
+  background: var(--ps-gray-50);
+  color: var(--ps-black);
   padding: 12px 14px;
-  font-size: 14px;
+  font-size: 16px;
   font-family: inherit;
   line-height: 1.5;
 }
 
 textarea:focus, input:focus {
-  outline: 2px solid #7c6cff;
+  outline: 2px solid var(--ps-amber);
   outline-offset: 1px;
 }
 
 .names-count {
   margin-top: 6px;
   font-size: 12px;
-  color: #8f8dc4;
+  color: var(--ps-gray-500);
 }
 
 .row {
   display: flex;
-  gap: 16px;
-  margin-top: 18px;
-  align-items: flex-end;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 16px;
 }
 
 .field {
-  flex: 1;
-  min-width: 140px;
+  width: 100%;
 }
 
 input[type="number"] {
   width: 100%;
-  padding: 10px 12px;
+  padding: 12px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(0, 0, 0, 0.25);
-  color: #fff;
-  font-size: 14px;
-}
-
-.checkbox-field {
-  flex: 2;
+  border: 1px solid var(--ps-gray-200);
+  background: var(--ps-gray-50);
+  color: var(--ps-black);
+  font-size: 16px;
+  min-height: var(--tap-min);
 }
 
 .checkbox-label {
@@ -130,33 +258,37 @@ input[type="number"] {
   gap: 8px;
   font-weight: 400;
   font-size: 13px;
-  color: #d9d8ff;
+  color: var(--ps-gray-700);
   cursor: pointer;
+  min-height: var(--tap-min);
 }
 
 .checkbox-label input {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
+  accent-color: var(--ps-amber);
 }
 
 .error {
   margin-top: 14px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: rgba(255, 76, 96, 0.15);
-  border: 1px solid rgba(255, 76, 96, 0.4);
-  color: #ff9aa6;
+  background: #fdeceb;
+  border: 1px solid #f3b8b3;
+  color: #b3261e;
   font-size: 13px;
 }
 
+/* ---------- Buttons ---------- */
 .btn {
   cursor: pointer;
   border: none;
   border-radius: 12px;
-  padding: 13px 20px;
+  padding: 14px 20px;
   font-size: 15px;
   font-weight: 700;
   font-family: inherit;
+  min-height: var(--tap-min);
   transition: transform 0.1s ease, opacity 0.15s ease;
 }
 
@@ -171,44 +303,91 @@ input[type="number"] {
 
 .btn-primary {
   width: 100%;
-  margin-top: 22px;
-  background: linear-gradient(135deg, #7c6cff, #ff6ec7);
-  color: #fff;
-  box-shadow: 0 8px 24px rgba(124, 108, 255, 0.4);
+  margin-top: 20px;
+  background: var(--ps-amber);
+  color: var(--ps-black);
+  box-shadow: 0 8px 24px rgba(245, 166, 35, 0.35);
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
+  width: 100%;
+  background: var(--ps-white);
+  border: 1px solid var(--ps-gray-200);
+  color: var(--ps-black);
 }
 
+.back-link {
+  display: block;
+  text-align: center;
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--ps-gray-500);
+  background: none;
+  border: none;
+  cursor: pointer;
+  min-height: var(--tap-min);
+  width: 100%;
+}
+
+/* ---------- Post-game controls ---------- */
 .controls-overlay {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 36px;
+  bottom: 0;
   z-index: 10;
   display: flex;
-  gap: 12px;
-  justify-content: center;
-  flex-wrap: wrap;
-  padding: 0 20px;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+}
+
+.controls-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .recording-note {
   width: 100%;
   text-align: center;
   font-size: 12px;
-  color: #b8b6e8;
-  margin-top: 4px;
+  color: var(--ps-gray-200);
 }
 
-@media (max-width: 520px) {
+/* ---------- Tablet / desktop enhancements ---------- */
+@media (min-width: 640px) {
   .panel {
-    padding: 22px;
+    padding: 36px 32px;
   }
-  .controls-overlay {
-    bottom: 20px;
+
+  .row {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .field:not(.checkbox-field) {
+    flex: 0 0 150px;
+  }
+
+  .field.checkbox-field {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .controls-row {
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .controls-row .btn {
+    width: auto;
+    min-width: 200px;
+  }
+
+  .controls-row .btn-primary {
+    margin-top: 0;
   }
 }
