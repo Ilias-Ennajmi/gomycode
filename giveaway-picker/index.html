@@ -13,31 +13,43 @@
 </head>
 <body>
 
+<header id="app-header">
+  <div class="header-logo" aria-hidden="true">
+    <svg viewBox="0 0 100 100">
+      <ellipse cx="50" cy="58" rx="47" ry="15" transform="rotate(-18 50 58)" fill="none" stroke="var(--ps-brand-amber)" stroke-width="8"/>
+      <circle cx="44" cy="42" r="27" fill="#0a0a0a"/>
+      <path d="M44 15 A27 27 0 0 0 44 69 Z" fill="#ffffff"/>
+    </svg>
+    <span class="header-logo-text"><span class="light">PLANET</span><span class="bold">SPORT</span></span>
+  </div>
+  <div class="lang-toggle" id="lang-toggle" role="group" aria-label="Language">
+    <button type="button" class="lang-btn" data-lang="en">EN</button>
+    <button type="button" class="lang-btn" data-lang="fr">FR</button>
+  </div>
+</header>
+
 <canvas id="stage"></canvas>
 
 <section id="home-screen" class="overlay">
   <div class="panel" style="position: relative;">
-    <button id="mute-btn" class="mute-btn" type="button" aria-label="Toggle sound">🔊</button>
+    <button id="mute-btn" class="mute-btn" type="button" data-i18n-aria="mute.mute">🔊</button>
 
-    <div class="logo-mark">
-      <svg viewBox="0 0 100 100" aria-hidden="true">
-        <ellipse cx="50" cy="58" rx="47" ry="15" transform="rotate(-18 50 58)" fill="none" stroke="#0a0a0a" stroke-width="8"/>
-        <circle cx="44" cy="42" r="27" fill="#0a0a0a"/>
-        <path d="M44 15 A27 27 0 0 0 44 69 Z" fill="#ffffff"/>
-      </svg>
-      <div class="logo-text"><span class="light">PLANET</span><span class="bold">SPORT</span></div>
-    </div>
-
-    <input type="text" id="giveaway-name" class="home-heading-input" maxlength="60" aria-label="Giveaway name" />
-    <p class="home-tagline">Pick your winners live, on camera, in seconds.</p>
+    <h1 class="title-font home-title" data-i18n="home.title">GIVEAWAY ROULETTE</h1>
+    <span class="title-accent-dot" aria-hidden="true"></span>
+    <p class="home-tagline" data-i18n="home.tagline">Pick your winners live, on camera, in seconds.</p>
 
     <div class="field-block">
-      <label for="giveaway-date">Giveaway date</label>
+      <label for="giveaway-name"><span aria-hidden="true">🏷️</span> <span data-i18n="home.nameLabel">Giveaway name</span></label>
+      <input type="text" id="giveaway-name" maxlength="60" />
+    </div>
+
+    <div class="field-block">
+      <label for="giveaway-date"><span aria-hidden="true">📅</span> <span data-i18n="home.dateLabel">Giveaway date</span></label>
       <input type="date" id="giveaway-date" />
     </div>
 
     <div class="color-field">
-      <label>Giveaway color</label>
+      <label><span aria-hidden="true">🎨</span> <span data-i18n="home.colorLabel">Giveaway color</span></label>
       <div class="swatch-row" id="swatch-row">
         <button type="button" class="swatch" data-color="#f5a623" style="background:#f5a623" aria-label="Amber"></button>
         <button type="button" class="swatch" data-color="#e63946" style="background:#e63946" aria-label="Red"></button>
@@ -48,44 +60,44 @@
       </div>
     </div>
 
-    <button id="home-start-btn" class="btn btn-primary">Start New Giveaway</button>
+    <button id="home-start-btn" class="btn btn-primary" data-i18n="home.startBtn">Start New Giveaway</button>
   </div>
 </section>
 
 <section id="setup-screen" class="overlay screen-hidden">
   <div class="panel">
-    <h1 class="title-font">Participants</h1>
-    <p class="subtitle">Paste your entrants, pick how many winners, and go.</p>
+    <h1 class="title-font setup-title" data-i18n="setup.title">Giveaway participants</h1>
+    <p class="subtitle" data-i18n="setup.subtitle">Paste your entrants, pick how many winners, and go.</p>
 
-    <label for="names-input">Account names <span class="hint">(one per line, or comma-separated)</span></label>
+    <label for="names-input"><span data-i18n="setup.namesLabel">Account names</span> <span class="hint" data-i18n="setup.namesHint">(one per line, or comma-separated)</span></label>
     <textarea id="names-input" placeholder="@alice&#10;@bob&#10;@carol&#10;..."></textarea>
     <div id="names-count" class="names-count">0 unique names</div>
 
     <div class="row">
       <div class="field">
-        <label for="winners-count">Number of winners</label>
+        <label for="winners-count" data-i18n="setup.winnersLabel">Number of winners</label>
         <input type="number" id="winners-count" min="1" value="1" />
       </div>
       <div class="field checkbox-field">
         <label class="checkbox-label">
           <input type="checkbox" id="allow-duplicates" />
-          Allow the same name to win more than once
+          <span data-i18n="setup.duplicatesLabel">Allow the same name to win more than once</span>
         </label>
       </div>
     </div>
 
     <div id="setup-error" class="error" hidden></div>
 
-    <button id="start-btn" class="btn btn-primary">Start Giveaway</button>
-    <button id="back-to-home-btn" class="back-link" type="button">← Back</button>
+    <button id="start-btn" class="btn btn-primary" data-i18n="setup.startBtn">Start Giveaway</button>
+    <button id="back-to-home-btn" class="back-link" type="button">← <span data-i18n="setup.backBtn">Back</span></button>
   </div>
 </section>
 
 <div id="controls-overlay" class="controls-overlay screen-hidden">
   <div class="controls-row">
-    <button id="download-video-btn" class="btn btn-primary">⬇ Download Video</button>
-    <button id="download-image-btn" class="btn btn-secondary">🖼 Download Final Screen</button>
-    <button id="restart-btn" class="btn btn-secondary">↺ New Giveaway</button>
+    <button id="download-video-btn" class="btn btn-primary">⬇ <span data-i18n="controls.downloadVideo">Download Video</span></button>
+    <button id="download-image-btn" class="btn btn-secondary">🖼 <span data-i18n="controls.downloadImage">Download Final Screen</span></button>
+    <button id="restart-btn" class="btn btn-secondary">↺ <span data-i18n="controls.newGiveaway">New Giveaway</span></button>
   </div>
   <div id="recording-note" class="recording-note" hidden></div>
 </div>

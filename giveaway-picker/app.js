@@ -29,7 +29,110 @@
   const NAME_STORAGE_KEY = "giveaway-picker-giveaway-name";
   const COLOR_STORAGE_KEY = "giveaway-picker-accent";
   const MUTE_STORAGE_KEY = "giveaway-picker-muted";
+  const LANG_STORAGE_KEY = "giveaway-picker-lang";
   const DEFAULT_GIVEAWAY_NAME = "Planet Sport Giveaway";
+  const HEADER_CLEARANCE = 58;
+
+  // ---------- i18n ----------
+  const STRINGS = {
+    en: {
+      "meta.title": "Planet Sport Giveaway",
+      "home.title": "GIVEAWAY ROULETTE",
+      "home.tagline": "Pick your winners live, on camera, in seconds.",
+      "home.nameLabel": "Giveaway name",
+      "home.dateLabel": "Giveaway date",
+      "home.colorLabel": "Giveaway color",
+      "home.startBtn": "Start New Giveaway",
+      "mute.mute": "Mute",
+      "mute.unmute": "Unmute",
+      "setup.title": "Giveaway participants",
+      "setup.subtitle": "Paste your entrants, pick how many winners, and go.",
+      "setup.namesLabel": "Account names",
+      "setup.namesHint": "(one per line, or comma-separated)",
+      "setup.winnersLabel": "Number of winners",
+      "setup.duplicatesLabel": "Allow the same name to win more than once",
+      "setup.startBtn": "Start Giveaway",
+      "setup.backBtn": "Back",
+      "setup.errNeedTwo": "Add at least 2 names to run a giveaway.",
+      "setup.errWinnersMin": "Number of winners must be at least 1.",
+      "setup.errNotEnough":
+        "You only have {n} names but asked for {c} winners. Enable duplicates or add more names.",
+      "setup.errTooManyDup": "Please pick 50 winners or fewer per round.",
+      "controls.downloadVideo": "Download Video",
+      "controls.downloadImage": "Download Final Screen",
+      "controls.newGiveaway": "New Giveaway",
+      "controls.recordingUnsupported":
+        "Video recording isn't supported in this browser — you can still download the final screen as an image.",
+      "controls.recordingFailed":
+        "Video recording failed to start — you can still download the final screen as an image.",
+      "canvas.getReady": "Get ready — winner {i} of {n}",
+      "canvas.picking": "Picking winner {i} of {n}…",
+      "canvas.go": "GO!",
+      "canvas.winnerOf": "Winner {i} of {n}",
+      "canvas.winnersTitle": "WINNERS",
+    },
+    fr: {
+      "meta.title": "Tombola Planet Sport",
+      "home.title": "ROULETTE DE CADEAUX",
+      "home.tagline": "Choisissez vos gagnants en direct, devant la caméra, en quelques secondes.",
+      "home.nameLabel": "Nom du tirage",
+      "home.dateLabel": "Date du tirage",
+      "home.colorLabel": "Couleur du tirage",
+      "home.startBtn": "Démarrer un nouveau tirage",
+      "mute.mute": "Muet",
+      "mute.unmute": "Activer le son",
+      "setup.title": "Participants au tirage",
+      "setup.subtitle": "Collez vos participants, choisissez le nombre de gagnants, et lancez.",
+      "setup.namesLabel": "Noms des comptes",
+      "setup.namesHint": "(un par ligne, ou séparés par des virgules)",
+      "setup.winnersLabel": "Nombre de gagnants",
+      "setup.duplicatesLabel": "Autoriser un même nom à gagner plusieurs fois",
+      "setup.startBtn": "Lancer le tirage",
+      "setup.backBtn": "Retour",
+      "setup.errNeedTwo": "Ajoutez au moins 2 noms pour lancer un tirage.",
+      "setup.errWinnersMin": "Le nombre de gagnants doit être d'au moins 1.",
+      "setup.errNotEnough":
+        "Vous n'avez que {n} noms mais avez demandé {c} gagnants. Activez les doublons ou ajoutez plus de noms.",
+      "setup.errTooManyDup": "Choisissez 50 gagnants ou moins par tirage.",
+      "controls.downloadVideo": "Télécharger la vidéo",
+      "controls.downloadImage": "Télécharger l'écran final",
+      "controls.newGiveaway": "Nouveau tirage",
+      "controls.recordingUnsupported":
+        "L'enregistrement vidéo n'est pas pris en charge par ce navigateur — vous pouvez toujours télécharger l'écran final en image.",
+      "controls.recordingFailed":
+        "L'enregistrement vidéo n'a pas pu démarrer — vous pouvez toujours télécharger l'écran final en image.",
+      "canvas.getReady": "Préparez-vous — gagnant {i} sur {n}",
+      "canvas.picking": "Sélection du gagnant {i} sur {n}…",
+      "canvas.go": "GO !",
+      "canvas.winnerOf": "Gagnant {i} sur {n}",
+      "canvas.winnersTitle": "GAGNANTS",
+    },
+  };
+
+  let currentLang = "en";
+
+  function t(key, vars) {
+    const dict = STRINGS[currentLang] || STRINGS.en;
+    let str = dict[key] !== undefined ? dict[key] : STRINGS.en[key] || key;
+    if (vars) {
+      Object.keys(vars).forEach((k) => {
+        str = str.replace(new RegExp(`\\{${k}\\}`, "g"), vars[k]);
+      });
+    }
+    return str;
+  }
+
+  function applyTranslations() {
+    document.querySelectorAll("[data-i18n]").forEach((el) => {
+      el.textContent = t(el.dataset.i18n);
+    });
+    document.querySelectorAll("[data-i18n-aria]").forEach((el) => {
+      el.setAttribute("aria-label", t(el.dataset.i18nAria));
+    });
+    document.title = t("meta.title");
+    updateNamesCount();
+    updateMuteBtn();
+  }
 
   // ---------- Brand palette (mirrors CSS custom properties in style.css) ----------
   const COLOR = {
@@ -193,7 +296,7 @@
 
   function updateMuteBtn() {
     muteBtn.textContent = muted ? "🔇" : "🔊";
-    muteBtn.setAttribute("aria-label", muted ? "Unmute" : "Mute");
+    muteBtn.setAttribute("aria-label", muted ? t("mute.unmute") : t("mute.mute"));
   }
   updateMuteBtn();
 
@@ -202,6 +305,24 @@
     localStorage.setItem(MUTE_STORAGE_KEY, muted ? "1" : "0");
     updateMuteBtn();
   });
+
+  // ---------- Language toggle ----------
+  const langButtons = document.querySelectorAll(".lang-btn");
+
+  function setLanguage(lang) {
+    currentLang = lang === "fr" ? "fr" : "en";
+    localStorage.setItem(LANG_STORAGE_KEY, currentLang);
+    langButtons.forEach((b) => b.classList.toggle("active", b.dataset.lang === currentLang));
+    applyTranslations();
+  }
+
+  langButtons.forEach((b) => {
+    b.addEventListener("click", () => setLanguage(b.dataset.lang));
+  });
+
+  const savedLang = localStorage.getItem(LANG_STORAGE_KEY);
+  const browserLang = (navigator.language || "en").slice(0, 2) === "fr" ? "fr" : "en";
+  setLanguage(savedLang || browserLang);
 
   function getAudioCtx() {
     if (!audioCtx) {
@@ -320,7 +441,10 @@
 
   function updateNamesCount() {
     const n = parseNames(namesInput.value).length;
-    namesCountEl.textContent = `${n} unique name${n === 1 ? "" : "s"}`;
+    namesCountEl.textContent =
+      currentLang === "fr"
+        ? `${n} nom${n === 1 ? "" : "s"} unique${n === 1 ? "" : "s"}`
+        : `${n} unique name${n === 1 ? "" : "s"}`;
   }
   namesInput.addEventListener("input", updateNamesCount);
 
@@ -373,21 +497,19 @@
     allowDuplicates = allowDuplicatesInput.checked;
 
     if (names.length < 2) {
-      showSetupError("Add at least 2 names to run a giveaway.");
+      showSetupError(t("setup.errNeedTwo"));
       return;
     }
     if (!Number.isFinite(count) || count < 1) {
-      showSetupError("Number of winners must be at least 1.");
+      showSetupError(t("setup.errWinnersMin"));
       return;
     }
     if (!allowDuplicates && count > names.length) {
-      showSetupError(
-        `You only have ${names.length} names but asked for ${count} winners. Enable duplicates or add more names.`
-      );
+      showSetupError(t("setup.errNotEnough", { n: names.length, c: count }));
       return;
     }
     if (allowDuplicates && count > 50) {
-      showSetupError("Please pick 50 winners or fewer per round.");
+      showSetupError(t("setup.errTooManyDup"));
       return;
     }
 
@@ -416,8 +538,7 @@
     recordedChunks = [];
     if (!recordingSupported) {
       recordingNote.hidden = false;
-      recordingNote.textContent =
-        "Video recording isn't supported in this browser — you can still download the final screen as an image.";
+      recordingNote.textContent = t("controls.recordingUnsupported");
       return;
     }
     try {
@@ -446,8 +567,7 @@
     } catch (err) {
       recordingSupported = false;
       recordingNote.hidden = false;
-      recordingNote.textContent =
-        "Video recording failed to start — you can still download the final screen as an image.";
+      recordingNote.textContent = t("controls.recordingFailed");
     }
   }
 
@@ -501,8 +621,8 @@
   function currentScrollOffset(now) {
     const elapsed = now - roundStartTime;
     if (elapsed <= SPIN_MS) {
-      const t = Math.min(1, elapsed / SPIN_MS);
-      const eased = easeOutCubic(t);
+      const spinT = Math.min(1, elapsed / SPIN_MS);
+      const eased = easeOutCubic(spinT);
       return eased * (targetScroll + overshootPx);
     }
     const settleT = Math.min(1, (elapsed - SPIN_MS) / SETTLE_MS);
@@ -557,34 +677,6 @@
     }
   }
 
-  // ---------- Planet Sport logo mark (canvas) ----------
-  function drawLogoMark(cx, cy, size, ringColor, planetColor, crescentColor) {
-    const r = size * 0.32;
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.strokeStyle = ringColor;
-    ctx.lineWidth = size * 0.09;
-    ctx.beginPath();
-    ctx.save();
-    ctx.rotate((-18 * Math.PI) / 180);
-    ctx.scale(1, 0.32);
-    ctx.arc(0, size * 0.06, size * 0.5, 0, Math.PI * 2);
-    ctx.restore();
-    ctx.stroke();
-
-    ctx.translate(-size * 0.07, -size * 0.08);
-    ctx.fillStyle = planetColor;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = crescentColor;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, -Math.PI / 2, Math.PI / 2, false);
-    ctx.fill();
-    ctx.restore();
-  }
-
   // ---------- Drawing ----------
   function drawBackground() {
     const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -599,7 +691,7 @@
     ctx.textAlign = "center";
     ctx.fillStyle = COLOR.gray700;
     ctx.font = `600 ${HEADER_FONT_PX}px ${BODY_FONT}`;
-    ctx.fillText(text, W / 2, Math.max(44, H * 0.1));
+    ctx.fillText(text, W / 2, Math.max(HEADER_CLEARANCE + 24, H * 0.14));
     ctx.restore();
   }
 
@@ -612,24 +704,66 @@
     if (step !== lastCountdownStep) {
       lastCountdownStep = step;
       playCountdownBeep(step === COUNTDOWN_STEPS);
+      spawnConfettiBurst(W / 2, H / 2 - Math.min(120, W * 0.28), 14);
     }
 
-    drawLogoMark(W / 2, H * 0.32, Math.min(90, W * 0.22), COLOR.accent, COLOR.black, COLOR.white);
-
-    const label = COUNTDOWN_STEPS - step > 0 ? String(COUNTDOWN_STEPS - step) : "GO!";
+    const cx = W / 2;
+    const cy = H / 2;
+    const ringR = Math.min(120, W * 0.28);
     const stepElapsed = elapsed - step * COUNTDOWN_STEP_MS;
-    const t = Math.min(1, stepElapsed / 220);
-    const scale = 0.6 + easeOutBack(t) * 0.4;
+    const stepT = Math.min(1, stepElapsed / COUNTDOWN_STEP_MS);
+
+    // background track
+    ctx.save();
+    ctx.lineWidth = 9;
+    ctx.strokeStyle = COLOR.gray200;
+    ctx.beginPath();
+    ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // per-tick progress sweep
+    ctx.save();
+    ctx.lineWidth = 9;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = COLOR.accent;
+    ctx.shadowColor = COLOR.accent;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(cx, cy, ringR, -Math.PI / 2, -Math.PI / 2 + stepT * Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // number / GO with bounce-in scale
+    const label = COUNTDOWN_STEPS - step > 0 ? String(COUNTDOWN_STEPS - step) : t("canvas.go");
+    const popT = Math.min(1, stepElapsed / 220);
+    const scale = 0.6 + easeOutBack(popT) * 0.4;
 
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.translate(W / 2, H / 2 + 20);
+    ctx.translate(cx, cy);
     ctx.scale(scale, scale);
-    ctx.fillStyle = COLOR.accent;
-    ctx.font = `400 ${Math.min(160, W * 0.34)}px ${TITLE_FONT}`;
-    ctx.fillText(label, 0, 0);
+    ctx.fillStyle = COLOR.ink;
+    ctx.font = `400 ${Math.min(128, W * 0.28)}px ${TITLE_FONT}`;
+    ctx.fillText(label, 0, 4);
     ctx.restore();
+
+    // step dots
+    const dotGap = 20;
+    const dotY = cy + ringR + 36;
+    for (let i = 0; i < COUNTDOWN_STEPS; i++) {
+      const filled = i < step || step === COUNTDOWN_STEPS;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx - dotGap + i * dotGap, dotY, 5, 0, Math.PI * 2);
+      ctx.fillStyle = filled ? COLOR.accent : COLOR.gray200;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    updateConfetti();
+    drawConfetti();
   }
 
   function drawReel(now) {
@@ -740,8 +874,8 @@
   }
 
   function drawReveal(now) {
-    const t = Math.min(1, (now - revealStartTime) / REVEAL_MS);
-    const pop = t < 0.25 ? easeOutQuad(t / 0.25) : 1;
+    const revealT = Math.min(1, (now - revealStartTime) / REVEAL_MS);
+    const pop = revealT < 0.25 ? easeOutQuad(revealT / 0.25) : 1;
     const scale = 0.85 + pop * 0.15;
 
     // Soft colored spotlight behind the winner name (replaces the
@@ -770,7 +904,7 @@
     ctx.fillStyle = COLOR.accentDark;
     ctx.font = `600 ${HEADER_FONT_PX}px ${BODY_FONT}`;
     ctx.fillText(
-      `Winner ${winners.length} of ${winnersWanted}`,
+      t("canvas.winnerOf", { i: winners.length, n: winnersWanted }),
       W / 2,
       H / 2 + REVEAL_FONT_PX * 0.9 + 16
     );
@@ -789,15 +923,14 @@
   }
 
   function drawFinal(now) {
-    const topY = Math.max(70, H * 0.12);
-    drawLogoMark(W / 2 - 90, topY, 34, COLOR.accent, COLOR.black, COLOR.white);
+    const topY = Math.max(HEADER_CLEARANCE + 32, H * 0.14);
 
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = COLOR.ink;
     ctx.font = `400 ${FINAL_TITLE_PX}px ${TITLE_FONT}`;
-    ctx.fillText("WINNERS", W / 2 + 20, topY);
+    ctx.fillText(t("canvas.winnersTitle"), W / 2, topY);
     ctx.restore();
 
     const dateStr = formatDateNice(giveawayDateInput.value);
@@ -860,7 +993,7 @@
     drawBackground();
 
     if (state === STATE.COUNTDOWN) {
-      drawHeader(`Get ready — winner ${winners.length + 1} of ${winnersWanted}`);
+      drawHeader(t("canvas.getReady", { i: winners.length + 1, n: winnersWanted }));
       drawCountdown(now);
       if (now - countdownStartTime >= (COUNTDOWN_STEPS + 1) * COUNTDOWN_STEP_MS) {
         roundStartTime = now;
@@ -868,7 +1001,7 @@
         lastTickRow = -1;
       }
     } else if (state === STATE.SPINNING) {
-      drawHeader(`Picking winner ${winners.length + 1} of ${winnersWanted}…`);
+      drawHeader(t("canvas.picking", { i: winners.length + 1, n: winnersWanted }));
       drawReel(now);
       const elapsed = now - roundStartTime;
       if (elapsed >= SPIN_MS + SETTLE_MS) {

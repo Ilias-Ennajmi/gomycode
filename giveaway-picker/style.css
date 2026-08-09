@@ -12,6 +12,7 @@
   --ps-ink: #17140f;
   --ps-accent: #f5a623;
   --ps-accent-dark: #d98e12;
+  --ps-brand-amber: #f5a623;
   --ps-surface: #fbfaf8;
   --ps-gray-50: #f6f6f4;
   --ps-gray-100: #efeee9;
@@ -19,6 +20,7 @@
   --ps-gray-500: #8a8880;
   --ps-gray-700: #57544c;
   --tap-min: 44px;
+  --header-h: 58px;
 }
 
 * {
@@ -55,6 +57,88 @@ html, body {
   background: var(--ps-white);
 }
 
+/* ---------- Persistent header ---------- */
+#app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-h);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--ps-gray-100);
+}
+
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.header-logo svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.header-logo-text {
+  font-family: "Bebas Neue", sans-serif;
+  font-size: 17px;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.header-logo-text .light {
+  font-weight: 400;
+}
+
+.header-logo-text .bold {
+  font-family: "Bebas Neue", sans-serif;
+  background: var(--ps-black);
+  color: var(--ps-white);
+  padding: 0 3px;
+  margin-left: 2px;
+  border-radius: 2px;
+}
+
+.lang-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  background: var(--ps-gray-50);
+  border: 1px solid var(--ps-gray-200);
+  border-radius: 999px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.lang-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--ps-gray-700);
+  padding: 5px 9px;
+  border-radius: 999px;
+  min-height: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.lang-btn.active {
+  background: var(--ps-brand-amber);
+  color: var(--ps-black);
+}
+
 /* ---------- Overlays (home / setup) ---------- */
 .overlay {
   position: fixed;
@@ -62,7 +146,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: calc(var(--header-h) + 16px) 16px 16px;
   z-index: 10;
   overflow-y: auto;
   opacity: 1;
@@ -85,43 +169,6 @@ html, body {
   box-shadow: 0 1px 2px rgba(23, 20, 15, 0.04), 0 12px 32px rgba(23, 20, 15, 0.08),
     0 28px 60px rgba(23, 20, 15, 0.06);
   margin: auto;
-}
-
-/* ---------- Logo ---------- */
-.logo-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 4px;
-}
-
-.logo-mark svg {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-}
-
-.logo-mark .logo-text {
-  font-family: "Bebas Neue", sans-serif;
-  font-size: 28px;
-  letter-spacing: 0.02em;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.logo-mark .logo-text .light {
-  font-weight: 400;
-}
-
-.logo-mark .logo-text .bold {
-  font-weight: 400;
-  font-family: "Bebas Neue", sans-serif;
-  background: var(--ps-black);
-  color: var(--ps-white);
-  padding: 0 4px;
-  margin-left: 2px;
-  border-radius: 3px;
 }
 
 /* ---------- Home screen ---------- */
@@ -154,33 +201,27 @@ html, body {
   transform: scale(0.92);
 }
 
-#giveaway-name.home-heading-input {
-  display: block;
-  width: 100%;
-  border: none;
-  background: transparent;
-  color: var(--ps-ink);
-  text-align: center;
-  font-family: "Bebas Neue", -apple-system, sans-serif;
-  letter-spacing: 0.03em;
-  font-size: clamp(28px, 9vw, 38px);
+.home-title {
+  margin: 4px 0 0;
+  padding: 0 44px;
+  font-size: clamp(26px, 8vw, 42px);
   line-height: 1.05;
-  margin: 14px 0 2px;
-  padding: 4px 8px;
-  border-radius: 8px;
-  min-height: 0;
+  text-align: center;
 }
 
-.home-heading-input:focus {
-  outline: 2px solid var(--ps-accent);
-  outline-offset: 2px;
-  background: var(--ps-gray-50);
+.title-accent-dot {
+  display: block;
+  width: 34px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--ps-brand-amber);
+  margin: 10px auto 0;
 }
 
 .home-tagline {
   color: var(--ps-gray-700);
   font-size: 14px;
-  margin: 6px 0 22px;
+  margin: 10px 0 22px;
 }
 
 .field-block {
@@ -234,8 +275,8 @@ input[type="date"] {
 }
 
 .swatch {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   border: 2px solid transparent;
   cursor: pointer;
@@ -256,8 +297,11 @@ input[type="date"] {
 /* ---------- Setup form ---------- */
 .panel h1.title-font {
   margin: 0 0 6px;
-  font-size: clamp(26px, 8vw, 32px);
   text-align: center;
+}
+
+.setup-title {
+  font-size: clamp(30px, 9vw, 38px);
 }
 
 .subtitle {
