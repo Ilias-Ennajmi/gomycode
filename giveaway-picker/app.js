@@ -205,23 +205,23 @@
 
   function computeResponsiveSizes() {
     if (W < 420) {
-      ROW_HEIGHT = 52;
-      REEL_FONT_PX = 20;
-      REVEAL_FONT_PX = 32;
+      ROW_HEIGHT = 58;
+      REEL_FONT_PX = 22;
+      REVEAL_FONT_PX = 34;
       HEADER_FONT_PX = 17;
       FINAL_TITLE_PX = 30;
       FINAL_ROW_PX = 19;
     } else if (W < 640) {
-      ROW_HEIGHT = 62;
-      REEL_FONT_PX = 24;
-      REVEAL_FONT_PX = 40;
+      ROW_HEIGHT = 70;
+      REEL_FONT_PX = 27;
+      REVEAL_FONT_PX = 42;
       HEADER_FONT_PX = 19;
       FINAL_TITLE_PX = 34;
       FINAL_ROW_PX = 21;
     } else {
-      ROW_HEIGHT = 78;
-      REEL_FONT_PX = 30;
-      REVEAL_FONT_PX = 52;
+      ROW_HEIGHT = 84;
+      REEL_FONT_PX = 32;
+      REVEAL_FONT_PX = 54;
       HEADER_FONT_PX = 22;
       FINAL_TITLE_PX = 40;
       FINAL_ROW_PX = 24;
@@ -294,8 +294,14 @@
   let audioCtx = null;
   let muted = localStorage.getItem(MUTE_STORAGE_KEY) === "1";
 
+  const ICON_SPEAKER =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5H4Z"/><path d="M16.5 9a4 4 0 0 1 0 6"/><path d="M19 6.5a8 8 0 0 1 0 11"/></svg>';
+  const ICON_SPEAKER_MUTED =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5H4Z"/><path d="m16 9.5 4.5 5M20.5 9.5 16 14.5"/></svg>';
+  const muteIcon = document.getElementById("mute-icon");
+
   function updateMuteBtn() {
-    muteBtn.textContent = muted ? "🔇" : "🔊";
+    if (muteIcon) muteIcon.innerHTML = muted ? ICON_SPEAKER_MUTED : ICON_SPEAKER;
     muteBtn.setAttribute("aria-label", muted ? t("mute.unmute") : t("mute.mute"));
   }
   updateMuteBtn();
@@ -544,6 +550,9 @@
     try {
       const stream = canvas.captureStream(30);
       const candidates = [
+        "video/mp4;codecs=avc1.640028",
+        "video/mp4;codecs=h264",
+        "video/mp4",
         "video/webm;codecs=vp9",
         "video/webm;codecs=vp8",
         "video/webm",
@@ -551,8 +560,13 @@
       recordedMimeType =
         candidates.find((m) => window.MediaRecorder.isTypeSupported(m)) ||
         "video/webm";
+      // Push the bitrate well above the browser's conservative default for a
+      // visibly sharper export; scale up a bit further on high-DPI canvases.
+      const pixelScale = Math.min(2, dpr);
+      const videoBitsPerSecond = Math.round(6_000_000 + pixelScale * 3_000_000);
       mediaRecorder = new MediaRecorder(stream, {
         mimeType: recordedMimeType,
+        videoBitsPerSecond,
       });
       mediaRecorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) recordedChunks.push(e.data);
@@ -601,10 +615,12 @@
     state = STATE.COUNTDOWN;
     lastCountdownStep = -1;
     lastTickRow = -1;
+    pulseStartTime = -Infinity;
   }
 
   let lastTickRow = -1;
   let lastCountdownStep = -1;
+  let pulseStartTime = -Infinity;
 
   function easeOutCubic(t) {
     return 1 - Math.pow(1 - t, 3);
@@ -703,61 +719,113 @@
     );
     if (step !== lastCountdownStep) {
       lastCountdownStep = step;
+      pulseStartTime = now;
       playCountdownBeep(step === COUNTDOWN_STEPS);
-      spawnConfettiBurst(W / 2, H / 2 - Math.min(120, W * 0.28), 14);
+      spawnConfettiBurst(W / 2, H / 2 - Math.min(140, W * 0.3), 16);
     }
 
     const cx = W / 2;
-    const cy = H / 2;
-    const ringR = Math.min(120, W * 0.28);
+    const cy = H / 2 - Math.min(24, H * 0.03);
+    const ringR = Math.min(132, W * 0.3);
     const stepElapsed = elapsed - step * COUNTDOWN_STEP_MS;
     const stepT = Math.min(1, stepElapsed / COUNTDOWN_STEP_MS);
+    const overallT = Math.min(1, (step + stepT) / COUNTDOWN_STEPS);
+
+    // radial glow pulse fired on each beat
+    const pulseT = Math.min(1, (now - pulseStartTime) / 480);
+    if (pulseT < 1) {
+      ctx.save();
+      const pulseR = ringR * (1 + pulseT * 0.7);
+      const pulseAlpha = (1 - pulseT) * 0.3;
+      const glow = ctx.createRadialGradient(cx, cy, ringR * 0.5, cx, cy, pulseR);
+      glow.addColorStop(0, hexToRgba(COLOR.accent, 0));
+      glow.addColorStop(0.75, hexToRgba(COLOR.accent, pulseAlpha));
+      glow.addColorStop(1, hexToRgba(COLOR.accent, 0));
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, pulseR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // dial tick marks around the ring — highlight sweeps with overall progress
+    const tickCount = 24;
+    for (let i = 0; i < tickCount; i++) {
+      const a = (i / tickCount) * Math.PI * 2 - Math.PI / 2;
+      const passed = i / tickCount <= overallT;
+      const inner = ringR + 12;
+      const outer = ringR + (i % 6 === 0 ? 21 : 17);
+      ctx.save();
+      ctx.lineWidth = i % 6 === 0 ? 2.5 : 1.5;
+      ctx.strokeStyle = passed ? COLOR.accent : COLOR.gray200;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner);
+      ctx.lineTo(cx + Math.cos(a) * outer, cy + Math.sin(a) * outer);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // background track
     ctx.save();
-    ctx.lineWidth = 9;
+    ctx.lineWidth = 10;
     ctx.strokeStyle = COLOR.gray200;
     ctx.beginPath();
     ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
 
-    // per-tick progress sweep
+    // per-tick progress sweep, gradient stroke
     ctx.save();
-    ctx.lineWidth = 9;
+    const ringGrad = ctx.createLinearGradient(cx - ringR, cy - ringR, cx + ringR, cy + ringR);
+    ringGrad.addColorStop(0, COLOR.accent);
+    ringGrad.addColorStop(1, COLOR.accentDark);
+    ctx.lineWidth = 10;
     ctx.lineCap = "round";
-    ctx.strokeStyle = COLOR.accent;
+    ctx.strokeStyle = ringGrad;
     ctx.shadowColor = COLOR.accent;
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = 14;
     ctx.beginPath();
     ctx.arc(cx, cy, ringR, -Math.PI / 2, -Math.PI / 2 + stepT * Math.PI * 2);
     ctx.stroke();
     ctx.restore();
 
-    // number / GO with bounce-in scale
+    // number / GO with bounce-in scale + subtle extrusion depth
     const label = COUNTDOWN_STEPS - step > 0 ? String(COUNTDOWN_STEPS - step) : t("canvas.go");
     const popT = Math.min(1, stepElapsed / 220);
     const scale = 0.6 + easeOutBack(popT) * 0.4;
+    const fontPx = Math.min(150, W * 0.32);
 
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.translate(cx, cy);
     ctx.scale(scale, scale);
+    ctx.font = `400 ${fontPx}px ${TITLE_FONT}`;
+    ctx.fillStyle = COLOR.accentDark;
+    ctx.globalAlpha = 0.55;
+    ctx.fillText(label, 3, 9);
+    ctx.globalAlpha = 1;
     ctx.fillStyle = COLOR.ink;
-    ctx.font = `400 ${Math.min(128, W * 0.28)}px ${TITLE_FONT}`;
     ctx.fillText(label, 0, 4);
     ctx.restore();
 
-    // step dots
-    const dotGap = 20;
-    const dotY = cy + ringR + 36;
+    // step dots — glowing capsules
+    const dotW = 30;
+    const dotGap = 14;
+    const totalW = COUNTDOWN_STEPS * dotW + (COUNTDOWN_STEPS - 1) * dotGap;
+    const dotY = cy + ringR + 44;
     for (let i = 0; i < COUNTDOWN_STEPS; i++) {
       const filled = i < step || step === COUNTDOWN_STEPS;
+      const dotX = cx - totalW / 2 + i * (dotW + dotGap);
       ctx.save();
-      ctx.beginPath();
-      ctx.arc(cx - dotGap + i * dotGap, dotY, 5, 0, Math.PI * 2);
-      ctx.fillStyle = filled ? COLOR.accent : COLOR.gray200;
+      if (filled) {
+        ctx.shadowColor = COLOR.accent;
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = COLOR.accent;
+      } else {
+        ctx.fillStyle = COLOR.gray200;
+      }
+      roundRect(dotX, dotY - 4, dotW, 8, 4);
       ctx.fill();
       ctx.restore();
     }
@@ -767,11 +835,20 @@
   }
 
   function drawReel(now) {
-    const centerY = H / 2;
     const visibleRows = VISIBLE_ROWS;
     const reelHeight = ROW_HEIGHT * visibleRows;
-    const reelWidth = Math.min(560, W - 32);
+    const reelWidth = Math.min(640, W - 24);
     const reelX = W / 2 - reelWidth / 2;
+
+    // Center the reel within the space below the fixed header + caption,
+    // instead of the raw viewport center, so a tall reel never gets
+    // painted over the "Picking winner…" caption above it.
+    const headerY = Math.max(HEADER_CLEARANCE + 24, H * 0.14);
+    const topClear = headerY + 40;
+    const bottomClear = 24;
+    const availH = Math.max(200, H - topClear - bottomClear);
+    const centerY =
+      reelHeight <= availH ? topClear + availH / 2 : topClear + reelHeight / 2;
     const reelY = centerY - reelHeight / 2;
 
     const offset = currentScrollOffset(now);
@@ -788,10 +865,14 @@
 
     ctx.save();
     ctx.beginPath();
-    roundRect(reelX, reelY, reelWidth, reelHeight, 20);
+    roundRect(reelX, reelY, reelWidth, reelHeight, 24);
     ctx.clip();
 
-    ctx.fillStyle = COLOR.gray50;
+    const bgGrad = ctx.createLinearGradient(0, reelY, 0, reelY + reelHeight);
+    bgGrad.addColorStop(0, "#fbfaf8");
+    bgGrad.addColorStop(0.5, COLOR.gray50);
+    bgGrad.addColorStop(1, "#fbfaf8");
+    ctx.fillStyle = bgGrad;
     ctx.fillRect(reelX, reelY, reelWidth, reelHeight);
 
     const baseIndex = Math.floor(offset / ROW_HEIGHT);
@@ -810,15 +891,17 @@
       // reelY downward, then scrolled upward by `partial` pixels.
       const y = reelY + (row + 0.5) * ROW_HEIGHT - partial;
       const distFromCenter = Math.abs(y - centerY);
-      const scale = Math.max(0.72, 1 - distFromCenter / (reelHeight * 1.4));
-      const alpha = Math.max(0.3, 1 - distFromCenter / (reelHeight * 0.9));
+      const distNorm = Math.min(1, distFromCenter / (reelHeight * 0.62));
+      const scale = Math.max(0.66, 1 - distNorm * 0.4);
+      const curvatureX = Math.max(0.78, 1 - distNorm * 0.24);
+      const alpha = Math.max(0.28, 1 - distFromCenter / (reelHeight * 0.9));
 
       for (let b = 0; b < blurCopies; b++) {
         const blurOffset = b === 0 ? 0 : (b - 1.5) * 6;
         ctx.save();
         ctx.globalAlpha = alpha * (blurCopies > 1 ? 0.35 : 1);
         ctx.translate(reelX + reelWidth / 2, y + blurOffset);
-        ctx.scale(scale, scale);
+        ctx.scale(scale * curvatureX, scale);
         ctx.font = `700 ${REEL_FONT_PX}px ${BODY_FONT}`;
         ctx.fillStyle = COLOR.ink;
         ctx.fillText(truncate(name, 24), 0, 0);
@@ -827,33 +910,64 @@
     }
 
     // fade top/bottom
-    const fadeTop = ctx.createLinearGradient(0, reelY, 0, reelY + reelHeight * 0.35);
-    fadeTop.addColorStop(0, "rgba(255,255,255,0.97)");
-    fadeTop.addColorStop(1, "rgba(255,255,255,0)");
+    const fadeTop = ctx.createLinearGradient(0, reelY, 0, reelY + reelHeight * 0.38);
+    fadeTop.addColorStop(0, "rgba(251,250,248,0.98)");
+    fadeTop.addColorStop(1, "rgba(251,250,248,0)");
     ctx.fillStyle = fadeTop;
-    ctx.fillRect(reelX, reelY, reelWidth, reelHeight * 0.35);
+    ctx.fillRect(reelX, reelY, reelWidth, reelHeight * 0.38);
 
-    const fadeBottom = ctx.createLinearGradient(0, reelY + reelHeight * 0.65, 0, reelY + reelHeight);
-    fadeBottom.addColorStop(0, "rgba(255,255,255,0)");
-    fadeBottom.addColorStop(1, "rgba(255,255,255,0.97)");
+    const fadeBottom = ctx.createLinearGradient(0, reelY + reelHeight * 0.62, 0, reelY + reelHeight);
+    fadeBottom.addColorStop(0, "rgba(251,250,248,0)");
+    fadeBottom.addColorStop(1, "rgba(251,250,248,0.98)");
     ctx.fillStyle = fadeBottom;
-    ctx.fillRect(reelX, reelY + reelHeight * 0.65, reelWidth, reelHeight * 0.35);
+    ctx.fillRect(reelX, reelY + reelHeight * 0.62, reelWidth, reelHeight * 0.38);
+
+    // glowing filled center band (the "selected" chip)
+    const bandY = centerY - ROW_HEIGHT / 2;
+    ctx.save();
+    const bandGrad = ctx.createLinearGradient(reelX, 0, reelX + reelWidth, 0);
+    bandGrad.addColorStop(0, hexToRgba(COLOR.accent, 0.16));
+    bandGrad.addColorStop(0.5, hexToRgba(COLOR.accent, 0.26));
+    bandGrad.addColorStop(1, hexToRgba(COLOR.accent, 0.16));
+    ctx.fillStyle = bandGrad;
+    roundRect(reelX + 6, bandY, reelWidth - 12, ROW_HEIGHT, 12);
+    ctx.fill();
+    ctx.restore();
 
     ctx.restore();
 
-    // border + center highlight band
+    // border + intensifying glow while spinning fast
     ctx.save();
     ctx.lineWidth = 1.5;
     ctx.strokeStyle = COLOR.gray200;
-    roundRect(reelX, reelY, reelWidth, reelHeight, 20);
+    roundRect(reelX, reelY, reelWidth, reelHeight, 24);
     ctx.stroke();
 
-    const bandY = centerY - ROW_HEIGHT / 2;
     ctx.strokeStyle = COLOR.accent;
     ctx.lineWidth = 2.5;
     ctx.shadowColor = COLOR.accent;
-    ctx.shadowBlur = 10;
-    ctx.strokeRect(reelX + 6, bandY, reelWidth - 12, ROW_HEIGHT);
+    ctx.shadowBlur = isFast ? 16 : 10;
+    roundRect(reelX + 6, bandY, reelWidth - 12, ROW_HEIGHT, 12);
+    ctx.stroke();
+    ctx.restore();
+
+    // slot-machine pointer triangles marking the winning row
+    ctx.save();
+    ctx.fillStyle = COLOR.accent;
+    const triY = centerY;
+    const triSize = 9;
+    ctx.beginPath();
+    ctx.moveTo(reelX - 4, triY - triSize);
+    ctx.lineTo(reelX - 4 + triSize + 4, triY);
+    ctx.lineTo(reelX - 4, triY + triSize);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(reelX + reelWidth + 4, triY - triSize);
+    ctx.lineTo(reelX + reelWidth + 4 - triSize - 4, triY);
+    ctx.lineTo(reelX + reelWidth + 4, triY + triSize);
+    ctx.closePath();
+    ctx.fill();
     ctx.restore();
 
     return { reelX, reelWidth, centerY };
@@ -873,30 +987,83 @@
     ctx.closePath();
   }
 
+  // Five-point star, used for the reveal/final badges instead of emoji.
+  function drawStar(cx, cy, outerR, innerR, fillStyle) {
+    ctx.save();
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 === 0 ? outerR : innerR;
+      const a = (Math.PI / 5) * i - Math.PI / 2;
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = fillStyle;
+    ctx.fill();
+    ctx.restore();
+  }
+
   function drawReveal(now) {
     const revealT = Math.min(1, (now - revealStartTime) / REVEAL_MS);
     const pop = revealT < 0.25 ? easeOutQuad(revealT / 0.25) : 1;
     const scale = 0.85 + pop * 0.15;
+    const cx = W / 2;
+    const cy = H / 2;
 
     // Soft colored spotlight behind the winner name (replaces the
     // shadowBlur glow, which only reads well on a dark background).
     ctx.save();
-    const spotR = Math.max(160, REVEAL_FONT_PX * 4);
-    const spot = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, spotR);
+    const spotR = Math.max(180, REVEAL_FONT_PX * 4.2);
+    const spot = ctx.createRadialGradient(cx, cy, 0, cx, cy, spotR);
     spot.addColorStop(0, hexToRgba(COLOR.accent, 0.22));
     spot.addColorStop(1, hexToRgba(COLOR.accent, 0));
     ctx.fillStyle = spot;
-    ctx.fillRect(W / 2 - spotR, H / 2 - spotR, spotR * 2, spotR * 2);
+    ctx.fillRect(cx - spotR, cy - spotR, spotR * 2, spotR * 2);
     ctx.restore();
+
+    // Badge star above the name, popping in slightly ahead of the text.
+    const badgeT = Math.max(0, Math.min(1, (revealT - 0.05) / 0.3));
+    if (badgeT > 0) {
+      const badgeScale = easeOutBack(badgeT);
+      const badgeY = cy - REVEAL_FONT_PX * 0.95 - 30;
+      ctx.save();
+      ctx.translate(cx, badgeY);
+      ctx.scale(badgeScale, badgeScale);
+      const starGrad = ctx.createLinearGradient(-18, -18, 18, 18);
+      starGrad.addColorStop(0, COLOR.accent);
+      starGrad.addColorStop(1, COLOR.accentDark);
+      ctx.shadowColor = COLOR.accent;
+      ctx.shadowBlur = 12;
+      drawStar(0, 0, 18, 8, starGrad);
+      ctx.restore();
+    }
 
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.translate(W / 2, H / 2);
+    ctx.translate(cx, cy);
     ctx.scale(scale, scale);
     ctx.fillStyle = COLOR.ink;
     ctx.font = `400 ${REVEAL_FONT_PX}px ${TITLE_FONT}`;
     ctx.fillText(truncate(currentWinnerName, 22), 0, -10);
+    ctx.restore();
+
+    // Thin gradient divider between the name and the "Winner X of N" caption.
+    const dividerY = cy + REVEAL_FONT_PX * 0.55;
+    const dividerW = Math.min(120, REVEAL_FONT_PX * 2.6);
+    ctx.save();
+    const divGrad = ctx.createLinearGradient(cx - dividerW / 2, 0, cx + dividerW / 2, 0);
+    divGrad.addColorStop(0, hexToRgba(COLOR.accent, 0));
+    divGrad.addColorStop(0.5, COLOR.accent);
+    divGrad.addColorStop(1, hexToRgba(COLOR.accent, 0));
+    ctx.strokeStyle = divGrad;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - dividerW / 2, dividerY);
+    ctx.lineTo(cx + dividerW / 2, dividerY);
+    ctx.stroke();
     ctx.restore();
 
     ctx.save();
@@ -905,8 +1072,8 @@
     ctx.font = `600 ${HEADER_FONT_PX}px ${BODY_FONT}`;
     ctx.fillText(
       t("canvas.winnerOf", { i: winners.length, n: winnersWanted }),
-      W / 2,
-      H / 2 + REVEAL_FONT_PX * 0.9 + 16
+      cx,
+      dividerY + 24
     );
     ctx.restore();
 
@@ -923,14 +1090,74 @@
   }
 
   function drawFinal(now) {
-    const topY = Math.max(HEADER_CLEARANCE + 32, H * 0.14);
+    const availTop = HEADER_CLEARANCE + 20;
+    const bottomReserve = Math.max(170, H * 0.25);
+    const availBottom = Math.max(availTop + 200, H - bottomReserve);
+    const availHeight = availBottom - availTop;
+
+    const n = Math.max(1, winners.length);
+    const titleBlockH = FINAL_TITLE_PX + 50;
+    const rowGap = 10;
+    const maxRowH = FINAL_ROW_PX + 30;
+    const minRowH = FINAL_ROW_PX + 14;
+    const rowsAvail = availHeight - titleBlockH - 28;
+    const lineHeight = Math.max(minRowH, Math.min(maxRowH, rowsAvail / n - rowGap));
+    const rowsBlockH = n * lineHeight + (n - 1) * rowGap;
+    const contentH = titleBlockH + 28 + rowsBlockH;
+
+    const cardWidth = Math.min(560, W - 32);
+    const cardPad = 24;
+    const cardHeight = Math.min(availHeight, contentH + cardPad * 2);
+    const cardTop = availTop + Math.max(0, (availHeight - cardHeight) / 2);
+    const cardX = W / 2 - cardWidth / 2;
+
+    // Card container
+    ctx.save();
+    ctx.shadowColor = "rgba(23,20,15,0.14)";
+    ctx.shadowBlur = 40;
+    ctx.shadowOffsetY = 18;
+    ctx.fillStyle = COLOR.white;
+    roundRect(cardX, cardTop, cardWidth, cardHeight, 24);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = COLOR.gray200;
+    ctx.lineWidth = 1;
+    roundRect(cardX, cardTop, cardWidth, cardHeight, 24);
+    ctx.stroke();
+    ctx.restore();
+
+    // Top accent bar, matching the DOM panel treatment
+    ctx.save();
+    ctx.beginPath();
+    roundRect(cardX, cardTop, cardWidth, cardHeight, 24);
+    ctx.clip();
+    const barGrad = ctx.createLinearGradient(cardX, 0, cardX + cardWidth, 0);
+    barGrad.addColorStop(0, COLOR.accent);
+    barGrad.addColorStop(1, COLOR.accentDark);
+    ctx.fillStyle = barGrad;
+    ctx.fillRect(cardX, cardTop, cardWidth, 5);
+    ctx.restore();
+
+    const contentTop = cardTop + cardPad;
+    const titleY = contentTop + FINAL_TITLE_PX * 0.7;
+
+    // Trophy-style star badge above the title
+    ctx.save();
+    const badgeGrad = ctx.createLinearGradient(-16, -16, 16, 16);
+    badgeGrad.addColorStop(0, COLOR.accent);
+    badgeGrad.addColorStop(1, COLOR.accentDark);
+    ctx.translate(W / 2, titleY - FINAL_TITLE_PX * 0.85);
+    drawStar(0, 0, 15, 6.5, badgeGrad);
+    ctx.restore();
 
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = COLOR.ink;
     ctx.font = `400 ${FINAL_TITLE_PX}px ${TITLE_FONT}`;
-    ctx.fillText(t("canvas.winnersTitle"), W / 2, topY);
+    ctx.fillText(t("canvas.winnersTitle"), W / 2, titleY);
     ctx.restore();
 
     const dateStr = formatDateNice(giveawayDateInput.value);
@@ -940,40 +1167,64 @@
     ctx.textAlign = "center";
     ctx.fillStyle = COLOR.accentDark;
     ctx.font = `600 ${Math.max(12, HEADER_FONT_PX - 4)}px ${BODY_FONT}`;
-    ctx.fillText(subtitle, W / 2, topY + FINAL_TITLE_PX * 0.6 + 10);
+    ctx.fillText(truncate(subtitle, 60), W / 2, titleY + FINAL_TITLE_PX * 0.6 + 8);
     ctx.restore();
 
-    const medals = ["🥇", "🥈", "🥉"];
-    const startY = topY + FINAL_TITLE_PX + 56;
-    const lineHeight = FINAL_ROW_PX + 32;
-    const cardWidth = Math.min(520, W - 40);
+    const rowsStartY = contentTop + titleBlockH + 20;
+    const rowWidth = cardWidth - cardPad * 2;
+    const badgeR = Math.min(18, lineHeight * 0.32);
 
-    ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     winners.forEach((name, i) => {
       const rowElapsed = now - finalStartTime - i * ROW_STAGGER_MS;
       const rt = Math.max(0, Math.min(1, rowElapsed / FINAL_INTRO_MS));
       if (rt <= 0) return;
-      const rowScale = 0.85 + easeOutQuad(rt) * 0.15;
+      const rowScale = 0.9 + easeOutQuad(rt) * 0.1;
       const rowAlpha = rt;
-      const rowOffsetY = (1 - easeOutQuad(rt)) * 16;
+      const rowOffsetY = (1 - easeOutQuad(rt)) * 14;
 
-      const y = startY + i * lineHeight;
-      const label = (medals[i] || `#${i + 1}`) + "  " + truncate(name, 30);
+      const rowCy = rowsStartY + i * (lineHeight + rowGap) + lineHeight / 2;
 
       ctx.save();
       ctx.globalAlpha = rowAlpha;
-      ctx.translate(W / 2, y + rowOffsetY);
+      ctx.translate(W / 2, rowCy + rowOffsetY);
       ctx.scale(rowScale, rowScale);
+
       ctx.fillStyle = COLOR.gray50;
-      roundRect(-cardWidth / 2, -lineHeight / 2 + 6, cardWidth, lineHeight - 12, 14);
+      roundRect(-rowWidth / 2, -lineHeight / 2, rowWidth, lineHeight, 14);
       ctx.fill();
       ctx.strokeStyle = COLOR.gray200;
       ctx.lineWidth = 1;
       ctx.stroke();
+
+      // rank badge (vector circle, no emoji)
+      const badgeCx = -rowWidth / 2 + 16 + badgeR;
+      const rankGrad = ctx.createLinearGradient(
+        badgeCx - badgeR,
+        -badgeR,
+        badgeCx + badgeR,
+        badgeR
+      );
+      if (i === 0) {
+        rankGrad.addColorStop(0, COLOR.accent);
+        rankGrad.addColorStop(1, COLOR.accentDark);
+      } else {
+        rankGrad.addColorStop(0, COLOR.gray200);
+        rankGrad.addColorStop(1, COLOR.gray500);
+      }
+      ctx.beginPath();
+      ctx.arc(badgeCx, 0, badgeR, 0, Math.PI * 2);
+      ctx.fillStyle = rankGrad;
+      ctx.fill();
+      ctx.textAlign = "center";
+      ctx.fillStyle = i === 0 ? COLOR.black : COLOR.white;
+      ctx.font = `400 ${Math.max(12, badgeR * 1.05)}px ${TITLE_FONT}`;
+      ctx.fillText(String(i + 1), badgeCx, badgeR * 0.08);
+
+      ctx.textAlign = "left";
       ctx.fillStyle = COLOR.ink;
       ctx.font = `700 ${FINAL_ROW_PX}px ${BODY_FONT}`;
-      ctx.fillText(label, 0, 0);
+      ctx.fillText(truncate(name, 28), badgeCx + badgeR + 14, badgeR * 0.08);
       ctx.restore();
     });
 

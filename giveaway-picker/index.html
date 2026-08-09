@@ -15,11 +15,6 @@
 
 <header id="app-header">
   <div class="header-logo" aria-hidden="true">
-    <svg viewBox="0 0 100 100">
-      <ellipse cx="50" cy="58" rx="47" ry="15" transform="rotate(-18 50 58)" fill="none" stroke="var(--ps-brand-amber)" stroke-width="8"/>
-      <circle cx="44" cy="42" r="27" fill="#0a0a0a"/>
-      <path d="M44 15 A27 27 0 0 0 44 69 Z" fill="#ffffff"/>
-    </svg>
     <span class="header-logo-text"><span class="light">PLANET</span><span class="bold">SPORT</span></span>
   </div>
   <div class="lang-toggle" id="lang-toggle" role="group" aria-label="Language">
@@ -32,24 +27,24 @@
 
 <section id="home-screen" class="overlay">
   <div class="panel" style="position: relative;">
-    <button id="mute-btn" class="mute-btn" type="button" data-i18n-aria="mute.mute">🔊</button>
+    <button id="mute-btn" class="mute-btn" type="button" data-i18n-aria="mute.mute"><span id="mute-icon" class="icon" aria-hidden="true"></span></button>
 
     <h1 class="title-font home-title" data-i18n="home.title">GIVEAWAY ROULETTE</h1>
     <span class="title-accent-dot" aria-hidden="true"></span>
     <p class="home-tagline" data-i18n="home.tagline">Pick your winners live, on camera, in seconds.</p>
 
     <div class="field-block">
-      <label for="giveaway-name"><span aria-hidden="true">🏷️</span> <span data-i18n="home.nameLabel">Giveaway name</span></label>
+      <label for="giveaway-name"><span class="field-icon icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.59 2.59A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17c0 .53.21 1.04.59 1.41l9 9a2 2 0 0 0 2.82 0l7.17-7.17a2 2 0 0 0 0-2.82Z"/><circle cx="7.5" cy="7.5" r="1.4" fill="currentColor" stroke="none"/></svg></span> <span data-i18n="home.nameLabel">Giveaway name</span></label>
       <input type="text" id="giveaway-name" maxlength="60" />
     </div>
 
     <div class="field-block">
-      <label for="giveaway-date"><span aria-hidden="true">📅</span> <span data-i18n="home.dateLabel">Giveaway date</span></label>
+      <label for="giveaway-date"><span class="field-icon icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M16 2.5v4M8 2.5v4M3 9.5h18"/></svg></span> <span data-i18n="home.dateLabel">Giveaway date</span></label>
       <input type="date" id="giveaway-date" />
     </div>
 
     <div class="color-field">
-      <label><span aria-hidden="true">🎨</span> <span data-i18n="home.colorLabel">Giveaway color</span></label>
+      <label><span class="field-icon icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20c1.1 0 2-.9 2-2 0-.5-.19-.96-.5-1.35-.3-.4-.5-.9-.5-1.45 0-1.1.9-2 2-2h2.15c1.85 0 3.35-1.5 3.35-3.35C20.5 6.53 16.75 2 12 2Z"/><circle cx="7.3" cy="12" r="1.35" fill="currentColor" stroke="none"/><circle cx="9.6" cy="7.4" r="1.35" fill="currentColor" stroke="none"/><circle cx="14.6" cy="7.4" r="1.35" fill="currentColor" stroke="none"/><circle cx="16.8" cy="12" r="1.35" fill="currentColor" stroke="none"/></svg></span> <span data-i18n="home.colorLabel">Giveaway color</span></label>
       <div class="swatch-row" id="swatch-row">
         <button type="button" class="swatch" data-color="#f5a623" style="background:#f5a623" aria-label="Amber"></button>
         <button type="button" class="swatch" data-color="#e63946" style="background:#e63946" aria-label="Red"></button>
@@ -95,9 +90,9 @@
 
 <div id="controls-overlay" class="controls-overlay screen-hidden">
   <div class="controls-row">
-    <button id="download-video-btn" class="btn btn-primary">⬇ <span data-i18n="controls.downloadVideo">Download Video</span></button>
-    <button id="download-image-btn" class="btn btn-secondary">🖼 <span data-i18n="controls.downloadImage">Download Final Screen</span></button>
-    <button id="restart-btn" class="btn btn-secondary">↺ <span data-i18n="controls.newGiveaway">New Giveaway</span></button>
+    <button id="download-video-btn" class="btn btn-primary"><span class="btn-icon icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 19.5h16"/></svg></span> <span data-i18n="controls.downloadVideo">Download Video</span></button>
+    <button id="download-image-btn" class="btn btn-secondary"><span class="btn-icon icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5.5" width="18" height="14" rx="2.5"/><circle cx="9" cy="12" r="2.4"/><path d="m21 17-4.3-4.3a2 2 0 0 0-2.8 0L9 17"/></svg></span> <span data-i18n="controls.downloadImage">Download Final Screen</span></button>
+    <button id="restart-btn" class="btn btn-secondary"><span class="btn-icon icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v5h5"/></svg></span> <span data-i18n="controls.newGiveaway">New Giveaway</span></button>
   </div>
   <div id="recording-note" class="recording-note" hidden></div>
 </div>

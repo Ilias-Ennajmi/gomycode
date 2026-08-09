@@ -41,8 +41,11 @@ Then open the printed local URL.
 
 ## Notes
 
-- Recording uses `canvas.captureStream()` + `MediaRecorder`, so it works entirely client-side
-  with no server or external service.
+- Recording uses `canvas.captureStream()` + `MediaRecorder` at a high bitrate, so it works
+  entirely client-side with no server or external service. The app records straight to `.mp4`
+  on browsers that support it natively (Safari, some Chromium builds); everywhere else it
+  records a high-quality `.webm`, which plays and uploads fine everywhere (including
+  Instagram/TikTok/YouTube) — it just isn't literally named `.mp4`.
 - If the browser doesn't support `MediaRecorder`, video download is disabled automatically
   but the image download and the live animation still work.
 - Name list is saved to `localStorage` between sessions for convenience.
