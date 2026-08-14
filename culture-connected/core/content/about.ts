@@ -13,6 +13,11 @@ export const aboutContent = {
     en: 'Marketers and creators based in London, working across MENA, Europe, Ibiza and Dubai. We take on a limited number of artists and venues at a time, because the work is hands on.',
   } satisfies Localized,
 
+  missionQuote: {
+    en: 'We are a collective of passionate creators and dedicated marketers, putting work wherever our devices connect.',
+    fr: 'Nous sommes un collectif de créateurs passionnés et de marketeurs dévoués, qui travaillent partout où nos appareils se connectent.',
+  } satisfies Localized,
+
   howWeWorkHeading: { en: 'How we work', fr: 'Comment on travaille' } satisfies Localized,
   howWeWork: [
     {

@@ -53,6 +53,16 @@ export function Footer({ locale }: { locale: Locale }) {
                   {t(footerCopy.contactLabel, locale)}
                 </a>
               </li>
+              <li>
+                <a href={`mailto:${footerContent.email}`} className="text-ink no-underline">
+                  {footerContent.email}
+                </a>
+              </li>
+              <li>
+                <a href={`tel:${footerContent.phone.replace(/\s+/g, '')}`} className="text-ink no-underline">
+                  {footerContent.phone}
+                </a>
+              </li>
             </ul>
           </div>
 

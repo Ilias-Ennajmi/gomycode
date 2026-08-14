@@ -16,6 +16,8 @@ export const contactShared = {
 export const footerContent = {
   domain: 'cultureconnected.agency',
   city: 'London',
+  email: 'team@cultureconnected.agency',
+  phone: '+44 78 2588 9731',
   instagramHandle: '@cultureconnected_',
   instagramUrl: 'https://instagram.com/cultureconnected_',
 };

@@ -13,19 +13,19 @@ import { Eyebrow } from '@/components/ui/Eyebrow';
 import { StatTicket } from '@/components/ui/StatTicket';
 import { ContactSection } from '@/components/layout/ContactSection';
 import { ObjectivePanels } from '@/components/sections/ObjectivePanels';
-import { homeContent } from '@/core/content/home';
+import { venueRoster } from '@/core/content/roster';
 
 function VenueLogoRow() {
   return (
-    <div className="flex gap-4 pr-4">
-      {homeContent.roster.promoters.chips.map((name, i) => (
+    <div className="flex items-center gap-4 pr-4">
+      {venueRoster.map((venue) => (
         <div
-          key={i}
-          className="flex h-[46px] w-[160px] flex-none items-center justify-center rounded-full bg-chip"
+          key={venue.slug}
+          className="flex h-[46px] w-[160px] flex-none items-center justify-center overflow-hidden rounded-full bg-chip px-3"
+          title={venue.name}
         >
-          <span className="whitespace-nowrap px-3 font-mono text-[10px] uppercase tracking-[.1em] text-muted">
-            {name}
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={venue.image} alt={venue.name} className="max-h-[30px] max-w-full object-contain" loading="lazy" />
         </div>
       ))}
     </div>
@@ -81,9 +81,30 @@ export default function ForPromotersPage({ params }: { params: { locale: Locale 
 
       <section id="venue" className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(28px,4vw,48px)]">
         <ObjectivePanels objectiveA={c.objectiveA} objectiveB={c.objectiveB} locale={locale} />
-        <Reveal as="p" className="m-0 mt-[18px] max-w-[640px] font-mono text-[11px] font-normal leading-[1.6] text-muted">
-          {t(c.provisionalNote, locale)}
-        </Reveal>
+      </section>
+
+      <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
+        <div className="rounded-[clamp(20px,3vw,30px)] bg-surface p-[clamp(28px,4vw,44px)]">
+          <Reveal as="h2" className="m-0 font-sora text-[clamp(24px,3.2vw,34px)] font-bold leading-[1.05] tracking-[-.03em] text-ink">
+            {t(c.tacticsHeading, locale)}
+          </Reveal>
+          <Reveal as="p" className="m-0 mt-2 font-sora text-[16px] font-medium leading-[1.4] text-muted">
+            {t(c.tacticsIntro, locale)}
+          </Reveal>
+          <ul className="m-0 mt-[clamp(18px,2.6vw,28px)] grid list-none grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-x-8 gap-y-3 p-0">
+            {c.tactics.map((tactic, i) => (
+              <Reveal
+                key={tactic.en}
+                index={i}
+                as="li"
+                className="flex gap-3 border-t border-line pt-3 font-sora text-[14px] font-light leading-[1.5] text-ink"
+              >
+                <span className="text-red">→</span>
+                <span>{t(tactic, locale)}</span>
+              </Reveal>
+            ))}
+          </ul>
+        </div>
       </section>
 
       <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
@@ -139,6 +160,29 @@ export default function ForPromotersPage({ params }: { params: { locale: Locale 
               />
               <div className="mt-[14px] font-sora text-[16px] font-medium leading-[1.3] text-ink">{t(stat.label, locale)}</div>
               <div className="mt-[10px] font-mono text-[11px] text-muted">{stat.sublabel}</div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
+        <Reveal as="h2" className="font-sora text-[clamp(28px,3.6vw,40px)] font-bold leading-none tracking-[-.035em] text-ink">
+          {t(c.venuesHeading, locale)}
+        </Reveal>
+        <Reveal as="p" className="m-0 mt-3 max-w-[560px] font-sora text-[13px] font-light leading-[1.5] text-muted">
+          {t(c.venuesNote, locale)}
+        </Reveal>
+        <div className="mt-[clamp(22px,3vw,32px)] grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-x-4 gap-y-[clamp(20px,2.6vw,28px)]">
+          {venueRoster.map((venue, i) => (
+            <Reveal key={venue.slug} index={i % 8} className="flex flex-col items-center text-center">
+              <div className="flex h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-full bg-chip p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={venue.image} alt={venue.name} className="h-full w-full object-contain" loading="lazy" />
+              </div>
+              <div className="mt-3 font-sora text-[13px] font-semibold leading-[1.25] text-ink">{venue.name}</div>
+              {venue.location ? (
+                <div className="mt-1 font-mono text-[10px] uppercase tracking-[.08em] text-muted">{venue.location}</div>
+              ) : null}
             </Reveal>
           ))}
         </div>

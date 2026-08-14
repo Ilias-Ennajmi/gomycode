@@ -17,23 +17,24 @@ import { ContactSection } from '@/components/layout/ContactSection';
 import { PillarMarker } from '@/components/sections/PillarMarker';
 import { CaseStudiesPreview } from '@/components/sections/CaseStudiesPreview';
 import { PurposeSection } from '@/components/sections/PurposeSection';
+import { recordLabels } from '@/core/content/roster';
 
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
   const { locale } = params;
   return { title: `culture connected — ${t(homeContent.eyebrow, locale)}` };
 }
 
-const LOGO_COUNT = 8;
-
 function LogoRow() {
   return (
-    <div className="flex gap-4 pr-4">
-      {Array.from({ length: LOGO_COUNT }).map((_, i) => (
+    <div className="flex items-center gap-4 pr-4">
+      {recordLabels.map((label) => (
         <div
-          key={i}
-          className="flex h-[46px] w-[138px] flex-none items-center justify-center rounded-full bg-chip"
+          key={label.slug}
+          className="flex h-[62px] w-[168px] flex-none items-center justify-center rounded-full bg-chip px-5 py-2"
+          title={label.name}
         >
-          <span className="font-mono text-[10px] tracking-[.12em] text-muted">LOGO</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={label.image} alt={label.name} className="max-h-[38px] max-w-full object-contain" loading="lazy" />
         </div>
       ))}
     </div>

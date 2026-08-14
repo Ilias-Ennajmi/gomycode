@@ -16,7 +16,7 @@ import { StatTicket } from '@/components/ui/StatTicket';
 import { MobileCarousel } from '@/components/ui/MobileCarousel';
 import { ContactSection } from '@/components/layout/ContactSection';
 import { PurposeSection } from '@/components/sections/PurposeSection';
-import { homeContent } from '@/core/content/home';
+import { artistRoster } from '@/core/content/roster';
 import type { Localized } from '@/core/i18n/localized';
 import type { ServiceIconName } from '@/components/ui/ServiceIcon';
 
@@ -53,10 +53,16 @@ function HandleCard({
 function ArtistRow() {
   return (
     <div className="flex items-center gap-8 pr-8">
-      {homeContent.roster.artists.chips.map((name, i) => (
-        <span key={i} className="flex items-center gap-3">
-          <span className="placeholder-stripes h-10 w-10 flex-none rounded-full" />
-          <span className="whitespace-nowrap font-sora text-[14px] font-medium text-ink">{name}</span>
+      {artistRoster.map((artist) => (
+        <span key={artist.slug} className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={artist.image}
+            alt={artist.name}
+            className="h-10 w-10 flex-none rounded-full object-cover"
+            loading="lazy"
+          />
+          <span className="whitespace-nowrap font-sora text-[14px] font-medium text-ink">{artist.name}</span>
         </span>
       ))}
     </div>

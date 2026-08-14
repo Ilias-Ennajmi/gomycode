@@ -31,7 +31,7 @@ export const forArtistsContent = {
       icon: 'streams' as ServiceIconName,
       heading: { en: 'Ad optimisation for streams' } satisfies Localized,
       body: {
-        en: 'Save-to-listener mechanics on Spotify: ads pointed at saves, saves converted into monthly listeners.',
+        en: 'Save-to-listener mechanics on Spotify and Beatport: ads pointed at saves, saves converted into monthly listeners.',
       } satisfies Localized,
     },
     {
@@ -69,15 +69,15 @@ export const forArtistsContent = {
   ],
 
   proofHeading: { en: 'Proof', fr: 'Preuves' } satisfies Localized,
-  proofNote: { en: 'FIGURES PENDING FINAL DECK' } satisfies Localized,
+  proofNote: { en: 'FROM OUR CLIENT DECK' } satisfies Localized,
   proofStats: [
     {
-      value: 1.2,
+      value: 2.2,
       decimals: 1,
       suffix: 'M',
       label: { en: 'streams added on one release campaign' },
-      sublabel: 'RE.YOU →',
-      anchor: 'reyou',
+      sublabel: 'LEVYM × SHIMZA →',
+      anchor: 'levym',
     },
     {
       value: 38,

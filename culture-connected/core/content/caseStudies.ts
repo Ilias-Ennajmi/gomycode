@@ -10,6 +10,8 @@ export interface CaseStudy {
   name: string;
   summary: Localized;
   imageLabel: Localized;
+  /** Real campaign photo from the client deck, when we have one. Falls back to PlaceholderPanel when absent. */
+  image?: string;
   objective: Localized;
   whatWeDid: Localized;
   stats: StatItem[];
@@ -23,7 +25,7 @@ export const caseStudiesPageContent = {
     suffix: { en: '.', fr: '.' },
   } satisfies AccentHeading,
   intro: {
-    en: 'Six campaigns, artist and venue side. Figures below are placeholders until the final deck data is confirmed.',
+    en: 'Eight campaigns, artist and venue side. Real figures from our client reporting.',
   } satisfies Localized,
   contactHeading: {
     en: 'The next one could be yours.',
@@ -73,62 +75,107 @@ export const caseStudies: CaseStudy[] = [
     ],
   },
   {
-    anchor: 'reyou',
+    anchor: 'levym',
     index: '03',
     category: 'ARTIST',
     side: 'artist',
-    name: 'Re.You',
-    summary: { en: 'Streams bought properly, then kept.' },
-    imageLabel: { en: 'release artwork' },
-    objective: { en: 'Push a release into algorithmic rotation instead of buying a spike that dies in a week.' },
+    name: 'LevyM × Shimza',
+    summary: { en: 'A release push that outlived the campaign window.' },
+    imageLabel: { en: 'live show footage' },
+    image: '/case-studies/levym-shimza.jpg',
+    objective: { en: "Carry LevyM's collaboration with Shimza, “No Shape Without You,” past the release-weekend spike." },
     whatWeDid: {
-      en: 'Ads optimised for saves rather than clicks, run through the pre-save window and the two weeks after. Saves fed release radar, which carried the track further than the paid reach did.',
+      en: 'An Instagram ads campaign launched immediately after release weekend, cut from studio footage of LevyM making the track and playing it live with instruments in his shows.',
     },
     stats: [
-      { value: 1.2, decimals: 1, suffix: 'M', label: { en: 'streams in the campaign window' } },
-      { value: 64, suffix: '%', label: { en: 'from algorithmic playlists' } },
-      { value: 2.8, decimals: 1, suffix: 'x', label: { en: 'monthly listeners, before to after' } },
+      { value: 873, suffix: 'K', label: { en: 'streams in 64 days' } },
+      { value: 0.19, decimals: 2, prefix: '€', label: { en: 'cost per conversion to Spotify' } },
+      { value: 2.2, decimals: 1, suffix: 'M', label: { en: 'streams reached in 150 days' } },
+    ],
+  },
+  {
+    anchor: 'novak',
+    index: '04',
+    category: 'ARTIST',
+    side: 'artist',
+    name: 'Novak',
+    summary: { en: "Reigniting a release a month after it dropped." },
+    imageLabel: { en: 'artist portrait' },
+    image: '/case-studies/novak.jpg',
+    objective: {
+      en: "Add momentum to Novak's release “Sippin'” on Francis Mercier's label Deep Root Tribe, after its initial release-day hype had faded.",
+    },
+    whatWeDid: {
+      en: 'A mix of high-definition studio and live-show content on Instagram, plus support videos from other DJs playing the track live, including Mahmut Orhan, Francis Mercier, and Sunnery James & Ryan Marciano.',
+    },
+    stats: [
+      { value: 310, suffix: 'K', label: { en: 'streams added in 28 days' } },
+      { value: 0.11, decimals: 2, prefix: '€', label: { en: 'cost per conversion, US/EU/Canada' } },
+      { value: 137, suffix: 'K', label: { en: 'new listeners generated' } },
+    ],
+  },
+  {
+    anchor: 'gheist',
+    index: '05',
+    category: 'ARTIST',
+    side: 'artist',
+    name: 'GHEIST',
+    summary: { en: 'A remix pushed while the pre-save momentum was still hot.' },
+    imageLabel: { en: 'artist portrait' },
+    image: '/case-studies/gheist.jpg',
+    objective: {
+      en: 'Keep the momentum on GHEIST’s remix of Rüfüs Du Sol’s "In the Moment," which already had strong pre-saves on day one.',
+    },
+    whatWeDid: {
+      en: 'An Instagram and TikTok ad campaign built from GHEIST live-performance videos playing the remix to fans, sending viewers straight to Spotify.',
+    },
+    stats: [
+      { value: 220, suffix: 'K', label: { en: 'streams in 20 days' } },
+      { value: 10, suffix: 'K', label: { en: 'saves and playlist adds generated' } },
+      { value: 132, suffix: 'K', label: { en: 'listeners reached' } },
     ],
   },
   {
     anchor: 'umbra',
-    index: '04',
+    index: '06',
     category: 'EVENT',
     side: 'promoter',
-    name: 'Umbra Dance',
-    summary: { en: 'A list built before the tickets existed.' },
+    name: 'Umbra Marrakech',
+    summary: { en: 'Tickets sold before the door opened, tracked to the euro.' },
     imageLabel: { en: 'event key visual' },
-    objective: { en: 'Sell out a first edition with no existing audience and no name recognition.' },
+    image: '/case-studies/umbra-marrakech.jpg',
+    objective: { en: 'Turn Instagram reach into direct ticket sales across summer and winter events in Marrakech and Tamuda Bay.' },
     whatWeDid: {
-      en: 'Signup ads for six weeks before announcement, segmented by city and by which lineup teaser they reacted to. Email at drop, then retargeting on everyone who opened but did not buy.',
+      en: 'Pre-signup ad campaigns ahead of ticket launch, cold-audience add-to-cart ads, and retargeting waves on warm audiences, all tracked through to the ticketing platform.',
     },
     stats: [
-      { value: 12, suffix: 'K', label: { en: 'signups pre-announcement' } },
-      { value: 72, suffix: '%', label: { en: 'of capacity sold in week one' } },
-      { value: 1.8, decimals: 1, prefix: '€', label: { en: 'cost per ticket sold' } },
+      { value: 19.8, decimals: 1, suffix: 'x', label: { en: 'ROAS, 3 summer events' } },
+      { value: 450, label: { en: 'tickets sold immediately on launch' } },
+      { value: 80, suffix: '%', label: { en: 'of tickets attributed to Instagram ads' } },
     ],
   },
   {
     anchor: 'eden',
-    index: '05',
+    index: '07',
     category: 'VENUE',
     side: 'promoter',
     name: 'Eden Nightclub',
-    summary: { en: 'Weekly programme, weekly numbers.' },
+    summary: { en: 'A winter season built around advance sales, not door sales.' },
     imageLabel: { en: 'club night footage' },
-    objective: { en: 'Hold a consistent fill rate through the season, including the weeks without a headline booking.' },
+    image: '/case-studies/eden-nightclub.jpg',
+    objective: { en: 'Capitalise on the winter festive season in Marrakech to maximise ticket sales and event attendance.' },
     whatWeDid: {
-      en: 'Always-on reach around the club, spiking 72 hours before each night. Guest-list ads pointed at a signup, then a weekly mail to the list. Conversion tracked to the ticketing platform, spend rebalanced every Monday.',
+      en: 'A curated visual identity for Eden Marrakech to make its content instantly identifiable on Instagram, paired with ads targeted at Marrakech locals, Casablanca visitors and foreign tourists in the city.',
     },
     stats: [
-      { value: 6.4, decimals: 1, suffix: 'x', label: { en: 'return on ad spend' } },
-      { value: 18, suffix: 'K', label: { en: 'tickets across the season' } },
-      { value: 24, suffix: '%', label: { en: 'lower cost per ticket vs prior season' } },
+      { value: 40, suffix: '%', label: { en: 'more tickets sold in advance' } },
+      { value: 2.5, decimals: 1, suffix: 'K', label: { en: 'followers added in one month' } },
+      { value: 529.5, decimals: 1, suffix: 'K', label: { en: 'reach, +18.2% on the prior period' } },
     ],
   },
   {
     anchor: 'leone',
-    index: '06',
+    index: '08',
     category: 'POINT OF SALE',
     side: 'promoter',
     name: 'Leone',

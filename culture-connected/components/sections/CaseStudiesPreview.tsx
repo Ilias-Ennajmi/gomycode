@@ -125,11 +125,21 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
             href={`${localeHref(locale, '/case-studies')}#${study.anchor}`}
             className="block w-[clamp(220px,26vw,300px)] flex-none snap-start text-inherit no-underline transition-transform duration-150 active:scale-[0.97]"
           >
-            <PlaceholderPanel
-              label={t(study.imageLabel, locale)}
-              className="aspect-square rounded-3xl p-4"
-              labelClassName="px-3 py-2 text-[11px]"
-            />
+            {study.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={study.image}
+                alt={study.name}
+                className="aspect-square w-full rounded-3xl object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <PlaceholderPanel
+                label={t(study.imageLabel, locale)}
+                className="aspect-square rounded-3xl p-4"
+                labelClassName="px-3 py-2 text-[11px]"
+              />
+            )}
             <div className="mt-4 font-sora text-[18px] font-semibold leading-[1.2] text-ink">{study.name}</div>
             <div className="mt-1 font-mono text-[11px] uppercase tracking-[.08em] text-muted"># {study.category}</div>
           </Reveal>

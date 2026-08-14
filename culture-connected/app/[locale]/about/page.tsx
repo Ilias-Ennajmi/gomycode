@@ -72,6 +72,11 @@ export default function AboutPage({ params }: { params: { locale: Locale } }) {
         <Reveal as="p" className="m-0 mt-[clamp(20px,3vw,34px)] max-w-[600px] font-sora text-[17px] font-light leading-[1.6] text-muted">
           {t(c.intro, locale)}
         </Reveal>
+        <Reveal className="mt-[clamp(24px,3vw,36px)] max-w-[720px] rounded-[clamp(18px,2.6vw,26px)] bg-surface p-[clamp(22px,3vw,32px)]">
+          <p className="m-0 font-sora text-[clamp(19px,2.4vw,25px)] font-medium leading-[1.4] text-ink">
+            {t(c.missionQuote, locale)}
+          </p>
+        </Reveal>
       </section>
 
       <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(40px,6vw,64px)]">

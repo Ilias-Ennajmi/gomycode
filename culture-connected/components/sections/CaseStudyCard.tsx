@@ -65,11 +65,21 @@ export function CaseStudyCard({ study, locale }: { study: CaseStudy; locale: Loc
               <p className="m-0 mb-6 font-sora text-[16px] font-light leading-[1.6] text-muted">
                 {t(study.summary, locale)}
               </p>
-              <PlaceholderPanel
-                label={t(study.imageLabel, locale)}
-                className="h-[clamp(160px,22vw,260px)] rounded-[20px] p-4"
-                labelClassName="px-3 py-2 text-[11px]"
-              />
+              {study.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={study.image}
+                  alt={study.name}
+                  className="h-[clamp(160px,22vw,260px)] w-full rounded-[20px] object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <PlaceholderPanel
+                  label={t(study.imageLabel, locale)}
+                  className="h-[clamp(160px,22vw,260px)] rounded-[20px] p-4"
+                  labelClassName="px-3 py-2 text-[11px]"
+                />
+              )}
             </Reveal>
             <Reveal className="flex flex-col gap-[22px]">
               <div>
