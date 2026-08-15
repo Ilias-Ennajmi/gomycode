@@ -36,7 +36,7 @@ export function CaseStudyCard({ study, locale }: { study: CaseStudy; locale: Loc
             <div className="mb-1 font-mono text-[11px] tracking-[.12em] text-red">
               {study.index} / {study.category}
             </div>
-            <h2 className="m-0 font-sora text-[24px] font-bold leading-[1.1] tracking-[-.03em] text-ink">{study.name}</h2>
+            <h2 className="m-0 font-display text-[24px] font-bold leading-[1.1] tracking-[-.03em] text-ink">{study.name}</h2>
           </div>
           <span
             aria-hidden="true"
@@ -59,7 +59,7 @@ export function CaseStudyCard({ study, locale }: { study: CaseStudy; locale: Loc
               <div className="mb-[14px] hidden font-mono text-[11px] tracking-[.12em] text-red md:block">
                 {study.index} / {study.category}
               </div>
-              <h2 className="m-0 mb-2 hidden font-sora text-[clamp(30px,4vw,48px)] font-bold leading-none tracking-[-.04em] text-ink md:block">
+              <h2 className="m-0 mb-2 hidden font-display text-[clamp(30px,4vw,48px)] font-bold leading-none tracking-[-.04em] text-ink md:block">
                 {study.name}
               </h2>
               <p className="m-0 mb-6 font-sora text-[16px] font-light leading-[1.6] text-muted">

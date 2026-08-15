@@ -22,6 +22,7 @@ const config: Config = {
       fontFamily: {
         sora: ['var(--font-sora)', 'system-ui', 'sans-serif'],
         mono: ['var(--font-dm-mono)', 'monospace'],
+        display: ['var(--font-display)', 'var(--font-sora)', 'system-ui', 'sans-serif'],
       },
       keyframes: {
         marq: {

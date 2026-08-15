@@ -17,7 +17,7 @@ export function PurposeSection({ locale }: { locale: Locale }) {
 
       <Reveal
         as="h2"
-        className="m-0 font-sora text-[clamp(48px,9vw,140px)] font-bold leading-[.94] tracking-[-.05em] text-ink"
+        className="m-0 font-display text-[clamp(48px,9vw,140px)] font-bold leading-[.94] tracking-[-.05em] text-ink"
       >
         {t(c.headingLines[0], locale)}
         <br />

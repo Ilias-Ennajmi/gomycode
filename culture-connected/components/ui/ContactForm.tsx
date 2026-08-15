@@ -36,30 +36,50 @@ export function ContactForm({ locale }: { locale: Locale }) {
   const invalidOutline = (value: string): CSSProperties | undefined =>
     status === 'error' && !value.trim() ? { outline: '1.5px solid currentColor' } : undefined;
 
+  const errorId = 'contact-form-status';
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-[10px]">
+      <label htmlFor="contact-name" className="sr-only">
+        {t(contactShared.namePlaceholder, locale)}
+      </label>
       <input
+        id="contact-name"
         type="text"
         value={name}
         onChange={(event) => setName(event.target.value)}
         placeholder={t(contactShared.namePlaceholder, locale)}
         style={invalidOutline(name)}
+        aria-invalid={status === 'error' && !name.trim() ? true : undefined}
+        aria-describedby={status === 'error' ? errorId : undefined}
         className={fieldClass}
       />
+      <label htmlFor="contact-email" className="sr-only">
+        {t(contactShared.emailPlaceholder, locale)}
+      </label>
       <input
+        id="contact-email"
         type="email"
         value={email}
         onChange={(event) => setEmail(event.target.value)}
         placeholder={t(contactShared.emailPlaceholder, locale)}
         style={invalidOutline(email)}
+        aria-invalid={status === 'error' && !email.trim() ? true : undefined}
+        aria-describedby={status === 'error' ? errorId : undefined}
         className={fieldClass}
       />
+      <label htmlFor="contact-message" className="sr-only">
+        {t(contactShared.messagePlaceholder, locale)}
+      </label>
       <textarea
+        id="contact-message"
         rows={4}
         value={message}
         onChange={(event) => setMessage(event.target.value)}
         placeholder={t(contactShared.messagePlaceholder, locale)}
         style={invalidOutline(message)}
+        aria-invalid={status === 'error' && !message.trim() ? true : undefined}
+        aria-describedby={status === 'error' ? errorId : undefined}
         className={`resize-y ${fieldClass}`}
       />
       <button
@@ -69,6 +89,8 @@ export function ContactForm({ locale }: { locale: Locale }) {
         {t(contactShared.sendButton, locale)}
       </button>
       <span
+        id={errorId}
+        role="alert"
         className="font-mono text-[12px] text-white transition-opacity duration-300"
         style={{ opacity: status === 'idle' ? 0 : 1 }}
       >

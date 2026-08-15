@@ -11,7 +11,9 @@ export type ServiceIconName =
   | 'release'
   | 'touring'
   | 'retarget'
-  | 'lookalike';
+  | 'lookalike'
+  | 'tickets'
+  | 'calendar';
 
 const icons: Record<ServiceIconName, ReactNode> = {
   video: (
@@ -81,6 +83,18 @@ const icons: Record<ServiceIconName, ReactNode> = {
       <circle cx="8" cy="9" r="3" />
       <circle cx="16" cy="9" r="3" />
       <circle cx="12" cy="15" r="3" />
+    </>
+  ),
+  tickets: (
+    <>
+      <path d="M3 9a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 000 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2v-1a2 2 0 000-4V9z" />
+      <path d="M10 7v10" strokeDasharray="2 2" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect x="3" y="5" width="18" height="16" rx="2.5" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
     </>
   ),
 };

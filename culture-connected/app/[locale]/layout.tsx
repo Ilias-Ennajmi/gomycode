@@ -23,9 +23,12 @@ export default function LocaleLayout({ children, params }: LocaleLayoutProps) {
   return (
     <>
       <SetHtmlLang locale={locale} />
+      <a href="#main-content" className="skip-link">
+        Skip to content
+      </a>
       <ScrollProgress />
       <Header locale={locale} />
-      {children}
+      <main id="main-content">{children}</main>
       <Footer locale={locale} />
       <MobileStickyCta locale={locale} />
     </>

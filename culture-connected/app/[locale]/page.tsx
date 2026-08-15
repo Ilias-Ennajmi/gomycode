@@ -30,7 +30,7 @@ function LogoRow() {
       {recordLabels.map((label) => (
         <div
           key={label.slug}
-          className="flex h-[62px] w-[168px] flex-none items-center justify-center rounded-full bg-chip px-5 py-2"
+          className="flex h-[62px] w-[168px] flex-none items-center justify-center rounded-full bg-white px-5 py-2"
           title={label.name}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -69,7 +69,7 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
             <AccentHeading
               heading={c.heading}
               locale={locale}
-              className="font-sora text-[clamp(42px,7.6vw,104px)] font-bold leading-[.94] tracking-[-.05em] text-ink"
+              className="text-[clamp(42px,7.6vw,104px)] font-bold leading-[.94] tracking-[-.05em] text-ink"
             />
           </Reveal>
         </div>
@@ -111,7 +111,28 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
       />
 
       <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
-        <Reveal as="h2" className="mb-[clamp(22px,3vw,32px)] font-sora text-[clamp(30px,4.2vw,44px)] font-bold leading-[1.05] tracking-[-.035em] text-ink">
+        <div className="rounded-[clamp(20px,3vw,30px)] bg-surface p-[clamp(28px,4vw,44px)]">
+          <Reveal as="h2" className="m-0 mb-[clamp(20px,3vw,32px)] font-display text-[clamp(24px,3.2vw,34px)] font-bold leading-[1.05] tracking-[-.03em] text-ink">
+            {t(c.whatWeDoHeading, locale)}
+          </Reveal>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-x-8 gap-y-6">
+            {c.whatWeDo.map((item, i) => (
+              <Reveal key={item.label.en} index={i} className="border-t border-line pt-4">
+                <div className="mb-2 font-sora text-[15px] font-bold uppercase tracking-[-.01em] text-red">
+                  {t(item.label, locale)}
+                </div>
+                <p className="m-0 font-sora text-[15px] font-light leading-[1.5] text-ink">
+                  <span className="font-semibold">{t(item.bold, locale)}</span>{' '}
+                  {t(item.rest, locale)}
+                </p>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
+        <Reveal as="h2" className="mb-[clamp(22px,3vw,32px)] font-display text-[clamp(30px,4.2vw,44px)] font-bold leading-[1.05] tracking-[-.035em] text-ink">
           {t(c.pillarsHeading, locale)}
         </Reveal>
         <div className="flex flex-col gap-4">
@@ -147,7 +168,7 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
           <div className="halftone-overlay pointer-events-none absolute inset-0 z-0 text-onInv" />
           <div className="relative z-[1]">
             <div className="mb-[clamp(24px,3vw,36px)] flex flex-wrap items-baseline justify-between gap-[14px]">
-              <Reveal as="h2" className="font-sora text-[clamp(28px,3.6vw,40px)] font-bold leading-none tracking-[-.035em]">
+              <Reveal as="h2" className="font-display text-[clamp(28px,3.6vw,40px)] font-bold leading-none tracking-[-.035em]">
                 {t(c.proofHeading, locale)}
               </Reveal>
               <Link href={localeHref(locale, '/case-studies')} className="font-mono text-[12px] text-red no-underline">
@@ -242,7 +263,7 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
 
       <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
         <div className="mb-[clamp(22px,3vw,34px)] flex flex-wrap items-baseline justify-between gap-[14px]">
-          <Reveal as="h2" className="font-sora text-[clamp(28px,3.6vw,40px)] font-bold leading-none tracking-[-.035em] text-ink">
+          <Reveal as="h2" className="font-display text-[clamp(28px,3.6vw,40px)] font-bold leading-none tracking-[-.035em] text-ink">
             {t(c.processHeading, locale)}
           </Reveal>
           <Link href={`${localeHref(locale, '/about')}#process`} className="font-mono text-[12px] text-red no-underline">

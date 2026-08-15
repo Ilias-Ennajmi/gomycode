@@ -65,7 +65,7 @@ export default function CreativePage({ params }: { params: { locale: Locale } })
             <AccentHeading
               heading={c.heading}
               locale={locale}
-              className="max-w-[1100px] font-sora text-[clamp(40px,7vw,96px)] font-bold leading-[.95] tracking-[-.05em] text-ink"
+              className="max-w-[1100px] text-[clamp(40px,7vw,96px)] font-bold leading-[.95] tracking-[-.05em] text-ink"
             />
           </Reveal>
           <div className="mt-[clamp(24px,3vw,40px)] grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] items-end gap-[clamp(20px,3vw,40px)]">
@@ -90,7 +90,7 @@ export default function CreativePage({ params }: { params: { locale: Locale } })
       />
 
       <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
-        <Reveal as="h2" className="mb-[clamp(22px,3vw,34px)] font-sora text-[clamp(28px,3.8vw,44px)] font-bold leading-[1.05] tracking-[-.035em] text-ink">
+        <Reveal as="h2" className="mb-[clamp(22px,3vw,34px)] font-display text-[clamp(28px,3.8vw,44px)] font-bold leading-[1.05] tracking-[-.035em] text-ink">
           {t(c.servicesHeading, locale)}
         </Reveal>
         <div className="flex flex-col gap-4">

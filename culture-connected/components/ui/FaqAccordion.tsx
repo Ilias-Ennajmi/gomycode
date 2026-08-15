@@ -10,6 +10,7 @@ interface FaqItemData {
 function FaqItem({ question, answer }: FaqItemData) {
   const [open, setOpen] = useState(false);
   const answerRef = useRef<HTMLParagraphElement>(null);
+  const panelId = `faq-panel-${question.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`;
 
   return (
     <div className="border-t border-line last:border-b">
@@ -17,6 +18,7 @@ function FaqItem({ question, answer }: FaqItemData) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        aria-controls={panelId}
         className="flex w-full cursor-pointer items-center justify-between gap-5 py-[22px] text-left font-sora text-[18px] font-semibold leading-[1.3] text-ink"
       >
         {question}
@@ -29,6 +31,7 @@ function FaqItem({ question, answer }: FaqItemData) {
         </span>
       </button>
       <div
+        id={panelId}
         className="overflow-hidden transition-[max-height,opacity] duration-[350ms] ease-out"
         style={{
           maxHeight: open ? `${(answerRef.current?.scrollHeight ?? 400) + 40}px` : '0px',

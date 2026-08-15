@@ -74,7 +74,7 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
   return (
     <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
       <div className="mb-[clamp(22px,3vw,34px)] flex flex-wrap items-center justify-between gap-4">
-        <Reveal as="h2" className="font-sora text-[clamp(28px,3.6vw,40px)] font-bold leading-none tracking-[-.035em] text-ink">
+        <Reveal as="h2" className="font-display text-[clamp(28px,3.6vw,40px)] font-bold leading-none tracking-[-.035em] text-ink">
           {t(c.workHeading, locale)}
         </Reveal>
         <Reveal className="flex flex-wrap items-center gap-3">

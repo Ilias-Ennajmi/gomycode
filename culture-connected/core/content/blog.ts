@@ -13,14 +13,11 @@ export const blogContent = {
   } satisfies Localized,
 
   postsHeading: { en: 'Recent posts', fr: 'Derniers articles' } satisfies Localized,
-  posts: [
-    { category: { en: 'STRATEGY' } satisfies Localized, titleLabel: { en: 'Post title placeholder' } satisfies Localized },
-    { category: { en: 'PLATFORMS' } satisfies Localized, titleLabel: { en: 'Post title placeholder' } satisfies Localized },
-    { category: { en: 'CASE NOTES' } satisfies Localized, titleLabel: { en: 'Post title placeholder' } satisfies Localized },
-  ],
-  dateLabel: 'TBC',
-  imageLabel: { en: 'post cover' } satisfies Localized,
-  noteLabel: { en: 'NOTE / posts to be added' } satisfies Localized,
+  comingSoonHeading: { en: 'First posts are in the works.', fr: 'Les premiers articles arrivent bientôt.' } satisfies Localized,
+  comingSoonBody: {
+    en: "We're writing up the campaigns we're running right now rather than backdating old ones. Check back soon, or follow along on Instagram in the meantime.",
+    fr: "On écrit sur les campagnes qu'on mène en ce moment plutôt que d'antidater d'anciennes campagnes. Repassez bientôt, ou suivez-nous sur Instagram en attendant.",
+  } satisfies Localized,
 
   contactHeading: { en: 'Got a story worth writing up?', fr: 'Une histoire à raconter ?' } satisfies Localized,
 };

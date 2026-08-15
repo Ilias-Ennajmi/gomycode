@@ -66,13 +66,10 @@ export default function AboutPage({ params }: { params: { locale: Locale } }) {
           <AccentHeading
             heading={c.heading}
             locale={locale}
-            className="max-w-[1000px] font-sora text-[clamp(40px,7vw,96px)] font-bold leading-[.95] tracking-[-.05em] text-ink"
+            className="max-w-[1000px] text-[clamp(40px,7vw,96px)] font-bold leading-[.95] tracking-[-.05em] text-ink"
           />
         </Reveal>
-        <Reveal as="p" className="m-0 mt-[clamp(20px,3vw,34px)] max-w-[600px] font-sora text-[17px] font-light leading-[1.6] text-muted">
-          {t(c.intro, locale)}
-        </Reveal>
-        <Reveal className="mt-[clamp(24px,3vw,36px)] max-w-[720px] rounded-[clamp(18px,2.6vw,26px)] bg-surface p-[clamp(22px,3vw,32px)]">
+        <Reveal className="mt-[clamp(20px,3vw,34px)] max-w-[720px] rounded-[clamp(18px,2.6vw,26px)] bg-surface p-[clamp(22px,3vw,32px)]">
           <p className="m-0 font-sora text-[clamp(19px,2.4vw,25px)] font-medium leading-[1.4] text-ink">
             {t(c.missionQuote, locale)}
           </p>
@@ -80,7 +77,7 @@ export default function AboutPage({ params }: { params: { locale: Locale } }) {
       </section>
 
       <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(40px,6vw,64px)]">
-        <Reveal as="h2" className="mb-[clamp(22px,3vw,32px)] font-sora text-[clamp(28px,3.8vw,40px)] font-bold leading-[1.05] tracking-[-.035em] text-ink">
+        <Reveal as="h2" className="mb-[clamp(22px,3vw,32px)] font-display text-[clamp(28px,3.8vw,40px)] font-bold leading-[1.05] tracking-[-.035em] text-ink">
           {t(c.howWeWorkHeading, locale)}
         </Reveal>
         <div className="flex flex-col gap-4">
@@ -128,14 +125,14 @@ export default function AboutPage({ params }: { params: { locale: Locale } }) {
       </section>
 
       <section id="process" className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
-        <Reveal as="h2" className="mb-[clamp(22px,3vw,34px)] font-sora text-[clamp(28px,3.8vw,44px)] font-bold leading-[1.05] tracking-[-.035em] text-ink">
+        <Reveal as="h2" className="mb-[clamp(22px,3vw,34px)] font-display text-[clamp(28px,3.8vw,44px)] font-bold leading-[1.05] tracking-[-.035em] text-ink">
           {t(c.processHeading, locale)}
         </Reveal>
         <ProcessSteps steps={c.processSteps} locale={locale} gridClassName="grid-cols-[repeat(auto-fit,minmax(250px,1fr))]" />
       </section>
 
       <section id="faq" className="mx-auto max-w-[1000px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
-        <Reveal as="h2" className="mb-[clamp(18px,3vw,28px)] font-sora text-[clamp(28px,3.8vw,44px)] font-bold leading-[1.05] tracking-[-.035em] text-ink">
+        <Reveal as="h2" className="mb-[clamp(18px,3vw,28px)] font-display text-[clamp(28px,3.8vw,44px)] font-bold leading-[1.05] tracking-[-.035em] text-ink">
           {t(c.faqHeading, locale)}
         </Reveal>
         <Reveal>
@@ -145,6 +142,19 @@ export default function AboutPage({ params }: { params: { locale: Locale } }) {
               answer: t(item.answer, locale),
             }))}
           />
+        </Reveal>
+      </section>
+
+      <section className="mx-auto max-w-[1000px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
+        <Reveal className="rounded-[clamp(20px,3vw,30px)] bg-inv p-[clamp(28px,4vw,44px)] text-onInv">
+          {c.closingStatement.map((line, i) => (
+            <p
+              key={i}
+              className="m-0 font-sora text-[clamp(20px,3vw,30px)] font-bold leading-[1.35] tracking-[-.02em]"
+            >
+              {t(line, locale)}
+            </p>
+          ))}
         </Reveal>
       </section>
 

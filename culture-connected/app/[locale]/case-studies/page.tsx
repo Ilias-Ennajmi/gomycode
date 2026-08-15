@@ -29,7 +29,7 @@ export default function CaseStudiesPage({ params }: { params: { locale: Locale }
           <AccentHeading
             heading={c.heading}
             locale={locale}
-            className="max-w-[1000px] font-sora text-[clamp(40px,7vw,96px)] font-bold leading-[.95] tracking-[-.05em] text-ink"
+            className="max-w-[1000px] text-[clamp(40px,7vw,96px)] font-bold leading-[.95] tracking-[-.05em] text-ink"
           />
         </Reveal>
         <Reveal as="p" className="m-0 mt-[clamp(20px,3vw,34px)] max-w-[560px] font-sora text-[17px] font-light leading-[1.6] text-muted">

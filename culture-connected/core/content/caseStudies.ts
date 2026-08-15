@@ -146,10 +146,11 @@ export const caseStudies: CaseStudy[] = [
     image: '/case-studies/umbra-marrakech.jpg',
     objective: { en: 'Turn Instagram reach into direct ticket sales across summer and winter events in Marrakech and Tamuda Bay.' },
     whatWeDid: {
-      en: 'Pre-signup ad campaigns ahead of ticket launch, cold-audience add-to-cart ads, and retargeting waves on warm audiences, all tracked through to the ticketing platform.',
+      en: 'Pre-signup ad campaigns ahead of ticket launch, cold-audience add-to-cart ads, and retargeting waves on warm audiences, all tracked through to the ticketing platform. Average CPM landed at €0.55 per 1,000 reached with CPC as low as €0.04 — advertising cost ran as low as €2.50 per ticket sold through retargeting, €8.50 blended across cold and warm audiences.',
     },
     stats: [
       { value: 19.8, decimals: 1, suffix: 'x', label: { en: 'ROAS, 3 summer events' } },
+      { value: 11, suffix: 'x', label: { en: 'ROAS, 4 winter events' } },
       { value: 450, label: { en: 'tickets sold immediately on launch' } },
       { value: 80, suffix: '%', label: { en: 'of tickets attributed to Instagram ads' } },
     ],
@@ -165,12 +166,13 @@ export const caseStudies: CaseStudy[] = [
     image: '/case-studies/eden-nightclub.jpg',
     objective: { en: 'Capitalise on the winter festive season in Marrakech to maximise ticket sales and event attendance.' },
     whatWeDid: {
-      en: 'A curated visual identity for Eden Marrakech to make its content instantly identifiable on Instagram, paired with ads targeted at Marrakech locals, Casablanca visitors and foreign tourists in the city.',
+      en: 'A curated visual identity for Eden Marrakech to make its content instantly identifiable on Instagram, paired with ads targeted at Marrakech locals, Casablanca visitors and foreign tourists in the city. Table reservation inquiries increased alongside link clicks, up 136% to 10.7K, and profile visits, up 69.8% to 17.8K.',
     },
     stats: [
       { value: 40, suffix: '%', label: { en: 'more tickets sold in advance' } },
       { value: 2.5, decimals: 1, suffix: 'K', label: { en: 'followers added in one month' } },
       { value: 529.5, decimals: 1, suffix: 'K', label: { en: 'reach, +18.2% on the prior period' } },
+      { value: 231, suffix: '%', label: { en: 'more follows' } },
     ],
   },
   {

@@ -81,7 +81,7 @@ export function ObjectivePanels({
           }`}
         >
           <div className="mb-[14px] font-mono text-[11px] tracking-[.1em] text-red">{t(objectiveA.eyebrow, locale)}</div>
-          <h2 className="m-0 mb-[14px] font-sora text-[clamp(26px,3.2vw,36px)] font-bold leading-[1.05] tracking-[-.035em] text-ink">
+          <h2 className="m-0 mb-[14px] font-display text-[clamp(26px,3.2vw,36px)] font-bold leading-[1.05] tracking-[-.035em] text-ink">
             {t(objectiveA.heading, locale)}
           </h2>
           <p className="m-0 mb-[26px] font-sora text-[15px] font-light leading-[1.6] text-muted">
@@ -100,7 +100,7 @@ export function ObjectivePanels({
           }`}
         >
           <div className="mb-[14px] font-mono text-[11px] tracking-[.1em] text-red">{t(objectiveB.eyebrow, locale)}</div>
-          <h2 className="m-0 mb-[14px] font-sora text-[clamp(26px,3.2vw,36px)] font-bold leading-[1.05] tracking-[-.035em]">
+          <h2 className="m-0 mb-[14px] font-display text-[clamp(26px,3.2vw,36px)] font-bold leading-[1.05] tracking-[-.035em]">
             {t(objectiveB.heading, locale)}
           </h2>
           <p className="m-0 mb-[26px] font-sora text-[15px] font-light leading-[1.6] opacity-[.68]">

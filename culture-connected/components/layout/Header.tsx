@@ -57,6 +57,7 @@ export function Header({ locale }: { locale: Locale }) {
               <Link
                 key={item.href}
                 href={href}
+                aria-current={active ? 'page' : undefined}
                 className={`rounded-full px-[15px] py-[9px] no-underline ${active ? 'bg-surface text-ink' : 'text-muted'}`}
               >
                 {t(item.label, locale)}
@@ -104,6 +105,7 @@ export function Header({ locale }: { locale: Locale }) {
                   key={item.href}
                   href={href}
                   onClick={() => setOpen(false)}
+                  aria-current={active ? 'page' : undefined}
                   className={`rounded-xl px-[14px] py-[11px] no-underline transition-transform duration-150 active:scale-[0.97] ${active ? 'bg-chip text-ink' : 'text-muted'}`}
                 >
                   {t(item.label, locale)}

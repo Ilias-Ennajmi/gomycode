@@ -17,6 +17,32 @@ export const homeContent = {
   ctaSecondary: { en: 'I run events or a venue', fr: "J'organise des events ou je gère un lieu" } satisfies Localized,
   heroMediaLabel: { en: 'looping event footage / muted, 12s cut' } satisfies Localized,
 
+  whatWeDoHeading: { en: 'What we do', fr: 'Ce qu’on fait' } satisfies Localized,
+  whatWeDo: [
+    {
+      label: { en: 'Grow' } satisfies Localized,
+      bold: { en: 'engaged fanbases' } satisfies Localized,
+      rest: { en: 'on social media directly in targeted regions' } satisfies Localized,
+    },
+    {
+      label: { en: 'Optimise' } satisfies Localized,
+      bold: { en: 'the conversion rate' } satisfies Localized,
+      rest: {
+        en: 'between ad views, clicks, profile visits, streams and ticket sales',
+      } satisfies Localized,
+    },
+    {
+      label: { en: 'Increase' } satisfies Localized,
+      bold: { en: "event ticket sales and artists' live bookings" } satisfies Localized,
+      rest: { en: '' } satisfies Localized,
+    },
+    {
+      label: { en: 'Push' } satisfies Localized,
+      bold: { en: 'events, new releases and shows' } satisfies Localized,
+      rest: { en: 'via paid media, promotion and fan loyalty' } satisfies Localized,
+    },
+  ],
+
   pillarsHeading: { en: "Four things we're good at", fr: "Quatre choses qu'on fait bien" } satisfies Localized,
   pillars: [
     {
@@ -138,7 +164,7 @@ export const homeContent = {
         'Babouchka',
       ],
     },
-    moreLabel: { en: '+ MORE TBC' } satisfies Localized,
+    moreLabel: { en: '+ MORE', fr: '+ PLUS' } satisfies Localized,
   },
 
   workHeading: { en: 'Recent work', fr: 'Travaux récents' } satisfies Localized,

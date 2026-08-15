@@ -9,10 +9,6 @@ export const aboutContent = {
     accent: { en: 'in the scene', fr: 'dans la scène' },
     suffix: { en: '.', fr: '.' },
   } satisfies AccentHeading,
-  intro: {
-    en: 'Marketers and creators based in London, working across MENA, Europe, Ibiza and Dubai. We take on a limited number of artists and venues at a time, because the work is hands on.',
-  } satisfies Localized,
-
   missionQuote: {
     en: 'We are a collective of passionate creators and dedicated marketers, putting work wherever our devices connect.',
     fr: 'Nous sommes un collectif de créateurs passionnés et de marketeurs dévoués, qui travaillent partout où nos appareils se connectent.',
@@ -136,6 +132,12 @@ export const aboutContent = {
         en: 'Ticket sales move in the first two weeks. Audience and streaming growth needs a full cycle, so judge it at month three.',
       } satisfies Localized,
     },
+  ],
+
+  closingStatement: [
+    { en: 'A team that actually does sh*t.' } satisfies Localized,
+    { en: 'We like to test. A lot.' } satisfies Localized,
+    { en: 'We make sure you get maximum ROI.' } satisfies Localized,
   ],
 
   contactHeading: homeContent.contactHeading,

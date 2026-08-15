@@ -12,7 +12,7 @@ interface AccentHeadingProps {
 
 export function AccentHeading({ heading, locale, as: Tag = 'h1', className = '' }: AccentHeadingProps) {
   return (
-    <Tag className={`m-0 [text-wrap:balance] ${className}`}>
+    <Tag className={`m-0 font-display [text-wrap:balance] ${className}`}>
       {t(heading.prefix, locale)}
       <span className={heading.highlight ? 'hero-highlight' : 'text-red'}>{t(heading.accent, locale)}</span>
       {heading.suffix ? t(heading.suffix, locale) : null}

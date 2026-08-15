@@ -23,7 +23,7 @@ export const forArtistsContent = {
       icon: 'audience' as ServiceIconName,
       heading: { en: 'Audience growth' } satisfies Localized,
       body: {
-        en: 'Follower and community growth built on people who already listen to your lane, not bought reach.',
+        en: 'Follower and community growth built on people who already listen to your lane, not bought reach. Lead ads grow first-party fan data ahead of a tour, a release or a merch drop.',
       } satisfies Localized,
     },
     {
@@ -64,6 +64,22 @@ export const forArtistsContent = {
       heading: { en: 'Lookalike audiences' } satisfies Localized,
       body: {
         en: 'Built from real listeners and ticket buyers, refreshed as the data set grows through the campaign.',
+      } satisfies Localized,
+    },
+    {
+      number: '07',
+      icon: 'tickets' as ServiceIconName,
+      heading: { en: 'Ticket & merch sales ads' } satisfies Localized,
+      body: {
+        en: 'Optimised sales ads for show tickets and merchandise, with performance monitored and rebalanced continuously.',
+      } satisfies Localized,
+    },
+    {
+      number: '08',
+      icon: 'calendar' as ServiceIconName,
+      heading: { en: 'Content strategy & planning' } satisfies Localized,
+      body: {
+        en: 'Monthly content strategy, a weekly posting calendar, ideation support and performance reporting, so there is always a plan behind what goes out.',
       } satisfies Localized,
     },
   ],
