@@ -7,6 +7,7 @@ import type { CaseStudy } from '@/core/content/caseStudies';
 import { PlaceholderPanel } from '../ui/PlaceholderPanel';
 import { StatCounter } from '../ui/StatCounter';
 import { Reveal } from '../ui/Reveal';
+import { GhostNumeral } from '../ui/GhostNumeral';
 
 /**
  * On mobile: a tappable header (index/category/name) that expands to reveal
@@ -18,6 +19,7 @@ import { Reveal } from '../ui/Reveal';
 export function CaseStudyCard({ study, locale }: { study: CaseStudy; locale: Locale }) {
   const [open, setOpen] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const reverseOrder = parseInt(study.index, 10) % 2 === 0;
 
   useEffect(() => {
     if (window.location.hash === `#${study.anchor}`) setOpen(true);
@@ -55,11 +57,15 @@ export function CaseStudyCard({ study, locale }: { study: CaseStudy; locale: Loc
             ref={bodyRef}
             className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-[clamp(22px,3vw,44px)] pb-2 pt-4 md:pt-0"
           >
-            <Reveal>
-              <div className="mb-[14px] hidden font-mono text-[11px] tracking-[.12em] text-red md:block">
+            <Reveal className={`relative overflow-hidden ${reverseOrder ? 'md:order-2' : 'md:order-1'}`}>
+              <GhostNumeral
+                value={study.index}
+                className="-left-[.04em] -top-[.14em] hidden text-[clamp(120px,14vw,220px)] text-ink md:block"
+              />
+              <div className="relative mb-[14px] hidden font-mono text-[11px] tracking-[.12em] text-red md:block">
                 {study.index} / {study.category}
               </div>
-              <h2 className="m-0 mb-2 hidden font-display text-[clamp(30px,4vw,48px)] font-bold leading-none tracking-[-.04em] text-ink md:block">
+              <h2 className="relative m-0 mb-2 hidden font-display text-[clamp(30px,4vw,48px)] font-bold leading-none tracking-[-.04em] text-ink md:block">
                 {study.name}
               </h2>
               <p className="m-0 mb-6 font-sora text-[16px] font-light leading-[1.6] text-muted">
@@ -70,7 +76,7 @@ export function CaseStudyCard({ study, locale }: { study: CaseStudy; locale: Loc
                 <img
                   src={study.image}
                   alt={study.name}
-                  className="h-[clamp(160px,22vw,260px)] w-full rounded-[20px] object-cover"
+                  className="photo-grade h-[clamp(160px,22vw,260px)] w-full rounded-[20px] object-cover"
                   loading="lazy"
                 />
               ) : (
@@ -81,7 +87,7 @@ export function CaseStudyCard({ study, locale }: { study: CaseStudy; locale: Loc
                 />
               )}
             </Reveal>
-            <Reveal className="flex flex-col gap-[22px]">
+            <Reveal className={`flex flex-col gap-[22px] ${reverseOrder ? 'md:order-1' : 'md:order-2'}`}>
               <div>
                 <div className="mb-2 font-mono text-[11px] text-muted">OBJECTIVE</div>
                 <p className="m-0 font-sora text-[16px] font-light leading-[1.6] text-ink">{t(study.objective, locale)}</p>

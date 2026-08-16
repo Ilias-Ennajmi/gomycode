@@ -16,6 +16,7 @@ import { StatTicket } from '@/components/ui/StatTicket';
 import { MobileCarousel } from '@/components/ui/MobileCarousel';
 import { ContactSection } from '@/components/layout/ContactSection';
 import { PurposeSection } from '@/components/sections/PurposeSection';
+import { GhostNumeral } from '@/components/ui/GhostNumeral';
 import { artistRoster } from '@/core/content/roster';
 import type { Localized } from '@/core/i18n/localized';
 import type { ServiceIconName } from '@/components/ui/ServiceIcon';
@@ -53,13 +54,13 @@ function HandleCard({
 function ArtistRow() {
   return (
     <div className="flex items-center gap-8 pr-8">
-      {artistRoster.map((artist) => (
+      {artistRoster.map((artist, i) => (
         <span key={artist.slug} className="flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={artist.image}
             alt={artist.name}
-            className="h-10 w-10 flex-none rounded-full object-cover"
+            className={`photo-grade flex-none rounded-full object-cover ${i % 2 === 0 ? 'h-10 w-10' : 'h-9 w-9'}`}
             loading="lazy"
           />
           <span className="whitespace-nowrap font-sora text-[14px] font-medium text-ink">{artist.name}</span>
@@ -118,8 +119,12 @@ export default function ForArtistsPage({ params }: { params: { locale: Locale } 
           {t(c.handleHeading, locale)}
         </Reveal>
         <div className="flex flex-col gap-4">
-          <Reveal index={0} className="rounded-3xl bg-inv p-[clamp(24px,3vw,32px)] text-onInv">
-            <div className="mb-4 flex items-center gap-3">
+          <Reveal index={0} className="relative overflow-hidden rounded-3xl bg-inv p-[clamp(24px,3vw,32px)] text-onInv">
+            <GhostNumeral
+              value={c.handleItems[0].number}
+              className="right-[-.06em] top-[-.22em] text-[clamp(140px,26vw,280px)] text-onInv"
+            />
+            <div className="relative mb-4 flex items-center gap-3">
               <ServiceIcon name={c.handleItems[0].icon} className="h-6 w-6 text-red" />
               <span className="font-mono text-[11px] text-red">{c.handleItems[0].number}</span>
             </div>

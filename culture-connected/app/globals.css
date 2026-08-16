@@ -3,18 +3,18 @@
 @tailwind utilities;
 
 :root {
-  --bg: #fbf3f1;
+  --bg: #f7f0e6;
   --surface: #fff;
-  --surface2: #f2e4e1;
+  --surface2: #ece0d0;
   --ink: #1b1618;
   --muted: rgba(27, 22, 24, 0.62);
   --line: rgba(27, 22, 24, 0.13);
-  --red: #e23744;
-  --chip: #f7ebe9;
+  --red: #a83a30;
+  --chip: #f0e6d6;
   --inv: #1b1618;
-  --onInv: #fbf3f1;
-  --ph1: #f3e2df;
-  --ph2: #eed9d6;
+  --onInv: #f7f0e6;
+  --ph1: #efe0c9;
+  --ph2: #e8d4b8;
 }
 
 [data-theme='dark'] {
@@ -24,7 +24,7 @@
   --ink: #f6efed;
   --muted: rgba(246, 239, 237, 0.6);
   --line: rgba(246, 239, 237, 0.15);
-  --red: #ff515e;
+  --red: #e2685a;
   --chip: #2a2225;
   --inv: #241d20;
   --onInv: #f6efed;
@@ -97,8 +97,12 @@ button {
 }
 
 .hero-highlight {
-  background-image: linear-gradient(180deg, rgba(226, 55, 68, 0) 56%, rgba(226, 55, 68, 0.28) 56%);
+  background-image: linear-gradient(180deg, rgba(168, 58, 48, 0) 56%, rgba(168, 58, 48, 0.28) 56%);
   color: var(--red);
+}
+
+.photo-grade {
+  filter: sepia(0.25) saturate(1.3) hue-rotate(-8deg) contrast(1.08) brightness(0.96);
 }
 
 .torn-edge-bottom {

@@ -123,14 +123,16 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
             index={i}
             as={Link}
             href={`${localeHref(locale, '/case-studies')}#${study.anchor}`}
-            className="block w-[clamp(220px,26vw,300px)] flex-none snap-start text-inherit no-underline transition-transform duration-150 active:scale-[0.97]"
+            className={`block flex-none snap-start text-inherit no-underline transition-transform duration-150 active:scale-[0.97] ${
+              i === 0 ? 'w-[clamp(260px,34vw,380px)]' : 'w-[clamp(200px,22vw,270px)]'
+            }`}
           >
             {study.image ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={study.image}
                 alt={study.name}
-                className="aspect-square w-full rounded-3xl object-cover"
+                className={`photo-grade aspect-square w-full rounded-3xl object-cover ${i === 0 ? 'md:aspect-[4/5]' : ''}`}
                 loading="lazy"
               />
             ) : (

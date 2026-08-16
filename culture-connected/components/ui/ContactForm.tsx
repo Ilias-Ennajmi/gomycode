@@ -6,7 +6,7 @@ import type { Locale } from '@/core/i18n/config';
 import { t } from '@/core/i18n/localized';
 
 const fieldClass =
-  'rounded-xl border-none bg-white/[.22] p-[15px] font-sora text-[16px] font-light leading-[1.2] text-white md:text-[14px]';
+  'rounded-xl border-none bg-white/[.14] p-[15px] font-sora text-[16px] font-light leading-[1.2] text-onInv md:text-[14px]';
 
 /**
  * Client-side mirror of the prototype's contact form: three required fields,
@@ -91,7 +91,7 @@ export function ContactForm({ locale }: { locale: Locale }) {
       <span
         id={errorId}
         role="alert"
-        className="font-mono text-[12px] text-white transition-opacity duration-300"
+        className="font-mono text-[12px] text-onInv transition-opacity duration-300"
         style={{ opacity: status === 'idle' ? 0 : 1 }}
       >
         {status === 'error'

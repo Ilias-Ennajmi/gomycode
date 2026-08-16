@@ -173,18 +173,25 @@ export default function ForPromotersPage({ params }: { params: { locale: Locale 
           {t(c.venuesNote, locale)}
         </Reveal>
         <div className="mt-[clamp(22px,3vw,32px)] grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-x-4 gap-y-[clamp(20px,2.6vw,28px)]">
-          {venueRoster.map((venue, i) => (
-            <Reveal key={venue.slug} index={i % 8} className="flex flex-col items-center text-center">
-              <div className="flex h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-full bg-chip p-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={venue.image} alt={venue.name} className="h-full w-full object-contain" loading="lazy" />
-              </div>
-              <div className="mt-3 font-sora text-[13px] font-semibold leading-[1.25] text-ink">{venue.name}</div>
-              {venue.location ? (
-                <div className="mt-1 font-mono text-[10px] uppercase tracking-[.08em] text-muted">{venue.location}</div>
-              ) : null}
-            </Reveal>
-          ))}
+          {venueRoster.map((venue, i) => {
+            const flagship = venue.slug === 'umbra' || venue.slug === 'eden-nightclub';
+            return (
+              <Reveal key={venue.slug} index={i % 8} className="flex flex-col items-center text-center">
+                <div
+                  className={`flex items-center justify-center overflow-hidden rounded-full bg-chip ${
+                    flagship ? 'h-[96px] w-[96px] p-4' : 'h-[76px] w-[76px] p-3'
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={venue.image} alt={venue.name} className="h-full w-full object-contain" loading="lazy" />
+                </div>
+                <div className="mt-3 font-sora text-[13px] font-semibold leading-[1.25] text-ink">{venue.name}</div>
+                {venue.location ? (
+                  <div className="mt-1 font-mono text-[10px] uppercase tracking-[.08em] text-muted">{venue.location}</div>
+                ) : null}
+              </Reveal>
+            );
+          })}
         </div>
       </section>
 

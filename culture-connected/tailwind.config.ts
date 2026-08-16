@@ -35,8 +35,8 @@ const config: Config = {
         'marq-30': 'marq 30s linear infinite',
       },
       borderRadius: {
-        '2xl': '20px',
-        '3xl': '26px',
+        '2xl': '10px',
+        '3xl': '14px',
       },
     },
   },

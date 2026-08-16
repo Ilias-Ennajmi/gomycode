@@ -16,6 +16,7 @@ export function AccentHeading({ heading, locale, as: Tag = 'h1', className = '' 
       {t(heading.prefix, locale)}
       <span className={heading.highlight ? 'hero-highlight' : 'text-red'}>{t(heading.accent, locale)}</span>
       {heading.suffix ? t(heading.suffix, locale) : null}
+      {heading.mutedSuffix ? <span className="text-muted"> {t(heading.mutedSuffix, locale)}</span> : null}
     </Tag>
   );
 }

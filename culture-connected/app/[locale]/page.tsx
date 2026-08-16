@@ -17,6 +17,7 @@ import { ContactSection } from '@/components/layout/ContactSection';
 import { PillarMarker } from '@/components/sections/PillarMarker';
 import { CaseStudiesPreview } from '@/components/sections/CaseStudiesPreview';
 import { PurposeSection } from '@/components/sections/PurposeSection';
+import { BrandMark } from '@/components/ui/BrandMark';
 import { recordLabels } from '@/core/content/roster';
 
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
@@ -60,16 +61,17 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
 
   return (
     <>
-      <section className="mx-auto grid max-w-[1440px] grid-cols-[repeat(auto-fit,minmax(320px,1fr))] items-end gap-[clamp(24px,4vw,52px)] px-[clamp(18px,4vw,52px)] pb-[clamp(32px,4vw,58px)] pt-[clamp(48px,7vw,92px)]">
+      <section className="relative z-[2] mx-auto grid max-w-[1440px] grid-cols-[repeat(auto-fit,minmax(320px,1fr))] items-end gap-[clamp(24px,4vw,52px)] px-[clamp(18px,4vw,52px)] pb-[clamp(32px,4vw,58px)] pt-[clamp(48px,7vw,92px)]">
         <div className="min-w-0">
           <Reveal className="mb-[clamp(18px,3vw,32px)] font-mono text-[11px] uppercase tracking-[.16em] text-red">
             <Eyebrow>{t(c.eyebrow, locale)}</Eyebrow>
           </Reveal>
-          <Reveal>
+          <Reveal className="flex items-start gap-3">
+            <BrandMark className="mt-[clamp(6px,1.4vw,18px)] h-[clamp(20px,3.6vw,44px)] w-[clamp(20px,3.6vw,44px)] flex-none text-red" />
             <AccentHeading
               heading={c.heading}
               locale={locale}
-              className="text-[clamp(42px,7.6vw,104px)] font-bold leading-[.94] tracking-[-.05em] text-ink"
+              className="min-w-0 text-[clamp(42px,7.6vw,104px)] font-bold leading-[.94] tracking-[-.05em] text-ink"
             />
           </Reveal>
         </div>
@@ -101,7 +103,7 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
 
       <HeroMediaPanel
         label={t(c.heroMediaLabel, locale)}
-        className="mx-[clamp(18px,4vw,52px)] h-[clamp(160px,46vw,520px)] rounded-[clamp(18px,3vw,28px)]"
+        className="relative z-[1] mx-[clamp(18px,4vw,52px)] h-[clamp(160px,46vw,520px)] rounded-[clamp(18px,3vw,28px)] md:-mt-[clamp(24px,4vw,56px)]"
       />
 
       <Marquee
@@ -117,7 +119,11 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
           </Reveal>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-x-8 gap-y-6">
             {c.whatWeDo.map((item, i) => (
-              <Reveal key={item.label.en} index={i} className="border-t border-line pt-4">
+              <Reveal
+                key={item.label.en}
+                index={i}
+                className={`border-t border-line pt-4 ${i % 2 === 0 ? 'md:self-start' : 'md:self-end'}`}
+              >
                 <div className="mb-2 font-sora text-[15px] font-bold uppercase tracking-[-.01em] text-red">
                   {t(item.label, locale)}
                 </div>

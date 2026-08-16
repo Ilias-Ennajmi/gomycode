@@ -24,22 +24,26 @@ function TeamCard({
   member,
   locale,
   portraitLabel,
+  featured = false,
   className = '',
 }: {
   member: TeamMember;
   locale: Locale;
   portraitLabel: string;
+  featured?: boolean;
   className?: string;
 }) {
   return (
     <div className={`overflow-hidden rounded-3xl bg-surface ${className}`}>
       <PlaceholderPanel
         label={portraitLabel}
-        className="h-[clamp(180px,20vw,240px)] p-[14px]"
+        className={`p-[14px] ${featured ? 'h-[clamp(220px,26vw,320px)]' : 'h-[clamp(180px,20vw,240px)]'}`}
         labelClassName="px-[10px] py-[7px] text-[10px]"
       />
       <div className="p-[22px]">
-        <div className="font-sora text-[18px] font-semibold leading-[1.2] text-ink">{member.name}</div>
+        <div className={`font-sora leading-[1.2] text-ink ${featured ? 'text-[22px] font-bold' : 'text-[18px] font-semibold'}`}>
+          {member.name}
+        </div>
         <div className="mt-[6px] font-mono text-[11px] text-red">{t(member.role, locale)}</div>
         <p className="m-0 mt-3 font-sora text-[14px] font-light leading-[1.55] text-muted">{t(member.bio, locale)}</p>
       </div>
@@ -107,8 +111,13 @@ export default function AboutPage({ params }: { params: { locale: Locale } }) {
       <section id="team" className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
         <div className="hidden md:grid md:grid-cols-[repeat(auto-fit,minmax(300px,1fr))] md:gap-4">
           {c.team.map((member, i) => (
-            <Reveal key={member.name + member.role.en} index={i}>
-              <TeamCard member={member} locale={locale} portraitLabel={t(c.portraitLabel, locale)} />
+            <Reveal key={member.name + member.role.en} index={i} className={i === 0 ? 'md:col-span-2' : ''}>
+              <TeamCard
+                member={member}
+                locale={locale}
+                portraitLabel={t(c.portraitLabel, locale)}
+                featured={i === 0}
+              />
             </Reveal>
           ))}
         </div>
@@ -147,14 +156,20 @@ export default function AboutPage({ params }: { params: { locale: Locale } }) {
 
       <section className="mx-auto max-w-[1000px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
         <Reveal className="rounded-[clamp(20px,3vw,30px)] bg-inv p-[clamp(28px,4vw,44px)] text-onInv">
-          {c.closingStatement.map((line, i) => (
-            <p
-              key={i}
-              className="m-0 font-sora text-[clamp(20px,3vw,30px)] font-bold leading-[1.35] tracking-[-.02em]"
-            >
-              {t(line, locale)}
-            </p>
-          ))}
+          {c.closingStatement.map((line, i) => {
+            const sizes = ['text-[clamp(24px,3.6vw,36px)]', 'text-[clamp(20px,3vw,30px)]', 'text-[clamp(17px,2.4vw,24px)]'];
+            const opacities = ['', 'opacity-90', 'opacity-75'];
+            return (
+              <p
+                key={i}
+                className={`m-0 font-sora font-bold leading-[1.35] tracking-[-.02em] ${sizes[i] ?? sizes[sizes.length - 1]} ${
+                  opacities[i] ?? opacities[opacities.length - 1]
+                }`}
+              >
+                {t(line, locale)}
+              </p>
+            );
+          })}
         </Reveal>
       </section>
 

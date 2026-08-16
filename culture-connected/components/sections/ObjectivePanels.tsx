@@ -5,6 +5,7 @@ import { t } from '@/core/i18n/localized';
 import type { Locale } from '@/core/i18n/config';
 import type { Localized } from '@/core/i18n/localized';
 import { Reveal } from '../ui/Reveal';
+import { BrandMark } from '../ui/BrandMark';
 
 interface ObjectiveRowData {
   number: string;
@@ -74,7 +75,13 @@ export function ObjectivePanels({
           Event
         </button>
       </div>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-4">
+      <div className="relative grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-4">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-1/2 top-1/2 hidden h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-bg md:flex"
+        >
+          <BrandMark className="h-5 w-5" />
+        </div>
         <Reveal
           className={`rounded-[clamp(20px,3vw,28px)] bg-surface p-[clamp(26px,3.4vw,40px)] ${
             tab === 'event' ? 'hidden md:block' : ''

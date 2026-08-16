@@ -7,6 +7,8 @@ export interface AccentHeading {
   suffix?: Localized;
   /** Home page draws a bottom-anchored highlight band behind the accent text. */
   highlight?: boolean;
+  /** Optional trailing phrase rendered de-emphasized (text-muted) instead of text-ink/red. Opt-in per usage. */
+  mutedSuffix?: Localized;
 }
 
 export interface StatItem {

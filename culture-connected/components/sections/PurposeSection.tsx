@@ -5,13 +5,15 @@ import type { Locale } from '@/core/i18n/config';
 import { Reveal } from '../ui/Reveal';
 import { Button } from '../ui/Button';
 import { Eyebrow } from '../ui/Eyebrow';
+import { BrandMark } from '../ui/BrandMark';
 
 export function PurposeSection({ locale }: { locale: Locale }) {
   const c = purposeContent;
 
   return (
     <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
-      <Reveal className="mb-[clamp(18px,3vw,28px)] font-mono text-[11px] uppercase tracking-[.16em] text-red">
+      <Reveal className="mb-[clamp(18px,3vw,28px)] flex items-center gap-2 font-mono text-[11px] uppercase tracking-[.16em] text-red">
+        <BrandMark className="h-3 w-3 flex-none" />
         <Eyebrow>{t(c.eyebrow, locale)}</Eyebrow>
       </Reveal>
 
