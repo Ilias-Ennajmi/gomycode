@@ -6,7 +6,7 @@ import type { Locale } from '@/core/i18n/config';
 import { t } from '@/core/i18n/localized';
 
 const fieldClass =
-  'rounded-xl border-none bg-white/[.14] p-[15px] font-sora text-[16px] font-light leading-[1.2] text-onInv md:text-[14px]';
+  'border-none bg-white/[.14] p-[15px] font-inter text-[16px] font-light leading-[1.2] text-onInv md:text-[14px]';
 
 /**
  * Client-side mirror of the prototype's contact form: three required fields,
@@ -84,7 +84,7 @@ export function ContactForm({ locale }: { locale: Locale }) {
       />
       <button
         type="submit"
-        className="cursor-pointer rounded-xl border-none bg-white p-4 font-sora text-[14px] font-semibold text-red transition-transform duration-150 active:scale-[0.97]"
+        className="cursor-pointer border-none bg-white p-4 font-inter text-[14px] font-semibold text-red transition-transform duration-150 active:scale-[0.97]"
       >
         {t(contactShared.sendButton, locale)}
       </button>

@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { Sora, DM_Mono, Bricolage_Grotesque } from 'next/font/google';
+import { Inter, DM_Mono, Archivo } from 'next/font/google';
 import { themeInitScript } from '@/core/theme';
 import './globals.css';
 
-const sora = Sora({
+const inter = Inter({
   subsets: ['latin'],
   weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-sora',
+  variable: '--font-inter',
   display: 'swap',
 });
 
@@ -19,14 +19,14 @@ const dmMono = DM_Mono({
 });
 
 /**
- * Display face for hero titles and section headings. Fontshare's "Clash
- * Display" (the reference the client pointed at) isn't reachable from this
- * environment and isn't published on Google Fonts/npm, so this is the
- * closest available substitute: a heavy, tight-tracked display grotesk.
+ * Display face for hero titles and section headings. Fontshare (where a face
+ * like "Clash Display" would live) isn't reachable from this environment, so
+ * this is the closest Google Fonts equivalent to the client's reference: a
+ * heavy, architectural grotesk at black/900 weight.
  */
-const bricolage = Bricolage_Grotesque({
+const archivo = Archivo({
   subsets: ['latin'],
-  weight: ['700', '800'],
+  weight: ['800', '900'],
   variable: '--font-display',
   display: 'swap',
 });
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${sora.variable} ${dmMono.variable} ${bricolage.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${dmMono.variable} ${archivo.variable}`} suppressHydrationWarning>
       <body>
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />

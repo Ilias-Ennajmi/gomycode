@@ -21,7 +21,7 @@ export function Button({ href, children, variant = 'solid', className = '' }: Bu
   return (
     <Link
       href={href}
-      className={`inline-flex items-center justify-center whitespace-nowrap rounded-full font-sora font-semibold no-underline transition-transform duration-150 active:scale-[0.97] ${variantClasses[variant]} ${className}`}
+      className={`inline-flex items-center justify-center whitespace-nowrap font-inter font-semibold no-underline transition-transform duration-150 active:scale-[0.97] ${variantClasses[variant]} ${className}`}
     >
       {children}
     </Link>

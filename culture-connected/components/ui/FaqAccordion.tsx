@@ -19,12 +19,12 @@ function FaqItem({ question, answer }: FaqItemData) {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls={panelId}
-        className="flex w-full cursor-pointer items-center justify-between gap-5 py-[22px] text-left font-sora text-[18px] font-semibold leading-[1.3] text-ink"
+        className="flex w-full cursor-pointer items-center justify-between gap-5 py-[22px] text-left font-inter text-[18px] font-semibold leading-[1.3] text-ink"
       >
         {question}
         <span
           aria-hidden="true"
-          className="shrink-0 font-sora text-[22px] leading-none text-red transition-transform duration-[250ms] ease-out"
+          className="shrink-0 font-inter text-[22px] leading-none text-red transition-transform duration-[250ms] ease-out"
           style={{ transform: open ? 'rotate(45deg)' : 'none' }}
         >
           +
@@ -38,7 +38,7 @@ function FaqItem({ question, answer }: FaqItemData) {
           opacity: open ? 1 : 0,
         }}
       >
-        <p ref={answerRef} className="m-0 mb-[22px] font-sora text-[16px] font-light leading-[1.65] text-muted">
+        <p ref={answerRef} className="m-0 mb-[22px] font-inter text-[16px] font-light leading-[1.65] text-muted">
           {answer}
         </p>
       </div>

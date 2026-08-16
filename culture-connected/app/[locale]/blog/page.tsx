@@ -20,7 +20,7 @@ export default function BlogPage({ params }: { params: { locale: Locale } }) {
 
   return (
     <>
-      <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pb-[clamp(28px,4vw,48px)] pt-[clamp(48px,7vw,92px)]">
+      <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pb-[clamp(28px,4vw,48px)] pt-[clamp(56px,7.6vw,100px)]">
         <Reveal className="mb-[clamp(18px,3vw,30px)] font-mono text-[11px] uppercase tracking-[.16em] text-red">
           <Eyebrow>{t(c.eyebrow, locale)}</Eyebrow>
         </Reveal>
@@ -28,23 +28,23 @@ export default function BlogPage({ params }: { params: { locale: Locale } }) {
           <AccentHeading
             heading={c.heading}
             locale={locale}
-            className="max-w-[1000px] text-[clamp(40px,7vw,96px)] font-bold leading-[.95] tracking-[-.05em] text-ink"
+            className="max-w-[1000px] text-[clamp(42px,7.2vw,100px)] font-extrabold leading-[.94] tracking-[-.03em] text-ink"
           />
         </Reveal>
-        <Reveal as="p" className="m-0 mt-[clamp(20px,3vw,34px)] max-w-[600px] font-sora text-[17px] font-light leading-[1.6] text-muted">
+        <Reveal as="p" className="m-0 mt-[clamp(20px,3vw,34px)] max-w-[600px] font-inter text-[17px] font-light leading-[1.6] text-muted">
           {t(c.intro, locale)}
         </Reveal>
       </section>
 
       <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)]">
-        <Reveal as="h2" className="mb-[clamp(22px,3vw,34px)] font-display text-[clamp(28px,3.6vw,40px)] font-bold leading-none tracking-[-.035em] text-ink">
+        <Reveal as="h2" className="mb-[clamp(22px,3vw,34px)] font-display text-[clamp(28px,3.6vw,40px)] font-extrabold leading-none tracking-[-.025em] text-ink">
           {t(c.postsHeading, locale)}
         </Reveal>
-        <Reveal className="rounded-3xl bg-surface p-[clamp(28px,5vw,52px)] text-center">
-          <h3 className="m-0 font-sora text-[clamp(20px,2.6vw,26px)] font-semibold leading-[1.3] text-ink">
+        <Reveal className="border border-line bg-surface p-[clamp(28px,5vw,52px)] text-center">
+          <h3 className="m-0 font-inter text-[clamp(20px,2.6vw,26px)] font-semibold leading-[1.3] text-ink">
             {t(c.comingSoonHeading, locale)}
           </h3>
-          <p className="mx-auto m-0 mt-3 max-w-[480px] font-sora text-[15px] font-light leading-[1.6] text-muted">
+          <p className="mx-auto m-0 mt-3 max-w-[480px] font-inter text-[15px] font-light leading-[1.6] text-muted">
             {t(c.comingSoonBody, locale)}
           </p>
           <a

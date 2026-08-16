@@ -14,11 +14,11 @@ export function Footer({ locale }: { locale: Locale }) {
           <div className="max-w-[360px]">
             <Link
               href={localeHref(locale, '/')}
-              className="font-sora text-[15px] font-bold leading-none tracking-[-.02em] text-ink no-underline"
+              className="font-inter text-[15px] font-bold leading-none tracking-[-.02em] text-ink no-underline"
             >
               {wordmark}
             </Link>
-            <p className="m-0 mt-4 font-sora text-[14px] font-light leading-[1.55] text-muted">
+            <p className="m-0 mt-4 font-inter text-[14px] font-light leading-[1.55] text-muted">
               {t(footerCopy.tagline, locale)}
             </p>
           </div>
@@ -27,7 +27,7 @@ export function Footer({ locale }: { locale: Locale }) {
             <div className="mb-4 font-mono text-[11px] uppercase tracking-[.1em] text-muted">
               {t(footerCopy.pagesHeading, locale)}
             </div>
-            <ul className="m-0 flex list-none flex-col gap-[10px] p-0 font-sora text-[14px]">
+            <ul className="m-0 flex list-none flex-col gap-[10px] p-0 font-inter text-[14px]">
               <li>
                 <Link href={localeHref(locale, '/')} className="text-ink no-underline">
                   {t(footerCopy.homeLabel, locale)}
@@ -47,7 +47,7 @@ export function Footer({ locale }: { locale: Locale }) {
             <div className="mb-4 font-mono text-[11px] uppercase tracking-[.1em] text-muted">
               {t(footerCopy.contactHeading, locale)}
             </div>
-            <ul className="m-0 flex list-none flex-col gap-[10px] p-0 font-sora text-[14px]">
+            <ul className="m-0 flex list-none flex-col gap-[10px] p-0 font-inter text-[14px]">
               <li>
                 <a href="#contact" className="text-ink no-underline">
                   {t(footerCopy.contactLabel, locale)}
@@ -70,7 +70,7 @@ export function Footer({ locale }: { locale: Locale }) {
             <div className="mb-4 font-mono text-[11px] uppercase tracking-[.1em] text-muted">
               {t(footerCopy.followHeading, locale)}
             </div>
-            <ul className="m-0 flex list-none flex-col gap-[10px] p-0 font-sora text-[14px]">
+            <ul className="m-0 flex list-none flex-col gap-[10px] p-0 font-inter text-[14px]">
               <li>
                 <a href={footerContent.instagramUrl} className="text-ink no-underline">
                   Instagram

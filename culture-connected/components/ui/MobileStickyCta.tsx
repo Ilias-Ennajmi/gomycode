@@ -51,7 +51,7 @@ export function MobileStickyCta({ locale }: { locale: Locale }) {
     >
       <Link
         href="#contact"
-        className="block rounded-full bg-red py-[15px] text-center font-sora text-[14px] font-semibold text-white no-underline shadow-[0_8px_24px_rgba(0,0,0,.18)] transition-transform active:scale-[0.97]"
+        className="block bg-red py-[15px] text-center font-inter text-[14px] font-semibold text-white no-underline shadow-[0_8px_24px_rgba(0,0,0,.18)] transition-transform active:scale-[0.97]"
       >
         {t(contactNavLabel, locale)} →
       </Link>

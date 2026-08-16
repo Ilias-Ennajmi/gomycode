@@ -5,7 +5,6 @@ import { t } from '@/core/i18n/localized';
 import type { Locale } from '@/core/i18n/config';
 import type { Localized } from '@/core/i18n/localized';
 import { Reveal } from '../ui/Reveal';
-import { BrandMark } from '../ui/BrandMark';
 
 interface ObjectiveRowData {
   number: string;
@@ -25,8 +24,8 @@ function ObjectiveRow({ number, title, body, locale, muted }: ObjectiveRowData &
     <div className="flex gap-[14px] border-t border-line pt-3">
       <span className="font-mono text-[11px] leading-[1.6] text-red">{number}</span>
       <div>
-        <div className="font-sora text-[15px] font-semibold leading-[1.3]">{t(title, locale)}</div>
-        <div className={`font-sora text-[14px] font-light leading-[1.5] ${muted ? 'opacity-[.62]' : 'text-muted'}`}>
+        <div className="font-inter text-[15px] font-semibold leading-[1.3]">{t(title, locale)}</div>
+        <div className={`font-inter text-[14px] font-light leading-[1.5] ${muted ? 'opacity-[.62]' : 'text-muted'}`}>
           {t(body, locale)}
         </div>
       </div>
@@ -53,12 +52,12 @@ export function ObjectivePanels({
 
   return (
     <>
-      <div className="mb-4 flex gap-1 rounded-full bg-chip p-[5px] font-mono text-[11px] uppercase tracking-[.1em] md:hidden">
+      <div className="mb-4 flex border border-line font-mono text-[11px] uppercase tracking-[.1em] md:hidden">
         <button
           type="button"
           onClick={() => setTab('venue')}
           aria-pressed={tab === 'venue'}
-          className={`flex-1 cursor-pointer rounded-full border-none px-[15px] py-[11px] transition-colors active:scale-[0.98] ${
+          className={`flex-1 cursor-pointer border-none px-[15px] py-[13px] transition-colors active:scale-[0.98] ${
             tab === 'venue' ? 'bg-inv text-onInv' : 'bg-transparent text-muted'
           }`}
         >
@@ -68,30 +67,22 @@ export function ObjectivePanels({
           type="button"
           onClick={() => setTab('event')}
           aria-pressed={tab === 'event'}
-          className={`flex-1 cursor-pointer rounded-full border-none px-[15px] py-[11px] transition-colors active:scale-[0.98] ${
+          className={`flex-1 cursor-pointer border-none px-[15px] py-[13px] transition-colors active:scale-[0.98] ${
             tab === 'event' ? 'bg-inv text-onInv' : 'bg-transparent text-muted'
           }`}
         >
           Event
         </button>
       </div>
-      <div className="relative grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-4">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute left-1/2 top-1/2 hidden h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-bg md:flex"
-        >
-          <BrandMark className="h-5 w-5" />
-        </div>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-4">
         <Reveal
-          className={`rounded-[clamp(20px,3vw,28px)] bg-surface p-[clamp(26px,3.4vw,40px)] ${
-            tab === 'event' ? 'hidden md:block' : ''
-          }`}
+          className={`bg-surface p-[clamp(26px,3.4vw,40px)] ${tab === 'event' ? 'hidden md:block' : ''}`}
         >
           <div className="mb-[14px] font-mono text-[11px] tracking-[.1em] text-red">{t(objectiveA.eyebrow, locale)}</div>
-          <h2 className="m-0 mb-[14px] font-display text-[clamp(26px,3.2vw,36px)] font-bold leading-[1.05] tracking-[-.035em] text-ink">
+          <h2 className="m-0 mb-[14px] font-display text-[clamp(26px,3.2vw,36px)] font-bold leading-[1.05] tracking-[-.025em] text-ink">
             {t(objectiveA.heading, locale)}
           </h2>
-          <p className="m-0 mb-[26px] font-sora text-[15px] font-light leading-[1.6] text-muted">
+          <p className="m-0 mb-[26px] font-inter text-[15px] font-light leading-[1.6] text-muted">
             {t(objectiveA.body, locale)}
           </p>
           <div className="flex flex-col gap-3">
@@ -102,15 +93,13 @@ export function ObjectivePanels({
         </Reveal>
         <Reveal
           id="event"
-          className={`rounded-[clamp(20px,3vw,28px)] bg-inv p-[clamp(26px,3.4vw,40px)] text-onInv ${
-            tab === 'venue' ? 'hidden md:block' : ''
-          }`}
+          className={`bg-inv p-[clamp(26px,3.4vw,40px)] text-onInv ${tab === 'venue' ? 'hidden md:block' : ''}`}
         >
           <div className="mb-[14px] font-mono text-[11px] tracking-[.1em] text-red">{t(objectiveB.eyebrow, locale)}</div>
-          <h2 className="m-0 mb-[14px] font-display text-[clamp(26px,3.2vw,36px)] font-bold leading-[1.05] tracking-[-.035em]">
+          <h2 className="m-0 mb-[14px] font-display text-[clamp(26px,3.2vw,36px)] font-bold leading-[1.05] tracking-[-.025em]">
             {t(objectiveB.heading, locale)}
           </h2>
-          <p className="m-0 mb-[26px] font-sora text-[15px] font-light leading-[1.6] opacity-[.68]">
+          <p className="m-0 mb-[26px] font-inter text-[15px] font-light leading-[1.6] opacity-[.68]">
             {t(objectiveB.body, locale)}
           </p>
           <div className="flex flex-col gap-3">

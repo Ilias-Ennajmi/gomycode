@@ -12,6 +12,8 @@ import { Reveal } from '../ui/Reveal';
 
 type Filter = 'all' | 'artist' | 'promoter';
 
+const ASPECTS = ['aspect-[3/4]', 'aspect-square', 'aspect-[4/3]'];
+
 function ArrowIcon({ direction }: { direction: 'prev' | 'next' }) {
   const d = direction === 'prev' ? 'M10 3L5 8l5 5' : 'M6 3l5 5-5 5';
   return (
@@ -72,20 +74,20 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
   }
 
   return (
-    <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(52px,7vw,84px)]">
+    <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(60px,8vw,96px)]">
       <div className="mb-[clamp(22px,3vw,34px)] flex flex-wrap items-center justify-between gap-4">
-        <Reveal as="h2" className="font-display text-[clamp(28px,3.6vw,40px)] font-bold leading-none tracking-[-.035em] text-ink">
+        <Reveal as="h2" className="font-display text-[clamp(28px,3.6vw,40px)] font-extrabold leading-none tracking-[-.025em] text-ink">
           {t(c.workHeading, locale)}
         </Reveal>
         <Reveal className="flex flex-wrap items-center gap-3">
-          <div className="flex flex-wrap gap-1 rounded-full bg-chip p-[5px] font-mono text-[11px] uppercase tracking-[.1em]">
+          <div className="flex border border-line font-mono text-[11px] uppercase tracking-[.1em]">
             {filters.map((f) => (
               <button
                 key={f.key}
                 type="button"
                 onClick={() => setFilter(f.key)}
                 aria-pressed={filter === f.key}
-                className={`cursor-pointer rounded-full border-none px-[15px] py-[13px] transition-transform duration-150 active:scale-[0.96] md:py-[9px] ${
+                className={`cursor-pointer border-none px-[15px] py-[13px] transition-colors md:py-[9px] ${
                   filter === f.key ? 'bg-inv text-onInv' : 'bg-transparent text-muted'
                 }`}
               >
@@ -99,7 +101,7 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
               onClick={() => scrollByCard(-1)}
               disabled={!canPrev}
               aria-label={t(c.workPrev, locale)}
-              className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-line text-ink transition-transform duration-150 active:scale-90 disabled:cursor-not-allowed disabled:opacity-30 md:h-9 md:w-9"
+              className="flex h-11 w-11 cursor-pointer items-center justify-center border border-line text-ink transition-transform duration-150 active:scale-90 disabled:cursor-not-allowed disabled:opacity-30 md:h-9 md:w-9"
             >
               <ArrowIcon direction="prev" />
             </button>
@@ -108,7 +110,7 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
               onClick={() => scrollByCard(1)}
               disabled={!canNext}
               aria-label={t(c.workNext, locale)}
-              className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-line text-ink transition-transform duration-150 active:scale-90 disabled:cursor-not-allowed disabled:opacity-30 md:h-9 md:w-9"
+              className="flex h-11 w-11 cursor-pointer items-center justify-center border border-line text-ink transition-transform duration-150 active:scale-90 disabled:cursor-not-allowed disabled:opacity-30 md:h-9 md:w-9"
             >
               <ArrowIcon direction="next" />
             </button>
@@ -123,26 +125,24 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
             index={i}
             as={Link}
             href={`${localeHref(locale, '/case-studies')}#${study.anchor}`}
-            className={`block flex-none snap-start text-inherit no-underline transition-transform duration-150 active:scale-[0.97] ${
-              i === 0 ? 'w-[clamp(260px,34vw,380px)]' : 'w-[clamp(200px,22vw,270px)]'
-            }`}
+            className="block w-[clamp(220px,26vw,300px)] flex-none snap-start text-inherit no-underline transition-transform duration-150 active:scale-[0.97]"
           >
             {study.image ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={study.image}
                 alt={study.name}
-                className={`photo-grade aspect-square w-full rounded-3xl object-cover ${i === 0 ? 'md:aspect-[4/5]' : ''}`}
+                className={`${ASPECTS[i % ASPECTS.length]} w-full object-cover`}
                 loading="lazy"
               />
             ) : (
               <PlaceholderPanel
                 label={t(study.imageLabel, locale)}
-                className="aspect-square rounded-3xl p-4"
+                className={`${ASPECTS[i % ASPECTS.length]} p-4`}
                 labelClassName="px-3 py-2 text-[11px]"
               />
             )}
-            <div className="mt-4 font-sora text-[18px] font-semibold leading-[1.2] text-ink">{study.name}</div>
+            <div className="mt-4 font-inter text-[18px] font-semibold leading-[1.2] text-ink">{study.name}</div>
             <div className="mt-1 font-mono text-[11px] uppercase tracking-[.08em] text-muted"># {study.category}</div>
           </Reveal>
         ))}

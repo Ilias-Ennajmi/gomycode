@@ -5,9 +5,8 @@ import { t } from '@/core/i18n/localized';
 import type { Locale } from '@/core/i18n/config';
 import type { CaseStudy } from '@/core/content/caseStudies';
 import { PlaceholderPanel } from '../ui/PlaceholderPanel';
-import { StatCounter } from '../ui/StatCounter';
 import { Reveal } from '../ui/Reveal';
-import { GhostNumeral } from '../ui/GhostNumeral';
+import { StatRow, type StatRowItem } from '../ui/StatRow';
 
 /**
  * On mobile: a tappable header (index/category/name) that expands to reveal
@@ -25,8 +24,16 @@ export function CaseStudyCard({ study, locale }: { study: CaseStudy; locale: Loc
     if (window.location.hash === `#${study.anchor}`) setOpen(true);
   }, [study.anchor]);
 
+  const statItems: StatRowItem[] = study.stats.map((stat) => ({
+    value: stat.value,
+    decimals: stat.decimals,
+    prefix: stat.prefix,
+    suffix: stat.suffix,
+    label: t(stat.label, locale),
+  }));
+
   return (
-    <section id={study.anchor} className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(34px,5vw,64px)]">
+    <section id={study.anchor} className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(40px,5.5vw,72px)]">
       <div className="border-t border-line pt-[clamp(24px,3vw,38px)]">
         <button
           type="button"
@@ -38,11 +45,11 @@ export function CaseStudyCard({ study, locale }: { study: CaseStudy; locale: Loc
             <div className="mb-1 font-mono text-[11px] tracking-[.12em] text-red">
               {study.index} / {study.category}
             </div>
-            <h2 className="m-0 font-display text-[24px] font-bold leading-[1.1] tracking-[-.03em] text-ink">{study.name}</h2>
+            <h2 className="m-0 font-display text-[24px] font-extrabold leading-[1.1] tracking-[-.02em] text-ink">{study.name}</h2>
           </div>
           <span
             aria-hidden="true"
-            className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-line font-sora text-[20px] leading-none text-red transition-transform duration-300"
+            className="flex h-9 w-9 flex-none items-center justify-center border border-line font-inter text-[20px] leading-none text-red transition-transform duration-300"
             style={{ transform: open ? 'rotate(45deg)' : 'none' }}
           >
             +
@@ -57,18 +64,14 @@ export function CaseStudyCard({ study, locale }: { study: CaseStudy; locale: Loc
             ref={bodyRef}
             className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-[clamp(22px,3vw,44px)] pb-2 pt-4 md:pt-0"
           >
-            <Reveal className={`relative overflow-hidden ${reverseOrder ? 'md:order-2' : 'md:order-1'}`}>
-              <GhostNumeral
-                value={study.index}
-                className="-left-[.04em] -top-[.14em] hidden text-[clamp(120px,14vw,220px)] text-ink md:block"
-              />
-              <div className="relative mb-[14px] hidden font-mono text-[11px] tracking-[.12em] text-red md:block">
+            <Reveal className={reverseOrder ? 'md:order-2' : 'md:order-1'}>
+              <div className="mb-[14px] hidden font-mono text-[11px] tracking-[.12em] text-red md:block">
                 {study.index} / {study.category}
               </div>
-              <h2 className="relative m-0 mb-2 hidden font-display text-[clamp(30px,4vw,48px)] font-bold leading-none tracking-[-.04em] text-ink md:block">
+              <h2 className="m-0 mb-2 hidden font-display text-[clamp(30px,4vw,48px)] font-extrabold leading-none tracking-[-.03em] text-ink md:block">
                 {study.name}
               </h2>
-              <p className="m-0 mb-6 font-sora text-[16px] font-light leading-[1.6] text-muted">
+              <p className="m-0 mb-6 font-inter text-[16px] font-light leading-[1.6] text-muted">
                 {t(study.summary, locale)}
               </p>
               {study.image ? (
@@ -76,13 +79,13 @@ export function CaseStudyCard({ study, locale }: { study: CaseStudy; locale: Loc
                 <img
                   src={study.image}
                   alt={study.name}
-                  className="photo-grade h-[clamp(160px,22vw,260px)] w-full rounded-[20px] object-cover"
+                  className="h-[clamp(160px,22vw,260px)] w-full object-cover"
                   loading="lazy"
                 />
               ) : (
                 <PlaceholderPanel
                   label={t(study.imageLabel, locale)}
-                  className="h-[clamp(160px,22vw,260px)] rounded-[20px] p-4"
+                  className="h-[clamp(160px,22vw,260px)] p-4"
                   labelClassName="px-3 py-2 text-[11px]"
                 />
               )}
@@ -90,27 +93,14 @@ export function CaseStudyCard({ study, locale }: { study: CaseStudy; locale: Loc
             <Reveal className={`flex flex-col gap-[22px] ${reverseOrder ? 'md:order-1' : 'md:order-2'}`}>
               <div>
                 <div className="mb-2 font-mono text-[11px] text-muted">OBJECTIVE</div>
-                <p className="m-0 font-sora text-[16px] font-light leading-[1.6] text-ink">{t(study.objective, locale)}</p>
+                <p className="m-0 font-inter text-[16px] font-light leading-[1.6] text-ink">{t(study.objective, locale)}</p>
               </div>
               <div>
                 <div className="mb-2 font-mono text-[11px] text-muted">WHAT WE DID</div>
-                <p className="m-0 font-sora text-[16px] font-light leading-[1.6] text-ink">{t(study.whatWeDid, locale)}</p>
+                <p className="m-0 font-inter text-[16px] font-light leading-[1.6] text-ink">{t(study.whatWeDid, locale)}</p>
               </div>
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-4 border-t border-line pt-5">
-                {study.stats.map((stat) => (
-                  <div key={stat.label.en}>
-                    <StatCounter
-                      value={stat.value}
-                      decimals={stat.decimals}
-                      prefix={stat.prefix}
-                      suffix={stat.suffix}
-                      className="font-sora text-[clamp(34px,4vw,46px)] font-bold leading-[.9] tracking-[-.04em] text-red"
-                    />
-                    <div className="mt-2 font-sora text-[13px] font-normal leading-[1.35] text-muted">
-                      {t(stat.label, locale)}
-                    </div>
-                  </div>
-                ))}
+              <div className="border-t border-line pt-5">
+                <StatRow stats={statItems} />
               </div>
             </Reveal>
           </div>

@@ -20,9 +20,9 @@ const config: Config = {
         ph2: 'var(--ph2)',
       },
       fontFamily: {
-        sora: ['var(--font-sora)', 'system-ui', 'sans-serif'],
+        inter: ['var(--font-inter)', 'system-ui', 'sans-serif'],
         mono: ['var(--font-dm-mono)', 'monospace'],
-        display: ['var(--font-display)', 'var(--font-sora)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'var(--font-inter)', 'system-ui', 'sans-serif'],
       },
       keyframes: {
         marq: {
@@ -35,8 +35,8 @@ const config: Config = {
         'marq-30': 'marq 30s linear infinite',
       },
       borderRadius: {
-        '2xl': '10px',
-        '3xl': '14px',
+        '2xl': '4px',
+        '3xl': '6px',
       },
     },
   },
