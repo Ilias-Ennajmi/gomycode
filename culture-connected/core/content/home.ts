@@ -43,34 +43,6 @@ export const homeContent = {
     },
   ],
 
-  pillarsHeading: { en: "Four things we're good at", fr: "Quatre choses qu'on fait bien" } satisfies Localized,
-  pillars: [
-    {
-      marker: 'circle-red',
-      heading: { en: 'Growing fanbases that stick' } satisfies Localized,
-      body: {
-        en: 'Targeting built from real listeners and buyers, not broad interest guesses.',
-      } satisfies Localized,
-    },
-    {
-      marker: 'square-inv',
-      heading: { en: 'Turning spend into streams' } satisfies Localized,
-      body: { en: 'Save-to-listener mechanics, tracked all the way through to plays.' } satisfies Localized,
-    },
-    {
-      marker: 'ring-red',
-      heading: { en: 'Retargeting the whole funnel' } satisfies Localized,
-      body: {
-        en: 'Geo-fenced around the venue, warm audiences worked until they convert.',
-      } satisfies Localized,
-    },
-    {
-      marker: 'diamond-red',
-      heading: { en: 'Pushing releases and dates' } satisfies Localized,
-      body: { en: 'Campaign windows around a drop, a tour leg or a weekly night.' } satisfies Localized,
-    },
-  ] as const,
-
   proofHeading: { en: 'Proof, in numbers', fr: 'Les preuves, en chiffres' } satisfies Localized,
   proofLink: { en: 'read the case studies →' } satisfies Localized,
   proofStats: [
@@ -91,11 +63,11 @@ export const homeContent = {
       anchor: 'levym',
     },
     {
-      value: 38,
+      value: 310,
       suffix: 'K',
-      label: { en: 'engaged followers added' },
-      sublabel: 'ENZO SIFFREDI',
-      anchor: 'enzo',
+      label: { en: 'streams added in 28 days' },
+      sublabel: 'NOVAK',
+      anchor: 'novak',
     },
   ] satisfies StatItem[],
 

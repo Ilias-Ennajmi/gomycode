@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 /**
  * Port of the prototype's `[data-rv]` scroll reveal: fades/translates an
- * element in once it enters the viewport, staggered up to 4 items at 60ms,
+ * element in once it enters the viewport, staggered up to 6 items at 70ms,
  * with a 3s failsafe. Uses IntersectionObserver instead of a scroll sweep.
  */
 export function useReveal<T extends HTMLElement = HTMLElement>(index = 0) {
@@ -26,7 +26,7 @@ export function useReveal<T extends HTMLElement = HTMLElement>(index = 0) {
     let staggerTimeout: ReturnType<typeof setTimeout> | undefined;
 
     const reveal = () => {
-      staggerTimeout = setTimeout(() => setShown(true), (index % 4) * 60);
+      staggerTimeout = setTimeout(() => setShown(true), (index % 6) * 70);
     };
 
     const observer = new IntersectionObserver(

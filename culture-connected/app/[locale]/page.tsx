@@ -11,11 +11,11 @@ import { Marquee } from '@/components/ui/Marquee';
 import { Reveal } from '@/components/ui/Reveal';
 import { ProcessSteps } from '@/components/ui/ProcessSteps';
 import { Eyebrow } from '@/components/ui/Eyebrow';
-import { NumberedRow } from '@/components/ui/NumberedRow';
 import { StatRow } from '@/components/ui/StatRow';
 import { ContactSection } from '@/components/layout/ContactSection';
 import { CaseStudiesPreview } from '@/components/sections/CaseStudiesPreview';
 import { PurposeSection } from '@/components/sections/PurposeSection';
+import { WhatWeDoSection } from '@/components/sections/WhatWeDoSection';
 import { recordLabels } from '@/core/content/roster';
 
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
@@ -106,43 +106,14 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
         className="mt-[clamp(34px,5vw,52px)] border-y border-line bg-surface py-[22px]"
       />
 
-      <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(60px,8vw,96px)]">
-        <Reveal as="h2" className="mb-[clamp(22px,3vw,32px)] font-display text-[clamp(28px,3.6vw,40px)] font-extrabold leading-[1.02] tracking-[-.025em] text-ink">
-          {t(c.whatWeDoHeading, locale)}
-        </Reveal>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-x-8 gap-y-6">
-          {c.whatWeDo.map((item, i) => (
-            <Reveal key={item.label.en} index={i}>
-              <NumberedRow
-                number={`0${i + 1}`}
-                heading={t(item.label, locale)}
-                body={
-                  <>
-                    <span className="font-semibold text-ink">{t(item.bold, locale)}</span> {t(item.rest, locale)}
-                  </>
-                }
-              />
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(60px,8vw,96px)]">
-        <Reveal as="h2" className="mb-[clamp(22px,3vw,32px)] font-display text-[clamp(30px,4.2vw,44px)] font-extrabold leading-[1.02] tracking-[-.03em] text-ink">
-          {t(c.pillarsHeading, locale)}
-        </Reveal>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-x-8 gap-y-2">
-          {c.pillars.map((pillar, i) => (
-            <Reveal key={pillar.heading.en} index={i}>
-              <NumberedRow
-                number={`0${i + 1}`}
-                heading={t(pillar.heading, locale)}
-                body={t(pillar.body, locale)}
-              />
-            </Reveal>
-          ))}
-        </div>
-      </section>
+      <WhatWeDoSection
+        heading={t(c.whatWeDoHeading, locale)}
+        items={c.whatWeDo.map((item) => ({
+          label: t(item.label, locale),
+          bold: t(item.bold, locale),
+          rest: t(item.rest, locale),
+        }))}
+      />
 
       <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(60px,8vw,96px)]">
         <div className="bg-inv p-[clamp(32px,4.4vw,56px)] text-onInv">
@@ -175,8 +146,8 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
         className="mt-[clamp(60px,8vw,96px)] bg-inv py-5"
       />
 
-      <section className="mx-auto grid max-w-[1440px] grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-4 px-[clamp(18px,4vw,52px)] pt-[clamp(60px,8vw,96px)]">
-        <Reveal className="border border-line p-[clamp(24px,3vw,34px)]">
+      <section className="mx-auto grid max-w-[1440px] grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-x-12 gap-y-8 px-[clamp(18px,4vw,52px)] pt-[clamp(60px,8vw,96px)]">
+        <Reveal>
           <div className="mb-3 font-mono text-[11px] tracking-[.1em] text-red">{t(c.roster.artists.eyebrow, locale)}</div>
           <h3 className="m-0 mb-[22px] font-display text-[clamp(24px,3vw,28px)] font-bold leading-[1.1] tracking-[-.02em] text-ink">
             {t(c.roster.artists.heading, locale)}
@@ -192,7 +163,7 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
             </span>
           </div>
         </Reveal>
-        <Reveal className="border border-line bg-surface2 p-[clamp(24px,3vw,34px)]">
+        <Reveal>
           <div className="mb-3 font-mono text-[11px] tracking-[.1em] text-muted">{t(c.roster.promoters.eyebrow, locale)}</div>
           <h3 className="m-0 mb-[22px] font-display text-[clamp(24px,3vw,28px)] font-bold leading-[1.1] tracking-[-.02em] text-ink">
             {t(c.roster.promoters.heading, locale)}

@@ -125,16 +125,18 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
             index={i}
             as={Link}
             href={`${localeHref(locale, '/case-studies')}#${study.anchor}`}
-            className="block w-[clamp(220px,26vw,300px)] flex-none snap-start text-inherit no-underline transition-transform duration-150 active:scale-[0.97]"
+            className="group block w-[clamp(220px,26vw,300px)] flex-none snap-start text-inherit no-underline transition-transform duration-150 active:scale-[0.97]"
           >
             {study.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={study.image}
-                alt={study.name}
-                className={`${ASPECTS[i % ASPECTS.length]} w-full object-cover`}
-                loading="lazy"
-              />
+              <div className={`${ASPECTS[i % ASPECTS.length]} overflow-hidden`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={study.image}
+                  alt={study.name}
+                  className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.06]"
+                  loading="lazy"
+                />
+              </div>
             ) : (
               <PlaceholderPanel
                 label={t(study.imageLabel, locale)}

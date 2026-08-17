@@ -64,7 +64,7 @@ export function CaseStudyCard({ study, locale }: { study: CaseStudy; locale: Loc
             ref={bodyRef}
             className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-[clamp(22px,3vw,44px)] pb-2 pt-4 md:pt-0"
           >
-            <Reveal className={reverseOrder ? 'md:order-2' : 'md:order-1'}>
+            <Reveal className={`group ${reverseOrder ? 'md:order-2' : 'md:order-1'}`}>
               <div className="mb-[14px] hidden font-mono text-[11px] tracking-[.12em] text-red md:block">
                 {study.index} / {study.category}
               </div>
@@ -75,13 +75,15 @@ export function CaseStudyCard({ study, locale }: { study: CaseStudy; locale: Loc
                 {t(study.summary, locale)}
               </p>
               {study.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={study.image}
-                  alt={study.name}
-                  className="h-[clamp(160px,22vw,260px)] w-full object-cover"
-                  loading="lazy"
-                />
+                <div className="h-[clamp(160px,22vw,260px)] w-full overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={study.image}
+                    alt={study.name}
+                    className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.06]"
+                    loading="lazy"
+                  />
+                </div>
               ) : (
                 <PlaceholderPanel
                   label={t(study.imageLabel, locale)}
