@@ -7,7 +7,8 @@ type RevealOwnProps<T extends ElementType> = {
   index?: number;
   as?: T;
   className?: string;
-  children: ReactNode;
+  /** Either plain children, or a render-prop that also receives the reveal's `shown` state — for children that need to key their own motion off the same trigger (e.g. an image entrance-zoom). */
+  children: ReactNode | ((shown: boolean) => ReactNode);
 };
 
 type RevealProps<T extends ElementType> = RevealOwnProps<T> &
@@ -32,7 +33,7 @@ export function Reveal<T extends ElementType = 'div'>({
       } ${className}`}
       {...rest}
     >
-      {children}
+      {typeof children === 'function' ? children(shown) : children}
     </Tag>
   );
 }

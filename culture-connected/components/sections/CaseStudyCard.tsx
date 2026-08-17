@@ -7,6 +7,7 @@ import type { CaseStudy } from '@/core/content/caseStudies';
 import { PlaceholderPanel } from '../ui/PlaceholderPanel';
 import { Reveal } from '../ui/Reveal';
 import { StatRow, type StatRowItem } from '../ui/StatRow';
+import { ZoomImage } from '../ui/ZoomImage';
 
 /**
  * On mobile: a tappable header (index/category/name) that expands to reveal
@@ -64,32 +65,33 @@ export function CaseStudyCard({ study, locale }: { study: CaseStudy; locale: Loc
             ref={bodyRef}
             className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-[clamp(22px,3vw,44px)] pb-2 pt-4 md:pt-0"
           >
-            <Reveal className={`group ${reverseOrder ? 'md:order-2' : 'md:order-1'}`}>
-              <div className="mb-[14px] hidden font-mono text-[11px] tracking-[.12em] text-red md:block">
-                {study.index} / {study.category}
-              </div>
-              <h2 className="m-0 mb-2 hidden font-display text-[clamp(30px,4vw,48px)] font-extrabold leading-none tracking-[-.03em] text-ink md:block">
-                {study.name}
-              </h2>
-              <p className="m-0 mb-6 font-inter text-[16px] font-light leading-[1.6] text-muted">
-                {t(study.summary, locale)}
-              </p>
-              {study.image ? (
-                <div className="h-[clamp(160px,22vw,260px)] w-full overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={study.image}
-                    alt={study.name}
-                    className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.06]"
-                    loading="lazy"
-                  />
-                </div>
-              ) : (
-                <PlaceholderPanel
-                  label={t(study.imageLabel, locale)}
-                  className="h-[clamp(160px,22vw,260px)] p-4"
-                  labelClassName="px-3 py-2 text-[11px]"
-                />
+            <Reveal className={reverseOrder ? 'md:order-2' : 'md:order-1'}>
+              {(shown) => (
+                <>
+                  <div className="mb-[14px] hidden font-mono text-[11px] tracking-[.12em] text-red md:block">
+                    {study.index} / {study.category}
+                  </div>
+                  <h2 className="m-0 mb-2 hidden font-display text-[clamp(30px,4vw,48px)] font-extrabold leading-none tracking-[-.03em] text-ink md:block">
+                    {study.name}
+                  </h2>
+                  <p className="m-0 mb-6 font-inter text-[16px] font-light leading-[1.6] text-muted">
+                    {t(study.summary, locale)}
+                  </p>
+                  {study.image ? (
+                    <ZoomImage
+                      src={study.image}
+                      alt={study.name}
+                      shown={shown}
+                      className="h-[clamp(160px,22vw,260px)] w-full"
+                    />
+                  ) : (
+                    <PlaceholderPanel
+                      label={t(study.imageLabel, locale)}
+                      className="h-[clamp(160px,22vw,260px)] p-4"
+                      labelClassName="px-3 py-2 text-[11px]"
+                    />
+                  )}
+                </>
               )}
             </Reveal>
             <Reveal className={`flex flex-col gap-[22px] ${reverseOrder ? 'md:order-1' : 'md:order-2'}`}>

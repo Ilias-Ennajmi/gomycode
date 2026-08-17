@@ -16,6 +16,7 @@ import { ContactSection } from '@/components/layout/ContactSection';
 import { CaseStudiesPreview } from '@/components/sections/CaseStudiesPreview';
 import { PurposeSection } from '@/components/sections/PurposeSection';
 import { WhatWeDoSection } from '@/components/sections/WhatWeDoSection';
+import { FullBleedPhoto } from '@/components/sections/FullBleedPhoto';
 import { recordLabels } from '@/core/content/roster';
 
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
@@ -182,6 +183,12 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
       </section>
 
       <PurposeSection locale={locale} />
+
+      <FullBleedPhoto
+        src="/case-studies/umbra-marrakech.jpg"
+        alt="Umbra Marrakech event"
+        caption="UMBRA MARRAKECH — 19.8x ROAS"
+      />
 
       <CaseStudiesPreview locale={locale} />
 

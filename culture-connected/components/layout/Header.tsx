@@ -58,9 +58,15 @@ export function Header({ locale }: { locale: Locale }) {
                 key={item.href}
                 href={href}
                 aria-current={active ? 'page' : undefined}
-                className={`no-underline ${active ? 'text-ink' : 'text-muted'}`}
+                className={`group relative pb-[3px] no-underline ${active ? 'text-ink' : 'text-muted'}`}
               >
                 {t(item.label, locale)}
+                <span
+                  aria-hidden="true"
+                  className={`absolute bottom-0 left-0 h-[1.5px] w-full origin-left bg-red transition-transform duration-300 ${
+                    active ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
+                  }`}
+                />
               </Link>
             );
           })}

@@ -37,7 +37,11 @@ export function StatRow({ stats, emphasizeFirst = false }: { stats: StatRowItem[
           </div>
         );
         return stat.href ? (
-          <a key={stat.label + i} href={stat.href} className="block no-underline">
+          <a
+            key={stat.label + i}
+            href={stat.href}
+            className="block no-underline transition-opacity duration-150 active:opacity-60"
+          >
             {inner}
           </a>
         ) : (

@@ -14,6 +14,11 @@ export interface WhatWeDoItem {
  * state is tracked in React (not a CSS `hover`/`group-hover` pair on the
  * same element — that combination hit a real Tailwind cascade-order bug
  * elsewhere in this codebase), so the dim/spotlight effect is deterministic.
+ * `onClick` sets the same state so a tap gets the identical spotlight —
+ * `hover`-only would leave touch devices with none of it. Deliberately a
+ * plain set, not a toggle-off-if-already-active: a real pointer sequence
+ * fires `mouseenter` immediately before `click`, so a toggle would already
+ * see itself as "current" and immediately cancel back out.
  */
 export function WhatWeDoSection({ heading, items }: { heading: string; items: WhatWeDoItem[] }) {
   const [hovered, setHovered] = useState<number | null>(null);
@@ -30,6 +35,7 @@ export function WhatWeDoSection({ heading, items }: { heading: string; items: Wh
             <div
               key={item.label}
               onMouseEnter={() => setHovered(i)}
+              onClick={() => setHovered(i)}
               className="grid cursor-default grid-cols-[52px_1fr] items-baseline gap-x-4 border-t border-line py-[clamp(18px,2.6vw,30px)] transition-opacity duration-300 md:grid-cols-[80px_180px_1fr] md:gap-x-8"
               style={{ opacity: dim ? 0.4 : 1 }}
             >

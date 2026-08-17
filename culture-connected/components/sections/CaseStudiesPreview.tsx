@@ -9,6 +9,7 @@ import { t } from '@/core/i18n/localized';
 import type { Locale } from '@/core/i18n/config';
 import { PlaceholderPanel } from '../ui/PlaceholderPanel';
 import { Reveal } from '../ui/Reveal';
+import { ZoomImage } from '../ui/ZoomImage';
 
 type Filter = 'all' | 'artist' | 'promoter';
 
@@ -125,27 +126,23 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
             index={i}
             as={Link}
             href={`${localeHref(locale, '/case-studies')}#${study.anchor}`}
-            className="group block w-[clamp(220px,26vw,300px)] flex-none snap-start text-inherit no-underline transition-transform duration-150 active:scale-[0.97]"
+            className="block w-[clamp(220px,26vw,300px)] flex-none snap-start text-inherit no-underline transition-transform duration-150 active:scale-[0.97]"
           >
-            {study.image ? (
-              <div className={`${ASPECTS[i % ASPECTS.length]} overflow-hidden`}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={study.image}
-                  alt={study.name}
-                  className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.06]"
-                  loading="lazy"
-                />
-              </div>
-            ) : (
-              <PlaceholderPanel
-                label={t(study.imageLabel, locale)}
-                className={`${ASPECTS[i % ASPECTS.length]} p-4`}
-                labelClassName="px-3 py-2 text-[11px]"
-              />
+            {(shown) => (
+              <>
+                {study.image ? (
+                  <ZoomImage src={study.image} alt={study.name} shown={shown} className={ASPECTS[i % ASPECTS.length]} />
+                ) : (
+                  <PlaceholderPanel
+                    label={t(study.imageLabel, locale)}
+                    className={`${ASPECTS[i % ASPECTS.length]} p-4`}
+                    labelClassName="px-3 py-2 text-[11px]"
+                  />
+                )}
+                <div className="mt-4 font-inter text-[18px] font-semibold leading-[1.2] text-ink">{study.name}</div>
+                <div className="mt-1 font-mono text-[11px] uppercase tracking-[.08em] text-muted"># {study.category}</div>
+              </>
             )}
-            <div className="mt-4 font-inter text-[18px] font-semibold leading-[1.2] text-ink">{study.name}</div>
-            <div className="mt-1 font-mono text-[11px] uppercase tracking-[.08em] text-muted"># {study.category}</div>
           </Reveal>
         ))}
       </div>

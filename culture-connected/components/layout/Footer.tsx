@@ -80,7 +80,13 @@ export function Footer({ locale }: { locale: Locale }) {
           </div>
         </div>
 
-        <div className="mt-[clamp(28px,4vw,44px)] flex flex-wrap items-center justify-between gap-3 border-t border-line pt-6 font-mono text-[11px] text-muted">
+        <div className="mt-[clamp(36px,5vw,56px)] overflow-hidden">
+          <div className="whitespace-nowrap font-display text-[clamp(52px,11vw,180px)] font-extrabold uppercase leading-[.85] tracking-[-.03em] text-ink/[.08]">
+            {wordmark}
+          </div>
+        </div>
+
+        <div className="mt-[clamp(20px,3vw,32px)] flex flex-wrap items-center justify-between gap-3 border-t border-line pt-6 font-mono text-[11px] text-muted">
           <span>{footerContent.domain}</span>
           <span>{footerContent.city}</span>
           <a href={footerContent.instagramUrl} className="no-underline">
