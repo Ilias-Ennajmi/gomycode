@@ -1,7 +1,7 @@
 'use client';
 
 import { type CSSProperties, type FormEvent, useState } from 'react';
-import { contactShared } from '@/core/content/contact';
+import { contactShared, footerContent } from '@/core/content/contact';
 import type { Locale } from '@/core/i18n/config';
 import { t } from '@/core/i18n/localized';
 
@@ -12,11 +12,11 @@ const selectFieldClass =
   'w-full cursor-pointer appearance-none border-none bg-white/[.14] py-[15px] pl-[15px] pr-[38px] font-inter text-[16px] font-light leading-[1.2] text-onInv md:text-[14px]';
 
 /**
- * Client-side mirror of the prototype's contact form: three required fields,
- * an outline on empty fields after a failed submit, a status note. No
- * backend is wired here either (see README "Assets needed from the client" /
- * form notes) - this needs a real endpoint, spam protection and accessible
- * error messaging before launch.
+ * Client-side contact form: three required fields, an outline on empty
+ * fields after a failed submit, a status note. There's no backend on this
+ * static export, so submitting opens the visitor's own email app with a
+ * pre-filled draft addressed to the real team inbox, rather than silently
+ * pretending to send something that never left the browser.
  */
 export function ContactForm({ locale }: { locale: Locale }) {
   const [name, setName] = useState('');
@@ -31,6 +31,12 @@ export function ContactForm({ locale }: { locale: Locale }) {
       setStatus('error');
       return;
     }
+    const roleLabel = contactShared.roleOptions.find((option) => option.value === role)?.label;
+    const subject = `New enquiry from ${name}`;
+    const body = [roleLabel ? `I am: ${t(roleLabel, locale)}` : null, `Email: ${email}`, '', message]
+      .filter((line): line is string => line !== null)
+      .join('\n');
+    window.location.href = `mailto:${footerContent.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     setStatus('sent');
     setName('');
     setRole('');

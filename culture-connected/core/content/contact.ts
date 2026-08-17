@@ -17,7 +17,7 @@ export const contactShared = {
   sendButton: { en: 'Send', fr: 'Envoyer' } satisfies Localized,
   // site.js hardcodes these two strings in English regardless of language.
   fillAllFieldsMessage: 'Fill in all three fields.',
-  sentMessage: 'Sent. We reply within a day.',
+  sentMessage: 'Opening your email app to send this to us.',
 };
 
 export const footerContent = {
