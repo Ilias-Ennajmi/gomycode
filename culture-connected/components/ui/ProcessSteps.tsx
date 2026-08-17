@@ -24,11 +24,13 @@ export function ProcessSteps({ steps, locale, firstAccent = false, gridClassName
         <Reveal
           key={step.step}
           index={i}
-          className={`border-t-2 pt-4 ${firstAccent && i === 0 ? 'border-red' : 'border-line'}`}
+          className={`group cursor-default border-t-2 pt-4 transition-colors duration-200 hover:border-red ${
+            firstAccent && i === 0 ? 'border-red' : 'border-line'
+          }`}
         >
           <div className="mb-2 font-mono text-[11px] text-muted">{step.step}</div>
           <div
-            className={`font-inter font-semibold tracking-[-.02em] text-ink ${
+            className={`font-inter font-semibold tracking-[-.02em] text-ink transition-colors duration-200 group-hover:text-red ${
               step.body ? 'text-[20px] leading-[1.2]' : 'text-[18px] leading-[1.2]'
             }`}
           >

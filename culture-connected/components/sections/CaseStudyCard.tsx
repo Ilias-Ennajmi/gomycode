@@ -7,6 +7,7 @@ import type { CaseStudy } from '@/core/content/caseStudies';
 import { caseStudiesPageContent } from '@/core/content/caseStudies';
 import { PlaceholderPanel } from '../ui/PlaceholderPanel';
 import { Reveal } from '../ui/Reveal';
+import { StatCounter } from '../ui/StatCounter';
 import { StatRow, type StatRowItem } from '../ui/StatRow';
 import { ZoomImage } from '../ui/ZoomImage';
 
@@ -42,19 +43,46 @@ export function CaseStudyCard({ study, locale }: { study: CaseStudy; locale: Loc
         aria-expanded={open}
         className="flex w-full cursor-pointer items-center justify-between gap-4 border-l-[3px] border-red bg-surface py-[clamp(18px,2.6vw,26px)] pl-[clamp(18px,2.6vw,26px)] pr-[clamp(14px,2vw,22px)] text-left transition-colors duration-150 hover:bg-chip active:scale-[0.99]"
       >
-        <div>
-          <div className="mb-2 flex items-center gap-2">
-            <span className="bg-red px-[9px] py-[3px] font-mono text-[10px] uppercase tracking-[.1em] text-white">
-              {study.category}
-            </span>
-            <span className="font-mono text-[11px] text-muted">{study.index}</span>
+        <div className="flex min-w-0 flex-1 items-center gap-4">
+          {study.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={study.image}
+              alt=""
+              loading="lazy"
+              className="h-[64px] w-[64px] flex-none object-cover"
+            />
+          ) : (
+            <PlaceholderPanel label="" className="h-[64px] w-[64px] flex-none" />
+          )}
+          <div className="min-w-0">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="bg-red px-[9px] py-[3px] font-mono text-[10px] uppercase tracking-[.1em] text-white">
+                {study.category}
+              </span>
+              <span className="font-mono text-[11px] text-muted">{study.index}</span>
+            </div>
+            <h2 className="m-0 font-display text-[clamp(24px,3.4vw,36px)] font-extrabold leading-[1.08] tracking-[-.02em] text-ink">
+              {study.name}
+            </h2>
+            <p className="m-0 mt-1 max-w-[440px] font-inter text-[14px] font-light leading-[1.5] text-muted">
+              {t(study.summary, locale)}
+            </p>
           </div>
-          <h2 className="m-0 font-display text-[clamp(24px,3.4vw,36px)] font-extrabold leading-[1.08] tracking-[-.02em] text-ink">
-            {study.name}
-          </h2>
-          <p className="m-0 mt-1 max-w-[440px] font-inter text-[14px] font-light leading-[1.5] text-muted">
-            {t(study.summary, locale)}
-          </p>
+        </div>
+        <div className="hidden flex-none items-center gap-6 md:flex">
+          {study.stats.slice(0, 2).map((stat, i) => (
+            <div key={i} className="text-center">
+              <StatCounter
+                value={stat.value}
+                decimals={stat.decimals}
+                prefix={stat.prefix}
+                suffix={stat.suffix}
+                className="font-display text-[22px] font-extrabold leading-none text-ink"
+              />
+              <div className="mt-1 max-w-[92px] font-inter text-[10px] leading-[1.3] text-muted">{t(stat.label, locale)}</div>
+            </div>
+          ))}
         </div>
         <span className="flex flex-none items-center gap-[10px] font-mono text-[11px] uppercase tracking-[.08em] text-red">
           <span className="hidden sm:inline">

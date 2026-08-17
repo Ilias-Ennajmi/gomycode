@@ -24,7 +24,9 @@ interface TeamMember {
 /** Every member gets an equal-sized box — no "featured" larger first card. Name reads in red. */
 function TeamCard({ member, locale, portraitLabel, className = '' }: { member: TeamMember; locale: Locale; portraitLabel: string; className?: string }) {
   return (
-    <div className={`border border-line bg-surface ${className}`}>
+    <div
+      className={`cursor-default border border-line bg-surface transition-all duration-200 hover:-translate-y-[2px] hover:border-ink hover:bg-chip ${className}`}
+    >
       <PlaceholderPanel label={portraitLabel} className="h-[clamp(180px,20vw,240px)] p-[14px]" labelClassName="px-[10px] py-[7px] text-[10px]" />
       <div className="p-[22px]">
         <div className="font-inter text-[18px] font-bold leading-[1.2] text-red">{member.name}</div>

@@ -76,7 +76,11 @@ export default function ForPromotersPage({ params }: { params: { locale: Locale 
         </Reveal>
         <div className="mt-[clamp(20px,2.8vw,30px)] grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
           {c.tactics.map((tactic, i) => (
-            <Reveal key={tactic.number} index={i} className="border border-line p-[20px]">
+            <Reveal
+              key={tactic.number}
+              index={i}
+              className="cursor-default border border-line p-[20px] transition-all duration-200 hover:-translate-y-[2px] hover:border-ink hover:bg-chip"
+            >
               <div className="mb-[10px] font-mono text-[11px] text-red">{tactic.number}</div>
               <p className="m-0 font-inter text-[15px] font-light leading-[1.55] text-ink">{t(tactic.body, locale)}</p>
             </Reveal>
@@ -112,8 +116,8 @@ export default function ForPromotersPage({ params }: { params: { locale: Locale 
           nextLabel={t(c.venuesNext, locale)}
           cardClassName="w-[clamp(120px,16vw,150px)]"
           items={venueRoster.map((venue) => (
-            <div key={venue.slug} className="flex flex-col items-center text-center">
-              <div className="flex h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-full bg-chip p-3">
+            <div key={venue.slug} className="group flex flex-col items-center text-center">
+              <div className="flex h-[76px] w-[76px] cursor-default items-center justify-center overflow-hidden rounded-full bg-chip p-3 transition-transform duration-200 group-hover:scale-[1.08]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={venue.image} alt={venue.name} className="h-full w-full object-contain" loading="lazy" />
               </div>

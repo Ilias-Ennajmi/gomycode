@@ -69,8 +69,7 @@ export const forArtistsContent = {
     en: 'Playlist embed coming — client to supply the Spotify playlist link.',
     fr: 'Playlist à venir — lien Spotify à recevoir du client.',
   } satisfies Localized,
-  /** Real Spotify playlist URL not supplied yet; leave null until the client provides one. */
-  spotifyPlaylistUrl: null as string | null,
+  spotifyPlaylistUrl: 'https://open.spotify.com/embed/playlist/3Pw2ulljsTEQWwijRbs3ps?utm_source=generator' as string | null,
 
   contactHeading: { en: 'Got a release or a tour to push?', fr: 'Une sortie ou une tournée à pousser ?' } satisfies Localized,
 };

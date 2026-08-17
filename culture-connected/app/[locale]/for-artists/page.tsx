@@ -86,7 +86,11 @@ export default function ForArtistsPage({ params }: { params: { locale: Locale } 
           nextLabel={t(c.handleNext, locale)}
           cardClassName="w-[clamp(240px,32vw,360px)]"
           items={c.handleItems.map((item, i) => (
-            <Reveal key={item.number} index={i} className="h-full border border-line p-[22px]">
+            <Reveal
+              key={item.number}
+              index={i}
+              className="h-full cursor-default border border-line p-[22px] transition-all duration-200 hover:-translate-y-[2px] hover:border-ink hover:bg-chip"
+            >
               <div className="mb-[10px] font-mono text-[11px] text-muted">{item.number}</div>
               <h3 className="m-0 mb-2 font-inter text-[18px] font-semibold leading-[1.25] tracking-[-.01em] text-ink md:text-[20px]">
                 {t(item.heading, locale)}
@@ -114,7 +118,7 @@ export default function ForArtistsPage({ params }: { params: { locale: Locale } 
             <Reveal
               key={label.slug}
               index={i % 8}
-              className="flex h-[60px] items-center justify-center border border-line bg-white px-4"
+              className="flex h-[60px] cursor-default items-center justify-center border border-line bg-white px-4 transition-all duration-200 hover:-translate-y-[2px] hover:border-ink"
               title={label.name}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}

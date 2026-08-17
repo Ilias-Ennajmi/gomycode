@@ -68,8 +68,8 @@ export function ProofShowcase({ locale, pool, heading, variant = 'light', note, 
   }));
 
   return (
-    <div className={dark ? 'bg-inv p-[clamp(32px,4.4vw,56px)] text-onInv' : ''}>
-      <div className="mb-[clamp(24px,3.4vw,40px)] flex flex-wrap items-baseline justify-between gap-[14px]">
+    <div className={dark ? 'bg-inv p-[clamp(26px,3.6vw,44px)] text-onInv' : ''}>
+      <div className="mb-[clamp(20px,2.8vw,32px)] flex flex-wrap items-baseline justify-between gap-[14px]">
         <HoverHeading
           className={`font-display text-[clamp(28px,3.6vw,40px)] font-extrabold leading-none tracking-[-.025em] ${
             dark ? '' : 'text-ink'
@@ -99,32 +99,34 @@ export function ProofShowcase({ locale, pool, heading, variant = 'light', note, 
         </div>
       </div>
 
-      <Reveal key={study.anchor} className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-[clamp(24px,3.4vw,44px)]">
-        {(shown) =>
-          study.image ? (
-            <ZoomImage src={study.image} alt={study.name} shown={shown} className="h-[clamp(180px,22vw,280px)] w-full" />
-          ) : (
-            <PlaceholderPanel
-              label={t(study.imageLabel, locale)}
-              className="h-[clamp(180px,22vw,280px)] p-4"
-              labelClassName="px-3 py-2 text-[11px]"
-            />
-          )
-        }
-      </Reveal>
-      <div className="mt-[clamp(24px,3.4vw,44px)]">
-        <div className={`mb-2 font-mono text-[11px] tracking-[.12em] ${dark ? 'text-onInv/60' : 'text-red'}`}>
-          {study.index} / {study.category}
-        </div>
-        <div className="mb-4 font-display text-[clamp(22px,2.6vw,30px)] font-extrabold leading-[1.05] tracking-[-.02em]">
-          {study.name}
-        </div>
-        <p className={`m-0 mb-6 max-w-[640px] font-inter text-[15px] font-light leading-[1.6] ${dark ? 'text-onInv/75' : 'text-muted'}`}>
-          {t(study.objective, locale)}
-        </p>
-        <div className={`border-t-2 pt-5 ${dark ? 'border-onInv/25' : 'border-red'}`}>
-          <StatRow stats={statItems} emphasizeFirst={!dark} invert={dark} />
-        </div>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-[clamp(22px,3vw,36px)]">
+        <Reveal key={`${study.anchor}-image`}>
+          {(shown) =>
+            study.image ? (
+              <ZoomImage src={study.image} alt={study.name} shown={shown} className="h-[clamp(160px,20vw,240px)] w-full" />
+            ) : (
+              <PlaceholderPanel
+                label={t(study.imageLabel, locale)}
+                className="h-[clamp(160px,20vw,240px)] p-4"
+                labelClassName="px-3 py-2 text-[11px]"
+              />
+            )
+          }
+        </Reveal>
+        <Reveal key={`${study.anchor}-details`}>
+          <div className={`mb-2 font-mono text-[11px] tracking-[.12em] ${dark ? 'text-onInv/60' : 'text-red'}`}>
+            {study.index} / {study.category}
+          </div>
+          <div className="mb-3 font-display text-[clamp(22px,2.6vw,30px)] font-extrabold leading-[1.05] tracking-[-.02em]">
+            {study.name}
+          </div>
+          <p className={`m-0 mb-5 font-inter text-[15px] font-light leading-[1.6] ${dark ? 'text-onInv/75' : 'text-muted'}`}>
+            {t(study.objective, locale)}
+          </p>
+          <div className={`border-t-2 pt-5 ${dark ? 'border-onInv/25' : 'border-red'}`}>
+            <StatRow stats={statItems} emphasizeFirst={!dark} invert={dark} />
+          </div>
+        </Reveal>
       </div>
     </div>
   );

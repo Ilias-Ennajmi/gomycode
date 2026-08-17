@@ -21,6 +21,11 @@ export interface StatRowItem {
  * for use inside a `bg-inv` panel — in light mode `--ink` and `--inv` are
  * the same near-black, so plain `text-ink` numbers are effectively
  * invisible against a dark panel without this.
+ *
+ * No per-stat top divider by design — an earlier version put a hairline
+ * flush above every number, which read as a stray line sitting on top of
+ * the digits. Grouping/gap spacing alone separates wrapped rows; callers
+ * that want a rule above the whole stat block add their own single one.
  */
 export function StatRow({
   stats,
@@ -35,7 +40,7 @@ export function StatRow({
     <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-[repeat(auto-fit,minmax(130px,1fr))] md:gap-x-10 md:gap-y-8">
       {stats.map((stat, i) => {
         const inner = (
-          <div className={`border-t pt-4 md:pt-0 ${invert ? 'border-onInv/25' : 'border-line'}`}>
+          <div>
             <StatCounter
               value={stat.value}
               decimals={stat.decimals}

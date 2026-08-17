@@ -142,7 +142,7 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
             seeAllLabel={locale === 'fr' ? `Voir les ${c.roster.artists.chips.length} →` : `See all ${c.roster.artists.chips.length} →`}
             gridClassName="flex flex-wrap gap-2 font-inter text-[14px]"
             items={c.roster.artists.chips.map((chip) => (
-              <span key={chip} className="border border-line px-[13px] py-[8px]">
+              <span key={chip} className="cursor-default border border-line px-[13px] py-[8px] transition-colors duration-200 hover:border-red hover:text-red">
                 {chip}
               </span>
             ))}
@@ -161,7 +161,7 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
             seeAllLabel={locale === 'fr' ? `Voir les ${c.roster.promoters.chips.length} →` : `See all ${c.roster.promoters.chips.length} →`}
             gridClassName="flex flex-wrap gap-2 font-inter text-[14px]"
             items={c.roster.promoters.chips.map((chip) => (
-              <span key={chip} className="border border-line px-[13px] py-[8px]">
+              <span key={chip} className="cursor-default border border-line px-[13px] py-[8px] transition-colors duration-200 hover:border-red hover:text-red">
                 {chip}
               </span>
             ))}

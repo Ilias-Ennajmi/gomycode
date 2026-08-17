@@ -51,20 +51,17 @@ export default function CreativePage({ params }: { params: { locale: Locale } })
         </div>
       </section>
 
-      <VideoPlayerSection
-        prevLabel={t(c.videoPrev, locale)}
-        nextLabel={t(c.videoNext, locale)}
-        placeholderLabel={t(c.videoPlaceholderLabel, locale)}
-        className="mx-[clamp(18px,4vw,52px)]"
-      />
-
       <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(60px,8vw,96px)]">
         <HoverHeading className="mb-[clamp(22px,3vw,34px)] font-display text-[clamp(28px,3.8vw,44px)] font-extrabold leading-[1.02] tracking-[-.03em] text-ink">
           {t(c.servicesHeading, locale)}
         </HoverHeading>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {c.services.map((item, i) => (
-            <Reveal key={item.number} index={i} className="border border-line p-[22px]">
+            <Reveal
+              key={item.number}
+              index={i}
+              className="cursor-default border border-line p-[22px] transition-all duration-200 hover:-translate-y-[2px] hover:border-ink hover:bg-chip"
+            >
               <div className="mb-[10px] font-mono text-[11px] text-red">{item.number}</div>
               <h3 className="m-0 mb-2 font-inter text-[18px] font-semibold leading-[1.25] tracking-[-.01em] text-ink md:text-[20px]">
                 {t(item.heading, locale)}
@@ -74,6 +71,16 @@ export default function CreativePage({ params }: { params: { locale: Locale } })
               </p>
             </Reveal>
           ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(60px,8vw,96px)]">
+        <div className="mx-auto max-w-[640px]">
+          <VideoPlayerSection
+            prevLabel={t(c.videoPrev, locale)}
+            nextLabel={t(c.videoNext, locale)}
+            placeholderLabel={t(c.videoPlaceholderLabel, locale)}
+          />
         </div>
       </section>
 
