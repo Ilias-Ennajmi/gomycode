@@ -6,6 +6,7 @@ export interface NavItem {
 }
 
 export const navItems: NavItem[] = [
+  { href: '/', label: { en: 'Home', fr: 'Accueil' } },
   { href: '/for-artists', label: { en: 'For artists', fr: 'Artistes' } },
   { href: '/for-promoters', label: { en: 'For promoters', fr: 'Promoteurs' } },
   { href: '/creative', label: { en: 'Creative', fr: 'Créa' } },

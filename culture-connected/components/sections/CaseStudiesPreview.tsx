@@ -10,6 +10,7 @@ import type { Locale } from '@/core/i18n/config';
 import { PlaceholderPanel } from '../ui/PlaceholderPanel';
 import { Reveal } from '../ui/Reveal';
 import { ZoomImage } from '../ui/ZoomImage';
+import { HoverHeading } from '../ui/HoverHeading';
 
 type Filter = 'all' | 'artist' | 'promoter';
 
@@ -28,6 +29,7 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
   const [filter, setFilter] = useState<Filter>('all');
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const trackRef = useRef<HTMLDivElement>(null);
   const c = homeContent;
 
@@ -44,6 +46,8 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
     if (!el) return;
     setCanPrev(el.scrollLeft > 4);
     setCanNext(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+    const max = el.scrollWidth - el.clientWidth;
+    setScrollProgress(max > 0 ? Math.min(1, Math.max(0, el.scrollLeft / max)) : 0);
   }, []);
 
   useEffect(() => {
@@ -76,10 +80,18 @@ export function CaseStudiesPreview({ locale }: { locale: Locale }) {
 
   return (
     <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(60px,8vw,96px)]">
-      <div className="mb-[clamp(22px,3vw,34px)] flex flex-wrap items-center justify-between gap-4">
-        <Reveal as="h2" className="font-display text-[clamp(28px,3.6vw,40px)] font-extrabold leading-none tracking-[-.025em] text-ink">
-          {t(c.workHeading, locale)}
-        </Reveal>
+      <div className="mb-[clamp(22px,3vw,34px)] flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <HoverHeading className="font-display text-[clamp(28px,3.6vw,40px)] font-extrabold leading-none tracking-[-.025em] text-ink">
+            {t(c.workHeading, locale)}
+          </HoverHeading>
+          <div className="mt-[10px] h-[2px] w-[130px] max-w-full bg-line">
+            <div
+              className="h-full bg-red"
+              style={{ width: `${Math.max(6, scrollProgress * 100)}%`, transition: 'width 150ms linear' }}
+            />
+          </div>
+        </div>
         <Reveal className="flex flex-wrap items-center gap-3">
           <div className="flex border border-line font-mono text-[11px] uppercase tracking-[.1em]">
             {filters.map((f) => (

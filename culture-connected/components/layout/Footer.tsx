@@ -6,6 +6,16 @@ import { localeHref } from '@/core/i18n/paths';
 import { t } from '@/core/i18n/localized';
 import type { Locale } from '@/core/i18n/config';
 
+function InstagramIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="12" cy="12" r="4.6" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function Footer({ locale }: { locale: Locale }) {
   return (
     <footer className="border-t border-line bg-bg">
@@ -28,11 +38,6 @@ export function Footer({ locale }: { locale: Locale }) {
               {t(footerCopy.pagesHeading, locale)}
             </div>
             <ul className="m-0 flex list-none flex-col gap-[10px] p-0 font-inter text-[14px]">
-              <li>
-                <Link href={localeHref(locale, '/')} className="text-ink no-underline">
-                  {t(footerCopy.homeLabel, locale)}
-                </Link>
-              </li>
               {navItems.map((item) => (
                 <li key={item.href}>
                   <Link href={localeHref(locale, item.href)} className="text-ink no-underline">
@@ -70,18 +75,18 @@ export function Footer({ locale }: { locale: Locale }) {
             <div className="mb-4 font-mono text-[11px] uppercase tracking-[.1em] text-muted">
               {t(footerCopy.followHeading, locale)}
             </div>
-            <ul className="m-0 flex list-none flex-col gap-[10px] p-0 font-inter text-[14px]">
-              <li>
-                <a href={footerContent.instagramUrl} className="text-ink no-underline">
-                  Instagram
-                </a>
-              </li>
-            </ul>
+            <a
+              href={footerContent.instagramUrl}
+              aria-label="Instagram"
+              className="flex h-11 w-11 items-center justify-center border border-line text-ink no-underline transition-colors duration-150 hover:border-ink active:scale-90"
+            >
+              <InstagramIcon />
+            </a>
           </div>
         </div>
 
         <div className="mt-[clamp(36px,5vw,56px)] overflow-hidden">
-          <div className="whitespace-nowrap font-display text-[clamp(52px,11vw,180px)] font-extrabold uppercase leading-[.85] tracking-[-.03em] text-ink/[.08]">
+          <div className="font-display text-[clamp(28px,7.4vw,130px)] font-extrabold uppercase leading-[.9] tracking-[-.03em] text-ink/[.08]">
             {wordmark}
           </div>
         </div>

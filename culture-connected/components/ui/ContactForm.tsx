@@ -7,6 +7,9 @@ import { t } from '@/core/i18n/localized';
 
 const fieldClass =
   'border-none bg-white/[.14] p-[15px] font-inter text-[16px] font-light leading-[1.2] text-onInv md:text-[14px]';
+/** Own left/right/top/bottom padding (not `p-[15px]`) so it never competes with `fieldClass` on the same element for the `padding` shorthand. */
+const selectFieldClass =
+  'w-full cursor-pointer appearance-none border-none bg-white/[.14] py-[15px] pl-[15px] pr-[38px] font-inter text-[16px] font-light leading-[1.2] text-onInv md:text-[14px]';
 
 /**
  * Client-side mirror of the prototype's contact form: three required fields,
@@ -17,6 +20,7 @@ const fieldClass =
  */
 export function ContactForm({ locale }: { locale: Locale }) {
   const [name, setName] = useState('');
+  const [role, setRole] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<'idle' | 'error' | 'sent'>('idle');
@@ -29,6 +33,7 @@ export function ContactForm({ locale }: { locale: Locale }) {
     }
     setStatus('sent');
     setName('');
+    setRole('');
     setEmail('');
     setMessage('');
   }
@@ -54,6 +59,36 @@ export function ContactForm({ locale }: { locale: Locale }) {
         aria-describedby={status === 'error' ? errorId : undefined}
         className={fieldClass}
       />
+      <label htmlFor="contact-role" className="sr-only">
+        {t(contactShared.roleLabel, locale)}
+      </label>
+      <div className="relative">
+        <select
+          id="contact-role"
+          value={role}
+          onChange={(event) => setRole(event.target.value)}
+          className={selectFieldClass}
+        >
+          <option value="" className="text-ink">
+            {t(contactShared.roleLabel, locale)}
+          </option>
+          {contactShared.roleOptions.map((option) => (
+            <option key={option.value} value={option.value} className="text-ink">
+              {t(option.label, locale)}
+            </option>
+          ))}
+        </select>
+        <svg
+          aria-hidden="true"
+          width="10"
+          height="6"
+          viewBox="0 0 10 6"
+          fill="none"
+          className="pointer-events-none absolute right-[15px] top-1/2 -translate-y-1/2 text-onInv"
+        >
+          <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
       <label htmlFor="contact-email" className="sr-only">
         {t(contactShared.emailPlaceholder, locale)}
       </label>

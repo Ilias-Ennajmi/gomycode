@@ -11,12 +11,13 @@ import { Marquee } from '@/components/ui/Marquee';
 import { Reveal } from '@/components/ui/Reveal';
 import { ProcessSteps } from '@/components/ui/ProcessSteps';
 import { Eyebrow } from '@/components/ui/Eyebrow';
-import { StatRow } from '@/components/ui/StatRow';
+import { ExpandableList } from '@/components/ui/ExpandableList';
+import { HoverHeading } from '@/components/ui/HoverHeading';
 import { ContactSection } from '@/components/layout/ContactSection';
 import { CaseStudiesPreview } from '@/components/sections/CaseStudiesPreview';
 import { PurposeSection } from '@/components/sections/PurposeSection';
 import { WhatWeDoSection } from '@/components/sections/WhatWeDoSection';
-import { FullBleedPhoto } from '@/components/sections/FullBleedPhoto';
+import { ProofShowcase } from '@/components/sections/ProofShowcase';
 import { recordLabels } from '@/core/content/roster';
 
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
@@ -117,27 +118,7 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
       />
 
       <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(60px,8vw,96px)]">
-        <div className="bg-inv p-[clamp(32px,4.4vw,56px)] text-onInv">
-          <div className="mb-[clamp(28px,4vw,44px)] flex flex-wrap items-baseline justify-between gap-[14px]">
-            <Reveal as="h2" className="font-display text-[clamp(28px,3.6vw,40px)] font-extrabold leading-none tracking-[-.025em]">
-              {t(c.proofHeading, locale)}
-            </Reveal>
-            <Link href={localeHref(locale, '/case-studies')} className="font-mono text-[12px] text-red no-underline">
-              {t(c.proofLink, locale)}
-            </Link>
-          </div>
-          <StatRow
-            emphasizeFirst
-            stats={c.proofStats.map((stat) => ({
-              value: stat.value,
-              decimals: stat.decimals,
-              suffix: stat.suffix,
-              label: t(stat.label, locale),
-              sublabel: stat.sublabel,
-              href: `${localeHref(locale, '/case-studies')}#${stat.anchor}`,
-            }))}
-          />
-        </div>
+        <ProofShowcase locale={locale} pool={c.proofPool} heading={c.proofHeading} linkLabel={c.proofLink} variant="dark" />
       </section>
 
       <Marquee
@@ -148,55 +129,55 @@ export default function HomePage({ params }: { params: { locale: Locale } }) {
       />
 
       <section className="mx-auto grid max-w-[1440px] grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-x-12 gap-y-8 px-[clamp(18px,4vw,52px)] pt-[clamp(60px,8vw,96px)]">
-        <Reveal>
+        <div>
           <div className="mb-3 font-mono text-[11px] tracking-[.1em] text-red">{t(c.roster.artists.eyebrow, locale)}</div>
-          <h3 className="m-0 mb-[22px] font-display text-[clamp(24px,3vw,28px)] font-bold leading-[1.1] tracking-[-.02em] text-ink">
+          <HoverHeading
+            as="h3"
+            className="mb-[22px] font-display text-[clamp(24px,3vw,28px)] font-bold leading-[1.1] tracking-[-.02em] text-ink"
+          >
             {t(c.roster.artists.heading, locale)}
-          </h3>
-          <div className="flex flex-wrap gap-2 font-inter text-[14px]">
-            {c.roster.artists.chips.map((chip) => (
+          </HoverHeading>
+          <ExpandableList
+            initialCount={8}
+            seeAllLabel={locale === 'fr' ? `Voir les ${c.roster.artists.chips.length} →` : `See all ${c.roster.artists.chips.length} →`}
+            gridClassName="flex flex-wrap gap-2 font-inter text-[14px]"
+            items={c.roster.artists.chips.map((chip) => (
               <span key={chip} className="border border-line px-[13px] py-[8px]">
                 {chip}
               </span>
             ))}
-            <span className="border border-line px-[13px] py-[8px] font-mono text-[11px] text-muted">
-              {t(c.roster.moreLabel, locale)}
-            </span>
-          </div>
-        </Reveal>
-        <Reveal>
+          />
+        </div>
+        <div>
           <div className="mb-3 font-mono text-[11px] tracking-[.1em] text-muted">{t(c.roster.promoters.eyebrow, locale)}</div>
-          <h3 className="m-0 mb-[22px] font-display text-[clamp(24px,3vw,28px)] font-bold leading-[1.1] tracking-[-.02em] text-ink">
+          <HoverHeading
+            as="h3"
+            className="mb-[22px] font-display text-[clamp(24px,3vw,28px)] font-bold leading-[1.1] tracking-[-.02em] text-ink"
+          >
             {t(c.roster.promoters.heading, locale)}
-          </h3>
-          <div className="flex flex-wrap gap-2 font-inter text-[14px]">
-            {c.roster.promoters.chips.map((chip) => (
+          </HoverHeading>
+          <ExpandableList
+            initialCount={8}
+            seeAllLabel={locale === 'fr' ? `Voir les ${c.roster.promoters.chips.length} →` : `See all ${c.roster.promoters.chips.length} →`}
+            gridClassName="flex flex-wrap gap-2 font-inter text-[14px]"
+            items={c.roster.promoters.chips.map((chip) => (
               <span key={chip} className="border border-line px-[13px] py-[8px]">
                 {chip}
               </span>
             ))}
-            <span className="border border-line px-[13px] py-[8px] font-mono text-[11px] text-muted">
-              {t(c.roster.moreLabel, locale)}
-            </span>
-          </div>
-        </Reveal>
+          />
+        </div>
       </section>
 
       <PurposeSection locale={locale} />
-
-      <FullBleedPhoto
-        src="/case-studies/umbra-marrakech.jpg"
-        alt="Umbra Marrakech event"
-        caption="UMBRA MARRAKECH — 19.8x ROAS"
-      />
 
       <CaseStudiesPreview locale={locale} />
 
       <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(60px,8vw,96px)]">
         <div className="mb-[clamp(22px,3vw,34px)] flex flex-wrap items-baseline justify-between gap-[14px]">
-          <Reveal as="h2" className="font-display text-[clamp(28px,3.6vw,40px)] font-extrabold leading-none tracking-[-.025em] text-ink">
+          <HoverHeading className="font-display text-[clamp(28px,3.6vw,40px)] font-extrabold leading-none tracking-[-.025em] text-ink">
             {t(c.processHeading, locale)}
-          </Reveal>
+          </HoverHeading>
           <Link href={`${localeHref(locale, '/about')}#process`} className="font-mono text-[12px] text-red no-underline">
             {t(c.processLink, locale)}
           </Link>

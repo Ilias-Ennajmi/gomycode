@@ -6,16 +6,16 @@ import { forArtistsContent } from '@/core/content/forArtists';
 import { navItems } from '@/core/content/nav';
 import { AccentHeading } from '@/components/ui/AccentHeading';
 import { Button } from '@/components/ui/Button';
-import { HeroMediaPanel } from '@/components/ui/HeroMediaPanel';
 import { Reveal } from '@/components/ui/Reveal';
 import { Marquee } from '@/components/ui/Marquee';
 import { Eyebrow } from '@/components/ui/Eyebrow';
-import { NumberedRow } from '@/components/ui/NumberedRow';
-import { ExpandableList } from '@/components/ui/ExpandableList';
-import { StatRow } from '@/components/ui/StatRow';
+import { HoverHeading } from '@/components/ui/HoverHeading';
+import { CardCarousel } from '@/components/ui/CardCarousel';
 import { ContactSection } from '@/components/layout/ContactSection';
 import { PurposeSection } from '@/components/sections/PurposeSection';
-import { artistRoster } from '@/core/content/roster';
+import { ProofShowcase } from '@/components/sections/ProofShowcase';
+import { ArtistHeroCarousel } from '@/components/sections/ArtistHeroCarousel';
+import { artistRoster, recordLabels } from '@/core/content/roster';
 
 function ArtistRow() {
   return (
@@ -38,7 +38,7 @@ function ArtistRow() {
 
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
   const { locale } = params;
-  return { title: `culture connected — ${t(navItems[0].label, locale)}` };
+  return { title: `culture connected — ${t(navItems[1].label, locale)}` };
 }
 
 export default function ForArtistsPage({ params }: { params: { locale: Locale } }) {
@@ -75,22 +75,25 @@ export default function ForArtistsPage({ params }: { params: { locale: Locale } 
         </div>
       </section>
 
-      <HeroMediaPanel
-        label={t(c.mediaLabel, locale)}
-        className="mx-[clamp(18px,4vw,52px)] h-[clamp(140px,34vw,400px)]"
-      />
+      <ArtistHeroCarousel prevLabel={t(c.heroPrev, locale)} nextLabel={t(c.heroNext, locale)} />
 
       <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(60px,8vw,96px)]">
-        <Reveal as="h2" className="mb-[clamp(22px,3vw,34px)] font-display text-[clamp(28px,3.8vw,44px)] font-extrabold leading-[1.02] tracking-[-.03em] text-ink">
+        <HoverHeading className="mb-[clamp(22px,3vw,34px)] font-display text-[clamp(28px,3.8vw,44px)] font-extrabold leading-[1.02] tracking-[-.03em] text-ink">
           {t(c.handleHeading, locale)}
-        </Reveal>
-        <ExpandableList
-          initialCount={4}
-          seeAllLabel={locale === 'fr' ? `Voir les ${c.handleItems.length} →` : `See all ${c.handleItems.length} →`}
-          gridClassName="grid grid-cols-1 gap-x-8 gap-y-1 md:grid-cols-2"
+        </HoverHeading>
+        <CardCarousel
+          prevLabel={t(c.handlePrev, locale)}
+          nextLabel={t(c.handleNext, locale)}
+          cardClassName="w-[clamp(240px,32vw,360px)]"
           items={c.handleItems.map((item, i) => (
-            <Reveal key={item.number} index={i}>
-              <NumberedRow number={item.number} heading={t(item.heading, locale)} body={t(item.body, locale)} />
+            <Reveal key={item.number} index={i} className="h-full border border-line p-[22px]">
+              <div className="mb-[10px] font-mono text-[11px] text-muted">{item.number}</div>
+              <h3 className="m-0 mb-2 font-inter text-[18px] font-semibold leading-[1.25] tracking-[-.01em] text-ink md:text-[20px]">
+                {t(item.heading, locale)}
+              </h3>
+              <p className="m-0 font-inter text-[14px] font-light leading-[1.6] text-muted md:text-[15px]">
+                {t(item.body, locale)}
+              </p>
             </Reveal>
           ))}
         />
@@ -99,22 +102,47 @@ export default function ForArtistsPage({ params }: { params: { locale: Locale } 
       <PurposeSection locale={locale} />
 
       <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(60px,8vw,96px)]">
-        <div className="mb-[clamp(28px,4vw,44px)] flex flex-wrap items-baseline justify-between gap-[14px]">
-          <Reveal as="h2" className="font-display text-[clamp(28px,3.6vw,40px)] font-extrabold leading-none tracking-[-.025em] text-ink">
-            {t(c.proofHeading, locale)}
-          </Reveal>
-          <span className="font-mono text-[11px] text-muted">{t(c.proofNote, locale)}</span>
+        <ProofShowcase locale={locale} pool={c.proofPool} heading={c.proofHeading} note={c.proofNote} variant="light" />
+      </section>
+
+      <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(60px,8vw,96px)]">
+        <HoverHeading className="mb-[clamp(18px,2.6vw,26px)] font-display text-[clamp(24px,3vw,30px)] font-extrabold leading-[1.05] tracking-[-.02em] text-ink">
+          {t(c.labelsHeading, locale)}
+        </HoverHeading>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-x-4 gap-y-4">
+          {recordLabels.map((label, i) => (
+            <Reveal
+              key={label.slug}
+              index={i % 8}
+              className="flex h-[60px] items-center justify-center border border-line bg-white px-4"
+              title={label.name}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={label.image} alt={label.name} className="max-h-[34px] max-w-full object-contain" loading="lazy" />
+            </Reveal>
+          ))}
         </div>
-        <StatRow
-          stats={c.proofStats.map((stat) => ({
-            value: stat.value,
-            decimals: stat.decimals,
-            suffix: stat.suffix,
-            label: t(stat.label, locale),
-            sublabel: stat.sublabel,
-            href: `${localeHref(locale, '/case-studies')}#${stat.anchor}`,
-          }))}
-        />
+      </section>
+
+      <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(60px,8vw,96px)]">
+        <HoverHeading className="mb-[clamp(18px,2.6vw,26px)] font-display text-[clamp(24px,3vw,30px)] font-extrabold leading-[1.05] tracking-[-.02em] text-ink">
+          {t(c.spotifyHeading, locale)}
+        </HoverHeading>
+        {c.spotifyPlaylistUrl ? (
+          <iframe
+            title="Spotify playlist"
+            src={c.spotifyPlaylistUrl}
+            className="h-[352px] w-full max-w-[760px] border-0"
+            loading="lazy"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          />
+        ) : (
+          <div className="placeholder-stripes flex h-[180px] max-w-[760px] items-end p-4">
+            <span className="border border-current bg-bg px-3 py-2 font-mono text-[11px] text-muted">
+              {t(c.spotifyNote, locale)}
+            </span>
+          </div>
+        )}
       </section>
 
       <Marquee

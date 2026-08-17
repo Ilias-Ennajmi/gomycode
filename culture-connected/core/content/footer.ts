@@ -15,5 +15,4 @@ export const footerCopy = {
   contactHeading: { en: 'Get in touch', fr: 'Contact' } satisfies Localized,
   contactLabel: { en: 'Contact', fr: 'Contact' } satisfies Localized,
   followHeading: { en: 'Follow along', fr: 'Suivez-nous' } satisfies Localized,
-  homeLabel: { en: 'Home', fr: 'Accueil' } satisfies Localized,
 };

@@ -1,5 +1,5 @@
 import type { Localized } from '@/core/i18n/localized';
-import type { AccentHeading, StatItem } from './types';
+import type { AccentHeading } from './types';
 
 export const homeContent = {
   eyebrow: { en: 'London / Music marketing' } satisfies Localized,
@@ -45,31 +45,8 @@ export const homeContent = {
 
   proofHeading: { en: 'Proof, in numbers', fr: 'Les preuves, en chiffres' } satisfies Localized,
   proofLink: { en: 'read the case studies →' } satisfies Localized,
-  proofStats: [
-    {
-      value: 19.8,
-      decimals: 1,
-      suffix: 'x',
-      label: { en: 'ROAS on a ticketing campaign' },
-      sublabel: 'UMBRA MARRAKECH',
-      anchor: 'umbra',
-    },
-    {
-      value: 2.2,
-      decimals: 1,
-      suffix: 'M',
-      label: { en: 'streams from one release push' },
-      sublabel: 'LEVYM × SHIMZA',
-      anchor: 'levym',
-    },
-    {
-      value: 310,
-      suffix: 'K',
-      label: { en: 'streams added in 28 days' },
-      sublabel: 'NOVAK',
-      anchor: 'novak',
-    },
-  ] satisfies StatItem[],
+  /** Case-study anchors (core/content/caseStudies.ts) that the ProofShowcase Shuffle button cycles through. */
+  proofPool: ['umbra', 'levym', 'novak'],
 
   serviceWords: [
     'PAID MEDIA',
@@ -84,7 +61,7 @@ export const homeContent = {
   roster: {
     artists: {
       eyebrow: { en: 'ARTISTS' } satisfies Localized,
-      heading: { en: 'On tour, on repeat', fr: 'En tournée, en boucle' } satisfies Localized,
+      heading: { en: 'Artists supported', fr: 'Artistes accompagnés' } satisfies Localized,
       chips: [
         'R3HAB',
         'Moojo',
@@ -111,7 +88,7 @@ export const homeContent = {
     },
     promoters: {
       eyebrow: { en: 'PROMOTERS & VENUES' } satisfies Localized,
-      heading: { en: 'Doors open, rooms full', fr: 'Portes ouvertes, salles pleines' } satisfies Localized,
+      heading: { en: 'Dancefloors we helped fill', fr: 'Des pistes de danse qu’on a aidé à remplir' } satisfies Localized,
       chips: [
         'Leone',
         'Organika',
@@ -136,7 +113,6 @@ export const homeContent = {
         'Babouchka',
       ],
     },
-    moreLabel: { en: '+ MORE', fr: '+ PLUS' } satisfies Localized,
   },
 
   workHeading: { en: 'Recent work', fr: 'Travaux récents' } satisfies Localized,
@@ -149,7 +125,7 @@ export const homeContent = {
   workPrev: { en: 'Previous case studies', fr: 'Études de cas précédentes' } satisfies Localized,
   workNext: { en: 'Next case studies', fr: 'Études de cas suivantes' } satisfies Localized,
 
-  processHeading: { en: 'How it goes', fr: 'Comment ça se passe' } satisfies Localized,
+  processHeading: { en: 'How we work', fr: 'Comment on travaille' } satisfies Localized,
   processLink: { en: 'the full process →' } satisfies Localized,
   processSteps: [
     { step: 'STEP 01', title: { en: 'Discovery call', fr: 'Appel de découverte' } satisfies Localized },
@@ -159,7 +135,7 @@ export const homeContent = {
   ],
 
   contactHeading: {
-    en: "Say what you're working on.",
-    fr: 'Dites-nous sur quoi vous travaillez.',
+    en: "Whatever you're building next, we want in.",
+    fr: 'Quel que soit votre prochain projet, on veut en être.',
   } satisfies Localized,
 };

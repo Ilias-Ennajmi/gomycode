@@ -12,7 +12,7 @@ import { CaseStudyCard } from '@/components/sections/CaseStudyCard';
 
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
   const { locale } = params;
-  return { title: `culture connected — ${t(navItems[3].label, locale)}` };
+  return { title: `culture connected — ${t(navItems[4].label, locale)}` };
 }
 
 export default function CaseStudiesPage({ params }: { params: { locale: Locale } }) {
@@ -35,16 +35,19 @@ export default function CaseStudiesPage({ params }: { params: { locale: Locale }
         <Reveal as="p" className="m-0 mt-[clamp(20px,3vw,34px)] max-w-[560px] font-inter text-[17px] font-light leading-[1.6] text-muted">
           {t(c.intro, locale)}
         </Reveal>
-        <Reveal className="mt-[clamp(22px,3vw,34px)] flex flex-wrap gap-2 font-inter text-[13px]">
-          {caseStudies.map((study) => (
-            <a
-              key={study.anchor}
-              href={`#${study.anchor}`}
-              className="border border-line px-[15px] py-[10px] no-underline"
-            >
-              {study.name}
-            </a>
-          ))}
+        <Reveal className="mt-[clamp(22px,3vw,34px)] flex flex-wrap gap-2 font-mono text-[12px] uppercase tracking-[.06em]">
+          {Array.from(new Set(caseStudies.map((study) => study.category))).map((category) => {
+            const firstMatch = caseStudies.find((study) => study.category === category);
+            return (
+              <a
+                key={category}
+                href={`#${firstMatch?.anchor}`}
+                className="border border-line px-[15px] py-[10px] text-ink no-underline transition-colors hover:border-ink"
+              >
+                {category}
+              </a>
+            );
+          })}
         </Reveal>
       </section>
 

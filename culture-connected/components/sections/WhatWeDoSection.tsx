@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { HoverHeading } from '../ui/HoverHeading';
 
 export interface WhatWeDoItem {
   label: string;
@@ -25,9 +26,9 @@ export function WhatWeDoSection({ heading, items }: { heading: string; items: Wh
 
   return (
     <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(60px,8vw,96px)]">
-      <h2 className="m-0 mb-[clamp(28px,4vw,44px)] font-display text-[clamp(32px,4.6vw,52px)] font-extrabold leading-[1] tracking-[-.03em] text-ink">
+      <HoverHeading className="mb-[clamp(28px,4vw,44px)] font-display text-[clamp(32px,4.6vw,52px)] font-extrabold leading-[1] tracking-[-.03em] text-ink">
         {heading}
-      </h2>
+      </HoverHeading>
       <div onMouseLeave={() => setHovered(null)}>
         {items.map((item, i) => {
           const dim = hovered !== null && hovered !== i;

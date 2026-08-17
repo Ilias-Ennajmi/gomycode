@@ -25,8 +25,10 @@ export const caseStudiesPageContent = {
     suffix: { en: '.', fr: '.' },
   } satisfies AccentHeading,
   intro: {
-    en: 'Eight campaigns, artist and venue side. Real figures from our client reporting.',
+    en: 'Artist and venue side, real figures from our client reporting.',
   } satisfies Localized,
+  readMoreLabel: { en: 'Read more', fr: 'Lire la suite' } satisfies Localized,
+  readLessLabel: { en: 'Read less', fr: 'Réduire' } satisfies Localized,
   contactHeading: {
     en: 'The next one could be yours.',
     fr: "Le prochain cas, c'est peut-être le vôtre.",

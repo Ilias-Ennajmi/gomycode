@@ -39,14 +39,26 @@ export const aboutContent = {
     },
   ] as const,
 
-  team: [
+  founders: [
     {
       name: 'Yassine Houari',
-      role: { en: 'FOUNDER' } satisfies Localized,
+      role: { en: 'CO-FOUNDER' } satisfies Localized,
       bio: {
         en: 'Runs strategy and client work. Fifteen years around the electronic scene, promoter side and label side.',
       } satisfies Localized,
     },
+    {
+      name: 'Ilias Ennajmi',
+      role: { en: 'CO-FOUNDER' } satisfies Localized,
+      bio: { en: 'Bio to confirm.' } satisfies Localized,
+    },
+    {
+      name: 'Fadi El Arfaoui',
+      role: { en: 'CO-FOUNDER' } satisfies Localized,
+      bio: { en: 'Bio to confirm.' } satisfies Localized,
+    },
+  ],
+  team: [
     {
       name: 'Name to confirm',
       role: { en: 'PAID MEDIA' } satisfies Localized,
@@ -63,6 +75,16 @@ export const aboutContent = {
       bio: {
         en: 'Handles the daily presence and the influencer side, in French, English and Darija.',
       } satisfies Localized,
+    },
+    {
+      name: 'Name to confirm',
+      role: { en: 'ROLE TO CONFIRM' } satisfies Localized,
+      bio: { en: 'Bio to confirm.' } satisfies Localized,
+    },
+    {
+      name: 'Name to confirm',
+      role: { en: 'ROLE TO CONFIRM' } satisfies Localized,
+      bio: { en: 'Bio to confirm.' } satisfies Localized,
     },
   ],
   teamNote: { en: 'NOTE / names, roles and portraits to be supplied' } satisfies Localized,

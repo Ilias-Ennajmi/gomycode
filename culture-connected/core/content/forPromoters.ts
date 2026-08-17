@@ -1,5 +1,5 @@
 import type { Localized } from '@/core/i18n/localized';
-import type { AccentHeading, StatItem } from './types';
+import type { AccentHeading } from './types';
 
 export const forPromotersContent = {
   eyebrow: { en: 'Venues, clubs, restaurants, festivals' } satisfies Localized,
@@ -87,15 +87,33 @@ export const forPromotersContent = {
   tacticsHeading: { en: 'Campaigns that deliver results', fr: 'Des campagnes qui livrent des résultats' } satisfies Localized,
   tacticsIntro: { en: "We're not out here just boosting posts.", fr: 'On ne se contente pas de booster des posts.' } satisfies Localized,
   tactics: [
-    { en: "Re-targeting people who've visited your page but didn't follow" } satisfies Localized,
-    { en: "Targeting the people who've visited the venue you're playing at in the last 3 months" } satisfies Localized,
-    { en: "Tracking fans' actions after clicking on ads (adding to cart, buying tickets etc.)" } satisfies Localized,
     {
-      en: 'Using ads to collect signups, connecting them to an email marketing solution and segmenting your fanbase by city, then notifying them when you play there',
-    } satisfies Localized,
-    { en: 'Creating similar audiences based on people who clicked your previous ad or signed up for a guestlist' } satisfies Localized,
-    { en: 'Running email campaigns to subscribed fans of similar artists' } satisfies Localized,
-  ] satisfies Localized[],
+      number: '01',
+      body: { en: "Re-targeting people who've visited your page but didn't follow" } satisfies Localized,
+    },
+    {
+      number: '02',
+      body: { en: "Targeting people who've visited the venue you're playing at in the last 3 months" } satisfies Localized,
+    },
+    {
+      number: '03',
+      body: { en: "Tracking fans' actions after an ad click: add to cart, ticket bought, and everything between" } satisfies Localized,
+    },
+    {
+      number: '04',
+      body: {
+        en: 'Collecting signups through ads, feeding them into an email tool segmented by city, then notifying fans the moment you play there',
+      } satisfies Localized,
+    },
+    {
+      number: '05',
+      body: { en: "Building lookalike audiences from people who clicked a previous ad or joined a guestlist" } satisfies Localized,
+    },
+    {
+      number: '06',
+      body: { en: 'Running email campaigns to fans already subscribed to similar artists' } satisfies Localized,
+    },
+  ],
 
   reportHeading: { en: 'What we report on', fr: "Ce qu'on suit" } satisfies Localized,
   reportItems: [
@@ -119,35 +137,20 @@ export const forPromotersContent = {
 
   proofHeading: { en: 'Proof', fr: 'Preuves' } satisfies Localized,
   proofNote: { en: 'FROM OUR CLIENT DECK' } satisfies Localized,
-  proofStats: [
-    {
-      value: 19.8,
-      decimals: 1,
-      suffix: 'x',
-      label: { en: 'return on ad spend, summer events' },
-      sublabel: 'UMBRA MARRAKECH →',
-      anchor: 'umbra',
-    },
-    {
-      value: 40,
-      suffix: '%',
-      label: { en: 'more tickets sold in advance' },
-      sublabel: 'EDEN NIGHTCLUB →',
-      anchor: 'eden',
-    },
-    {
-      value: 3,
-      suffix: 'x',
-      label: { en: 'weekly covers on event nights' },
-      sublabel: 'LEONE →',
-      anchor: 'leone',
-    },
-  ] satisfies StatItem[],
+  /** Case-study anchors (core/content/caseStudies.ts) the ProofShowcase Shuffle button cycles through. */
+  proofPool: ['umbra', 'eden', 'leone'],
 
   venuesHeading: { en: 'Events and venues we’ve worked with', fr: 'Events et lieux avec qui on a travaillé' } satisfies Localized,
   venuesNote: {
     en: 'Just a selection — we currently support 30+ touring artists, record labels, venues and music festivals.',
   } satisfies Localized,
+  venuesPrev: { en: 'Previous venue', fr: 'Lieu précédent' } satisfies Localized,
+  venuesNext: { en: 'Next venue', fr: 'Lieu suivant' } satisfies Localized,
+
+  eventsHeading: { en: 'Nights, in motion', fr: 'Des soirées, en mouvement' } satisfies Localized,
+  eventsPrev: { en: 'Previous event', fr: 'Événement précédent' } satisfies Localized,
+  eventsNext: { en: 'Next event', fr: 'Événement suivant' } satisfies Localized,
+  eventsPlaceholderLabel: { en: 'event photo — client to supply', fr: 'photo événement — à recevoir du client' } satisfies Localized,
 
   contactHeading: { en: 'A date, a season, a room?', fr: 'Une date, une saison, un lieu ?' } satisfies Localized,
 };

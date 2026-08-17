@@ -13,7 +13,6 @@ export const creativeContent = {
   } satisfies Localized,
   ctaPrimary: { en: 'Talk about a project', fr: 'Parlons de votre projet' } satisfies Localized,
   ctaSecondary: { en: 'See the work', fr: 'Voir nos réalisations' } satisfies Localized,
-  mediaLabel: { en: 'reel cut / behind the scenes still' } satisfies Localized,
 
   servicesHeading: { en: 'What we make', fr: 'Ce qu\'on crée' } satisfies Localized,
   services: [
@@ -45,14 +44,14 @@ export const creativeContent = {
         en: 'Release artwork, event key visuals and templates residents and labels can reuse without redesigning every week. Consistent enough to be recognised, flexible enough not to look recycled.',
       } satisfies Localized,
     },
-    {
-      number: '05',
-      heading: { en: 'EPK pitching deck', fr: 'Dossier de presse (EPK)' } satisfies Localized,
-      body: {
-        en: 'A press kit built for bookers and labels: bio, stats, press mentions and embedded sets in one link. No ten-attachment email chain, no outdated PDF from two years ago.',
-      } satisfies Localized,
-    },
   ],
+
+  videoPrev: { en: 'Previous video', fr: 'Vidéo précédente' } satisfies Localized,
+  videoNext: { en: 'Next video', fr: 'Vidéo suivante' } satisfies Localized,
+  videoPlaceholderLabel: {
+    en: 'video — client to supply',
+    fr: 'vidéo — à recevoir du client',
+  } satisfies Localized,
 
   contactHeading: {
     en: 'Got a video, a page or an EPK to build?',

@@ -6,16 +6,15 @@ import { creativeContent } from '@/core/content/creative';
 import { navItems } from '@/core/content/nav';
 import { AccentHeading } from '@/components/ui/AccentHeading';
 import { Button } from '@/components/ui/Button';
-import { HeroMediaPanel } from '@/components/ui/HeroMediaPanel';
 import { Reveal } from '@/components/ui/Reveal';
 import { Eyebrow } from '@/components/ui/Eyebrow';
-import { NumberedRow } from '@/components/ui/NumberedRow';
-import { ExpandableList } from '@/components/ui/ExpandableList';
+import { HoverHeading } from '@/components/ui/HoverHeading';
 import { ContactSection } from '@/components/layout/ContactSection';
+import { VideoPlayerSection } from '@/components/sections/VideoPlayerSection';
 
 export function generateMetadata({ params }: { params: { locale: Locale } }): Metadata {
   const { locale } = params;
-  return { title: `culture connected — ${t(navItems[2].label, locale)}` };
+  return { title: `culture connected — ${t(navItems[3].label, locale)}` };
 }
 
 export default function CreativePage({ params }: { params: { locale: Locale } }) {
@@ -52,25 +51,30 @@ export default function CreativePage({ params }: { params: { locale: Locale } })
         </div>
       </section>
 
-      <HeroMediaPanel
-        label={t(c.mediaLabel, locale)}
-        className="mx-[clamp(18px,4vw,52px)] h-[clamp(140px,34vw,400px)]"
+      <VideoPlayerSection
+        prevLabel={t(c.videoPrev, locale)}
+        nextLabel={t(c.videoNext, locale)}
+        placeholderLabel={t(c.videoPlaceholderLabel, locale)}
+        className="mx-[clamp(18px,4vw,52px)]"
       />
 
       <section className="mx-auto max-w-[1440px] px-[clamp(18px,4vw,52px)] pt-[clamp(60px,8vw,96px)]">
-        <Reveal as="h2" className="mb-[clamp(22px,3vw,34px)] font-display text-[clamp(28px,3.8vw,44px)] font-extrabold leading-[1.02] tracking-[-.03em] text-ink">
+        <HoverHeading className="mb-[clamp(22px,3vw,34px)] font-display text-[clamp(28px,3.8vw,44px)] font-extrabold leading-[1.02] tracking-[-.03em] text-ink">
           {t(c.servicesHeading, locale)}
-        </Reveal>
-        <ExpandableList
-          initialCount={4}
-          seeAllLabel={locale === 'fr' ? `Voir les ${c.services.length} →` : `See all ${c.services.length} →`}
-          gridClassName="grid grid-cols-1 gap-x-8 gap-y-1 md:grid-cols-2"
-          items={c.services.map((item, i) => (
-            <Reveal key={item.number} index={i}>
-              <NumberedRow number={item.number} heading={t(item.heading, locale)} body={t(item.body, locale)} />
+        </HoverHeading>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {c.services.map((item, i) => (
+            <Reveal key={item.number} index={i} className="border border-line p-[22px]">
+              <div className="mb-[10px] font-mono text-[11px] text-red">{item.number}</div>
+              <h3 className="m-0 mb-2 font-inter text-[18px] font-semibold leading-[1.25] tracking-[-.01em] text-ink md:text-[20px]">
+                {t(item.heading, locale)}
+              </h3>
+              <p className="m-0 font-inter text-[14px] font-light leading-[1.6] text-muted md:text-[15px]">
+                {t(item.body, locale)}
+              </p>
             </Reveal>
           ))}
-        />
+        </div>
       </section>
 
       <ContactSection locale={locale} heading={c.contactHeading} />

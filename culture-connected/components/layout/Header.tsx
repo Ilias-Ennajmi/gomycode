@@ -52,7 +52,7 @@ export function Header({ locale }: { locale: Locale }) {
         <nav className="hidden items-center gap-[26px] font-inter text-[13px] font-medium uppercase tracking-[.04em] md:flex">
           {navItems.map((item) => {
             const href = localeHref(locale, item.href);
-            const active = pathname === href || pathname.startsWith(`${href}/`);
+            const active = item.href === '/' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
             return (
               <Link
                 key={item.href}
@@ -105,7 +105,7 @@ export function Header({ locale }: { locale: Locale }) {
           <nav className="flex flex-col gap-1 font-inter text-[15px] font-medium">
             {navItems.map((item) => {
               const href = localeHref(locale, item.href);
-              const active = pathname === href || pathname.startsWith(`${href}/`);
+              const active = item.href === '/' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
               return (
                 <Link
                   key={item.href}
