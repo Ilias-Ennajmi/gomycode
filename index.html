@@ -78,10 +78,13 @@
     <div id="psTabCalendar">
       <div class="ps-topbar">
         <div class="ps-title ps-h">Calendrier éditorial</div>
-        <div class="ps-seg" id="psViewSeg">
-          <button data-view="week" class="active">Semaine</button>
-          <button data-view="month">Mois</button>
-          <button data-view="list">Liste</button>
+        <div class="ps-toolbar" style="gap:8px;">
+          <select id="psBrandSwitcher" class="ps-brandswitcher" title="Calendrier de marque"></select>
+          <div class="ps-seg" id="psViewSeg">
+            <button data-view="week" class="active">Semaine</button>
+            <button data-view="month">Mois</button>
+            <button data-view="list">Liste</button>
+          </div>
         </div>
       </div>
 
@@ -117,16 +120,19 @@
       <div class="ps-stats" id="psStats"></div>
 
       <div class="ps-libsection" id="psAttentionSection" style="display:none;">
-        <div class="ps-libsection-title" style="display:flex;align-items:center;gap:6px;">
+        <div class="ps-libsection-title" style="display:flex;align-items:center;gap:6px;cursor:pointer;" id="psAttentionToggle">
+          <i class="ti ti-chevron-down" aria-hidden="true" id="psAttentionChevron"></i>
           <i class="ti ti-alert-triangle" aria-hidden="true" style="color:#EF9F27;"></i>
           <span>À traiter</span>
-          <span id="psAttentionCount" style="margin-left:auto;font-size:11px;font-weight:400;color:var(--text-3);"></span>
+          <span id="psAttentionCount" style="font-size:11px;font-weight:400;color:var(--text-3);"></span>
+          <button class="ps-btn" id="psAttentionDismissAll" style="margin-left:auto;font-size:10.5px;padding:3px 8px;">Tout ignorer</button>
         </div>
         <div id="psAttentionPanel"></div>
       </div>
 
       <div id="psWeekView">
         <div id="psPrintHeader" style="display:none;"></div>
+        <div id="psGridBulkBar" style="display:none;"></div>
         <div class="ps-grid" id="psGrid"></div>
       </div>
       <div id="psMonthView" style="display:none;"></div>
@@ -151,7 +157,10 @@
     <div id="psTabIdeas" style="display:none;">
       <div class="ps-topbar">
         <div class="ps-title ps-h">Idéation</div>
-        <button class="ps-btn primary" id="psAddIdea"><i class="ti ti-plus" aria-hidden="true"></i> Nouvelle idée</button>
+        <div style="display:flex;gap:8px;">
+          <button class="ps-btn" id="psIdeaBank"><i class="ti ti-bulb" aria-hidden="true"></i> Banque d'idées</button>
+          <button class="ps-btn primary" id="psAddIdea"><i class="ti ti-plus" aria-hidden="true"></i> Nouvelle idée</button>
+        </div>
       </div>
       <div class="ps-field" style="max-width:280px;"><input type="text" id="psIdeaSearch" placeholder="Rechercher une idée..."></div>
       <div class="ps-panel" id="psIdeasPanel"></div>
@@ -162,6 +171,7 @@
         <div class="ps-title ps-h">Contenu à produire</div>
         <button class="ps-btn primary" id="psAddProd"><i class="ti ti-plus" aria-hidden="true"></i> Ajouter</button>
       </div>
+      <div id="psKanbanProgress" style="margin-bottom:14px;"></div>
       <div class="ps-kanban" id="psKanban"></div>
     </div>
 
@@ -219,10 +229,6 @@
 
       <div id="psStatsSubApercu">
         <div class="ps-panel" id="psStatsPanel"></div>
-        <div class="ps-libsection" style="margin-top:18px;">
-          <div class="ps-libsection-title">Équilibre de rotation des marques</div>
-          <div class="ps-panel" id="psRotationPanel"></div>
-        </div>
         <div class="ps-libsection">
           <div class="ps-libsection-title">Aperçu feed (semaine affichée)</div>
           <div class="ps-panel"><div class="ps-gridpreview" id="psGridPreview"></div></div>

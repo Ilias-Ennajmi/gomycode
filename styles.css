@@ -75,6 +75,11 @@
   .ps-card-del { position:absolute; top:5px; right:5px; width:16px; height:16px; border-radius:50%; display:none; align-items:center; justify-content:center; color:var(--text-3); cursor:pointer; background:var(--surface); }
   .ps-card-del:hover { color:var(--accent); }
   .ps-card:hover .ps-card-del { display:flex; }
+  .ps-grid-check { opacity:0; margin:0; cursor:pointer; z-index:2; transition:opacity .12s; }
+  .ps-card:hover .ps-grid-check, .ps-grid-check:checked { opacity:1; }
+  .ps-brandswitcher { font-size:12px; padding:7px 10px; border-radius:9px; border:1px solid var(--line); background:var(--surface); color:var(--text-1); }
+  .ps-kangroup-head { font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--text-3); margin:10px 0 6px; }
+  .ps-kangroup-head:first-child { margin-top:0; }
   .ps-addbtn { font-size:10.5px; font-weight:500; color:var(--text-3); border:1px dashed var(--line); border-radius:8px; padding:5px 6px; text-align:center; cursor:pointer; transition:all .12s; }
   .ps-addbtn:hover { color:var(--accent-dark); border-color:var(--accent); background:rgba(255,79,50,0.04); }
 
@@ -274,6 +279,8 @@
     .ps-listtable-wrap { overflow-x:auto; }
     .ps-drawer { max-width:100%; }
     .ps-card-del { display:flex !important; }
+    .ps-grid-check { opacity:1; }
+    .ps-brandswitcher { width:100%; }
     .ps-modal-backdrop { padding:0; align-items:flex-end; }
     .ps-modal { max-width:100%; border-radius:16px 16px 0 0; max-height:92vh; overflow-y:auto; }
   }

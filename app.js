@@ -25,37 +25,6 @@
   var TIER1 = [["Adidas",36.3],["Puma",30.5],["New Balance",9.5],["Asics",6.8]];
   var TIER2 = [["Arena",4.5],["Nox",1.7],["Dunlop",1.8],["Castelli",2.6]];
   var TIER3 = [["Quiksilver",1.4],["Wilson",1.4],["Champion",1.1],["Venum",1.1],["Roxy",0.6],["Polar",0.3],["Stiga",0.3],["Speedo",0.1],["Banana Moon",0.03]];
-  var TIER1_PAIRS = [["Adidas","Puma"], ["New Balance","Asics"]];
-  var TIER2_NAMES = TIER2.map(function(t){return t[0];});
-  var TIER3_NAMES = TIER3.map(function(t){return t[0];});
-  var ROTATE_SLOT = ["Planet Sport Content — Store Content", "Educational Content — Tech Specs Info"];
-
-  var STORY1_ROLE_BY_DAY = {
-    "Lundi": "Tier 2 Brand", "Mardi": "Store Content", "Mercredi": "Tier 3 Brand",
-    "Jeudi": "Outfit Composition", "Vendredi": "La Excuse Tuée",
-    "Samedi": "UGC — Repost Client", "Dimanche": "Sunday Run Motivation"
-  };
-  var STORY1_FORMAT = {
-    "Tier 2 Brand": "Reel/image reposté", "Store Content": "Image ou Reel en boutique",
-    "Tier 3 Brand": "Reel/image reposté", "Outfit Composition": "Image, tags produits",
-    "La Excuse Tuée": "Image, texte overlay", "UGC — Repost Client": "Repost story client",
-    "Sunday Run Motivation": "Image, citation overlay"
-  };
-  var STORY1_CTA = {
-    "Tier 2 Brand": "Swipe up pour découvrir la marque",
-    "Store Content": "Réponds : t'as déjà vu ce coin ?",
-    "Tier 3 Brand": "Swipe up pour découvrir la marque",
-    "Outfit Composition": "Swipe up vers la tenue",
-    "La Excuse Tuée": "Réponds avec ton excuse du jour",
-    "UGC — Repost Client": "Tague-nous pour être reposté",
-    "Sunday Run Motivation": "Partage à quelqu'un qui repousse encore"
-  };
-  var STORY2_TREATMENT = {
-    "Lundi": "Produit seul, photo simple", "Mardi": "Produit porté/utilisé",
-    "Mercredi": "Produit seul, photo simple", "Jeudi": "Produit porté/utilisé",
-    "Vendredi": "Produit + prix, direct", "Samedi": "Usage précis (match, sortie)",
-    "Dimanche": "Usage précis (running)"
-  };
 
   var HOLIDAYS = {
     "2026-07-19": "Finale Coupe du Monde 2026",
@@ -70,88 +39,70 @@
   function toKey(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
   function addDays(d, n){ var r = new Date(d); r.setDate(r.getDate()+n); return r; }
   function mondayOf(d){ var day = (d.getDay()+6)%7; return addDays(d, -day); }
-  function weekNum(d){ var base = new Date(2026,6,13); return Math.round((mondayOf(d)-base)/(7*86400000)); }
-  function mod(n,m){ return ((n%m)+m)%m; }
 
-  function genDayCards(dateObj){
-    var key = toKey(dateObj);
-    var dayName = DAY_NAMES[(dateObj.getDay()+6)%7];
-    var w = weekNum(dateObj);
-    var tier1pair = TIER1_PAIRS[mod(w,2)];
-    var tier2 = TIER2_NAMES[mod(w,4)];
-    var tier3 = TIER3_NAMES[mod(w,9)];
-    var rotate = ROTATE_SLOT[mod(w,2)];
-    var cards = [];
-
-    var feed = null;
-    if (dayName === "Lundi") feed = {kind:"Feed", category:"Brands Collections Content", title: tier1pair[0], brand: tier1pair[0], tier:1, format:"Brand Post", cta:"Swipe up / Shop Now"};
-    else if (dayName === "Mardi") feed = {kind:"Feed", category:"Campaigns Content", title:"Sales / Campagne active", format:"Créatif libre", cta:"Swipe up vers l'offre"};
-    else if (dayName === "Mercredi") feed = {kind:"Feed", category:"Brands Collections Content", title: tier1pair[1], brand: tier1pair[1], tier:1, format:"Brand Post", cta:"Swipe up / Shop Now"};
-    else if (dayName === "Jeudi") feed = {kind:"Feed", category:"Campaigns Content", title:"Sales / Campagne active", format:"Créatif libre", cta:"Swipe up vers l'offre"};
-    else if (dayName === "Vendredi") feed = {kind:"Feed", category:"Brands Collections Content", title: tier2, brand: tier2, tier:2, format:"Post simple ou Carousel", cta:"Swipe up / Shop Now"};
-    else if (dayName === "Samedi") feed = {kind:"Feed", category: rotate.split(" — ")[0], title: rotate.split(" — ")[1], format:"Carousel ou Reel", cta:"Swipe up vers le post"};
-
-    if (feed) cards.push(feed);
-
-    var s1role = STORY1_ROLE_BY_DAY[dayName];
-    var s1title = s1role;
-    var s1brand = null, s1tier = null;
-    if (s1role === "Tier 2 Brand") { s1title = "Repost marque"; s1brand = tier2; s1tier = 2; }
-    if (s1role === "Tier 3 Brand") { s1title = "Repost marque"; s1brand = tier3; s1tier = 3; }
-    var s1card = {kind:"Story 1", category:"Story 1", title: s1title, format: STORY1_FORMAT[s1role], cta: STORY1_CTA[s1role]};
-    if (s1brand) { s1card.brand = s1brand; s1card.tier = s1tier; }
-    cards.push(s1card);
-    cards.push({kind:"Story 2", category:"Story 2", title:"Focus Produit", format: STORY2_TREATMENT[dayName], cta:"Swipe up / Shop Now"});
-
-    var s3title = feed ? ("Repost — " + (feed.brand || feed.title)) : "Repost meilleur post récent / campagne";
-    cards.push({kind:"Story 3", category:"Story 3", title: s3title, format:"Repost (image ou reel)", cta:"Swipe up vers le post"});
-
-    cards.forEach(function(c, i){
-      c.id = key + "-" + i + "-" + c.kind.replace(/\s/g,"");
-      c.status = "Idée";
-      c.responsable = "À assigner";
-      c.note = "";
-      c.checklist = [false, false, false];
-      c.link = "";
-    });
-    return cards;
+  function slugify(name){
+    var accents = "àâäáãåèêëéìîïíòôöóõùûüúñçÀÂÄÁÃÅÈÊËÉÌÎÏÍÒÔÖÓÕÙÛÜÚÑÇ";
+    var plain = "aaaaaaeeeeiiiiooooouuuuncAAAAAAEEEEIIIIOOOOOUUUUNC";
+    var s = name.toLowerCase();
+    for (var i=0;i<accents.length;i++){ s = s.split(accents[i].toLowerCase()).join(plain[i].toLowerCase()); }
+    s = s.replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
+    return s || ("marque-"+Date.now());
   }
 
   var STORAGE_KEY = "ps_calendar_v3";
-  var state = { weeks: {}, ideas: [], production: { todo: [], inprogress: [], ready: [] }, campaigns: [], assets: [], influencers: [] };
+  var state = { calendars: { general: {} }, brands: [], ideas: [], production: { todo: [], inprogress: [], ready: [] }, campaigns: [], assets: [], influencers: [] };
+
+  function defaultBrands(){
+    var list = [{ id:"general", name:"Général", tier:null }];
+    [["Tier 1", TIER1], ["Tier 2", TIER2], ["Tier 3", TIER3]].forEach(function(group){
+      group[1].forEach(function(item){ list.push({ id: slugify(item[0]), name: item[0], tier: group[0] }); });
+    });
+    return list;
+  }
 
   function ensureStateShape(){
-    if (!state.weeks) state.weeks = {};
+    if (!state.calendars) state.calendars = { general: {} };
+    if (!state.brands || !state.brands.length) state.brands = defaultBrands();
     if (!state.ideas) state.ideas = [];
     if (!state.production) state.production = { todo: [], inprogress: [], ready: [] };
     if (!state.campaigns || state.campaigns.length === 0) state.campaigns = JSON.parse(JSON.stringify(CAMPAIGN_SEED));
-    if (!state.prefs) state.prefs = { dark: false, tab: "calendar", view: "week" };
+    if (!state.prefs) state.prefs = { dark: false, tab: "calendar", view: "week", activeBrandId: "general", attentionCollapsed: false };
+    if (!state.prefs.activeBrandId) state.prefs.activeBrandId = "general";
+    if (state.prefs.attentionCollapsed === undefined) state.prefs.attentionCollapsed = false;
+    if (!state.prefs.filters) state.prefs.filters = { search: "", status: "", resp: "" };
     if (!state.assets) state.assets = [];
     if (!state.influencers) state.influencers = [];
+    if (!state.calendars[state.prefs.activeBrandId]) state.calendars[state.prefs.activeBrandId] = {};
+  }
+
+  function currentCalendar(){
+    if (!state.calendars[state.prefs.activeBrandId]) state.calendars[state.prefs.activeBrandId] = {};
+    return state.calendars[state.prefs.activeBrandId];
+  }
+
+  function addCustomBrand(name){
+    name = (name||"").trim();
+    if (!name) return null;
+    var id = slugify(name);
+    var existing = state.brands.filter(function(b){ return b.id === id; })[0];
+    if (existing) return existing.id;
+    state.brands.push({ id: id, name: name, tier: "Custom" });
+    return id;
   }
 
   function ensureWeekData(mondayDate){
     var wk = toKey(mondayDate);
-    if (!state.weeks[wk]) {
-      var days = {};
-      for (var i=0;i<7;i++){
-        var d = addDays(mondayDate, i);
-        days[toKey(d)] = genDayCards(d);
-      }
-      state.weeks[wk] = days;
-    }
-    return state.weeks[wk];
+    var cal = currentCalendar();
+    if (!cal[wk]) cal[wk] = {};
+    return cal[wk];
   }
 
   var REAL_TODAY = new Date();
-  var RANGE_START = new Date(2026,6,13);
-  var RANGE_END = new Date(2026,9,4);
-  var N_WEEKS = 12;
-  var initialAnchor = (REAL_TODAY >= RANGE_START && REAL_TODAY <= RANGE_END) ? REAL_TODAY : RANGE_START;
-  var currentMonday = mondayOf(initialAnchor);
+  var currentMonday = mondayOf(REAL_TODAY);
   var todayKey = toKey(REAL_TODAY);
   var currentView = "week";
   var currentFilters = { search: "", status: "", resp: "" };
+  var selectedGridIds = {};
 
   var CAMPAIGN_SEED = [
     {id:"camp-cdm", name:"Coupe du Monde 2026", period:"11 juin – 19 juillet", start:"2026-06-11", end:"2026-07-19", items:[]},
@@ -264,7 +215,7 @@
 
   function renderStats(){
     var wk = toKey(currentMonday);
-    var daysData = state.weeks[wk] || {};
+    var daysData = currentCalendar()[wk] || {};
     var feedCount = 0, storyCount = 0;
     Object.keys(daysData).forEach(function(k){
       daysData[k].forEach(function(c){ if (c.kind === "Feed") feedCount++; else storyCount++; });
@@ -341,6 +292,7 @@
     el.className = "ps-card" + (cardIsDueSoon(card, dateKey) ? " ps-duesoon" : "");
     el.tabIndex = 0;
     el.dataset.cardId = card.id;
+    el.dataset.dateKey = dateKey;
     el.style.setProperty("--card-accent", CAT_COLORS[card.category] || "var(--line)");
     if (staggerIndex !== undefined) el.style.animationDelay = (staggerIndex * 25) + "ms";
     if (!cardMatchesFilters(card)) el.style.display = "none";
@@ -358,9 +310,10 @@
     var linkHtml = card.link ? '<a class="ps-cardlink" href="'+escapeHtml(card.link)+'" target="_blank" rel="noopener"><i class="ti ti-link" aria-hidden="true" style="font-size:11px;"></i>Lien</a>' : "";
     var avatarColor = AVATAR_COLORS[card.responsable] || "#9AA2AF";
     el.innerHTML =
+      '<input type="checkbox" class="ps-grid-check" style="position:absolute;top:6px;left:6px;width:14px;height:14px;"'+(selectedGridIds[card.id]?" checked":"")+'>' +
       '<div style="position:absolute;top:5px;right:5px;display:flex;gap:3px;">' +
         '<div class="ps-card-del ps-card-dup" title="Dupliquer" style="position:static;"><i class="ti ti-copy" aria-hidden="true" style="font-size:11px;"></i></div>' +
-        '<div class="ps-card-del" title="Supprimer" style="position:static;"><i class="ti ti-x" aria-hidden="true" style="font-size:11px;"></i></div>' +
+        '<div class="ps-card-del ps-card-remove" title="Supprimer" style="position:static;"><i class="ti ti-x" aria-hidden="true" style="font-size:11px;"></i></div>' +
       '</div>' +
       (card.image ? '<img src="'+escapeHtml(card.image)+'" alt="" style="width:100%;height:64px;object-fit:cover;border-radius:6px;margin-bottom:5px;" onerror="this.style.display=\'none\'">' : "") +
       '<div class="ps-card-top"><i class="ti '+(CAT_ICON[card.category]||"ti-point")+' ps-card-icon" aria-hidden="true"></i><span class="ps-card-kind">'+card.kind+'</span></div>' +
@@ -398,6 +351,7 @@
       var order = ["Idée","En préparation","Prêt","Publié"];
       var idx = order.indexOf(card.status);
       card.status = order[(idx + 1) % order.length];
+      delete card.attentionDismissedAt;
       save();
       render();
     });
@@ -411,7 +365,7 @@
       save();
       render();
     });
-    el.querySelector(".ps-card-del").addEventListener("click", function(e){
+    el.querySelector(".ps-card-remove").addEventListener("click", function(e){
       e.stopPropagation();
       if (!window.confirm("Supprimer ce contenu ?")) return;
       var idx = zoneCards.indexOf(card);
@@ -426,8 +380,13 @@
         });
       }
     });
+    el.querySelector(".ps-grid-check").addEventListener("click", function(e){
+      e.stopPropagation();
+      if (this.checked) selectedGridIds[card.id] = true; else delete selectedGridIds[card.id];
+      refreshGridBulkBar();
+    });
     el.addEventListener("click", function(e){
-      if (e.target.closest(".ps-card-del") || e.target.closest(".ps-checkdot") || e.target.closest(".ps-cardlink")) return;
+      if (e.target.closest(".ps-card-del") || e.target.closest(".ps-checkdot") || e.target.closest(".ps-cardlink") || e.target.closest(".ps-grid-check")) return;
       openEditModal(card, dateKey, zoneCards);
     });
     return el;
@@ -455,7 +414,7 @@
     var parts = data.split("::");
     var fromKey = parts[0], cardId = parts[1];
     var wk = toKey(currentMonday);
-    var daysData = state.weeks[wk];
+    var daysData = currentCalendar()[wk];
     var fromCards = daysData[fromKey];
     if (!fromCards) return;
     var idx = -1;
@@ -490,10 +449,11 @@
 
   function computeAttentionItems(){
     var items = [];
-    Object.keys(state.weeks).sort().forEach(function(wk){
-      var daysData = state.weeks[wk];
+    Object.keys(currentCalendar()).sort().forEach(function(wk){
+      var daysData = currentCalendar()[wk];
       Object.keys(daysData).sort().forEach(function(dateKey){
         (daysData[dateKey] || []).forEach(function(card){
+          if (card.attentionDismissedAt) return;
           var late = cardIsLate(card, dateKey);
           var soon = !late && cardIsDueSoon(card, dateKey);
           if (late || soon) items.push({ card: card, dateKey: dateKey, late: late });
@@ -537,10 +497,13 @@
     var section = document.getElementById("psAttentionSection");
     var panel = document.getElementById("psAttentionPanel");
     var countEl = document.getElementById("psAttentionCount");
+    var chevron = document.getElementById("psAttentionChevron");
     var items = computeAttentionItems();
     if (!items.length) { section.style.display = "none"; panel.innerHTML = ""; return; }
     section.style.display = "";
     countEl.textContent = items.length + (items.length > 1 ? " éléments" : " élément");
+    chevron.className = "ti " + (state.prefs.attentionCollapsed ? "ti-chevron-right" : "ti-chevron-down");
+    panel.style.display = state.prefs.attentionCollapsed ? "none" : "";
     panel.innerHTML = "";
     items.slice(0, 8).forEach(function(it){
       var row = document.createElement("div");
@@ -553,11 +516,30 @@
         '<span style="flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(it.card.title)+'</span>' +
         (it.card.brand ? '<span class="ps-tag tierdefault" style="margin-top:0;flex-shrink:0;">'+escapeHtml(it.card.brand)+'</span>' : "") +
         '<span style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:'+(STATUS_COLORS[it.card.status]||"#999")+';"></span>' +
-        '<button class="ps-btn" style="font-size:11px;padding:4px 9px;flex-shrink:0;">Voir</button>';
-      row.querySelector("button").addEventListener("click", function(){ jumpToDate(it.dateKey); });
+        '<button class="ps-btn" style="font-size:11px;padding:4px 9px;flex-shrink:0;">Voir</button>' +
+        '<span class="ps-card-del" title="Ignorer" style="position:static;flex-shrink:0;display:flex;"><i class="ti ti-x" aria-hidden="true" style="font-size:11px;"></i></span>';
+      row.querySelector(".ps-btn").addEventListener("click", function(){ jumpToDate(it.dateKey); });
+      row.querySelector(".ps-card-del").addEventListener("click", function(){
+        it.card.attentionDismissedAt = Date.now();
+        save();
+        renderAttentionPanel();
+      });
       panel.appendChild(row);
     });
   }
+
+  document.getElementById("psAttentionToggle").addEventListener("click", function(e){
+    if (e.target.closest("#psAttentionDismissAll")) return;
+    state.prefs.attentionCollapsed = !state.prefs.attentionCollapsed;
+    save();
+    renderAttentionPanel();
+  });
+  document.getElementById("psAttentionDismissAll").addEventListener("click", function(e){
+    e.stopPropagation();
+    computeAttentionItems().forEach(function(it){ it.card.attentionDismissedAt = Date.now(); });
+    save();
+    renderAttentionPanel();
+  });
 
   function render(){
     ensureWeekData(currentMonday);
@@ -566,7 +548,7 @@
     var grid = document.getElementById("psGrid");
     grid.innerHTML = "";
     var wk = toKey(currentMonday);
-    var daysData = state.weeks[wk];
+    var daysData = currentCalendar()[wk];
 
     for (var i=0;i<7;i++){
       var d = addDays(currentMonday, i);
@@ -589,8 +571,8 @@
 
       if (!daysData[key]) daysData[key] = [];
       var allCards = daysData[key];
-      var feedCards = allCards.filter(function(c){ return c.kind === "Feed"; });
-      var storyCards = allCards.filter(function(c){ return c.kind !== "Feed"; });
+      var feedCards = allCards.filter(function(c){ return c.kind === "Feed" && cardMatchesFilters(c); });
+      var storyCards = allCards.filter(function(c){ return c.kind !== "Feed" && cardMatchesFilters(c); });
 
       var feedLabel = document.createElement("div");
       feedLabel.className = "ps-zone-label";
@@ -606,7 +588,7 @@
       var addFeedBtn = document.createElement("div");
       addFeedBtn.className = "ps-addbtn";
       addFeedBtn.innerHTML = '<i class="ti ti-plus" aria-hidden="true" style="font-size:11px;"></i> Post';
-      addFeedBtn.addEventListener("click", function(){ openCreateModal(key, true); });
+      (function(dayKey){ addFeedBtn.addEventListener("click", function(){ openCreateModal(dayKey, true); }); })(key);
       col.appendChild(addFeedBtn);
 
       var divider = document.createElement("hr");
@@ -627,13 +609,88 @@
       var addStoryBtn = document.createElement("div");
       addStoryBtn.className = "ps-addbtn";
       addStoryBtn.innerHTML = '<i class="ti ti-plus" aria-hidden="true" style="font-size:11px;"></i> Story';
-      addStoryBtn.addEventListener("click", function(){ openCreateModal(key, false); });
+      (function(dayKey){ addStoryBtn.addEventListener("click", function(){ openCreateModal(dayKey, false); }); })(key);
       col.appendChild(addStoryBtn);
 
       grid.appendChild(col);
     }
     renderStats();
     renderAttentionPanel();
+    refreshGridBulkBar();
+  }
+
+  function findCardInCurrentWeek(cardId, dateKey){
+    var dd = currentCalendar()[toKey(currentMonday)];
+    var arr = dd && dd[dateKey];
+    if (!arr) return null;
+    for (var j=0;j<arr.length;j++){ if (arr[j].id === cardId) return {arr:arr, idx:j, card:arr[j]}; }
+    return null;
+  }
+
+  function refreshGridBulkBar(){
+    var bar = document.getElementById("psGridBulkBar");
+    if (!bar) return;
+    var visibleIds = {};
+    document.querySelectorAll("#psGrid .ps-card").forEach(function(el){ visibleIds[el.dataset.cardId] = true; });
+    Object.keys(selectedGridIds).forEach(function(id){ if (!visibleIds[id]) delete selectedGridIds[id]; });
+    var count = Object.keys(selectedGridIds).length;
+    if (!count) { bar.style.display = "none"; bar.innerHTML = ""; return; }
+    var STATUS_LIST = ["Idée","En préparation","Prêt","Publié"];
+    var RESP_LIST = ["À assigner","Ilias","Agence","Équipe Boutique"];
+    bar.style.display = "flex";
+    bar.style.cssText = "display:flex;justify-content:space-between;margin-bottom:10px;align-items:center;";
+    bar.innerHTML =
+      '<span style="font-size:12px;font-weight:600;">'+count+' sélectionné(s)</span>' +
+      '<div class="ps-toolbar" style="gap:6px;">' +
+        '<select id="gbStatus" style="font-size:12px;"><option value="">Statut...</option>'+STATUS_LIST.map(function(s){ return '<option value="'+s+'">'+s+'</option>'; }).join("")+'</select>' +
+        '<select id="gbResp" style="font-size:12px;"><option value="">Responsable...</option>'+RESP_LIST.map(function(s){ return '<option value="'+s+'">'+s+'</option>'; }).join("")+'</select>' +
+        '<button class="ps-btn" id="gbDelete" style="font-size:12px;">Supprimer</button>' +
+      '</div>';
+    bar.querySelector("#gbStatus").addEventListener("change", function(){
+      var val = this.value;
+      if (!val) return;
+      Object.keys(selectedGridIds).forEach(function(id){
+        var el = document.querySelector('#psGrid .ps-card[data-card-id="'+id+'"]');
+        if (!el) return;
+        var found = findCardInCurrentWeek(id, el.dataset.dateKey);
+        if (found) found.card.status = val;
+      });
+      save(); render();
+    });
+    bar.querySelector("#gbResp").addEventListener("change", function(){
+      var val = this.value;
+      if (!val) return;
+      Object.keys(selectedGridIds).forEach(function(id){
+        var el = document.querySelector('#psGrid .ps-card[data-card-id="'+id+'"]');
+        if (!el) return;
+        var found = findCardInCurrentWeek(id, el.dataset.dateKey);
+        if (found) found.card.responsable = val;
+      });
+      save(); render();
+    });
+    bar.querySelector("#gbDelete").addEventListener("click", function(){
+      var ids = Object.keys(selectedGridIds);
+      if (!ids.length) return;
+      if (!window.confirm("Supprimer "+ids.length+" élément(s) ?")) return;
+      var removed = [];
+      ids.forEach(function(id){
+        var el = document.querySelector('#psGrid .ps-card[data-card-id="'+id+'"]');
+        if (!el) return;
+        var dateKey = el.dataset.dateKey;
+        var found = findCardInCurrentWeek(id, dateKey);
+        if (found) { found.arr.splice(found.idx, 1); removed.push({dateKey:dateKey, card:found.card}); }
+      });
+      selectedGridIds = {};
+      save(); render();
+      showUndoToast(removed.length+" élément(s) supprimé(s)", function(){
+        var dd = currentCalendar()[toKey(currentMonday)];
+        removed.forEach(function(r){
+          if (!dd[r.dateKey]) dd[r.dateKey] = [];
+          dd[r.dateKey].push(r.card);
+        });
+        save(); render();
+      });
+    });
   }
 
   function setupZoneDnD(zoneEl, dateKey, allCardsRef, isFeedZone){
@@ -647,7 +704,7 @@
       var parts = data.split("::");
       var fromKey = parts[0], cardId = parts[1];
       var wk = toKey(currentMonday);
-      var daysData = state.weeks[wk];
+      var daysData = currentCalendar()[wk];
       var fromCards = daysData[fromKey];
       if (!fromCards) return;
       var idx = -1;
@@ -679,7 +736,8 @@
         '<div class="ps-field"><label>Titre / Axe</label><input type="text" id="mTitle" value="'+escapeHtml(card.title)+'"></div>' +
         '<div class="ps-field"><label>Format</label><input type="text" id="mFormat" value="'+escapeHtml(card.format||"")+'"></div>' +
         '<div class="ps-field"><label>CTA</label><input type="text" id="mCta" value="'+escapeHtml(card.cta||"")+'"></div>' +
-        '<div class="ps-field"><label>Marque (tag, optionnel)</label><input type="text" id="mBrand" value="'+escapeHtml(card.brand||"")+'"></div>' +
+        '<div class="ps-field"><label>Marque</label><select id="mBrand">'+brandOptionsHtml(card.brand||"")+'</select></div>' +
+        '<div class="ps-field" id="mBrandNewWrap" style="display:none;"><label>Nom de la nouvelle marque</label><input type="text" id="mBrandNew" placeholder="Ex: Nike"></div>' +
         '<div class="ps-field"><label>Statut</label><select id="mStatus">'+
           ["Idée","En préparation","Prêt","Publié"].map(function(s){ return '<option value="'+s+'"'+(s===card.status?" selected":"")+'>'+s+'</option>'; }).join("") +
         '</select></div>' +
@@ -704,6 +762,10 @@
       '</div>';
     root.appendChild(backdrop);
     root.appendChild(wrap);
+
+    var mBrandSelect = wrap.querySelector("#mBrand");
+    var mBrandNewWrap = wrap.querySelector("#mBrandNewWrap");
+    wireBrandSelect(mBrandSelect, mBrandNewWrap);
 
     function closeDrawer(){ if (root.contains(wrap)) root.removeChild(wrap); if (root.contains(backdrop)) root.removeChild(backdrop); }
     wrap.querySelector("#mCancel").addEventListener("click", closeDrawer);
@@ -730,13 +792,14 @@
       card.title = wrap.querySelector("#mTitle").value;
       card.format = wrap.querySelector("#mFormat").value;
       card.cta = wrap.querySelector("#mCta").value;
-      card.brand = wrap.querySelector("#mBrand").value || null;
+      card.brand = resolveBrandValue(mBrandSelect, mBrandNewWrap);
       card.status = wrap.querySelector("#mStatus").value;
       card.responsable = wrap.querySelector("#mResp").value;
       card.note = wrap.querySelector("#mNote").value;
       card.image = wrap.querySelector("#mImage").value;
       card.link = wrap.querySelector("#mLink").value;
       card.checklist = [0,1,2].map(function(i){ return wrap.querySelector("#mCheck"+i).checked; });
+      delete card.attentionDismissedAt;
       save();
       closeDrawer();
       render();
@@ -752,6 +815,38 @@
     {value:"Story 2|Story 2", label:"Story 2 (Focus Produit)"},
     {value:"Story 3|Story 3", label:"Story 3 (Repost)"}
   ];
+  var CONTENT_TYPES = ["Photo","Vidéo","Carousel","Reel","Texte"];
+
+  function brandOptionsHtml(selectedName){
+    return state.brands.map(function(b){
+      var val = b.id === "general" ? "" : b.name;
+      return '<option value="'+escapeHtml(val)+'"'+(val===(selectedName||"")?" selected":"")+'>'+escapeHtml(b.name)+'</option>';
+    }).join("") + '<option value="__addnew__">+ Nouvelle marque…</option>';
+  }
+
+  function activeBrandName(){
+    var b = state.brands.filter(function(x){ return x.id === state.prefs.activeBrandId; })[0];
+    return (b && b.id !== "general") ? b.name : "";
+  }
+
+  function wireBrandSelect(selectEl, newFieldEl){
+    selectEl.addEventListener("change", function(){
+      var showNew = selectEl.value === "__addnew__";
+      newFieldEl.style.display = showNew ? "" : "none";
+      if (showNew) newFieldEl.querySelector("input").focus();
+    });
+  }
+
+  function resolveBrandValue(selectEl, newFieldEl){
+    var val = selectEl.value;
+    if (val === "__addnew__") {
+      var name = newFieldEl.querySelector("input").value.trim();
+      if (!name) return null;
+      addCustomBrand(name);
+      return name;
+    }
+    return val || null;
+  }
 
   function openCreateModal(dateKey, isFeed){
     var root = document.getElementById("psModalRoot");
@@ -764,12 +859,18 @@
         '<div class="ps-field"><label>Type</label><select id="cType">'+
           options.map(function(o){ return '<option value="'+o.value+'">'+o.label+'</option>'; }).join("") +
         '</select></div>' +
+        '<div class="ps-field"><label>Type de contenu</label><select id="cContentType">'+
+          CONTENT_TYPES.map(function(t){ return '<option>'+t+'</option>'; }).join("") +
+        '</select></div>' +
         '<div class="ps-field"><label>Titre / Axe</label><input type="text" id="cTitle" placeholder="Ex: Nouveau modèle running"></div>' +
         '<div class="ps-field"><label>Format</label><input type="text" id="cFormat" placeholder="Ex: Carousel"></div>' +
         '<div class="ps-field"><label>CTA</label><input type="text" id="cCta" placeholder="Ex: Swipe up / Shop Now"></div>' +
-        '<div class="ps-field"><label>Marque (tag, optionnel)</label><input type="text" id="cBrand" placeholder="Ex: Adidas"></div>' +
+        '<div class="ps-field"><label>Marque</label><select id="cBrand">'+brandOptionsHtml(activeBrandName())+'</select></div>' +
+        '<div class="ps-field" id="cBrandNewWrap" style="display:none;"><label>Nom de la nouvelle marque</label><input type="text" id="cBrandNew" placeholder="Ex: Nike"></div>' +
         '<div class="ps-field"><label>Image (URL, optionnel)</label><input type="text" id="cImage" placeholder="https://..."></div>' +
         '<div class="ps-field"><label>Lien (optionnel)</label><input type="text" id="cLink" placeholder="https://..."></div>' +
+        '<div class="ps-field"><label style="display:flex;align-items:center;gap:6px;font-weight:400;"><input type="checkbox" id="cRecurring" style="width:auto;"> Répéter chaque semaine</label></div>' +
+        '<div class="ps-field" id="cRecurCountWrap" style="display:none;"><label>Combien de semaines en plus de celle-ci</label><input type="number" id="cRecurCount" value="4" min="1" max="52"></div>' +
         '<div class="ps-modal-actions">' +
           '<button class="ps-btn" id="cCancel">Annuler</button>' +
           '<button class="ps-btn primary" id="cSave">Ajouter</button>' +
@@ -777,19 +878,27 @@
       '</div>';
     root.appendChild(wrap);
 
+    var cBrandSelect = wrap.querySelector("#cBrand");
+    var cBrandNewWrap = wrap.querySelector("#cBrandNewWrap");
+    wireBrandSelect(cBrandSelect, cBrandNewWrap);
+    wrap.querySelector("#cRecurring").addEventListener("change", function(){
+      wrap.querySelector("#cRecurCountWrap").style.display = this.checked ? "" : "none";
+    });
+
     wrap.querySelector("#cCancel").addEventListener("click", function(){ root.removeChild(wrap); });
     wrap.addEventListener("click", function(e){ if (e.target === wrap) root.removeChild(wrap); });
     wrap.querySelector("#cSave").addEventListener("click", function(){
       var typeVal = wrap.querySelector("#cType").value.split("|");
       var kind = typeVal[0], category = typeVal[1];
-      var newCard = {
-        id: dateKey + "-new-" + Date.now(),
+      var brandVal = resolveBrandValue(cBrandSelect, cBrandNewWrap);
+      var baseCard = {
         kind: kind,
         category: category,
+        contentType: wrap.querySelector("#cContentType").value,
         title: wrap.querySelector("#cTitle").value || "Nouveau contenu",
         format: wrap.querySelector("#cFormat").value || "",
         cta: wrap.querySelector("#cCta").value || "",
-        brand: wrap.querySelector("#cBrand").value || null,
+        brand: brandVal,
         status: "Idée",
         responsable: "À assigner",
         note: "",
@@ -797,10 +906,20 @@
         image: wrap.querySelector("#cImage").value || "",
         link: wrap.querySelector("#cLink").value || ""
       };
-      var wk = toKey(currentMonday);
-      var daysData = state.weeks[wk];
-      if (!daysData[dateKey]) daysData[dateKey] = [];
-      daysData[dateKey].push(newCard);
+      var isRecurring = wrap.querySelector("#cRecurring").checked;
+      var occurrences = isRecurring ? Math.max(1, parseInt(wrap.querySelector("#cRecurCount").value, 10) || 1) : 0;
+      var baseDate = new Date(dateKey + "T00:00:00");
+      for (var i=0; i<=occurrences; i++){
+        var targetDate = addDays(baseDate, 7*i);
+        var targetKey = toKey(targetDate);
+        var targetMonday = mondayOf(targetDate);
+        ensureWeekData(targetMonday);
+        var daysData = currentCalendar()[toKey(targetMonday)];
+        if (!daysData[targetKey]) daysData[targetKey] = [];
+        var newCard = JSON.parse(JSON.stringify(baseCard));
+        newCard.id = targetKey + "-new-" + Date.now() + "-" + i;
+        daysData[targetKey].push(newCard);
+      }
       save();
       root.removeChild(wrap);
       render();
@@ -820,7 +939,7 @@
     setTimeout(function(){ document.getElementById("psGrid").classList.remove("slide-l"); }, 250);
   });
   document.getElementById("psToday").addEventListener("click", function(){
-    currentMonday = mondayOf(initialAnchor);
+    currentMonday = mondayOf(REAL_TODAY);
     render();
     if (currentView === "month") renderMonthView();
     if (currentView === "list") renderListView();
@@ -845,11 +964,8 @@
       return '<div class="ps-tierrow"><span style="min-width:150px;font-weight:500;">'+k.split("-").reverse().join("/")+'</span><span style="flex:1;">'+HOLIDAYS[k]+'</span><span class="ps-tierpct">'+when+'</span></div>';
     }).join("");
     panel.innerHTML =
-      '<div style="font-weight:600;margin-bottom:8px;">Rythme hebdomadaire</div>' +
-      '<div class="ps-tierrow"><span style="min-width:220px;">Feed</span><span style="flex:1;color:var(--text-2);">6 posts / semaine (2 Tier 1, 1 Tier 2, 2 Campaigns, 1 Planet Sport / Educational)</span></div>' +
-      '<div class="ps-tierrow"><span style="min-width:220px;">Stories</span><span style="flex:1;color:var(--text-2);">21 créneaux / semaine — 3/jour (variable + Focus Produit + Repost)</span></div>' +
-      '<div style="font-weight:600;margin:16px 0 8px;">Échéances (fériés / événements)</div>' +
-      holidayRows;
+      '<div style="font-weight:600;margin-bottom:8px;">Échéances (fériés / événements)</div>' +
+      (holidayRows || '<div style="color:var(--text-2);font-size:12.5px;">Aucune échéance à venir.</div>');
   }
 
   // ---------- Duplicate week ----------
@@ -859,7 +975,7 @@
     var nextMonday = addDays(currentMonday, 7);
     ensureWeekData(nextMonday);
     var srcWk = toKey(currentMonday), dstWk = toKey(nextMonday);
-    var srcDays = state.weeks[srcWk], dstDays = state.weeks[dstWk];
+    var srcDays = currentCalendar()[srcWk], dstDays = currentCalendar()[dstWk];
     for (var i=0;i<7;i++){
       var srcKey = toKey(addDays(currentMonday, i));
       var dstKey = toKey(addDays(nextMonday, i));
@@ -923,9 +1039,9 @@
         var targetMonday = mondayOf(dateObj);
         ensureWeekData(targetMonday);
         var wk = toKey(targetMonday);
-        if (!state.weeks[wk][dateKey]) state.weeks[wk][dateKey] = [];
+        if (!currentCalendar()[wk][dateKey]) currentCalendar()[wk][dateKey] = [];
         var category = kind === "Feed" ? "Planet Sport Content" : kind;
-        state.weeks[wk][dateKey].push({
+        currentCalendar()[wk][dateKey].push({
           id: "csv-"+Date.now()+"-"+i, kind: kind, category: category,
           title: cols[2], format: cols[3] || "", cta: "",
           status: status, responsable: cols[5] || "À assigner",
@@ -956,8 +1072,8 @@
   // ---------- Global search (Cmd/Ctrl+K) ----------
   function buildSearchIndex(){
     var idx = [];
-    Object.keys(state.weeks).forEach(function(wk){
-      var days = state.weeks[wk];
+    Object.keys(currentCalendar()).forEach(function(wk){
+      var days = currentCalendar()[wk];
       Object.keys(days).forEach(function(dateKey){
         days[dateKey].forEach(function(c){
           idx.push({ type:"Calendrier", label:c.title, meta:c.kind+" · "+dateKey, action:function(){
@@ -1044,42 +1160,41 @@
     renderTabBody(tab);
   }
 
-  // ---------- Rotation balance ----------
-  function renderRotationPanel(){
-    var el = document.getElementById("psRotationPanel");
-    var allBrands = [["Tier 1", TIER1.map(function(t){return t[0];}), 3.5],
-                     ["Tier 2", TIER2_NAMES, 28],
-                     ["Tier 3", TIER3_NAMES, 63]];
-    var rows = [];
-    allBrands.forEach(function(group){
-      var tierLabel = group[0], names = group[1], expectedDays = group[2];
-      names.forEach(function(brand){
-        var lastSeen = null;
-        var sortedWeeks = Object.keys(state.weeks).sort();
-        sortedWeeks.forEach(function(wk){
-          Object.keys(state.weeks[wk]).sort().forEach(function(dateKey){
-            state.weeks[wk][dateKey].forEach(function(c){
-              if (c.brand === brand) lastSeen = dateKey;
-            });
-          });
-        });
-        var daysSince = lastSeen ? Math.round((REAL_TODAY - new Date(lastSeen+"T00:00:00"))/86400000) : null;
-        rows.push({ tier:tierLabel, brand:brand, daysSince:daysSince, expected: expectedDays });
-      });
-    });
-    el.innerHTML = rows.map(function(r){
-      var warn = r.daysSince !== null && r.daysSince > r.expected * 1.5;
-      var text = r.daysSince === null ? "Pas encore apparu" : (r.daysSince + " jour(s) depuis la dernière fois");
-      return '<div class="ps-rotrow"><span style="min-width:60px;font-weight:600;">'+r.tier+'</span><span style="min-width:110px;">'+r.brand+'</span><span class="'+(warn?"ps-rotwarn":"")+'" style="flex:1;">'+text+(warn?" — à replanifier":"")+'</span></div>';
-    }).join("");
+  // ---------- Brand calendar switcher ----------
+  function renderBrandSwitcher(){
+    var sel = document.getElementById("psBrandSwitcher");
+    if (!sel) return;
+    sel.innerHTML = state.brands.map(function(b){
+      return '<option value="'+escapeHtml(b.id)+'"'+(b.id===state.prefs.activeBrandId?" selected":"")+'>'+escapeHtml(b.name)+'</option>';
+    }).join("") + '<option value="__addnew__">+ Nouvelle marque…</option>';
   }
+
+  document.getElementById("psBrandSwitcher").addEventListener("change", function(){
+    var val = this.value;
+    if (val === "__addnew__") {
+      var name = window.prompt("Nom de la nouvelle marque :");
+      if (name && name.trim()) {
+        state.prefs.activeBrandId = addCustomBrand(name.trim());
+        save();
+      }
+      renderBrandSwitcher();
+      render();
+      renderAttentionPanel();
+      return;
+    }
+    state.prefs.activeBrandId = val;
+    save();
+    render();
+    if (currentView === "month") renderMonthView();
+    if (currentView === "list") renderListView();
+  });
 
   // ---------- Feed grid preview ----------
   function renderGridPreview(){
     var el = document.getElementById("psGridPreview");
     var wk = toKey(currentMonday);
     ensureWeekData(currentMonday);
-    var daysData = state.weeks[wk];
+    var daysData = currentCalendar()[wk];
     var feedItems = [];
     for (var i=0;i<7;i++){
       var key = toKey(addDays(currentMonday, i));
@@ -1095,9 +1210,9 @@
 
   // ---------- Stats analytics (cumulative across the whole generated calendar) ----------
   function forEachCard(fn){
-    Object.keys(state.weeks).sort().forEach(function(wk){
-      Object.keys(state.weeks[wk]).sort().forEach(function(dateKey){
-        state.weeks[wk][dateKey].forEach(function(c){ fn(c, dateKey); });
+    Object.keys(currentCalendar()).sort().forEach(function(wk){
+      Object.keys(currentCalendar()[wk]).sort().forEach(function(dateKey){
+        currentCalendar()[wk][dateKey].forEach(function(c){ fn(c, dateKey); });
       });
     });
   }
@@ -1198,7 +1313,7 @@
     document.getElementById("psStatsSubApercu").style.display = tab === "apercu" ? "" : "none";
     document.getElementById("psStatsSubMarques").style.display = tab === "marques" ? "" : "none";
     document.getElementById("psStatsSubContenu").style.display = tab === "contenu" ? "" : "none";
-    if (tab === "apercu") { renderStatsTab(); renderRotationPanel(); renderGridPreview(); }
+    if (tab === "apercu") { renderStatsTab(); renderGridPreview(); }
     if (tab === "marques") { renderBarChart(document.getElementById("psBrandChartPanel"), computeBrandBreakdown(), { showSplit: true }); }
     if (tab === "contenu") {
       renderDonutChart(document.getElementById("psStatusChartPanel"), computeStatusBreakdown());
@@ -1218,7 +1333,11 @@
     load(function(){
       ensureStateShape();
       applyDarkMode(state.prefs.dark);
-      for (var w=0; w<N_WEEKS; w++){ ensureWeekData(addDays(RANGE_START, w*7)); }
+      currentFilters = state.prefs.filters;
+      document.getElementById("fSearch").value = currentFilters.search || "";
+      document.getElementById("fStatus").value = currentFilters.status || "";
+      document.getElementById("fResp").value = currentFilters.resp || "";
+      renderBrandSwitcher();
       render();
       switchTab(state.prefs.tab || "calendar");
       var effectiveView = state.prefs.view || "week";
@@ -1272,11 +1391,11 @@
       var weekMon = addDays(currentMonday, w*7);
       ensureWeekData(weekMon);
       var wk = toKey(weekMon);
-      var daysData = state.weeks[wk];
+      var daysData = currentCalendar()[wk];
       for (var i=0;i<7;i++){
         var d = addDays(weekMon, i);
         var key = toKey(d);
-        var cards = daysData[key] || [];
+        var cards = (daysData[key] || []).filter(cardMatchesFilters);
         var cell = document.createElement("div");
         cell.className = "ps-monthcell";
         var feedCardsC = cards.filter(function(c){ return c.kind === "Feed"; });
@@ -1310,7 +1429,7 @@
     var el = document.getElementById("psListView");
     var wk = toKey(currentMonday);
     ensureWeekData(currentMonday);
-    var daysData = state.weeks[wk];
+    var daysData = currentCalendar()[wk];
     var rows = [];
     for (var i=0;i<7;i++){
       var d = addDays(currentMonday, i);
@@ -1349,7 +1468,7 @@
     el.innerHTML = html;
 
     function findCard(cardId, dateKey){
-      var dd = state.weeks[toKey(currentMonday)];
+      var dd = currentCalendar()[toKey(currentMonday)];
       var arr = dd && dd[dateKey];
       if (!arr) return null;
       for (var j=0;j<arr.length;j++){ if (arr[j].id === cardId) return {arr:arr, idx:j, card:arr[j]}; }
@@ -1420,7 +1539,7 @@
       render();
       renderListView();
       showUndoToast(removed.length+" élément(s) supprimé(s)", function(){
-        var dd = state.weeks[toKey(currentMonday)];
+        var dd = currentCalendar()[toKey(currentMonday)];
         removed.forEach(function(r){
           if (!dd[r.dateKey]) dd[r.dateKey] = [];
           dd[r.dateKey].push(r.card);
@@ -1456,11 +1575,12 @@
     }
     panel.style.display = panel.style.display === "none" ? "block" : "none";
   });
-  document.getElementById("fSearch").addEventListener("input", function(){ currentFilters.search = this.value; render(); if (currentView==="list") renderListView(); });
-  document.getElementById("fStatus").addEventListener("change", function(){ currentFilters.status = this.value; render(); if (currentView==="list") renderListView(); });
-  document.getElementById("fResp").addEventListener("change", function(){ currentFilters.resp = this.value; render(); if (currentView==="list") renderListView(); });
+  document.getElementById("fSearch").addEventListener("input", function(){ currentFilters.search = this.value; save(); render(); if (currentView==="list") renderListView(); });
+  document.getElementById("fStatus").addEventListener("change", function(){ currentFilters.status = this.value; save(); render(); if (currentView==="list") renderListView(); });
+  document.getElementById("fResp").addEventListener("change", function(){ currentFilters.resp = this.value; save(); render(); if (currentView==="list") renderListView(); });
   document.getElementById("fClear").addEventListener("click", function(){
-    currentFilters = { search:"", status:"", resp:"" };
+    currentFilters.search = ""; currentFilters.status = ""; currentFilters.resp = "";
+    save();
     document.getElementById("fSearch").value = "";
     document.getElementById("fStatus").value = "";
     document.getElementById("fResp").value = "";
@@ -1472,7 +1592,7 @@
   document.getElementById("psExportBtn").addEventListener("click", function(){
     var wk = toKey(currentMonday);
     ensureWeekData(currentMonday);
-    var daysData = state.weeks[wk];
+    var daysData = currentCalendar()[wk];
     var lines = ["*Planet Sport — Semaine du "+fmtRange(currentMonday)+"*", ""];
     for (var i=0;i<7;i++){
       var d = addDays(currentMonday, i);
@@ -1661,10 +1781,81 @@
     });
   });
 
+  // ---------- Idea bank ----------
+  var IDEA_BANK = [
+    { title:"Mise en avant produit — best-seller de la semaine", note:"Photo/Reel produit seul, prix visible, CTA vers la fiche produit.", tagType:"Produit", tagDetail:"", priority:"Moyenne" },
+    { title:"Repost UGC client", note:"Repartager une story/publication d'un client portant un produit Planet Sport.", tagType:"Autre", tagDetail:"UGC", priority:"Basse" },
+    { title:"Compte à rebours avant une campagne", note:"Story avec sticker compte à rebours vers le lancement d'une offre.", tagType:"Campagne", tagDetail:"", priority:"Haute" },
+    { title:"Tenue du jour (outfit of the day)", note:"Carousel de looks complets avec tags produits, un par marque en rotation.", tagType:"Produit", tagDetail:"", priority:"Moyenne" },
+    { title:"Astuce technique / éducatif", note:"Story ou post court expliquant une caractéristique technique d'un produit (amorti, matière, etc.).", tagType:"Autre", tagDetail:"Educational", priority:"Basse" },
+    { title:"Coulisses en boutique", note:"Photo/Reel de l'équipe ou de la mise en rayon, ton informel.", tagType:"Autre", tagDetail:"", priority:"Basse" },
+    { title:"Avant/après ou comparatif produit", note:"Comparaison visuelle entre deux modèles ou usages.", tagType:"Produit", tagDetail:"", priority:"Moyenne" },
+    { title:"Question à la communauté", note:"Story avec sticker sondage/question pour engager (ex: quelle paire tu préfères ?).", tagType:"Autre", tagDetail:"", priority:"Basse" },
+    { title:"Annonce de réassort", note:"Post ou story annonçant le retour en stock d'un produit populaire.", tagType:"Produit", tagDetail:"", priority:"Haute" },
+    { title:"Témoignage / avis client", note:"Citation ou capture d'un avis client mise en avant visuellement.", tagType:"Autre", tagDetail:"", priority:"Basse" },
+    { title:"Guide cadeaux saisonnier", note:"Carousel de suggestions de produits pour une occasion (rentrée, fêtes, etc.).", tagType:"Campagne", tagDetail:"", priority:"Moyenne" },
+    { title:"Focus sur une nouvelle collection", note:"Annonce d'arrivée d'une nouvelle collection avec teaser visuel.", tagType:"Produit", tagDetail:"", priority:"Haute" },
+    { title:"Motivation sportive du lundi", note:"Citation ou visuel inspirant lié au sport pour démarrer la semaine.", tagType:"Autre", tagDetail:"", priority:"Basse" },
+    { title:"Live shopping / démonstration", note:"Annonce ou récap d'une session de démonstration produit en direct.", tagType:"Campagne", tagDetail:"", priority:"Moyenne" },
+    { title:"Partenariat influenceur/ambassadeur", note:"Post croisé avec un ambassadeur portant un produit Planet Sport.", tagType:"Autre", tagDetail:"", priority:"Moyenne" },
+    { title:"Rappel offre en cours", note:"Rappel visuel d'une promotion active avec compte à rebours de fin.", tagType:"Campagne", tagDetail:"", priority:"Haute" },
+    { title:"Behind the sport — histoire d'un modèle", note:"Storytelling autour de l'histoire ou de la conception d'un produit phare.", tagType:"Autre", tagDetail:"Educational", priority:"Basse" }
+  ];
+
+  document.getElementById("psIdeaBank").addEventListener("click", function(){
+    var root = document.getElementById("psModalRoot");
+    var wrap = document.createElement("div");
+    wrap.className = "ps-modal-backdrop";
+    wrap.innerHTML =
+      '<div class="ps-modal" style="max-width:520px;">' +
+        '<div class="ps-modal-head"><i class="ti ti-bulb" aria-hidden="true"></i>Banque d\'idées</div>' +
+        '<div style="max-height:60vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">' +
+          IDEA_BANK.map(function(idea, i){
+            return '<div class="ps-tierrow" style="align-items:flex-start;"><div style="flex:1;"><div style="font-weight:600;font-size:13px;">'+escapeHtml(idea.title)+'</div><div style="color:var(--text-2);font-size:11.5px;margin-top:2px;">'+escapeHtml(idea.note)+'</div></div><button class="ps-btn ps-bank-add" data-idx="'+i+'" style="font-size:10.5px;padding:4px 9px;flex-shrink:0;">+ Ajouter</button></div>';
+          }).join("") +
+        '</div>' +
+        '<div class="ps-modal-actions"><button class="ps-btn primary" id="ideaBankClose">Fermer</button></div>' +
+      '</div>';
+    root.appendChild(wrap);
+    wrap.querySelector("#ideaBankClose").addEventListener("click", function(){ root.removeChild(wrap); });
+    wrap.addEventListener("click", function(e){ if (e.target===wrap) root.removeChild(wrap); });
+    wrap.querySelectorAll(".ps-bank-add").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var idea = IDEA_BANK[parseInt(btn.dataset.idx, 10)];
+        state.ideas.push({
+          id:"idea-"+Date.now()+"-"+btn.dataset.idx, title: idea.title, note: idea.note,
+          image: "", link: "", tagType: idea.tagType, tagDetail: idea.tagDetail, priority: idea.priority
+        });
+        save();
+        renderIdeas();
+        btn.textContent = "Ajouté";
+        btn.disabled = true;
+      });
+    });
+  });
+
   // ---------- Production (Kanban) ----------
   var KAN_COLS = [["todo","À faire"],["inprogress","En cours"],["ready","Prêt"]];
 
+  function campaignOptionsHtml(selectedId){
+    return '<option value="">Aucune</option>' + state.campaigns.map(function(c){
+      return '<option value="'+c.id+'"'+(c.id===selectedId?" selected":"")+'>'+escapeHtml(c.name)+'</option>';
+    }).join("");
+  }
+
+  function renderKanbanProgress(){
+    var el = document.getElementById("psKanbanProgress");
+    if (!el) return;
+    var total = 0, ready = 0;
+    KAN_COLS.forEach(function(c){ total += state.production[c[0]].length; if (c[0]==="ready") ready = state.production[c[0]].length; });
+    var pct = total ? Math.round((ready/total)*100) : 0;
+    el.innerHTML =
+      '<div style="font-size:11px;color:var(--text-2);margin-bottom:6px;">'+ready+'/'+total+' prêts à programmer</div>' +
+      '<div class="ps-tierbar-bg"><div class="ps-tierbar-fill" style="width:'+pct+'%;background:'+CAT_COLORS["Campaigns Content"]+';"></div></div>';
+  }
+
   function renderKanban(){
+    renderKanbanProgress();
     var el = document.getElementById("psKanban");
     el.innerHTML = "";
     KAN_COLS.forEach(function(colDef){
@@ -1676,9 +1867,29 @@
       head.className = "ps-kancol-head";
       head.innerHTML = "<span>"+colLabel+"</span><span style='color:var(--text-3);'>"+state.production[colKey].length+"</span>";
       col.appendChild(head);
+
+      var groups = {};
+      var noCamp = [];
       state.production[colKey].forEach(function(card){
-        col.appendChild(renderKanCard(card, colKey));
+        if (card.campaignId) { (groups[card.campaignId] = groups[card.campaignId] || []).push(card); }
+        else noCamp.push(card);
       });
+      Object.keys(groups).forEach(function(cid){
+        var camp = state.campaigns.filter(function(c){ return c.id === cid; })[0];
+        var groupHead = document.createElement("div");
+        groupHead.className = "ps-kangroup-head";
+        groupHead.textContent = camp ? camp.name : "Campagne supprimée";
+        col.appendChild(groupHead);
+        groups[cid].forEach(function(card){ col.appendChild(renderKanCard(card, colKey)); });
+      });
+      if (Object.keys(groups).length && noCamp.length) {
+        var otherHead = document.createElement("div");
+        otherHead.className = "ps-kangroup-head";
+        otherHead.textContent = "Sans campagne";
+        col.appendChild(otherHead);
+      }
+      noCamp.forEach(function(card){ col.appendChild(renderKanCard(card, colKey)); });
+
       col.addEventListener("dragover", function(e){ e.preventDefault(); });
       col.addEventListener("drop", function(e){
         e.preventDefault();
@@ -1715,12 +1926,14 @@
     el.draggable = true;
     var tagHtml = card.brand ? '<span class="ps-tag tierdefault">'+escapeHtml(card.brand)+'</span>' : "";
     var originHtml = card.fromIdea ? '<span class="ps-tag" style="background:#EEEDFE;color:#3C3489;margin-left:4px;"><i class="ti ti-bulb" aria-hidden="true" style="font-size:9px;vertical-align:-1px;"></i> Depuis Idéation</span>' : "";
+    var camp = card.campaignId ? state.campaigns.filter(function(c){ return c.id === card.campaignId; })[0] : null;
+    var campHtml = camp ? '<span class="ps-tag" style="background:#EEF1F7;color:#444441;margin-left:4px;">'+escapeHtml(camp.name)+'</span>' : "";
     var avatarColor = AVATAR_COLORS[card.responsable] || "#9AA2AF";
     el.innerHTML =
       '<div class="ps-card-del" title="Supprimer"><i class="ti ti-x" aria-hidden="true" style="font-size:11px;"></i></div>' +
       '<div style="font-size:9px;text-transform:uppercase;color:var(--text-3);font-weight:600;">'+card.kind+' · '+card.category+'</div>' +
       '<div style="font-weight:600;margin:2px 0;">'+escapeHtml(card.title)+'</div>' +
-      tagHtml + originHtml + kanDueBadge(card.dueDate) +
+      tagHtml + campHtml + originHtml + kanDueBadge(card.dueDate) +
       '<div style="display:flex;gap:6px;align-items:center;margin-top:8px;">' +
         '<select class="ps-kan-ctype" style="font-size:10.5px;padding:3px 5px;flex:1;">'+
           ["Photo","Vidéo","Carousel","Reel","Texte"].map(function(t){ return '<option'+(t===card.contentType?" selected":"")+'>'+t+'</option>'; }).join("") +
@@ -1753,16 +1966,77 @@
         openScheduleModal(card, colKey);
       });
     }
+    el.addEventListener("click", function(e){
+      if (e.target.closest(".ps-card-del") || e.target.closest("select") || e.target.closest("input") || e.target.closest("button")) return;
+      openKanEditModal(card, colKey);
+    });
     return el;
+  }
+
+  function openKanEditModal(card, colKey){
+    var root = document.getElementById("psModalRoot");
+    var wrap = document.createElement("div");
+    wrap.className = "ps-modal-backdrop";
+    var typeKey = card.kind + "|" + card.category;
+    wrap.innerHTML =
+      '<div class="ps-modal">' +
+        '<div class="ps-modal-head"><i class="ti ti-pencil" aria-hidden="true"></i>Modifier le contenu</div>' +
+        '<div class="ps-field"><label>Type</label><select id="kType">'+
+          TYPE_OPTIONS.map(function(o){ return '<option value="'+o.value+'"'+(o.value===typeKey?" selected":"")+'>'+o.label+'</option>'; }).join("") +
+        '</select></div>' +
+        '<div class="ps-field"><label>Titre</label><input type="text" id="kTitle" value="'+escapeHtml(card.title)+'"></div>' +
+        '<div class="ps-field"><label>Marque</label><select id="kBrand">'+brandOptionsHtml(card.brand||"")+'</select></div>' +
+        '<div class="ps-field" id="kBrandNewWrap" style="display:none;"><label>Nom de la nouvelle marque</label><input type="text" id="kBrandNew" placeholder="Ex: Nike"></div>' +
+        '<div class="ps-field"><label>Campagne</label><select id="kCampaign">'+campaignOptionsHtml(card.campaignId||"")+'</select></div>' +
+        '<div class="ps-modal-actions">' +
+          '<button class="ps-btn" id="kDelete" style="color:#A32D2D;margin-right:auto;">Supprimer</button>' +
+          '<button class="ps-btn" id="kCancel">Annuler</button>' +
+          '<button class="ps-btn primary" id="kSave">Enregistrer</button>' +
+        '</div>' +
+      '</div>';
+    root.appendChild(wrap);
+    var kBrandSelect = wrap.querySelector("#kBrand");
+    var kBrandNewWrap = wrap.querySelector("#kBrandNewWrap");
+    wireBrandSelect(kBrandSelect, kBrandNewWrap);
+    wrap.querySelector("#kCancel").addEventListener("click", function(){ root.removeChild(wrap); });
+    wrap.addEventListener("click", function(e){ if (e.target===wrap) root.removeChild(wrap); });
+    wrap.querySelector("#kDelete").addEventListener("click", function(){
+      if (!window.confirm("Supprimer ce contenu ?")) return;
+      var arr = state.production[colKey];
+      var idx = arr.indexOf(card);
+      if (idx > -1) {
+        var removed = arr.splice(idx,1)[0];
+        save();
+        root.removeChild(wrap);
+        renderKanban();
+        showUndoToast("Retiré de la production", function(){ arr.splice(idx,0,removed); save(); renderKanban(); });
+      }
+    });
+    wrap.querySelector("#kSave").addEventListener("click", function(){
+      var typeVal = wrap.querySelector("#kType").value.split("|");
+      card.kind = typeVal[0];
+      card.category = typeVal[1];
+      card.title = wrap.querySelector("#kTitle").value || card.title;
+      card.brand = resolveBrandValue(kBrandSelect, kBrandNewWrap);
+      card.campaignId = wrap.querySelector("#kCampaign").value || null;
+      save();
+      root.removeChild(wrap);
+      renderKanban();
+    });
   }
 
   function openScheduleModal(card, colKey){
     var root = document.getElementById("psModalRoot");
     var wrap = document.createElement("div");
     wrap.className = "ps-modal-backdrop";
+    var matchingBrand = card.brand ? state.brands.filter(function(b){ return b.name === card.brand; })[0] : null;
+    var defaultBrandId = matchingBrand ? matchingBrand.id : state.prefs.activeBrandId;
     wrap.innerHTML =
       '<div class="ps-modal">' +
         '<div class="ps-modal-head"><i class="ti ti-calendar-event" aria-hidden="true"></i>Programmer</div>' +
+        '<div class="ps-field"><label>Calendrier</label><select id="schedBrand">'+
+          state.brands.map(function(b){ return '<option value="'+escapeHtml(b.id)+'"'+(b.id===defaultBrandId?" selected":"")+'>'+escapeHtml(b.name)+'</option>'; }).join("") +
+        '</select></div>' +
         '<div class="ps-field"><label>Date</label><input type="date" id="schedDate" value="'+todayKey+'"></div>' +
         '<div class="ps-modal-actions"><button class="ps-btn" id="schedCancel">Annuler</button><button class="ps-btn primary" id="schedSave">Ajouter au calendrier</button></div>' +
       '</div>';
@@ -1772,16 +2046,19 @@
     wrap.querySelector("#schedSave").addEventListener("click", function(){
       var dateVal = wrap.querySelector("#schedDate").value;
       if (!dateVal) { root.removeChild(wrap); return; }
+      var targetBrandId = wrap.querySelector("#schedBrand").value;
+      if (!state.calendars[targetBrandId]) state.calendars[targetBrandId] = {};
+      var targetCal = state.calendars[targetBrandId];
       var targetMonday = mondayOf(new Date(dateVal + "T00:00:00"));
-      ensureWeekData(targetMonday);
       var wk = toKey(targetMonday);
-      if (!state.weeks[wk][dateVal]) state.weeks[wk][dateVal] = [];
+      if (!targetCal[wk]) targetCal[wk] = {};
+      if (!targetCal[wk][dateVal]) targetCal[wk][dateVal] = [];
       var newCard = JSON.parse(JSON.stringify(card));
       newCard.id = "sched-" + Date.now();
       newCard.status = "Prêt";
       newCard.responsable = "À assigner";
       newCard.note = card.note || "";
-      state.weeks[wk][dateVal].push(newCard);
+      targetCal[wk][dateVal].push(newCard);
       var arr = state.production[colKey];
       var idx = arr.indexOf(card);
       if (idx > -1) arr.splice(idx,1);
@@ -1804,10 +2081,15 @@
         '<div class="ps-field"><label>Titre</label><input type="text" id="pTitle"></div>' +
         '<div class="ps-field"><label>Type de contenu</label><select id="pContentType"><option>Photo</option><option>Vidéo</option><option>Carousel</option><option>Reel</option><option>Texte</option></select></div>' +
         '<div class="ps-field"><label>Qui va le faire</label><select id="pResp"><option>À assigner</option><option>Ilias</option><option>Agence</option><option>Équipe Boutique</option></select></div>' +
-        '<div class="ps-field"><label>Marque (optionnel)</label><input type="text" id="pBrand"></div>' +
+        '<div class="ps-field"><label>Marque</label><select id="pBrand">'+brandOptionsHtml(activeBrandName())+'</select></div>' +
+        '<div class="ps-field" id="pBrandNewWrap" style="display:none;"><label>Nom de la nouvelle marque</label><input type="text" id="pBrandNew" placeholder="Ex: Nike"></div>' +
+        '<div class="ps-field"><label>Campagne</label><select id="pCampaign">'+campaignOptionsHtml("")+'</select></div>' +
         '<div class="ps-modal-actions"><button class="ps-btn" id="pCancel">Annuler</button><button class="ps-btn primary" id="pSave">Ajouter</button></div>' +
       '</div>';
     root.appendChild(wrap);
+    var pBrandSelect = wrap.querySelector("#pBrand");
+    var pBrandNewWrap = wrap.querySelector("#pBrandNewWrap");
+    wireBrandSelect(pBrandSelect, pBrandNewWrap);
     wrap.querySelector("#pCancel").addEventListener("click", function(){ root.removeChild(wrap); });
     wrap.addEventListener("click", function(e){ if (e.target===wrap) root.removeChild(wrap); });
     wrap.querySelector("#pSave").addEventListener("click", function(){
@@ -1815,9 +2097,10 @@
       state.production.todo.push({
         id:"prod-"+Date.now(), kind:typeVal[0], category:typeVal[1],
         title: wrap.querySelector("#pTitle").value || "Nouveau contenu",
-        brand: wrap.querySelector("#pBrand").value || null, format:"", cta:"",
+        brand: resolveBrandValue(pBrandSelect, pBrandNewWrap), format:"", cta:"",
         contentType: wrap.querySelector("#pContentType").value,
-        responsable: wrap.querySelector("#pResp").value
+        responsable: wrap.querySelector("#pResp").value,
+        campaignId: wrap.querySelector("#pCampaign").value || null
       });
       save();
       root.removeChild(wrap);
