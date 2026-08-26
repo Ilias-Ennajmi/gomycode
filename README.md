@@ -96,3 +96,12 @@ Le calendrier est **généré**, pas saisi à la main : `genDayCards(date)` calc
 - Remplacer l'import CSV silencieux par un rapport d'erreurs ligne par ligne
 - Étendre `RANGE_END` ou rendre la fenêtre de génération dynamique plutôt que fixée en dur au 4 octobre 2026
 - Passer à un schéma relationnel (une table par type d'objet) si la synchro par blob JSON devient limitante
+
+## Fonctionnalités récentes (benchmark outils de content calendar)
+
+En comparant aux fonctions standards des outils du marché (Planable, CoSchedule, Later, Sprout Social — deadline tracking, backlog priorisé, actions groupées, raccourcis clavier), les ajouts suivants ont été faits :
+
+- **Panneau "À traiter"** (onglet Calendrier) : liste, toutes semaines générées confondues, les contenus en retard ou à échéance sous 48h, avec un bouton "Voir" qui saute directement à la bonne semaine.
+- **Priorité sur les idées** (Idéation) : champ Basse/Moyenne/Haute, badge coloré, tri automatique par priorité dans le panneau.
+- **Actions groupées en vue Liste** (Calendrier → Liste) : sélection multiple par case à cocher, changement de statut/responsable ou suppression en masse (avec annulation).
+- **Raccourcis clavier étendus** : `T` (aujourd'hui), `N` (nouveau post), `?` (aide raccourcis), en plus de `⌘K`/`Ctrl+K` (recherche) et `←`/`→` (semaine précédente/suivante) déjà existants.

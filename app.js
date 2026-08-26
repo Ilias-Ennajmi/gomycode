@@ -487,6 +487,77 @@
     }, 30);
   }
 
+  function computeAttentionItems(){
+    var items = [];
+    Object.keys(state.weeks).sort().forEach(function(wk){
+      var daysData = state.weeks[wk];
+      Object.keys(daysData).sort().forEach(function(dateKey){
+        (daysData[dateKey] || []).forEach(function(card){
+          var late = cardIsLate(card, dateKey);
+          var soon = !late && cardIsDueSoon(card, dateKey);
+          if (late || soon) items.push({ card: card, dateKey: dateKey, late: late });
+        });
+      });
+    });
+    items.sort(function(a,b){
+      if (a.late !== b.late) return a.late ? -1 : 1;
+      return a.dateKey < b.dateKey ? -1 : (a.dateKey > b.dateKey ? 1 : 0);
+    });
+    return items;
+  }
+
+  function jumpToDate(dateKey){
+    var parts = dateKey.split("-");
+    var d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+    currentMonday = mondayOf(d);
+    if (currentView !== "week") {
+      document.querySelectorAll("#psViewSeg button").forEach(function(b){ b.classList.remove("active"); });
+      var wbtn = document.querySelector('#psViewSeg button[data-view="week"]');
+      if (wbtn) wbtn.classList.add("active");
+      currentView = "week";
+      state.prefs.view = "week";
+      save();
+      document.getElementById("psWeekView").style.display = "";
+      document.getElementById("psMonthView").style.display = "none";
+      document.getElementById("psListView").style.display = "none";
+    }
+    render();
+    setTimeout(function(){
+      var col = document.querySelector('.ps-daycol[data-date-key="'+dateKey+'"]');
+      if (col) {
+        col.scrollIntoView({behavior:"smooth", inline:"center", block:"nearest"});
+        col.classList.add("snap");
+        setTimeout(function(){ col.classList.remove("snap"); }, 600);
+      }
+    }, 60);
+  }
+
+  function renderAttentionPanel(){
+    var section = document.getElementById("psAttentionSection");
+    var panel = document.getElementById("psAttentionPanel");
+    var countEl = document.getElementById("psAttentionCount");
+    var items = computeAttentionItems();
+    if (!items.length) { section.style.display = "none"; panel.innerHTML = ""; return; }
+    section.style.display = "";
+    countEl.textContent = items.length + (items.length > 1 ? " éléments" : " élément");
+    panel.innerHTML = "";
+    items.slice(0, 8).forEach(function(it){
+      var row = document.createElement("div");
+      row.style.cssText = "display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px;";
+      var parts = it.dateKey.split("-");
+      var dstr = parts[2]+"/"+parts[1];
+      row.innerHTML =
+        '<span class="ps-tag" style="margin-top:0;flex-shrink:0;'+(it.late ? "background:#FCEBEB;color:#A32D2D;" : "background:#FEF3DC;color:#93650B;")+'">'+(it.late ? "En retard" : "Bientôt")+'</span>' +
+        '<span style="color:var(--text-3);flex-shrink:0;min-width:34px;">'+dstr+'</span>' +
+        '<span style="flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(it.card.title)+'</span>' +
+        (it.card.brand ? '<span class="ps-tag tierdefault" style="margin-top:0;flex-shrink:0;">'+escapeHtml(it.card.brand)+'</span>' : "") +
+        '<span style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:'+(STATUS_COLORS[it.card.status]||"#999")+';"></span>' +
+        '<button class="ps-btn" style="font-size:11px;padding:4px 9px;flex-shrink:0;">Voir</button>';
+      row.querySelector("button").addEventListener("click", function(){ jumpToDate(it.dateKey); });
+      panel.appendChild(row);
+    });
+  }
+
   function render(){
     ensureWeekData(currentMonday);
     document.getElementById("psWeekLabel").textContent = fmtRange(currentMonday);
@@ -560,6 +631,7 @@
       grid.appendChild(col);
     }
     renderStats();
+    renderAttentionPanel();
   }
 
   function setupZoneDnD(zoneEl, dateKey, allCardsRef, isFeedZone){
@@ -715,7 +787,12 @@
     document.getElementById("psGrid").classList.add("slide-l");
     setTimeout(function(){ document.getElementById("psGrid").classList.remove("slide-l"); }, 250);
   });
-  document.getElementById("psToday").addEventListener("click", function(){ currentMonday = mondayOf(initialAnchor); render(); });
+  document.getElementById("psToday").addEventListener("click", function(){
+    currentMonday = mondayOf(initialAnchor);
+    render();
+    if (currentView === "month") renderMonthView();
+    if (currentView === "list") renderListView();
+  });
 
   var tabColors = { "Tier 1": "var(--cat-brands)", "Tier 2": "var(--cat-planet)", "Tier 3": "var(--text-3)" };
   function allBrandDefs(){
@@ -1146,6 +1223,8 @@
     el.appendChild(grid);
   }
 
+  var selectedListIds = {};
+
   function renderListView(){
     var el = document.getElementById("psListView");
     var wk = toKey(currentMonday);
@@ -1156,18 +1235,120 @@
       var d = addDays(currentMonday, i);
       var key = toKey(d);
       (daysData[key] || []).forEach(function(c){
-        rows.push({date: pad(d.getDate())+"/"+pad(d.getMonth()+1), day: DAY_NAMES[i], card: c});
+        rows.push({date: pad(d.getDate())+"/"+pad(d.getMonth()+1), day: DAY_NAMES[i], dateKey: key, card: c});
       });
     }
-    var html = '<table class="ps-listtable"><thead><tr><th>Date</th><th>Jour</th><th>Type</th><th>Titre</th><th>Statut</th><th>Responsable</th></tr></thead><tbody>';
+    rows = rows.filter(function(r){ return cardMatchesFilters(r.card); });
+
+    var visibleIds = {};
+    rows.forEach(function(r){ visibleIds[r.card.id] = true; });
+    Object.keys(selectedListIds).forEach(function(id){ if (!visibleIds[id]) delete selectedListIds[id]; });
+    var selCount = Object.keys(selectedListIds).length;
+
+    var STATUS_LIST = ["Idée","En préparation","Prêt","Publié"];
+    var RESP_LIST = ["À assigner","Ilias","Agence","Équipe Boutique"];
+    var bulkBarHtml =
+      '<div class="ps-toolbar" id="psListBulkBar" style="justify-content:space-between;margin-bottom:10px;'+(selCount ? "" : "display:none;")+'">' +
+        '<span id="psListBulkCount" style="font-size:12px;font-weight:600;">'+selCount+' sélectionné(s)</span>' +
+        '<div class="ps-toolbar" style="gap:6px;">' +
+          '<select id="lbStatus" style="font-size:12px;"><option value="">Statut...</option>'+STATUS_LIST.map(function(s){ return '<option value="'+s+'">'+s+'</option>'; }).join("")+'</select>' +
+          '<select id="lbResp" style="font-size:12px;"><option value="">Responsable...</option>'+RESP_LIST.map(function(s){ return '<option value="'+s+'">'+s+'</option>'; }).join("")+'</select>' +
+          '<button class="ps-btn" id="lbDelete" style="font-size:12px;">Supprimer</button>' +
+        '</div>' +
+      '</div>';
+
+    var html = bulkBarHtml + '<table class="ps-listtable"><thead><tr><th style="width:24px;"><input type="checkbox" id="lbSelectAll"></th><th>Date</th><th>Jour</th><th>Type</th><th>Titre</th><th>Statut</th><th>Responsable</th></tr></thead><tbody>';
     rows.forEach(function(r){
-      if (!cardMatchesFilters(r.card)) return;
-      html += '<tr><td>'+r.date+'</td><td>'+r.day+'</td><td>'+r.card.kind+'</td><td>'+escapeHtml(r.card.title)+'</td>' +
+      var checked = selectedListIds[r.card.id] ? " checked" : "";
+      html += '<tr data-card-id="'+r.card.id+'" data-date-key="'+r.dateKey+'"><td><input type="checkbox" class="ps-rowcheck"'+checked+'></td><td>'+r.date+'</td><td>'+r.day+'</td><td>'+r.card.kind+'</td><td>'+escapeHtml(r.card.title)+'</td>' +
         '<td><span class="ps-dot" style="background:'+(STATUS_COLORS[r.card.status]||"#999")+';display:inline-block;margin-right:5px;"></span>'+r.card.status+'</td>' +
         '<td>'+r.card.responsable+'</td></tr>';
     });
     html += '</tbody></table>';
     el.innerHTML = html;
+
+    function findCard(cardId, dateKey){
+      var dd = state.weeks[toKey(currentMonday)];
+      var arr = dd && dd[dateKey];
+      if (!arr) return null;
+      for (var j=0;j<arr.length;j++){ if (arr[j].id === cardId) return {arr:arr, idx:j, card:arr[j]}; }
+      return null;
+    }
+
+    function refreshBulkBar(){
+      var bar = document.getElementById("psListBulkBar");
+      var count = Object.keys(selectedListIds).length;
+      bar.style.display = count ? "" : "none";
+      document.getElementById("psListBulkCount").textContent = count + " sélectionné(s)";
+    }
+
+    el.querySelectorAll(".ps-rowcheck").forEach(function(cb){
+      cb.addEventListener("change", function(){
+        var id = cb.closest("tr").dataset.cardId;
+        if (cb.checked) selectedListIds[id] = true; else delete selectedListIds[id];
+        refreshBulkBar();
+      });
+    });
+    var selectAll = document.getElementById("lbSelectAll");
+    selectAll.addEventListener("change", function(){
+      el.querySelectorAll(".ps-rowcheck").forEach(function(cb){
+        cb.checked = selectAll.checked;
+        var id = cb.closest("tr").dataset.cardId;
+        if (selectAll.checked) selectedListIds[id] = true; else delete selectedListIds[id];
+      });
+      refreshBulkBar();
+    });
+
+    document.getElementById("lbStatus").addEventListener("change", function(){
+      var val = this.value;
+      if (!val) return;
+      el.querySelectorAll("tr[data-card-id]").forEach(function(tr){
+        if (!selectedListIds[tr.dataset.cardId]) return;
+        var found = findCard(tr.dataset.cardId, tr.dataset.dateKey);
+        if (found) found.card.status = val;
+      });
+      save();
+      render();
+      renderListView();
+    });
+    document.getElementById("lbResp").addEventListener("change", function(){
+      var val = this.value;
+      if (!val) return;
+      el.querySelectorAll("tr[data-card-id]").forEach(function(tr){
+        if (!selectedListIds[tr.dataset.cardId]) return;
+        var found = findCard(tr.dataset.cardId, tr.dataset.dateKey);
+        if (found) found.card.responsable = val;
+      });
+      save();
+      render();
+      renderListView();
+    });
+    document.getElementById("lbDelete").addEventListener("click", function(){
+      var count = Object.keys(selectedListIds).length;
+      if (!count) return;
+      if (!window.confirm("Supprimer "+count+" élément(s) ?")) return;
+      var removed = [];
+      el.querySelectorAll("tr[data-card-id]").forEach(function(tr){
+        var id = tr.dataset.cardId, dateKey = tr.dataset.dateKey;
+        if (!selectedListIds[id]) return;
+        var found = findCard(id, dateKey);
+        if (found) { found.arr.splice(found.idx, 1); removed.push({dateKey:dateKey, card:found.card}); }
+      });
+      selectedListIds = {};
+      save();
+      render();
+      renderListView();
+      showUndoToast(removed.length+" élément(s) supprimé(s)", function(){
+        var dd = state.weeks[toKey(currentMonday)];
+        removed.forEach(function(r){
+          if (!dd[r.dateKey]) dd[r.dateKey] = [];
+          dd[r.dateKey].push(r.card);
+        });
+        save();
+        render();
+        renderListView();
+      });
+    });
   }
 
   // ---------- Filters ----------
@@ -1236,6 +1417,27 @@
   });
 
   // ---------- Keyboard shortcuts ----------
+  function defaultCreateDateKey(){
+    var wk = toKey(currentMonday);
+    var diffDays = Math.round((new Date(REAL_TODAY.getFullYear(),REAL_TODAY.getMonth(),REAL_TODAY.getDate()) - currentMonday) / 86400000);
+    if (diffDays >= 0 && diffDays < 7) return todayKey;
+    return wk;
+  }
+
+  function openShortcutsModal(){
+    var root = document.getElementById("psModalRoot");
+    var wrap = document.createElement("div");
+    wrap.className = "ps-modal-backdrop";
+    var rows = [["⌘K / Ctrl+K","Recherche"],["← / →","Semaine précédente / suivante"],["T","Aujourd'hui"],["N","Nouveau post"],["Échap","Fermer une fenêtre"],["?","Cette aide"]];
+    wrap.innerHTML = '<div class="ps-modal"><div class="ps-modal-head"><i class="ti ti-keyboard" aria-hidden="true"></i>Raccourcis clavier</div>' +
+      rows.map(function(r){ return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:12.5px;"><span style="font-weight:600;">'+r[0]+'</span><span style="color:var(--text-2);">'+r[1]+'</span></div>'; }).join("") +
+      '<div class="ps-modal-actions"><button class="ps-btn primary" id="skClose">Fermer</button></div></div>';
+    root.appendChild(wrap);
+    wrap.querySelector("#skClose").addEventListener("click", function(){ root.removeChild(wrap); });
+    wrap.addEventListener("click", function(e){ if (e.target === wrap) root.removeChild(wrap); });
+  }
+  document.getElementById("psShortcutsBtn").addEventListener("click", openShortcutsModal);
+
   document.addEventListener("keydown", function(e){
     var tag = (e.target.tagName || "").toLowerCase();
     if (tag === "input" || tag === "textarea" || tag === "select") return;
@@ -1244,8 +1446,11 @@
       if (modalRoot.firstChild) modalRoot.innerHTML = "";
       return;
     }
+    if (e.key === "?") { openShortcutsModal(); return; }
     var calTab = document.getElementById("psTabCalendar");
     if (calTab.style.display === "none") return;
+    if (e.key.toLowerCase() === "t") { document.getElementById("psToday").click(); return; }
+    if (e.key.toLowerCase() === "n") { openCreateModal(defaultCreateDateKey(), true); return; }
     if (currentView !== "week") return;
     if (e.key === "ArrowLeft") { document.getElementById("psPrev").click(); }
     if (e.key === "ArrowRight") { document.getElementById("psNext").click(); }
@@ -1259,18 +1464,25 @@
       return;
     }
     panel.innerHTML = "";
-    state.ideas.forEach(function(idea){
+    var PRIORITY_ORDER = {"Haute":0,"Moyenne":1,"Basse":2};
+    var sortedIdeas = state.ideas.slice().sort(function(a,b){
+      return PRIORITY_ORDER[a.priority||"Moyenne"] - PRIORITY_ORDER[b.priority||"Moyenne"];
+    });
+    var PRIORITY_COLORS = { "Haute": {bg:"#FCEBEB",fg:"#A32D2D"}, "Moyenne": {bg:"#FEF3DC",fg:"#93650B"}, "Basse": {bg:"#EAF4EC",fg:"#1E703F"} };
+    sortedIdeas.forEach(function(idea){
       var el = document.createElement("div");
       el.className = "ps-ideacard";
       var imgHtml = idea.image ? '<img src="'+escapeHtml(idea.image)+'" alt="" style="width:100%;border-radius:8px;margin-bottom:8px;max-height:120px;object-fit:cover;" onerror="this.style.display=\'none\'">' : "";
       var linkHtml = idea.link ? '<a href="'+escapeHtml(idea.link)+'" target="_blank" rel="noopener" class="ps-cardlink" style="margin-bottom:8px;"><i class="ti ti-link" aria-hidden="true" style="font-size:11px;"></i>Lien</a>' : "";
       var tagColors = { "Produit": {bg:"#DCE6F1",fg:"#0C447C"}, "Campagne": {bg:"#F4CCCC",fg:"#791F1F"}, "Autre": {bg:"#EEF1F7",fg:"#444441"} };
-      var tagHtml = "";
+      var pc = PRIORITY_COLORS[idea.priority||"Moyenne"];
+      var tagHtml = '<span class="ps-tag" style="background:'+pc.bg+';color:'+pc.fg+';margin-bottom:6px;margin-right:4px;display:inline-block;">'+(idea.priority||"Moyenne")+'</span>';
       if (idea.tagType) {
         var tc = tagColors[idea.tagType] || tagColors["Autre"];
         var tagText = idea.tagType + (idea.tagDetail ? " · "+escapeHtml(idea.tagDetail) : "");
-        tagHtml = '<span class="ps-tag" style="background:'+tc.bg+';color:'+tc.fg+';margin-bottom:6px;display:inline-block;">'+tagText+'</span><br>';
+        tagHtml += '<span class="ps-tag" style="background:'+tc.bg+';color:'+tc.fg+';margin-bottom:6px;display:inline-block;">'+tagText+'</span>';
       }
+      tagHtml += '<br>';
       el.innerHTML =
         '<div class="ps-card-del" title="Supprimer"><i class="ti ti-x" aria-hidden="true" style="font-size:11px;"></i></div>' +
         imgHtml +
@@ -1304,6 +1516,7 @@
       '<div class="ps-modal">' +
         '<div class="ps-modal-head"><i class="ti ti-bulb" aria-hidden="true"></i>Nouvelle idée</div>' +
         '<div class="ps-field"><label>Titre</label><input type="text" id="iTitle" placeholder="Ex: Story sur les nouveaux crampons"></div>' +
+        '<div class="ps-field"><label>Priorité</label><select id="iPriority"><option value="Moyenne">Moyenne</option><option value="Haute">Haute</option><option value="Basse">Basse</option></select></div>' +
         '<div class="ps-field"><label>Tag</label><select id="iTagType"><option value="">Aucun</option><option value="Produit">Produit</option><option value="Campagne">Campagne</option><option value="Autre">Autre</option></select></div>' +
         '<div class="ps-field"><label>Détail du tag (optionnel)</label><input type="text" id="iTagDetail" placeholder="Ex: Adidas Predator / Back to School"></div>' +
         '<div class="ps-field"><label>Note</label><textarea id="iNote" rows="3" placeholder="Détails, inspiration..."></textarea></div>' +
@@ -1320,7 +1533,8 @@
       state.ideas.push({
         id:"idea-"+Date.now(), title: title, note: wrap.querySelector("#iNote").value,
         image: wrap.querySelector("#iImage").value, link: wrap.querySelector("#iLink").value,
-        tagType: wrap.querySelector("#iTagType").value, tagDetail: wrap.querySelector("#iTagDetail").value
+        tagType: wrap.querySelector("#iTagType").value, tagDetail: wrap.querySelector("#iTagDetail").value,
+        priority: wrap.querySelector("#iPriority").value
       });
       save();
       root.removeChild(wrap);
