@@ -362,6 +362,7 @@
         '<div class="ps-card-del ps-card-dup" title="Dupliquer" style="position:static;"><i class="ti ti-copy" aria-hidden="true" style="font-size:11px;"></i></div>' +
         '<div class="ps-card-del" title="Supprimer" style="position:static;"><i class="ti ti-x" aria-hidden="true" style="font-size:11px;"></i></div>' +
       '</div>' +
+      (card.image ? '<img src="'+escapeHtml(card.image)+'" alt="" style="width:100%;height:64px;object-fit:cover;border-radius:6px;margin-bottom:5px;" onerror="this.style.display=\'none\'">' : "") +
       '<div class="ps-card-top"><i class="ti '+(CAT_ICON[card.category]||"ti-point")+' ps-card-icon" aria-hidden="true"></i><span class="ps-card-kind">'+card.kind+'</span></div>' +
       '<div class="ps-card-title">'+escapeHtml(card.title)+'</div>' +
       '<div class="ps-card-format">'+escapeHtml(card.format || "")+'</div>' +
@@ -427,7 +428,7 @@
     });
     el.addEventListener("click", function(e){
       if (e.target.closest(".ps-card-del") || e.target.closest(".ps-checkdot") || e.target.closest(".ps-cardlink")) return;
-      openEditModal(card, dateKey);
+      openEditModal(card, dateKey, zoneCards);
     });
     return el;
   }
@@ -561,6 +562,7 @@
   function render(){
     ensureWeekData(currentMonday);
     document.getElementById("psWeekLabel").textContent = fmtRange(currentMonday);
+    document.getElementById("psPrintHeader").textContent = "Planet Sport — Semaine du " + fmtRange(currentMonday);
     var grid = document.getElementById("psGrid");
     grid.innerHTML = "";
     var wk = toKey(currentMonday);
@@ -663,13 +665,17 @@
     });
   }
 
-  function openEditModal(card, dateKey){
+  function openEditModal(card, dateKey, zoneCards){
     var root = document.getElementById("psModalRoot");
+    var backdrop = document.createElement("div");
+    backdrop.className = "ps-drawer-backdrop";
     var wrap = document.createElement("div");
-    wrap.className = "ps-modal-backdrop";
+    wrap.className = "ps-drawer";
     wrap.innerHTML =
-      '<div class="ps-modal">' +
-        '<div class="ps-modal-head"><i class="ti '+(CAT_ICON[card.category]||"ti-point")+'" style="color:'+(CAT_COLORS[card.category]||"var(--text-2)")+';" aria-hidden="true"></i>'+card.kind+'</div>' +
+      '<div class="ps-drawer-head"><i class="ti '+(CAT_ICON[card.category]||"ti-point")+'" style="color:'+(CAT_COLORS[card.category]||"var(--text-2)")+';" aria-hidden="true"></i>'+card.kind+
+        '<button class="ps-drawer-close" id="mClose" aria-label="Fermer"><i class="ti ti-x" aria-hidden="true"></i></button>' +
+      '</div>' +
+      '<div class="ps-drawer-body">' +
         '<div class="ps-field"><label>Titre / Axe</label><input type="text" id="mTitle" value="'+escapeHtml(card.title)+'"></div>' +
         '<div class="ps-field"><label>Format</label><input type="text" id="mFormat" value="'+escapeHtml(card.format||"")+'"></div>' +
         '<div class="ps-field"><label>CTA</label><input type="text" id="mCta" value="'+escapeHtml(card.cta||"")+'"></div>' +
@@ -681,6 +687,8 @@
           ["À assigner","Ilias","Agence","Équipe Boutique"].map(function(s){ return '<option value="'+s+'"'+(s===card.responsable?" selected":"")+'>'+s+'</option>'; }).join("") +
         '</select></div>' +
         '<div class="ps-field"><label>Note</label><textarea id="mNote" rows="2">'+escapeHtml(card.note||"")+'</textarea></div>' +
+        '<div class="ps-field"><label>Image (URL, optionnel — pour l\'aperçu feed)</label><input type="text" id="mImage" value="'+escapeHtml(card.image||"")+'" placeholder="https://..."></div>' +
+        (card.image ? '<img src="'+escapeHtml(card.image)+'" alt="" style="width:100%;border-radius:10px;margin:-4px 0 11px;max-height:160px;object-fit:cover;" onerror="this.style.display=\'none\'">' : "") +
         '<div class="ps-field"><label>Lien (visuel / Drive / Figma)</label><input type="text" id="mLink" value="'+escapeHtml(card.link||"")+'" placeholder="https://..."></div>' +
         '<div class="ps-field"><label>Checklist</label>'+
           ["Shooting","Montage","Caption"].map(function(lbl,i){
@@ -688,15 +696,36 @@
             return '<label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;margin-bottom:4px;"><input type="checkbox" id="mCheck'+i+'" style="width:auto;"'+checked+'> '+lbl+'</label>';
           }).join("") +
         '</div>' +
-        '<div class="ps-modal-actions">' +
-          '<button class="ps-btn" id="mCancel">Annuler</button>' +
-          '<button class="ps-btn primary" id="mSave">Enregistrer</button>' +
-        '</div>' +
+      '</div>' +
+      '<div class="ps-drawer-actions">' +
+        (zoneCards ? '<button class="ps-btn" id="mDelete" style="color:#A32D2D;margin-right:auto;">Supprimer</button>' : "") +
+        '<button class="ps-btn" id="mCancel">Annuler</button>' +
+        '<button class="ps-btn primary" id="mSave">Enregistrer</button>' +
       '</div>';
+    root.appendChild(backdrop);
     root.appendChild(wrap);
 
-    wrap.querySelector("#mCancel").addEventListener("click", function(){ root.removeChild(wrap); });
-    wrap.addEventListener("click", function(e){ if (e.target === wrap) root.removeChild(wrap); });
+    function closeDrawer(){ if (root.contains(wrap)) root.removeChild(wrap); if (root.contains(backdrop)) root.removeChild(backdrop); }
+    wrap.querySelector("#mCancel").addEventListener("click", closeDrawer);
+    wrap.querySelector("#mClose").addEventListener("click", closeDrawer);
+    backdrop.addEventListener("click", closeDrawer);
+    if (zoneCards) {
+      wrap.querySelector("#mDelete").addEventListener("click", function(){
+        if (!window.confirm("Supprimer ce contenu ?")) return;
+        var idx = zoneCards.indexOf(card);
+        if (idx > -1) {
+          var removed = zoneCards.splice(idx, 1)[0];
+          save();
+          closeDrawer();
+          render();
+          showUndoToast("Contenu supprimé", function(){
+            zoneCards.splice(idx, 0, removed);
+            save();
+            render();
+          });
+        }
+      });
+    }
     wrap.querySelector("#mSave").addEventListener("click", function(){
       card.title = wrap.querySelector("#mTitle").value;
       card.format = wrap.querySelector("#mFormat").value;
@@ -705,10 +734,11 @@
       card.status = wrap.querySelector("#mStatus").value;
       card.responsable = wrap.querySelector("#mResp").value;
       card.note = wrap.querySelector("#mNote").value;
+      card.image = wrap.querySelector("#mImage").value;
       card.link = wrap.querySelector("#mLink").value;
       card.checklist = [0,1,2].map(function(i){ return wrap.querySelector("#mCheck"+i).checked; });
       save();
-      root.removeChild(wrap);
+      closeDrawer();
       render();
     });
   }
@@ -738,6 +768,7 @@
         '<div class="ps-field"><label>Format</label><input type="text" id="cFormat" placeholder="Ex: Carousel"></div>' +
         '<div class="ps-field"><label>CTA</label><input type="text" id="cCta" placeholder="Ex: Swipe up / Shop Now"></div>' +
         '<div class="ps-field"><label>Marque (tag, optionnel)</label><input type="text" id="cBrand" placeholder="Ex: Adidas"></div>' +
+        '<div class="ps-field"><label>Image (URL, optionnel)</label><input type="text" id="cImage" placeholder="https://..."></div>' +
         '<div class="ps-field"><label>Lien (optionnel)</label><input type="text" id="cLink" placeholder="https://..."></div>' +
         '<div class="ps-modal-actions">' +
           '<button class="ps-btn" id="cCancel">Annuler</button>' +
@@ -763,6 +794,7 @@
         responsable: "À assigner",
         note: "",
         checklist: [false,false,false],
+        image: wrap.querySelector("#cImage").value || "",
         link: wrap.querySelector("#cLink").value || ""
       };
       var wk = toKey(currentMonday);
@@ -843,6 +875,25 @@
   });
 
   // ---------- CSV import ----------
+  function showCsvReport(added, errors){
+    var root = document.getElementById("psModalRoot");
+    var wrap = document.createElement("div");
+    wrap.className = "ps-modal-backdrop";
+    var errHtml = errors.length
+      ? '<div style="max-height:240px;overflow-y:auto;background:#FCEBEB;border-radius:8px;padding:10px 12px;font-size:11.5px;color:#A32D2D;line-height:1.7;">' + errors.map(escapeHtml).join("<br>") + '</div>'
+      : '<div style="color:var(--success);font-size:12.5px;">Aucune erreur.</div>';
+    wrap.innerHTML =
+      '<div class="ps-modal">' +
+        '<div class="ps-modal-head"><i class="ti ti-file-import" aria-hidden="true"></i>Rapport d\'import CSV</div>' +
+        '<div style="font-size:13px;margin-bottom:10px;">'+added+' ligne(s) importée(s)'+(errors.length ? ", "+errors.length+" ligne(s) ignorée(s) :" : ".")+'</div>' +
+        errHtml +
+        '<div class="ps-modal-actions"><button class="ps-btn primary" id="csvRepClose">Fermer</button></div>' +
+      '</div>';
+    root.appendChild(wrap);
+    wrap.querySelector("#csvRepClose").addEventListener("click", function(){ root.removeChild(wrap); });
+    wrap.addEventListener("click", function(e){ if (e.target===wrap) root.removeChild(wrap); });
+  }
+
   document.getElementById("psCsvInput").addEventListener("change", function(e){
     var file = e.target.files[0];
     if (!file) return;
@@ -852,30 +903,40 @@
       var lines = text.split(/\r?\n/).filter(function(l){ return l.trim(); });
       var startIdx = /date/i.test(lines[0]) ? 1 : 0;
       var added = 0;
+      var errors = [];
+      var validKinds = ["Feed","Story 1","Story 2","Story 3"];
+      var validStatuses = ["Idée","En préparation","Prêt","Publié"];
       for (var i=startIdx;i<lines.length;i++){
+        var lineNum = i+1;
         var cols = lines[i].split(",").map(function(c){ return c.trim(); });
-        if (cols.length < 3) continue;
+        if (cols.length < 3) { errors.push("Ligne "+lineNum+" : au moins 3 colonnes attendues (Date, Type, Titre), "+cols.length+" trouvée(s)."); continue; }
         var dateParts = cols[0].split("/");
-        if (dateParts.length !== 3) continue;
+        if (dateParts.length !== 3) { errors.push("Ligne "+lineNum+" : date \""+cols[0]+"\" invalide (format attendu JJ/MM/AAAA)."); continue; }
         var dateKey = dateParts[2]+"-"+dateParts[1].padStart(2,"0")+"-"+dateParts[0].padStart(2,"0");
-        var targetMonday = mondayOf(new Date(dateKey + "T00:00:00"));
+        var dateObj = new Date(dateKey + "T00:00:00");
+        if (isNaN(dateObj.getTime())) { errors.push("Ligne "+lineNum+" : date \""+cols[0]+"\" invalide."); continue; }
+        var kind = cols[1] || "Feed";
+        if (validKinds.indexOf(kind) === -1) { errors.push("Ligne "+lineNum+" : type \""+kind+"\" non reconnu (attendu Feed / Story 1 / Story 2 / Story 3)."); continue; }
+        if (!cols[2]) { errors.push("Ligne "+lineNum+" : titre manquant."); continue; }
+        var status = cols[4] || "Idée";
+        if (validStatuses.indexOf(status) === -1) { errors.push("Ligne "+lineNum+" : statut \""+status+"\" non reconnu, \"Idée\" utilisé à la place."); status = "Idée"; }
+        var targetMonday = mondayOf(dateObj);
         ensureWeekData(targetMonday);
         var wk = toKey(targetMonday);
         if (!state.weeks[wk][dateKey]) state.weeks[wk][dateKey] = [];
-        var kind = cols[1] || "Feed";
         var category = kind === "Feed" ? "Planet Sport Content" : kind;
         state.weeks[wk][dateKey].push({
           id: "csv-"+Date.now()+"-"+i, kind: kind, category: category,
-          title: cols[2] || "Import CSV", format: cols[3] || "", cta: "",
-          status: cols[5] || "Idée", responsable: cols[6] || "À assigner",
+          title: cols[2], format: cols[3] || "", cta: "",
+          status: status, responsable: cols[5] || "À assigner",
           note: "", checklist:[false,false,false], link:""
         });
         added++;
       }
       save();
       render();
-      showUndoToast(added + " ligne(s) importée(s)", function(){});
       document.getElementById("psCsvInput").value = "";
+      showCsvReport(added, errors);
     };
     reader.readAsText(file);
   });
@@ -1025,6 +1086,9 @@
       (daysData[key]||[]).forEach(function(c){ if (c.kind === "Feed") feedItems.push(c); });
     }
     el.innerHTML = feedItems.slice(0,9).map(function(c){
+      if (c.image) {
+        return '<div class="ps-gridpreview-cell" style="background-image:url(\''+escapeHtml(c.image)+'\');background-size:cover;background-position:center;text-shadow:0 1px 4px rgba(0,0,0,0.6);"><span>'+escapeHtml(c.title)+'</span></div>';
+      }
       return '<div class="ps-gridpreview-cell" style="background:'+(CAT_COLORS[c.category]||"#ccc")+';">'+escapeHtml(c.title)+'</div>';
     }).join("");
   }
@@ -1070,6 +1134,18 @@
     return order.map(function(c){ return { label: labels[c], count: counts[c], color: CAT_COLORS[c] }; });
   }
 
+  function computeResponsableBreakdown(){
+    var order = ["Ilias","Agence","Équipe Boutique","À assigner"];
+    var counts = {};
+    order.forEach(function(r){ counts[r] = 0; });
+    forEachCard(function(c){
+      var r = c.responsable || "À assigner";
+      if (counts[r] === undefined) counts[r] = 0;
+      counts[r]++;
+    });
+    return order.map(function(r){ return { label: r, count: counts[r], color: AVATAR_COLORS[r] || "#9AA2AF" }; });
+  }
+
   function renderBarChart(container, rows, opts){
     opts = opts || {};
     if (!rows.length || !rows.some(function(r){ return r.count > 0; })) {
@@ -1109,7 +1185,9 @@
       return '<div class="ps-donut-legend-item"><span class="ps-donut-legend-dot" style="background:'+seg.color+';"></span>'+escapeHtml(seg.label)+'<span class="ps-donut-legend-count">'+seg.count+' ('+pct+'%)</span></div>';
     }).join("");
     container.innerHTML = '<div class="ps-donutwrap">' +
-      '<svg width="120" height="120" viewBox="0 0 120 120">'+circles+'</svg>' +
+      '<div class="ps-donut-svgwrap"><svg width="120" height="120" viewBox="0 0 120 120">'+circles+'</svg>' +
+        '<div class="ps-donut-total"><div class="ps-donut-total-num">'+total+'</div><div class="ps-donut-total-label">Total</div></div>' +
+      '</div>' +
       '<div class="ps-donut-legend">'+legend+'</div>' +
     '</div>';
   }
@@ -1125,6 +1203,7 @@
     if (tab === "contenu") {
       renderDonutChart(document.getElementById("psStatusChartPanel"), computeStatusBreakdown());
       renderBarChart(document.getElementById("psCategoryChartPanel"), computeCategoryBreakdown());
+      renderBarChart(document.getElementById("psWorkloadChartPanel"), computeResponsableBreakdown());
     }
   }
   document.getElementById("psStatsSeg").addEventListener("click", function(e){
@@ -1142,8 +1221,10 @@
       for (var w=0; w<N_WEEKS; w++){ ensureWeekData(addDays(RANGE_START, w*7)); }
       render();
       switchTab(state.prefs.tab || "calendar");
-      if (state.prefs.view && state.prefs.view !== "week") {
-        var vbtn = document.querySelector('#psViewSeg button[data-view="'+state.prefs.view+'"]');
+      var effectiveView = state.prefs.view || "week";
+      if (effectiveView === "week" && window.innerWidth < 640) effectiveView = "list";
+      if (effectiveView !== "week") {
+        var vbtn = document.querySelector('#psViewSeg button[data-view="'+effectiveView+'"]');
         if (vbtn) vbtn.click();
       }
     });
@@ -1257,14 +1338,14 @@
         '</div>' +
       '</div>';
 
-    var html = bulkBarHtml + '<table class="ps-listtable"><thead><tr><th style="width:24px;"><input type="checkbox" id="lbSelectAll"></th><th>Date</th><th>Jour</th><th>Type</th><th>Titre</th><th>Statut</th><th>Responsable</th></tr></thead><tbody>';
+    var html = bulkBarHtml + '<div class="ps-listtable-wrap"><table class="ps-listtable"><thead><tr><th style="width:24px;"><input type="checkbox" id="lbSelectAll"></th><th>Date</th><th>Jour</th><th>Type</th><th>Titre</th><th>Statut</th><th>Responsable</th></tr></thead><tbody>';
     rows.forEach(function(r){
       var checked = selectedListIds[r.card.id] ? " checked" : "";
       html += '<tr data-card-id="'+r.card.id+'" data-date-key="'+r.dateKey+'"><td><input type="checkbox" class="ps-rowcheck"'+checked+'></td><td>'+r.date+'</td><td>'+r.day+'</td><td>'+r.card.kind+'</td><td>'+escapeHtml(r.card.title)+'</td>' +
         '<td><span class="ps-dot" style="background:'+(STATUS_COLORS[r.card.status]||"#999")+';display:inline-block;margin-right:5px;"></span>'+r.card.status+'</td>' +
         '<td>'+r.card.responsable+'</td></tr>';
     });
-    html += '</tbody></table>';
+    html += '</tbody></table></div>';
     el.innerHTML = html;
 
     function findCard(cardId, dateKey){
@@ -1416,6 +1497,15 @@
     }
   });
 
+  // ---------- PDF export (print) ----------
+  document.getElementById("psPdfBtn").addEventListener("click", function(){
+    if (currentView !== "week") {
+      var wbtn = document.querySelector('#psViewSeg button[data-view="week"]');
+      if (wbtn) wbtn.click();
+    }
+    setTimeout(function(){ window.print(); }, 50);
+  });
+
   // ---------- Keyboard shortcuts ----------
   function defaultCreateDateKey(){
     var wk = toKey(currentMonday);
@@ -1457,6 +1547,8 @@
   });
 
   // ---------- Idéation ----------
+  var ideaSearchQuery = "";
+
   function renderIdeas(){
     var panel = document.getElementById("psIdeasPanel");
     if (!state.ideas.length) {
@@ -1468,6 +1560,16 @@
     var sortedIdeas = state.ideas.slice().sort(function(a,b){
       return PRIORITY_ORDER[a.priority||"Moyenne"] - PRIORITY_ORDER[b.priority||"Moyenne"];
     });
+    if (ideaSearchQuery) {
+      var q = ideaSearchQuery.toLowerCase();
+      sortedIdeas = sortedIdeas.filter(function(idea){
+        return (idea.title+" "+(idea.note||"")+" "+(idea.tagDetail||"")).toLowerCase().indexOf(q) !== -1;
+      });
+    }
+    if (!sortedIdeas.length) {
+      panel.innerHTML = '<div style="color:var(--text-2);font-size:13px;">Aucune idée ne correspond à la recherche.</div>';
+      return;
+    }
     var PRIORITY_COLORS = { "Haute": {bg:"#FCEBEB",fg:"#A32D2D"}, "Moyenne": {bg:"#FEF3DC",fg:"#93650B"}, "Basse": {bg:"#EAF4EC",fg:"#1E703F"} };
     sortedIdeas.forEach(function(idea){
       var el = document.createElement("div");
@@ -1508,6 +1610,11 @@
     });
   }
 
+  document.getElementById("psIdeaSearch").addEventListener("input", function(){
+    ideaSearchQuery = this.value;
+    renderIdeas();
+  });
+
   document.getElementById("psAddIdea").addEventListener("click", function(){
     var root = document.getElementById("psModalRoot");
     var wrap = document.createElement("div");
@@ -1530,6 +1637,18 @@
     wrap.querySelector("#iSave").addEventListener("click", function(){
       var title = wrap.querySelector("#iTitle").value.trim();
       if (!title) { root.removeChild(wrap); return; }
+      var isDup = state.ideas.some(function(x){ return x.title.trim().toLowerCase() === title.toLowerCase(); });
+      if (isDup && !wrap.dataset.confirmed) {
+        wrap.dataset.confirmed = "1";
+        if (!wrap.querySelector("#iDupWarn")) {
+          var warnEl = document.createElement("div");
+          warnEl.id = "iDupWarn";
+          warnEl.style.cssText = "background:#FEF3DC;color:#93650B;border-radius:8px;padding:8px 10px;font-size:12px;margin-bottom:11px;";
+          warnEl.textContent = 'Une idée avec un titre similaire existe déjà. Cliquez à nouveau sur "Ajouter" pour l\'ajouter quand même.';
+          wrap.querySelector(".ps-modal-actions").insertAdjacentElement("beforebegin", warnEl);
+        }
+        return;
+      }
       state.ideas.push({
         id:"idea-"+Date.now(), title: title, note: wrap.querySelector("#iNote").value,
         image: wrap.querySelector("#iImage").value, link: wrap.querySelector("#iLink").value,
@@ -1579,6 +1698,17 @@
     });
   }
 
+  function kanDueBadge(dueDate){
+    if (!dueDate) return "";
+    var parts = dueDate.split("-");
+    var d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+    var today = new Date(REAL_TODAY.getFullYear(), REAL_TODAY.getMonth(), REAL_TODAY.getDate());
+    var diffH = (d - today) / 3600000;
+    if (diffH < 0) return '<span class="ps-tag" style="background:#FCEBEB;color:#A32D2D;margin-left:4px;">En retard</span>';
+    if (diffH <= 48) return '<span class="ps-tag" style="background:#FEF3DC;color:#93650B;margin-left:4px;">Bientôt</span>';
+    return "";
+  }
+
   function renderKanCard(card, colKey){
     var el = document.createElement("div");
     el.className = "ps-kancard";
@@ -1590,7 +1720,7 @@
       '<div class="ps-card-del" title="Supprimer"><i class="ti ti-x" aria-hidden="true" style="font-size:11px;"></i></div>' +
       '<div style="font-size:9px;text-transform:uppercase;color:var(--text-3);font-weight:600;">'+card.kind+' · '+card.category+'</div>' +
       '<div style="font-weight:600;margin:2px 0;">'+escapeHtml(card.title)+'</div>' +
-      tagHtml + originHtml +
+      tagHtml + originHtml + kanDueBadge(card.dueDate) +
       '<div style="display:flex;gap:6px;align-items:center;margin-top:8px;">' +
         '<select class="ps-kan-ctype" style="font-size:10.5px;padding:3px 5px;flex:1;">'+
           ["Photo","Vidéo","Carousel","Reel","Texte"].map(function(t){ return '<option'+(t===card.contentType?" selected":"")+'>'+t+'</option>'; }).join("") +
@@ -1599,9 +1729,11 @@
           ["À assigner","Ilias","Agence","Équipe Boutique"].map(function(t){ return '<option'+(t===card.responsable?" selected":"")+'>'+t+'</option>'; }).join("") +
         '</select>' +
       '</div>' +
+      '<div style="margin-top:6px;"><input type="date" class="ps-kan-due" style="font-size:10.5px;padding:3px 5px;width:100%;" value="'+(card.dueDate||"")+'" title="Échéance"></div>' +
       (colKey === "ready" ? '<button class="ps-btn" style="font-size:10.5px;padding:4px 8px;margin-top:6px;">Programmer</button>' : "");
     el.querySelector(".ps-kan-ctype").addEventListener("change", function(){ card.contentType = this.value; save(); });
     el.querySelector(".ps-kan-resp").addEventListener("change", function(){ card.responsable = this.value; save(); renderKanban(); });
+    el.querySelector(".ps-kan-due").addEventListener("change", function(){ card.dueDate = this.value; save(); renderKanban(); });
     el.addEventListener("dragstart", function(e){
       e.dataTransfer.setData("text/plain", "kan::"+colKey+"::"+card.id);
       e.dataTransfer.effectAllowed = "move";
@@ -1700,13 +1832,19 @@
     "Terminé": {bg:"#EEF1F7",fg:"#444441"}, "Refusé": {bg:"#F1EFE8",fg:"#5F5E5A"}
   };
 
+  var influenceView = "list";
+  var INFLUENCE_PIPELINE_COLS = ["Prospection","Contacté","Négociation","Actif","Terminé","Refusé"];
+
   function renderInfluence(){
+    document.getElementById("psInfluencePanel").style.display = influenceView === "list" ? "" : "none";
+    document.getElementById("psInfluencePipeline").style.display = influenceView === "pipeline" ? "" : "none";
+    if (influenceView === "pipeline") { renderInfluencePipeline(); return; }
     var panel = document.getElementById("psInfluencePanel");
     if (!state.influencers.length) {
       panel.innerHTML = '<div style="color:var(--text-2);font-size:13px;">Aucun influenceur suivi pour le moment. Ajoutez vos contacts en prospection ou déjà actifs.</div>';
       return;
     }
-    var html = '<table class="ps-listtable"><thead><tr><th>Nom</th><th>Plateforme</th><th>Catégorie</th><th>Campagne</th><th>Statut</th><th>Contact</th><th></th></tr></thead><tbody>';
+    var html = '<div class="ps-listtable-wrap"><table class="ps-listtable"><thead><tr><th>Nom</th><th>Plateforme</th><th>Catégorie</th><th>Campagne</th><th>Statut</th><th>Relance</th><th>Contact</th><th></th></tr></thead><tbody>';
     state.influencers.forEach(function(inf){
       var sc = INFLUENCE_STATUS_COLORS[inf.status] || INFLUENCE_STATUS_COLORS["Prospection"];
       html += '<tr data-inf-id="'+inf.id+'" style="cursor:pointer;">' +
@@ -1715,11 +1853,12 @@
         '<td>'+escapeHtml(inf.category||"")+'</td>' +
         '<td>'+escapeHtml(inf.campaign||"—")+'</td>' +
         '<td><span class="ps-tag" style="background:'+sc.bg+';color:'+sc.fg+';">'+inf.status+'</span></td>' +
+        '<td>'+(inf.followUpDate ? (inf.followUpDate.split("-").reverse().join("/") + kanDueBadge(inf.followUpDate)) : "—")+'</td>' +
         '<td style="color:var(--text-2);">'+escapeHtml(inf.contact||"")+'</td>' +
         '<td><span class="ps-inf-del" data-inf-id="'+inf.id+'" style="cursor:pointer;color:var(--text-3);"><i class="ti ti-x" aria-hidden="true"></i></span></td>' +
       '</tr>';
     });
-    html += '</tbody></table>';
+    html += '</tbody></table></div>';
     panel.innerHTML = html;
     panel.querySelectorAll("tr[data-inf-id]").forEach(function(row){
       row.addEventListener("click", function(e){
@@ -1742,9 +1881,40 @@
     });
   }
 
+  function renderInfluencePipeline(){
+    var el = document.getElementById("psInfluencePipeline");
+    el.innerHTML = "";
+    INFLUENCE_PIPELINE_COLS.forEach(function(status){
+      var col = document.createElement("div");
+      col.className = "ps-kancol";
+      var items = state.influencers.filter(function(i){ return (i.status||"Prospection") === status; });
+      col.innerHTML = '<div class="ps-kancol-head"><span>'+status+'</span><span style="color:var(--text-3);">'+items.length+'</span></div>';
+      items.forEach(function(inf){
+        var card = document.createElement("div");
+        card.className = "ps-kancard";
+        card.innerHTML =
+          '<div style="font-weight:600;margin-bottom:2px;">'+escapeHtml(inf.name)+'</div>' +
+          '<div style="font-size:10.5px;color:var(--text-2);">'+escapeHtml(inf.platform||"")+(inf.campaign ? " · "+escapeHtml(inf.campaign) : "")+'</div>' +
+          (inf.followUpDate ? '<div style="margin-top:5px;">'+kanDueBadge(inf.followUpDate)+' <span style="font-size:10px;color:var(--text-3);">Relance '+inf.followUpDate.split("-").reverse().join("/")+'</span></div>' : "");
+        card.addEventListener("click", function(){ openInfluencerModal(inf); });
+        col.appendChild(card);
+      });
+      el.appendChild(col);
+    });
+  }
+
+  document.getElementById("psInfViewSeg").addEventListener("click", function(e){
+    var btn = e.target.closest("button");
+    if (!btn) return;
+    document.querySelectorAll("#psInfViewSeg button").forEach(function(b){ b.classList.remove("active"); });
+    btn.classList.add("active");
+    influenceView = btn.dataset.infView;
+    renderInfluence();
+  });
+
   function openInfluencerModal(inf){
     var isNew = !inf;
-    var data = inf || { id:"inf-"+Date.now(), name:"", platform:"Instagram", category:"Brands Collections Content", campaign:"", status:"Prospection", contact:"", followers:"", notes:"" };
+    var data = inf || { id:"inf-"+Date.now(), name:"", platform:"Instagram", category:"Brands Collections Content", campaign:"", status:"Prospection", contact:"", followers:"", notes:"", followUpDate:"" };
     var root = document.getElementById("psModalRoot");
     var wrap = document.createElement("div");
     wrap.className = "ps-modal-backdrop";
@@ -1765,6 +1935,7 @@
         '</select></div>' +
         '<div class="ps-field"><label>Contact (email / téléphone / DM)</label><input type="text" id="infContact" value="'+escapeHtml(data.contact)+'"></div>' +
         '<div class="ps-field"><label>Followers (optionnel)</label><input type="text" id="infFollowers" value="'+escapeHtml(data.followers||"")+'" placeholder="Ex: 24K"></div>' +
+        '<div class="ps-field"><label>Date de relance (optionnel)</label><input type="date" id="infFollowUp" value="'+(data.followUpDate||"")+'"></div>' +
         '<div class="ps-field"><label>Notes</label><textarea id="infNotes" rows="3">'+escapeHtml(data.notes||"")+'</textarea></div>' +
         '<div class="ps-modal-actions">' +
           (isNew ? "" : '<button class="ps-btn" id="infDelete" style="margin-right:auto;color:#A32D2D;">Supprimer</button>') +
@@ -1795,6 +1966,7 @@
       data.status = wrap.querySelector("#infStatus").value;
       data.contact = wrap.querySelector("#infContact").value;
       data.followers = wrap.querySelector("#infFollowers").value;
+      data.followUpDate = wrap.querySelector("#infFollowUp").value;
       data.notes = wrap.querySelector("#infNotes").value;
       if (isNew) state.influencers.push(data);
       save();
@@ -1806,7 +1978,40 @@
   document.getElementById("psAddInfluencer").addEventListener("click", function(){ openInfluencerModal(null); });
 
   // ---------- Campaigns ----------
+  function campaignCalendarStats(camp){
+    if (!camp.start || !camp.end) return null;
+    var total = 0, published = 0;
+    forEachCard(function(c, dateKey){
+      if (dateKey >= camp.start && dateKey <= camp.end) { total++; if (c.status === "Publié") published++; }
+    });
+    return { total: total, published: published };
+  }
+
+  function renderCampaignTimeline(){
+    var section = document.getElementById("psCampaignTimelineSection");
+    var wrap = document.getElementById("psCampaignTimeline");
+    var dated = state.campaigns.filter(function(c){ return c.start && c.end; });
+    if (!dated.length) { section.style.display = "none"; return; }
+    section.style.display = "";
+    function toDays(s){ var p = s.split("-"); return Date.UTC(+p[0], +p[1]-1, +p[2]) / 86400000; }
+    var minN = Math.min.apply(null, dated.map(function(c){ return toDays(c.start); }));
+    var maxN = Math.max.apply(null, dated.map(function(c){ return toDays(c.end); }));
+    var span = Math.max(1, maxN - minN);
+    wrap.innerHTML = dated.map(function(c){
+      var left = ((toDays(c.start) - minN) / span) * 100;
+      var width = Math.max(2, ((toDays(c.end) - toDays(c.start)) / span) * 100);
+      var isPast = c.end < todayKey;
+      return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:11.5px;">' +
+        '<div style="min-width:120px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+escapeHtml(c.name)+'">'+escapeHtml(c.name)+'</div>' +
+        '<div style="flex:1;position:relative;height:16px;background:var(--canvas);border-radius:6px;">' +
+          '<div style="position:absolute;top:0;bottom:0;left:'+left+'%;width:'+width+'%;background:'+CAT_COLORS["Campaigns Content"]+';border-radius:6px;opacity:'+(isPast?0.45:1)+';"></div>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+  }
+
   function renderCampaigns(){
+    renderCampaignTimeline();
     var panel = document.getElementById("psCampaignsPanel");
     panel.innerHTML = "";
     state.campaigns.forEach(function(camp){
@@ -1815,6 +2020,8 @@
       var doneN = camp.items.filter(function(it){ return it.status === "Publié"; }).length;
       var totalN = camp.items.length;
       var pct = totalN ? Math.round((doneN/totalN)*100) : 0;
+      var calStats = campaignCalendarStats(camp);
+      var calStatsHtml = calStats ? '<div style="font-size:11px;color:var(--text-2);margin-bottom:6px;">'+calStats.published+'/'+calStats.total+' contenus calendrier publiés sur la période</div>' : "";
       board.innerHTML =
         '<div class="ps-campboard-head"><div><div class="ps-campname">'+escapeHtml(camp.name)+'</div><div class="ps-campperiod">'+escapeHtml(camp.period)+'</div></div>' +
         '<div style="display:flex;gap:6px;align-items:center;">' +
@@ -1824,6 +2031,7 @@
         '</div></div>' +
         '<div style="font-size:11px;color:var(--text-2);margin-bottom:6px;">'+doneN+'/'+totalN+' publiés</div>' +
         '<div class="ps-tierbar-bg" style="margin-bottom:12px;"><div class="ps-tierbar-fill" style="width:'+pct+'%;background:'+CAT_COLORS["Campaigns Content"]+';"></div></div>' +
+        calStatsHtml +
         '<div class="ps-camp-items"></div>';
       board.querySelector(".ps-camp-edit").addEventListener("click", function(){ openEditCampaignModal(camp); });
       board.querySelector(".ps-camp-remove").addEventListener("click", function(){
@@ -1950,8 +2158,12 @@
 
   // ---------- Library (Bibliothèque) ----------
   function brandLinkRowHtml(asset){
+    var isImg = /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(asset.url||"");
+    var iconHtml = isImg
+      ? '<img src="'+escapeHtml(asset.url)+'" alt="" style="width:22px;height:22px;border-radius:5px;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">'
+      : '<i class="ti ti-link" aria-hidden="true"></i>';
     return '<div class="ps-brandlink" data-asset-id="'+asset.id+'">' +
-      '<i class="ti ti-link" aria-hidden="true"></i>' +
+      iconHtml +
       '<a href="'+escapeHtml(asset.url)+'" target="_blank" rel="noopener">'+escapeHtml(asset.title)+'</a>' +
       '<div class="ps-card-del" title="Supprimer" style="position:static;display:flex;"><i class="ti ti-x" aria-hidden="true" style="font-size:10px;"></i></div>' +
     '</div>';

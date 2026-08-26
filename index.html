@@ -68,6 +68,10 @@
       <span><i class="ti ti-moon" aria-hidden="true" style="margin-right:6px;"></i>Mode sombre</span>
       <div class="ps-switch" id="psDarkSwitch"><div class="ps-switch-knob"></div></div>
     </div>
+    <div class="ps-darktoggle">
+      <span><i class="ti ti-bell" aria-hidden="true" style="margin-right:6px;"></i>Notifications</span>
+      <div class="ps-switch" id="psNotifSwitch"><div class="ps-switch-knob"></div></div>
+    </div>
   </div>
 
   <div class="ps-main">
@@ -99,6 +103,7 @@
             </div>
           </div>
           <button class="ps-iconbtn" id="psExportBtn" aria-label="Exporter en texte" title="Copier la semaine en texte"><i class="ti ti-copy" aria-hidden="true"></i></button>
+          <button class="ps-iconbtn" id="psPdfBtn" aria-label="Exporter en PDF" title="Exporter la semaine en PDF"><i class="ti ti-file-type-pdf" aria-hidden="true"></i></button>
           <button class="ps-iconbtn" id="psDupWeekBtn" aria-label="Dupliquer la semaine" title="Dupliquer vers la semaine suivante"><i class="ti ti-copy-plus" aria-hidden="true"></i></button>
           <div class="ps-filterwrap">
             <button class="ps-iconbtn" id="psKeyBtn" aria-label="Légende des couleurs" title="Légende des couleurs"><i class="ti ti-palette" aria-hidden="true"></i></button>
@@ -121,6 +126,7 @@
       </div>
 
       <div id="psWeekView">
+        <div id="psPrintHeader" style="display:none;"></div>
         <div class="ps-grid" id="psGrid"></div>
       </div>
       <div id="psMonthView" style="display:none;"></div>
@@ -130,9 +136,16 @@
     <div id="psTabInfluence" style="display:none;">
       <div class="ps-topbar">
         <div class="ps-title ps-h">Influence</div>
-        <button class="ps-btn primary" id="psAddInfluencer"><i class="ti ti-plus" aria-hidden="true"></i> Nouvel influenceur</button>
+        <div style="display:flex;gap:8px;">
+          <div class="ps-seg" id="psInfViewSeg">
+            <button data-inf-view="list" class="active">Liste</button>
+            <button data-inf-view="pipeline">Pipeline</button>
+          </div>
+          <button class="ps-btn primary" id="psAddInfluencer"><i class="ti ti-plus" aria-hidden="true"></i> Nouvel influenceur</button>
+        </div>
       </div>
       <div class="ps-panel" id="psInfluencePanel"></div>
+      <div class="ps-kanban ps-infpipeline" id="psInfluencePipeline" style="display:none;"></div>
     </div>
 
     <div id="psTabIdeas" style="display:none;">
@@ -140,6 +153,7 @@
         <div class="ps-title ps-h">Idéation</div>
         <button class="ps-btn primary" id="psAddIdea"><i class="ti ti-plus" aria-hidden="true"></i> Nouvelle idée</button>
       </div>
+      <div class="ps-field" style="max-width:280px;"><input type="text" id="psIdeaSearch" placeholder="Rechercher une idée..."></div>
       <div class="ps-panel" id="psIdeasPanel"></div>
     </div>
 
@@ -155,6 +169,10 @@
       <div class="ps-topbar">
         <div class="ps-title ps-h">Campagnes</div>
         <button class="ps-btn primary" id="psAddCampaign"><i class="ti ti-plus" aria-hidden="true"></i> Nouvelle campagne</button>
+      </div>
+      <div class="ps-libsection" id="psCampaignTimelineSection" style="display:none;">
+        <div class="ps-libsection-title">Chronologie</div>
+        <div class="ps-panel" id="psCampaignTimeline"></div>
       </div>
       <div id="psCampaignsPanel"></div>
     </div>
@@ -226,6 +244,10 @@
         <div class="ps-libsection">
           <div class="ps-libsection-title">Répartition par catégorie</div>
           <div class="ps-panel" id="psCategoryChartPanel"></div>
+        </div>
+        <div class="ps-libsection">
+          <div class="ps-libsection-title">Charge par responsable</div>
+          <div class="ps-panel" id="psWorkloadChartPanel"></div>
         </div>
       </div>
     </div>
