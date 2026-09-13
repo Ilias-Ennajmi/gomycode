@@ -1,3 +1,5 @@
+> **⚠️ Superseded.** This static app has been replaced by the Next.js + Drizzle + Clerk rewrite in [`apps/content-studio/`](../apps/content-studio). It is kept here for reference only and is no longer deployed or maintained. See `apps/content-studio/README.md` for the current app.
+
 # Planet Sport — Calendrier éditorial (Content Studio)
 
 Application web (HTML/CSS/JS vanilla, sans framework ni build step) pour planifier le contenu Feed/Stories/Influence de Planet Sport Maroc. Les données vivent maintenant dans une base **Supabase** (Postgres) partagée par toute l'équipe, avec synchronisation en temps réel entre appareils — voir "Architecture" ci-dessous.
