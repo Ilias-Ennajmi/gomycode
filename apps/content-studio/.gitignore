@@ -1,5 +1,11 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# The shared repo-root .gitignore excludes a top-level lib/ (Python venv
+# convention from the unrelated notebooks in this monorepo) — un-ignore it
+# here since this app has a real, tracked lib/ source directory.
+!/lib/
+!/lib/**
+
 # dependencies
 /node_modules
 /.pnp

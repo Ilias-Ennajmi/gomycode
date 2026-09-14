@@ -25,3 +25,19 @@ insert into brands (slug, name, tier, market_share_pct, is_catalog, created_by) 
   ('speedo', 'Speedo', 'Tier 3', 0.1, true, 'system-seed'),
   ('banana-moon', 'Banana Moon', 'Tier 3', 0.03, true, 'system-seed')
 on conflict (slug) do nothing;
+
+-- Starter campaign catalog, ported from the legacy app's CAMPAIGN_SEED
+-- (auto-inserted there whenever the campaigns list was empty). Guarded so
+-- re-running this file is a no-op once any campaign exists (there's no
+-- unique constraint on campaigns.name to key an ON CONFLICT off of).
+insert into campaigns (name, period, start, "end", created_by)
+select * from (values
+  ('Coupe du Monde 2026', '11 juin – 19 juillet', '2026-06-11'::date, '2026-07-19'::date, 'system-seed'),
+  ('Summer Sales', '3 juillet – 17 août', '2026-07-03'::date, '2026-08-17'::date, 'system-seed'),
+  ('Back to School', '28 août – 14 septembre', '2026-08-28'::date, '2026-09-14'::date, 'system-seed'),
+  ('Reprise Botola', 'Fin août – septembre', '2026-08-24'::date, '2026-09-30'::date, 'system-seed'),
+  ('Black Friday', 'Fin novembre', '2026-11-27'::date, '2026-11-30'::date, 'system-seed'),
+  ('Collection Hiver', 'Décembre – janvier', '2026-12-01'::date, '2027-01-15'::date, 'system-seed'),
+  ('Nouvel An / Nouveaux Objectifs', 'Fin décembre – début janvier', '2026-12-26'::date, '2027-01-10'::date, 'system-seed')
+) as seed(name, period, start, "end", created_by)
+where not exists (select 1 from campaigns);
