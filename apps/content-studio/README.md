@@ -2,6 +2,8 @@
 
 The current Content Studio app: Next.js (App Router) + Drizzle ORM + Clerk auth, backed by the same Supabase Postgres project as before, now with a real relational schema instead of a single JSONB blob. Replaces [`legacy-static-app/`](../../legacy-static-app), which is kept for reference only.
 
+Deployed via the Vercel project **planet-sport-studio**, git-linked to this repo with Root Directory `apps/content-studio` (replaces the old direct-file-upload deploy of `legacy-static-app/`, which stays live at the pre-existing `planet-sport-content-studio` Vercel project until this one is confirmed working end to end).
+
 ## Stack
 
 - **Next.js 16** (App Router, Turbopack). Note: Next 16 renamed `middleware.ts` → `proxy.ts` — that's `proxy.ts` at the project root, not a typo.
