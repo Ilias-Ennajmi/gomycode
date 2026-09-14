@@ -1,6 +1,6 @@
 import { CalendarView } from "@/components/calendar-view";
 import { listAttentionCandidates, listCalendarCardsInRange } from "@/lib/actions/calendar";
-import { getBrandBySlug, listBrands } from "@/lib/actions/brands";
+import { listBrands, resolveActiveBrand } from "@/lib/actions/brands";
 import { listCampaigns } from "@/lib/actions/campaigns";
 import { addDays, mondayOf, toKey } from "@/lib/date";
 
@@ -11,8 +11,7 @@ export default async function CalendarPage({
 }) {
   const sp = await searchParams;
   const brands = await listBrands();
-  const brand = sp.brand ? await getBrandBySlug(sp.brand) : brands.find((b) => b.slug === "general");
-  const activeBrand = brand ?? brands[0];
+  const activeBrand = await resolveActiveBrand(sp.brand, brands);
 
   if (!activeBrand) {
     return <p className="text-sm text-zinc-500">Aucune marque configurée. Lancez d&apos;abord la migration SQL fournie.</p>;

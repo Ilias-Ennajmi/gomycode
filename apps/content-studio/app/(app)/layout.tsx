@@ -2,6 +2,7 @@ import { UserButton } from "@clerk/nextjs";
 import { BrandSwitcher } from "@/components/brand-switcher";
 import { NavTabs } from "@/components/nav-tabs";
 import { listBrands } from "@/lib/actions/brands";
+import { getPrefs } from "@/lib/actions/prefs";
 
 // Every page here is per-user, DB-backed content behind Clerk auth — never
 // worth statically prerendering, and prerendering would try to hit Postgres
@@ -9,7 +10,8 @@ import { listBrands } from "@/lib/actions/brands";
 export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const brands = await listBrands();
+  const [brands, prefs] = await Promise.all([listBrands(), getPrefs()]);
+  const initialSlug = brands.find((b) => b.id === prefs.activeBrandId)?.slug;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -20,7 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </span>
           <NavTabs />
           <div className="ml-auto flex items-center gap-3">
-            <BrandSwitcher brands={brands} />
+            <BrandSwitcher brands={brands} initialSlug={initialSlug} />
             <UserButton />
           </div>
         </div>

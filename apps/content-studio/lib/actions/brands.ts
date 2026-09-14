@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { brands } from "@/db/schema";
 import { requireUserId } from "@/lib/auth";
+import { getPrefs } from "@/lib/actions/prefs";
 import { slugify } from "@/lib/slugify";
 
 export async function listBrands() {
@@ -13,6 +14,20 @@ export async function listBrands() {
 
 export async function getBrandBySlug(slug: string) {
   return db.query.brands.findFirst({ where: eq(brands.slug, slug) });
+}
+
+/** Resolves the active brand: explicit ?brand= slug wins, else the user's saved pref, else "general". */
+export async function resolveActiveBrand(slugParam: string | undefined, allBrands: (typeof brands.$inferSelect)[]) {
+  if (slugParam) {
+    const bySlug = allBrands.find((b) => b.slug === slugParam);
+    if (bySlug) return bySlug;
+  }
+  const prefs = await getPrefs();
+  if (prefs.activeBrandId) {
+    const byPref = allBrands.find((b) => b.id === prefs.activeBrandId);
+    if (byPref) return byPref;
+  }
+  return allBrands.find((b) => b.slug === "general") ?? allBrands[0];
 }
 
 export async function createBrand(name: string) {

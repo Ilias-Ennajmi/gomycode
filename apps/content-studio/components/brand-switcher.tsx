@@ -3,14 +3,15 @@
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { createBrand } from "@/lib/actions/brands";
+import { setActiveBrand } from "@/lib/actions/prefs";
 
 type Brand = { id: string; slug: string; name: string };
 
-export function BrandSwitcher({ brands }: { brands: Brand[] }) {
+export function BrandSwitcher({ brands, initialSlug }: { brands: Brand[]; initialSlug?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const current = searchParams.get("brand") ?? "general";
+  const current = searchParams.get("brand") ?? initialSlug ?? "general";
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -19,6 +20,8 @@ export function BrandSwitcher({ brands }: { brands: Brand[] }) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("brand", slug);
     router.push(`${pathname}?${params.toString()}`);
+    const brand = brands.find((b) => b.slug === slug);
+    if (brand) startTransition(() => setActiveBrand(brand.id));
   }
 
   function onSelect(value: string) {
