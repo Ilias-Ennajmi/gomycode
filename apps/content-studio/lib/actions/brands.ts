@@ -11,6 +11,10 @@ export async function listBrands() {
   return db.query.brands.findMany({ orderBy: [asc(brands.isCatalog), asc(brands.name)] });
 }
 
+export async function getBrandBySlug(slug: string) {
+  return db.query.brands.findFirst({ where: eq(brands.slug, slug) });
+}
+
 export async function createBrand(name: string) {
   const userId = await requireUserId();
   const trimmed = name.trim();
