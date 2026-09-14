@@ -2,7 +2,7 @@
 
 The current Content Studio app: Next.js (App Router) + Drizzle ORM + Clerk auth, backed by the same Supabase Postgres project as before, now with a real relational schema instead of a single JSONB blob. Replaces [`legacy-static-app/`](../../legacy-static-app), which is kept for reference only.
 
-Deployed via the Vercel project **planet-sport-studio**, git-linked to this repo with Root Directory `apps/content-studio` (replaces the old direct-file-upload deploy of `legacy-static-app/`, which stays live at the pre-existing `planet-sport-content-studio` Vercel project until this one is confirmed working end to end).
+Deployed via the Vercel project **planet-sport-studio**, git-linked to this repo with Root Directory `apps/content-studio` (replaces the old direct-file-upload deploy of `legacy-static-app/`, which stays live at the pre-existing `planet-sport-content-studio` Vercel project until this one is confirmed working end to end). The Supabase schema is applied and Vercel env vars (`DATABASE_URL`, Clerk keys, webhook secret) are configured.
 
 ## Stack
 
