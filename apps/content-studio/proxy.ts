@@ -13,9 +13,13 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export const proxy = clerkMiddleware(async (auth, req) => {
-  if (!isPublicRoute(req)) {
-    await auth.protect();
-  }
+  if (isPublicRoute(req)) return;
+
+  // auth.protect() rewrites unauthenticated requests to a 404, which makes a
+  // signed-out visitor hitting any page think the app is broken. Redirect them
+  // to the sign-in screen instead.
+  const { userId, redirectToSignIn } = await auth();
+  if (!userId) return redirectToSignIn();
 });
 
 export const config = {
