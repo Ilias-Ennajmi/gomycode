@@ -143,29 +143,33 @@
   }
 
   // ===== Click-to-play video =====
-  // The Instagram iframe is injected only when the viewer asks for it, so the
-  // page loads no third-party frame, script or cookie for everyone else. The
-  // reel plays in place; the link beside it is the way out to Instagram.
-  var playBtn = document.querySelector('[data-video-embed]');
+  // The file is self-hosted and only requested on click, so the page costs
+  // nothing extra to load and no third party is involved at all.
+  var playBtn = document.querySelector('[data-video-src]');
   if (playBtn) {
     playBtn.addEventListener('click', function () {
-      var src = playBtn.getAttribute('data-video-embed');
+      var src = playBtn.getAttribute('data-video-src');
       if (!src) return;
 
       var frame = document.createElement('div');
       frame.className = 'media-frame';
 
-      var iframe = document.createElement('iframe');
-      iframe.src = src;
-      iframe.title = 'Vidéo NBRC';
-      iframe.setAttribute('allow', 'autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share');
-      iframe.setAttribute('allowfullscreen', '');
-      iframe.setAttribute('scrolling', 'no');
-      iframe.setAttribute('loading', 'lazy');
-      iframe.setAttribute('referrerpolicy', 'origin-when-cross-origin');
+      var video = document.createElement('video');
+      video.src = src;
+      video.controls = true;
+      video.autoplay = true;
+      video.playsInline = true;
+      video.setAttribute('playsinline', '');
+      video.setAttribute('preload', 'auto');
 
-      frame.appendChild(iframe);
+      frame.appendChild(video);
       if (playBtn.parentNode) playBtn.parentNode.replaceChild(frame, playBtn);
+      // Autoplay with sound is blocked by default; fall back to muted so the
+      // click always results in playback, and leave the controls to unmute.
+      var attempt = video.play();
+      if (attempt && attempt.catch) {
+        attempt.catch(function () { video.muted = true; video.play().catch(function () {}); });
+      }
     });
   }
 

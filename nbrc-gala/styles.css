@@ -41,7 +41,7 @@ body {
   margin: 0;
   background: var(--cream);
   color: var(--ink);
-  font-family: 'Archivo', system-ui, -apple-system, sans-serif;
+  font-family: 'Open Sans', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
@@ -199,16 +199,20 @@ p { margin: 0; }
   opacity: var(--po, 1);
 }
 
+/* The real mark is a tall vertical lockup (2382x3368) carrying "new balance
+   run club" above and "Casablanca" below the square. The handoff's 76px was
+   drawn for a wordmark; at that height this one's type is unreadable, so the
+   whole lockup is scaled to where it can actually be read. */
 .hero-logo {
   display: block;
-  height: 62px;
+  height: 130px;
   width: auto;
   object-fit: contain;
-  margin: 0 auto 20px;
+  margin: 0 auto 22px;
 }
 
 .hero-logo-fallback {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Raleway', system-ui, sans-serif;
   font-weight: 700;
   font-size: 26px;
   letter-spacing: .04em;
@@ -232,7 +236,7 @@ p { margin: 0; }
 
 .hero-h1 {
   text-align: center;
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Raleway', system-ui, sans-serif;
   font-weight: 600;
   letter-spacing: -.015em;
   color: var(--ink);
@@ -337,7 +341,7 @@ p { margin: 0; }
 }
 
 .section-num {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Raleway', system-ui, sans-serif;
   font-weight: 600;
   color: var(--red);
   font-size: 17px;
@@ -345,7 +349,7 @@ p { margin: 0; }
 }
 
 .section-title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Raleway', system-ui, sans-serif;
   font-weight: 600;
   letter-spacing: -.015em;
   color: var(--ink);
@@ -444,32 +448,23 @@ html:not(.js) .rule { width: 40px; }
   color: var(--muted);
 }
 
-/* Injected in place of the button once the viewer clicks play. */
+/* Injected in place of the button once the viewer clicks play.
+   480x854 source, so the frame matches the file exactly — no letterboxing. */
 .media-frame {
   width: 100%;
-  aspect-ratio: 15 / 32;
+  aspect-ratio: 480 / 854;
   border: 1px solid rgba(31, 27, 22, .16);
   border-radius: var(--radius-card);
   overflow: hidden;
   background: #000;
 }
 
-.media-frame iframe {
+.media-frame video {
   width: 100%;
   height: 100%;
-  border: 0;
   display: block;
+  object-fit: contain;
 }
-
-.media-link {
-  font-weight: 700;
-  font-size: 9.5px;
-  letter-spacing: .16em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.media-link:hover { color: var(--red); }
 
 /* ===== Dress code ===== */
 .dress-code {
@@ -496,7 +491,7 @@ html:not(.js) .rule { width: 40px; }
 }
 
 .dress-code-title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Raleway', system-ui, sans-serif;
   font-weight: 600;
   font-size: 19px;
   color: var(--ink);
@@ -578,7 +573,7 @@ html:not(.js) .rule { width: 40px; }
 }
 
 .card-title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Raleway', system-ui, sans-serif;
   font-weight: 600;
   font-size: 19px;
   color: var(--ink);
@@ -592,19 +587,6 @@ html:not(.js) .rule { width: 40px; }
   color: var(--body-soft);
   text-wrap: pretty;
 }
-
-/* The Rekza show is the evening's headline act, so its card inverts. */
-.card-feature {
-  background: var(--ink);
-  border-color: var(--ink);
-}
-
-.card-feature .card-icon { background: rgba(200, 30, 44, .22); color: var(--red-on-dark); }
-.card-feature:hover .card-icon { background: rgba(200, 30, 44, .3); }
-.card-feature .eyebrow { color: var(--red-on-dark); }
-.card-feature .card-title { color: var(--white); }
-.card-feature .card-copy { color: rgba(255, 255, 255, .66); }
-.card-feature:hover { border-color: var(--red); box-shadow: 0 12px 34px rgba(31, 27, 22, .16); }
 
 /* ===== 03 — Comment confirmer ===== */
 .steps {
@@ -638,7 +620,7 @@ html:not(.js) .rule { width: 40px; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Raleway', system-ui, sans-serif;
   font-weight: 700;
   font-size: 18px;
   flex: none;
@@ -684,7 +666,7 @@ html:not(.js) .rule { width: 40px; }
 .stat:hover { border-color: rgba(200, 30, 44, .35); transform: translateY(-2px); }
 
 .stat-value {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Raleway', system-ui, sans-serif;
   font-weight: 700;
   font-size: 23px;
   color: var(--ink);
@@ -740,7 +722,7 @@ html:not(.js) .rule { width: 40px; }
 
 .cta-title {
   margin-top: 14px;
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Raleway', system-ui, sans-serif;
   font-weight: 600;
   font-size: clamp(28px, 7.4vw, 50px);
   color: var(--white);
@@ -815,7 +797,7 @@ html:not(.js) .rule { width: 40px; }
 .cd-unit { text-align: center; min-width: 48px; flex: 0 1 auto; }
 
 .cd-value {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Raleway', system-ui, sans-serif;
   font-weight: 700;
   font-size: clamp(24px, 6.6vw, 32px);
   color: var(--white);
@@ -860,7 +842,7 @@ html:not(.js) .rule { width: 40px; }
 }
 
 .footer-logo {
-  height: 24px;
+  height: 40px;
   width: auto;
   object-fit: contain;
 }
@@ -900,7 +882,7 @@ html:not(.js) .rule { width: 40px; }
   .section-story { padding-top: 56px; }
   .cta-section { padding-top: 80px; }
   .footer { margin-top: 80px; }
-  .hero-logo { height: 70px; }
+  .hero-logo { height: 160px; }
   .cta-panel { padding: 56px 32px; }
   .cta-button { padding: 19px 40px; font-size: 13px; }
   .countdown { gap: 16px; }
@@ -956,7 +938,7 @@ html:not(.js) .rule { width: 40px; }
   .cta-divider { width: 60px; margin: 40px auto; }
 
   .footer { justify-content: space-between; text-align: left; }
-  .hero-logo { height: 76px; }
+  .hero-logo { height: 180px; }
   .fact { padding: 10px 18px 10px 14px; font-size: 11px; letter-spacing: .1em; gap: 8px; }
   .hero-facts { gap: 10px; margin-top: 26px; }
   .hero-sub { max-width: 520px; margin-top: 22px; }

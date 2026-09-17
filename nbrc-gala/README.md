@@ -49,14 +49,21 @@ disables every animation and shows all content immediately.
 
 ## Video
 
-Section 01 holds an Instagram reel behind a click-to-play facade. The iframe is
-injected only on click, so no third-party frame, script or cookie loads for
-visitors who never press play — verified: the page contacts no Instagram host
-before the click. The facade is 4:5; the playing frame is 15:32, sized for the
-reel plus Instagram's embed chrome. A link beside it opens the reel on
-Instagram as a fallback.
+Section 01 holds `assets/homepage-video.mp4` (480x854, 44s, H.264 + AAC,
+faststart) behind a click-to-play facade. The `<video>` element is created only
+on click, so the 6 MB file is never fetched for visitors who scroll past —
+verified: no mp4 request before the click. Self-hosted, so no third party is
+involved at all. Playback is inline (`playsinline`), and if the browser blocks
+autoplay with sound the script retries muted so the click always plays.
 
-The embed only works while the reel is public.
+## Typography
+
+- Headlines and titles: **Raleway**
+- Body, labels and UI: **Open Sans**
+
+Both via Google Fonts. Note: "Runway" was requested but is not available on
+Google Fonts; Raleway is the closest available match. To use the real Runway,
+the licensed font files need to be self-hosted in `assets/`.
 
 ## Accessibility
 
@@ -80,13 +87,13 @@ of it, and they deviate from the handoff tokens on purpose:
 - **Verified** free of horizontal scroll, overflow and clipped text at 320,
   360, 375, 390, 414, 560, 768, 900, 1100, 1280 and 1440px, with reduced-motion
   and no-JavaScript paths checked separately.
-- Photo areas are deliberate placeholders at 4:5. No stock photography was
-  substituted.
+- The logo is a tall vertical lockup (2382x3368). The handoff's 76px hero
+  height left its type unreadable, so it is scaled to 130/160/180px by
+  breakpoint, and 40px in the footer.
 
 ## Outstanding
 
-1. **Logo files.** See `assets/README.md`. Until the two PNGs are added, the
-   hero falls back to a text wordmark.
+1. **Font.** Raleway stands in for Runway — see Typography above.
 2. **Dress code wording** is written from the site's own language ("soirée
    habillée"). Replace with the exact wording if there is one.
 3. **"Rekza"** spelling to confirm.

@@ -1,18 +1,15 @@
 # Assets — NBRC Gala
 
-One logo file is referenced by `index.html` and is **not yet in this folder**.
-Drop the original in with exactly this name:
+- `nbrc-logo-trimmed.png` — NBRC Run Club Casablanca logo, 2382x3368.
+  Used in the hero (130–180px tall) and the footer (40px).
+- `homepage-video.mp4` — 480x854, 44s, H.264 + AAC. Played inline in section 01
+  behind a click-to-play facade.
 
-- `nbrc-logo-trimmed.png` — NBRC Run Club Casablanca logo, whitespace-trimmed.
-  Used in both the hero (62–76px tall) and the footer (24px tall).
+If the logo ever fails to load, `script.js` swaps the hero image for a text
+wordmark and hides the footer one, so the page never shows a broken-image icon.
 
-The untrimmed `nbrc-logo.png` is no longer used anywhere.
+## Replacing the video
 
-Until they are added, `script.js` swaps the hero image for a text wordmark and
-hides the footer image, so the page never shows a broken-image icon.
-
-## Photography
-
-All photo areas are placeholders awaiting real event photography. The slot in
-section 01 ("Photo à venir — Moments NBRC") is **4:5**; replace it 1:1 in that
-aspect ratio. No stock photography has been substituted.
+Keep the same filename, or update `data-video-src` in `index.html` and the
+`aspect-ratio` on `.media-frame` in `styles.css` if the new file's dimensions
+differ from 480x854.

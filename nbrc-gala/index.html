@@ -13,7 +13,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231F1B16'/%3E%3Crect x='8' y='8' width='16' height='16' fill='%23C81E2C'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Archivo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@500;600;700;800&family=Open+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <script>document.documentElement.classList.add('js');</script>
 </head>
@@ -77,19 +77,18 @@
       <div class="rule"></div>
     </div>
     <div class="story-grid" data-reveal data-stagger>
-      <!-- Click-to-play: the Instagram iframe is only injected on click, so the
-           page does not load third-party scripts or cookies for every visitor. -->
+      <!-- Click-to-play: the 6 MB video is only fetched once someone asks for
+           it, so the page stays light for everyone who scrolls past. -->
       <div class="media-slot">
         <button class="media-play" type="button"
-                data-video-embed="https://www.instagram.com/reel/DSlN96aDEiU/embed/"
-                aria-label="Lire la vidéo NBRC sans quitter la page">
+                data-video-src="assets/homepage-video.mp4"
+                aria-label="Lire la vidéo NBRC">
           <span class="media-play-ring">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"></path></svg>
           </span>
           <span class="media-play-label">Voir la vidéo</span>
           <span class="media-play-sub">Moments NBRC</span>
         </button>
-        <a class="media-link" href="https://www.instagram.com/reel/DSlN96aDEiU/" target="_blank" rel="noopener">Ouvrir sur Instagram</a>
       </div>
       <div class="story-copy">
         <p>Ce n'est pas une sortie comme les autres. On prend le temps de se poser, de se retrouver en dehors du bitume, et de se rappeler tout ce que ces deux années de foulées ont construit&nbsp;: des liens, des progrès, des souvenirs qu'on ne referait pas autrement.</p>
@@ -149,7 +148,7 @@
         </div>
       </div>
 
-      <div class="card card-feature">
+      <div class="card">
         <div class="card-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v7"></path><path d="M8.5 6.5L12 3l3.5 3.5"></path><circle cx="12" cy="14" r="3"></circle><path d="M5 21c1.6-2.6 4-4 7-4s5.4 1.4 7 4"></path></svg>
         </div>
