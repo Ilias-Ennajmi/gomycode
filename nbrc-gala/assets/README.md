@@ -1,10 +1,12 @@
 # Assets — NBRC Gala
 
-Two logo files are referenced by `index.html` and are **not yet in this folder**.
-Drop the originals in with exactly these names:
+One logo file is referenced by `index.html` and is **not yet in this folder**.
+Drop the original in with exactly this name:
 
-- `nbrc-logo-trimmed.png` — NBRC Run Club Casablanca logo, whitespace-trimmed. Used in the hero (76px tall) and as the favicon.
-- `nbrc-logo.png` — the original (untrimmed) logo. Used in the footer (26px tall).
+- `nbrc-logo-trimmed.png` — NBRC Run Club Casablanca logo, whitespace-trimmed.
+  Used in both the hero (62–76px tall) and the footer (24px tall).
+
+The untrimmed `nbrc-logo.png` is no longer used anywhere.
 
 Until they are added, `script.js` swaps the hero image for a text wordmark and
 hides the footer image, so the page never shows a broken-image icon.
