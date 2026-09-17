@@ -4,10 +4,15 @@
   --ink: #1F1B16;
   --body: #4A443B;
   --body-soft: #5B5449;
-  --muted: #8A8175;
+  /* Handoff specifies #8A8175, but that is 3.5:1 on cream — under the 4.5:1
+     minimum for the small labels it is used on. Darkened to clear it. */
+  --muted: #726B5F;
   --red: #C81E2C;
   --red-dark: #9C1520;
   --red-tint: #FBEDEE;
+  /* Brand red only reaches ~2.9:1 on the ink panels, under the 4.5:1 minimum
+     for small text. This lifted tint reads as the same red and clears it. */
+  --red-on-dark: #F2616E;
   --white: #FFFFFF;
 
   --hairline: rgba(31, 27, 22, .1);
@@ -285,6 +290,11 @@ p { margin: 0; }
 .fact:hover { border-color: rgba(200, 30, 44, .4); transform: translateY(-2px); }
 .fact svg { flex: none; }
 
+.fact-link { color: var(--ink); }
+.fact-link:hover { color: var(--ink); border-color: var(--red); }
+.fact-arrow { color: var(--muted); transition: transform .3s var(--ease-out), color .3s var(--ease-soft); }
+.fact-link:hover .fact-arrow { color: var(--red); transform: translate(2px, -2px); }
+
 .fact-dark {
   background: var(--ink);
   border-color: var(--ink);
@@ -365,30 +375,140 @@ html:not(.js) .rule { width: 40px; }
   align-items: center;
 }
 
-.photo-slot {
-  aspect-ratio: 4 / 5;
-  max-width: 236px;
+/* ===== Video slot (click-to-play Instagram reel) ===== */
+.media-slot {
   width: 100%;
+  max-width: 270px;
   margin: 0 auto;
-  background: linear-gradient(160deg, #F3E9DD, var(--cream));
-  border: 1px dashed rgba(31, 27, 22, .22);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.media-play {
+  position: relative;
+  width: 100%;
+  /* The facade is a compact card — only the playing embed needs the reel's
+     full height, so nobody scrolls past 500px of reserved empty box. */
+  aspect-ratio: 4 / 5;
+  border: 1px solid rgba(31, 27, 22, .16);
   border-radius: var(--radius-card);
+  background: linear-gradient(165deg, #F3E9DD, var(--cream));
+  color: var(--ink);
+  font-family: inherit;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  text-align: center;
-  padding: 18px;
+  gap: 10px;
+  padding: 20px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color .35s var(--ease-soft), transform .35s var(--ease-out), box-shadow .35s var(--ease-soft);
 }
 
-.photo-slot-label {
+.media-play:hover {
+  border-color: var(--red);
+  transform: translateY(-3px);
+  box-shadow: 0 14px 34px rgba(31, 27, 22, .09);
+}
+
+.media-play-ring {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--red);
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 3px;
+  transition: transform .35s var(--ease-out), background-color .35s var(--ease-soft);
+}
+
+.media-play:hover .media-play-ring { transform: scale(1.07); background: var(--red-dark); }
+
+.media-play-label {
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.media-play-sub {
   font-weight: 700;
   font-size: 9px;
   letter-spacing: .18em;
   text-transform: uppercase;
   color: var(--muted);
-  line-height: 1.7;
+}
+
+/* Injected in place of the button once the viewer clicks play. */
+.media-frame {
+  width: 100%;
+  aspect-ratio: 15 / 32;
+  border: 1px solid rgba(31, 27, 22, .16);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: #000;
+}
+
+.media-frame iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.media-link {
+  font-weight: 700;
+  font-size: 9.5px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.media-link:hover { color: var(--red); }
+
+/* ===== Dress code ===== */
+.dress-code {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  text-align: left;
+  margin-top: 22px;
+  padding: 16px 18px;
+  background: var(--white);
+  border: 1px solid var(--hairline);
+  border-left: 3px solid var(--red);
+}
+
+.dress-code-icon {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  background: var(--red-tint);
+  color: var(--red);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dress-code-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 600;
+  font-size: 19px;
+  color: var(--ink);
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.dress-code-note {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--body-soft);
+  text-wrap: pretty;
 }
 
 .story-copy {
@@ -472,6 +592,19 @@ html:not(.js) .rule { width: 40px; }
   color: var(--body-soft);
   text-wrap: pretty;
 }
+
+/* The Rekza show is the evening's headline act, so its card inverts. */
+.card-feature {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.card-feature .card-icon { background: rgba(200, 30, 44, .22); color: var(--red-on-dark); }
+.card-feature:hover .card-icon { background: rgba(200, 30, 44, .3); }
+.card-feature .eyebrow { color: var(--red-on-dark); }
+.card-feature .card-title { color: var(--white); }
+.card-feature .card-copy { color: rgba(255, 255, 255, .66); }
+.card-feature:hover { border-color: var(--red); box-shadow: 0 12px 34px rgba(31, 27, 22, .16); }
 
 /* ===== 03 — Comment confirmer ===== */
 .steps {
@@ -566,9 +699,10 @@ html:not(.js) .rule { width: 40px; }
 
 .stat-red { background: var(--red); border-color: var(--red); }
 .stat-red:hover { border-color: var(--red-dark); }
-.stat-red .eyebrow { color: rgba(255, 255, 255, .78); }
+/* .78 white on the brand red is only 3.9:1; .92 clears 4.5:1. */
+.stat-red .eyebrow { color: rgba(255, 255, 255, .92); }
 .stat-red .stat-value { color: var(--white); }
-.stat-red .stat-note { color: rgba(255, 255, 255, .78); }
+.stat-red .stat-note { color: rgba(255, 255, 255, .92); }
 
 /* ===== Final CTA panel ===== */
 .cta-section { padding: 68px 0 0; }
@@ -601,7 +735,7 @@ html:not(.js) .rule { width: 40px; }
   font-size: 9px;
   letter-spacing: .2em;
   text-transform: uppercase;
-  color: var(--red);
+  color: var(--red-on-dark);
 }
 
 .cta-title {
@@ -659,7 +793,7 @@ html:not(.js) .rule { width: 40px; }
   font-weight: 800;
   font-size: 11px;
   letter-spacing: .06em;
-  color: var(--red);
+  color: var(--red-on-dark);
 }
 
 .cta-divider {
@@ -691,7 +825,7 @@ html:not(.js) .rule { width: 40px; }
 
 .cd-value.is-ticking { animation: digitIn .42s var(--ease-out); }
 
-.cd-value-red { color: var(--red); }
+.cd-value-red { color: var(--red-on-dark); }
 
 .cd-label {
   font-weight: 700;
@@ -747,6 +881,8 @@ html:not(.js) .rule { width: 40px; }
 /* Two-up programme cards as soon as there is room. */
 @media (min-width: 358px) {
   .programme-grid { grid-template-columns: repeat(2, 1fr); }
+  /* Five cards in two columns leaves a gap, so the last one closes the row. */
+  .card-span { grid-column: span 2; }
 }
 
 @media (min-width: 560px) {
@@ -781,9 +917,12 @@ html:not(.js) .rule { width: 40px; }
 
   /* Sized column rather than 1fr/1fr: a half-width 4:5 card towers over the
      two short paragraphs and strands them in dead space. */
-  .story-grid { grid-template-columns: 320px minmax(0, 1fr); gap: 56px; }
-  .photo-slot { max-width: 320px; margin: 0; }
+  .story-grid { grid-template-columns: 270px minmax(0, 1fr); gap: 52px; }
+  .media-slot { margin: 0; }
   .story-copy { text-align: left; max-width: 560px; }
+  .dress-code { margin-top: 26px; padding: 18px 20px; }
+  .dress-code-title { font-size: 20px; }
+  .dress-code-note { font-size: 13px; }
   .story-copy p { font-size: 17px; line-height: 1.8; }
   .story-copy p + p { margin-top: 20px; }
 
@@ -793,7 +932,6 @@ html:not(.js) .rule { width: 40px; }
   .card-title { font-size: 21px; }
   .card-copy { font-size: 14px; }
   .eyebrow { font-size: 9px; }
-  .card-wide .card-copy { max-width: 420px; }
 
   .stats { gap: 16px; margin-top: 50px; }
   .stat { align-items: flex-start; text-align: left; padding: 26px 22px; gap: 12px; }
@@ -830,13 +968,7 @@ html:not(.js) .rule { width: 40px; }
 
 @media (min-width: 1100px) {
   .programme-grid { grid-template-columns: repeat(5, 1fr); }
-  /* Centred horizontally only — justifying vertically would drop its eyebrow
-     below the top-aligned cards beside it. */
-  .card-wide {
-    grid-column: span 2;
-    align-items: center;
-    text-align: center;
-  }
+  .card-span { grid-column: auto; }
 }
 
 /* ===== Motion preferences ===== */

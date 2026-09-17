@@ -49,13 +49,14 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C81E2C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><line x1="3" y1="10" x2="21" y2="10"></line><line x1="8" y1="3" x2="8" y2="7"></line><line x1="16" y1="3" x2="16" y2="7"></line></svg>
           Sam 12 déc 2026 · 20h00
         </span>
-        <span class="fact">
+        <a class="fact fact-link" href="https://www.google.com/maps/search/?api=1&amp;query=Marriott+Hotel+Casablanca+Avenue+des+FAR" target="_blank" rel="noopener">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C81E2C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-7.2-7-12a7 7 0 1 1 14 0c0 4.8-7 12-7 12z"></path><circle cx="12" cy="9" r="2.4"></circle></svg>
           Hôtel Marriott · Av. des FAR
-        </span>
+          <svg class="fact-arrow" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7"></path><path d="M8 7h9v9"></path></svg>
+        </a>
         <span class="fact fact-dark">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="3" x2="5" y2="21"></line><path d="M5 4h13l-3 4 3 4H5"></path></svg>
-          300 places
+          200 places
         </span>
       </div>
 
@@ -76,13 +77,33 @@
       <div class="rule"></div>
     </div>
     <div class="story-grid" data-reveal data-stagger>
-      <div class="photo-slot">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#8A8175" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-        <span class="photo-slot-label">Photo à venir<br>Moments NBRC</span>
+      <!-- Click-to-play: the Instagram iframe is only injected on click, so the
+           page does not load third-party scripts or cookies for every visitor. -->
+      <div class="media-slot">
+        <button class="media-play" type="button"
+                data-video-embed="https://www.instagram.com/reel/DSlN96aDEiU/embed/"
+                aria-label="Lire la vidéo NBRC sans quitter la page">
+          <span class="media-play-ring">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"></path></svg>
+          </span>
+          <span class="media-play-label">Voir la vidéo</span>
+          <span class="media-play-sub">Moments NBRC</span>
+        </button>
+        <a class="media-link" href="https://www.instagram.com/reel/DSlN96aDEiU/" target="_blank" rel="noopener">Ouvrir sur Instagram</a>
       </div>
       <div class="story-copy">
         <p>Ce n'est pas une sortie comme les autres. On prend le temps de se poser, de se retrouver en dehors du bitume, et de se rappeler tout ce que ces deux années de foulées ont construit&nbsp;: des liens, des progrès, des souvenirs qu'on ne referait pas autrement.</p>
         <p>Une soirée pensée dans le détail, en petit comité, pour que chaque moment compte.</p>
+        <div class="dress-code">
+          <div class="dress-code-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l3 2-3 3-3-3 3-2z"></path><path d="M9 8l-4 2.5V21h14V10.5L15 8"></path><path d="M12 8v13"></path></svg>
+          </div>
+          <div>
+            <div class="eyebrow">Dress code</div>
+            <div class="dress-code-title">Tenue de soirée</div>
+            <div class="dress-code-note">Soirée habillée — on compte sur vous pour jouer le jeu.</div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -128,14 +149,25 @@
         </div>
       </div>
 
-      <div class="card card-wide">
+      <div class="card card-feature">
+        <div class="card-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v7"></path><path d="M8.5 6.5L12 3l3.5 3.5"></path><circle cx="12" cy="14" r="3"></circle><path d="M5 21c1.6-2.6 4-4 7-4s5.4 1.4 7 4"></path></svg>
+        </div>
+        <div class="card-body">
+          <div class="eyebrow">Temps fort</div>
+          <div class="card-title">Rekza Show</div>
+          <div class="card-copy">Un spectacle de danse folklorique marocaine, joué en live. Le moment qu'on attend tous.</div>
+        </div>
+      </div>
+
+      <div class="card card-span">
         <div class="card-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle><path d="M9 18V6l12-2v12"></path></svg>
         </div>
         <div class="card-body">
-          <div class="eyebrow">Ambiance</div>
-          <div class="card-title">Musique live</div>
-          <div class="card-copy">Un groupe live, puis une sélection musicale pour prolonger la soirée.</div>
+          <div class="eyebrow">DJ set</div>
+          <div class="card-title">Musique toute la nuit</div>
+          <div class="card-copy">Le DJ prend le relais après le show et fait danser la salle jusqu'au bout de la nuit.</div>
         </div>
       </div>
     </div>
@@ -186,7 +218,7 @@
       </div>
       <div class="stat">
         <div class="eyebrow">Capacité</div>
-        <div class="stat-value">300 places</div>
+        <div class="stat-value">200 places</div>
         <div class="stat-note">édition limitée</div>
       </div>
       <div class="stat">
@@ -205,11 +237,11 @@
       <span class="bracket bracket-bl"></span>
       <span class="bracket bracket-br"></span>
 
-      <div class="cta-eyebrow">300 places · Sur invitation</div>
+      <div class="cta-eyebrow">200 places · Sur invitation</div>
       <h2 class="cta-title">Réservez votre place</h2>
       <p class="cta-copy">On se retrouve le <strong>12 décembre 2026</strong>. Enfilez vos plus belles tenues.</p>
 
-      <a class="cta-button" href="https://tally.so/r/REPLACE_WITH_FORM_ID" target="_blank" rel="noopener">
+      <a class="cta-button" href="https://tally.so/r/lbxQj6" target="_blank" rel="noopener">
         <span>Remplir le formulaire</span>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><path d="M13 6l6 6-6 6"></path></svg>
       </a>

@@ -28,9 +28,9 @@ It is a static deployment — the files above are uploaded as-is, with no build.
 | Width | Programme | Stats | Steps |
 | --- | --- | --- | --- |
 | < 358px | 1 col | 2 x 2 | stacked rows |
-| 358–559px | 2 x 2 | 2 x 2 | stacked rows |
-| 560–1099px | 2 x 2 | 4 up | 3 columns |
-| >= 1100px | 5 tracks, wide card spans 2 | 4 up | 3 columns |
+| 358–559px | 2 x 2 + full-width closer | 2 x 2 | stacked rows |
+| 560–1099px | 2 x 2 + full-width closer | 4 up | 3 columns |
+| >= 1100px | 5 cards in one row | 4 up | 3 columns |
 
 Text is centre-aligned below 900px so the page reads down a single spine;
 from 900px it returns to the handoff's left-aligned cards and story copy.
@@ -46,6 +46,28 @@ from 900px it returns to the handoff's left-aligned cards and story copy.
 
 All of it is driven by one rAF-throttled scroll handler. `prefers-reduced-motion`
 disables every animation and shows all content immediately.
+
+## Video
+
+Section 01 holds an Instagram reel behind a click-to-play facade. The iframe is
+injected only on click, so no third-party frame, script or cookie loads for
+visitors who never press play — verified: the page contacts no Instagram host
+before the click. The facade is 4:5; the playing frame is 15:32, sized for the
+reel plus Instagram's embed chrome. A link beside it opens the reel on
+Instagram as a fallback.
+
+The embed only works while the reel is public.
+
+## Accessibility
+
+All text was measured against its real painted background. Three fixes came out
+of it, and they deviate from the handoff tokens on purpose:
+
+- `--muted` darkened from `#8A8175` to `#726B5F` — the original is 3.5:1 on
+  cream, under the 4.5:1 minimum for the small labels it is used on.
+- `--red-on-dark` (`#F2616E`) added for red text on the ink panels; brand red
+  is only 2.9:1 there.
+- Text on the red stat card raised from 78% to 92% white (3.9:1 -> 5.0:1).
 
 ## Notes
 
@@ -63,8 +85,8 @@ disables every animation and shows all content immediately.
 
 ## Outstanding
 
-1. **Tally form URL.** The CTA button still points at the placeholder
-   `https://tally.so/r/REPLACE_WITH_FORM_ID`. Swap it in `index.html` before
-   sending the link to members.
-2. **Logo files.** See `assets/README.md`. Until the two PNGs are added, the
+1. **Logo files.** See `assets/README.md`. Until the two PNGs are added, the
    hero falls back to a text wordmark.
+2. **Dress code wording** is written from the site's own language ("soirée
+   habillée"). Replace with the exact wording if there is one.
+3. **"Rekza"** spelling to confirm.

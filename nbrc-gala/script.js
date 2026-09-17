@@ -142,6 +142,33 @@
     setInterval(tick, 1000);
   }
 
+  // ===== Click-to-play video =====
+  // The Instagram iframe is injected only when the viewer asks for it, so the
+  // page loads no third-party frame, script or cookie for everyone else. The
+  // reel plays in place; the link beside it is the way out to Instagram.
+  var playBtn = document.querySelector('[data-video-embed]');
+  if (playBtn) {
+    playBtn.addEventListener('click', function () {
+      var src = playBtn.getAttribute('data-video-embed');
+      if (!src) return;
+
+      var frame = document.createElement('div');
+      frame.className = 'media-frame';
+
+      var iframe = document.createElement('iframe');
+      iframe.src = src;
+      iframe.title = 'Vidéo NBRC';
+      iframe.setAttribute('allow', 'autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share');
+      iframe.setAttribute('allowfullscreen', '');
+      iframe.setAttribute('scrolling', 'no');
+      iframe.setAttribute('loading', 'lazy');
+      iframe.setAttribute('referrerpolicy', 'origin-when-cross-origin');
+
+      frame.appendChild(iframe);
+      if (playBtn.parentNode) playBtn.parentNode.replaceChild(frame, playBtn);
+    });
+  }
+
   // ===== Logo fallback =====
   // The two logo PNGs are dropped into assets/ at launch. Until then (or if one
   // fails to load) fall back to a wordmark instead of a broken-image icon.
