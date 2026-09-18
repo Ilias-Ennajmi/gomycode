@@ -307,14 +307,6 @@ p { margin: 0; }
 
 .fact-dark:hover { border-color: var(--red); }
 
-.members-line {
-  margin-top: 16px;
-  font-weight: 800;
-  font-size: 11px;
-  letter-spacing: .08em;
-  color: var(--red);
-  text-align: center;
-}
 
 .scroll-cue {
   display: inline-flex;
@@ -770,13 +762,6 @@ html:not(.js) .rule { width: 40px; }
 
 .cta-button:hover svg { transform: translateX(4px); }
 
-.cta-members {
-  margin-top: 14px;
-  font-weight: 800;
-  font-size: 11px;
-  letter-spacing: .06em;
-  color: var(--red-on-dark);
-}
 
 .cta-divider {
   width: 52px;
@@ -942,7 +927,6 @@ html:not(.js) .rule { width: 40px; }
   .fact { padding: 10px 18px 10px 14px; font-size: 11px; letter-spacing: .1em; gap: 8px; }
   .hero-facts { gap: 10px; margin-top: 26px; }
   .hero-sub { max-width: 520px; margin-top: 22px; }
-  .members-line { margin-top: 18px; font-size: 12px; }
   .scroll-cue { margin-top: 34px; font-size: 12px; }
   .nav-mark { font-size: 12px; }
   .nav-status { font-size: 10px; letter-spacing: .18em; }
