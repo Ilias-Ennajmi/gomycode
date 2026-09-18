@@ -59,11 +59,17 @@ autoplay with sound the script retries muted so the click always plays.
 ## Typography
 
 - Headlines and titles: **Raleway**
-- Body, labels and UI: **Open Sans**
+- Body, labels and UI: **Inter**
 
-Both via Google Fonts. Note: "Runway" was requested but is not available on
-Google Fonts; Raleway is the closest available match. To use the real Runway,
-the licensed font files need to be self-hosted in `assets/`.
+Both via Google Fonts. Inter replaced Open Sans: the two humanist sans read
+flat together, and Inter's tighter, more even spacing is cleaner at the 9–13px
+label sizes this page leans on, which lets Raleway carry the headings. Lato was
+the other candidate but Google serves it at only three weights (400/700/900)
+and this design uses 500/600/800.
+
+Note: "Runway" was requested but is not published on Google Fonts; Raleway is
+the closest available match. To use the real Runway, the licensed font files
+need to be self-hosted in `assets/`.
 
 ## Accessibility
 
