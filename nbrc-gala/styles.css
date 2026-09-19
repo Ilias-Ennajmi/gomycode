@@ -848,8 +848,6 @@ html:not(.js) .rule { width: 40px; }
 /* Two-up programme cards as soon as there is room. */
 @media (min-width: 358px) {
   .programme-grid { grid-template-columns: repeat(2, 1fr); }
-  /* Five cards in two columns leaves a gap, so the last one closes the row. */
-  .card-span { grid-column: span 2; }
 }
 
 @media (min-width: 560px) {
@@ -932,9 +930,10 @@ html:not(.js) .rule { width: 40px; }
   .nav-status { font-size: 10px; letter-spacing: .18em; }
 }
 
+/* Six cards divide evenly into 2 and 3, so every row fills and nothing
+   needs to span. Six across would squeeze each card to ~200px. */
 @media (min-width: 1100px) {
-  .programme-grid { grid-template-columns: repeat(5, 1fr); }
-  .card-span { grid-column: auto; }
+  .programme-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 /* ===== Motion preferences ===== */
