@@ -96,8 +96,10 @@ of it, and they deviate from the handoff tokens on purpose:
   `new Date(2026, 11, 12, 20, 0, 0)`, which resolves to local time in *the
   viewer's* timezone; anchoring to UTC means everyone counts down to the same
   moment.
-- **Organiser credit.** The footer carries an "Organisé par" line with the
-  Planet Sport logo, set off from the NBRC brand row by a hairline.
+- **Organiser credit.** Its own section right after the CTA panel, not a
+  small footer line: a red "Organisé par" label over the Planet Sport logo
+  at 40-56px tall depending on breakpoint, genuinely visible rather than a
+  quiet footer credit.
 - **Social preview.** `og:image`/`twitter:image` point at
   `assets/social-share.jpg`, a 1200x630 card built from the video poster and
   the page's own type — there was previously no image at all when the link

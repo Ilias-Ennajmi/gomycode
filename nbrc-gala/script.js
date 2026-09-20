@@ -187,10 +187,10 @@
       return;
     }
     var span = document.createElement('span');
-    // The hero fallback is set in large serif type; a small footer credit
-    // needs its own, much quieter, style instead.
-    span.className = img.classList.contains('footer-organizer-logo')
-      ? 'footer-organizer-fallback'
+    // The hero fallback is set in large serif type, which now also suits
+    // the organizer credit — it is a standalone section, sized to match.
+    span.className = img.classList.contains('organizer-logo')
+      ? 'organizer-fallback'
       : 'hero-logo-fallback';
     span.textContent = text;
     if (img.parentNode) img.parentNode.replaceChild(span, img);

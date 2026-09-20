@@ -10,7 +10,8 @@
   after the click — so there is never a blank or grey box, only ever this
   still or the playing video.
 - `planet-sport-logo.png` — Planet Sport logo, 863x296, transparent
-  background. Used in the footer's "Organisé par" credit line.
+  background. Used in its own "Organisé par" section right after the final
+  CTA panel, sized 40-56px tall (not a quiet footer credit).
 - `social-share.jpg` — 1200x630 link-preview card (Open Graph / Twitter
   Card), built from the same video-poster photo and the page's own type and
   colour. Without this, sharing the link in WhatsApp or elsewhere showed a
