@@ -4,12 +4,26 @@
   Used in the hero (130–180px tall) and the footer (40px).
 - `homepage-video.mp4` — 480x854, 44s, H.264 + AAC. Played inline in section 01
   behind a click-to-play facade.
+- `homepage-video-poster.jpg` — a frame extracted from the video itself
+  (`~1.5s` in, via PyAV). Doubles as the facade's thumbnail image before the
+  viewer presses play, and as the `<video poster>` shown while it buffers
+  after the click — so there is never a blank or grey box, only ever this
+  still or the playing video.
+- `planet-sport-logo.png` — Planet Sport logo, 863x296, transparent
+  background. Used in the footer's "Organisé par" credit line.
+- `social-share.jpg` — 1200x630 link-preview card (Open Graph / Twitter
+  Card), built from the same video-poster photo and the page's own type and
+  colour. Without this, sharing the link in WhatsApp or elsewhere showed a
+  bare text card with no image.
 
-If the logo ever fails to load, `script.js` swaps the hero image for a text
-wordmark and hides the footer one, so the page never shows a broken-image icon.
+If any logo fails to load, `script.js` swaps it for text instead of a
+broken-image icon: the hero and Planet Sport logos fall back to a wordmark,
+the footer NBRC logo just hides (its "NBRC Casablanca" label already sits
+next to it).
 
 ## Replacing the video
 
 Keep the same filename, or update `data-video-src` in `index.html` and the
 `aspect-ratio` on `.media-frame` in `styles.css` if the new file's dimensions
-differ from 480x854.
+differ from 480x854. If you do, also regenerate the poster from the new file
+and update `data-video-poster` / the facade `<img>` to match.

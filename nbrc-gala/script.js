@@ -105,9 +105,9 @@
   else if (motionQuery.addListener) motionQuery.addListener(onMotionChange);
 
   // ===== Countdown =====
-  // Sat 12 Dec 2026, 20:00 in Africa/Casablanca (UTC+1 in December) => 19:00 UTC.
+  // Sat 12 Dec 2026, 19:30 in Africa/Casablanca (UTC+1 in December) => 18:30 UTC.
   // Anchored to UTC so every visitor counts down to the same moment, wherever they are.
-  var TARGET = Date.UTC(2026, 11, 12, 19, 0, 0);
+  var TARGET = Date.UTC(2026, 11, 12, 18, 30, 0);
 
   var units = [
     { el: document.querySelector('[data-cd-days]'), div: 86400000, mod: 0 },
@@ -156,6 +156,10 @@
 
       var video = document.createElement('video');
       video.src = src;
+      // Same still the facade showed, so there is no gray flash while the
+      // first frame decodes after the swap.
+      var poster = playBtn.getAttribute('data-video-poster');
+      if (poster) video.poster = poster;
       video.controls = true;
       video.autoplay = true;
       video.playsInline = true;
@@ -183,7 +187,11 @@
       return;
     }
     var span = document.createElement('span');
-    span.className = 'hero-logo-fallback';
+    // The hero fallback is set in large serif type; a small footer credit
+    // needs its own, much quieter, style instead.
+    span.className = img.classList.contains('footer-organizer-logo')
+      ? 'footer-organizer-fallback'
+      : 'hero-logo-fallback';
     span.textContent = text;
     if (img.parentNode) img.parentNode.replaceChild(span, img);
   }

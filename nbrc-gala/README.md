@@ -1,7 +1,7 @@
 # NBRC Gala — Landing Page
 
 Single-page invitation/RSVP site for the NBRC Casablanca 2nd anniversary gala
-(Sat 12 December 2026, 20h00, Hôtel Marriott — Av. des FAR).
+(Sat 12 December 2026, 19h30, Hôtel Marriott — Av. des FAR).
 
 Rebuilt from the design handoff as a plain static site: no framework, no build
 step. Open `index.html` directly, or serve the folder with any static server.
@@ -12,25 +12,27 @@ step. Open `index.html` directly, or serve the folder with any static server.
 | --- | --- |
 | `index.html` | Markup and inline SVG icons |
 | `styles.css` | Design tokens and all layout |
-| `script.js` | Scroll reveal, countdown, logo fallback |
-| `assets/` | Logo files (see `assets/README.md`) |
+| `script.js` | Scroll reveal, countdown, video, logo fallback |
+| `assets/` | Logo, video and poster files (see `assets/README.md`) |
 
 ## Deployment
 
-Deployed to Vercel as the project `nbrc-gala`:
+Deployed to Vercel as the project `gala-nbrc`, linked to this repository's
+`main` branch — every push to `main` deploys automatically, no manual step:
 
-- https://nbrc-gala.vercel.app
+- https://gala-nbrc.vercel.app
 
-It is a static deployment — the files above are uploaded as-is, with no build.
+`nbrc-gala.vercel.app` was the project's original name; Vercel would not let
+it be reused once the git-linked project existed under a new one, so it now
+301-redirects to the URL above rather than serving a stale copy.
 
 ## Responsive behaviour
 
-| Width | Programme | Stats | Steps |
+| Width | Programme (6 cards) | Stats | Steps |
 | --- | --- | --- | --- |
 | < 358px | 1 col | 2 x 2 | stacked rows |
-| 358–559px | 2 x 2 + full-width closer | 2 x 2 | stacked rows |
-| 560–1099px | 2 x 2 + full-width closer | 4 up | 3 columns |
-| >= 1100px | 5 cards in one row | 4 up | 3 columns |
+| 358–1099px | 2 x 3 | 2 x 2 below 560px, 4 up from it | stacked below 560px, 3 columns from it |
+| >= 1100px | 3 x 2 | 4 up | 3 columns |
 
 Text is centre-aligned below 900px so the page reads down a single spine;
 from 900px it returns to the handoff's left-aligned cards and story copy.
@@ -55,6 +57,11 @@ on click, so the 6 MB file is never fetched for visitors who scroll past —
 verified: no mp4 request before the click. Self-hosted, so no third party is
 involved at all. Playback is inline (`playsinline`), and if the browser blocks
 autoplay with sound the script retries muted so the click always plays.
+
+The facade itself is `assets/homepage-video-poster.jpg`, a frame pulled from
+the video, not an abstract placeholder — it doubles as the injected
+`<video>`'s `poster`, so playback never shows a grey or blank box, before or
+after the click.
 
 ## Typography
 
@@ -84,10 +91,18 @@ of it, and they deviate from the handoff tokens on purpose:
 
 ## Notes
 
-- **Countdown timezone.** The target is `Date.UTC(2026, 11, 12, 19, 0, 0)` —
-  20:00 Africa/Casablanca (UTC+1 in December). The design reference used
-  `new Date(2026, 11, 12, 20, 0, 0)`, which resolves to 20:00 in *the viewer's*
-  timezone; anchoring to UTC means everyone counts down to the same moment.
+- **Countdown timezone.** The target is `Date.UTC(2026, 11, 12, 18, 30, 0)` —
+  19:30 Africa/Casablanca (UTC+1 in December). The design reference used
+  `new Date(2026, 11, 12, 20, 0, 0)`, which resolves to local time in *the
+  viewer's* timezone; anchoring to UTC means everyone counts down to the same
+  moment.
+- **Organiser credit.** The footer carries an "Organisé par" line with the
+  Planet Sport logo, set off from the NBRC brand row by a hairline.
+- **Social preview.** `og:image`/`twitter:image` point at
+  `assets/social-share.jpg`, a 1200x630 card built from the video poster and
+  the page's own type — there was previously no image at all when the link
+  was shared (e.g. in a WhatsApp group), which is the realistic way this
+  page reaches most of its audience.
 - **Scroll reveal** is scoped to a `.js` class set in `<head>`, so the page
   stays fully readable with JavaScript disabled.
 - **Verified** free of horizontal scroll, overflow and clipped text at 320,
@@ -100,6 +115,4 @@ of it, and they deviate from the handoff tokens on purpose:
 ## Outstanding
 
 1. **Font.** Raleway stands in for Runway — see Typography above.
-2. **Dress code wording** is written from the site's own language ("soirée
-   habillée"). Replace with the exact wording if there is one.
-3. **"Rekza"** spelling to confirm.
+2. **"Rekza"** spelling to confirm.
