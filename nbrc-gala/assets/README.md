@@ -4,11 +4,12 @@
   Used in the hero (130–180px tall) and the footer (40px).
 - `homepage-video.mp4` — 480x854, 44s, H.264 + AAC. Played inline in section 01
   behind a click-to-play facade.
-- `homepage-video-poster.jpg` — a frame extracted from the video itself
-  (`~1.5s` in, via PyAV). Doubles as the facade's thumbnail image before the
-  viewer presses play, and as the `<video poster>` shown while it buffers
-  after the click — so there is never a blank or grey box, only ever this
-  still or the playing video.
+- `homepage-video-poster.jpg` — a real event photo (480x854, centre-cropped
+  to match the video's own dimensions exactly, so the post-click `<video>`
+  frame never letterboxes it). Doubles as the facade's thumbnail image
+  before the viewer presses play, and as the `<video poster>` shown while
+  it buffers after the click — so there is never a blank or grey box, only
+  ever this still or the playing video.
 - `planet-sport-logo.png` — Planet Sport logo, 863x296, transparent
   background. Used in its own "Organisé par" section right after the final
   CTA panel, sized 40-56px tall (not a quiet footer credit).

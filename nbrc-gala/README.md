@@ -58,10 +58,10 @@ verified: no mp4 request before the click. Self-hosted, so no third party is
 involved at all. Playback is inline (`playsinline`), and if the browser blocks
 autoplay with sound the script retries muted so the click always plays.
 
-The facade itself is `assets/homepage-video-poster.jpg`, a frame pulled from
-the video, not an abstract placeholder — it doubles as the injected
-`<video>`'s `poster`, so playback never shows a grey or blank box, before or
-after the click.
+The facade itself is `assets/homepage-video-poster.jpg`, a real event photo,
+not an abstract placeholder — it doubles as the injected `<video>`'s
+`poster`, so playback never shows a grey or blank box, before or after the
+click.
 
 ## Typography
 
