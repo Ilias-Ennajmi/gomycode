@@ -1,7 +1,7 @@
 # NBRC Gala — Landing Page
 
 Single-page invitation/RSVP site for the NBRC Casablanca 2nd anniversary gala
-(Sat 12 December 2026, 19h30, Hôtel Marriott — Av. des FAR).
+(Sat 12 December 2026, 19h, Hôtel Marriott — Av. des FAR).
 
 Rebuilt from the design handoff as a plain static site: no framework, no build
 step. Open `index.html` directly, or serve the folder with any static server.
@@ -91,8 +91,8 @@ of it, and they deviate from the handoff tokens on purpose:
 
 ## Notes
 
-- **Countdown timezone.** The target is `Date.UTC(2026, 11, 12, 18, 30, 0)` —
-  19:30 Africa/Casablanca (UTC+1 in December). The design reference used
+- **Countdown timezone.** The target is `Date.UTC(2026, 11, 12, 18, 0, 0)` —
+  19:00 Africa/Casablanca (UTC+1 in December). The design reference used
   `new Date(2026, 11, 12, 20, 0, 0)`, which resolves to local time in *the
   viewer's* timezone; anchoring to UTC means everyone counts down to the same
   moment.

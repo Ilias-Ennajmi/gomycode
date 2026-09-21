@@ -105,9 +105,9 @@
   else if (motionQuery.addListener) motionQuery.addListener(onMotionChange);
 
   // ===== Countdown =====
-  // Sat 12 Dec 2026, 19:30 in Africa/Casablanca (UTC+1 in December) => 18:30 UTC.
+  // Sat 12 Dec 2026, 19:00 in Africa/Casablanca (UTC+1 in December) => 18:00 UTC.
   // Anchored to UTC so every visitor counts down to the same moment, wherever they are.
-  var TARGET = Date.UTC(2026, 11, 12, 18, 30, 0);
+  var TARGET = Date.UTC(2026, 11, 12, 18, 0, 0);
 
   var units = [
     { el: document.querySelector('[data-cd-days]'), div: 86400000, mod: 0 },
