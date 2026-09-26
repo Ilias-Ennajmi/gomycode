@@ -63,6 +63,8 @@ export async function searchFeedly(query: string, locale?: string): Promise<Disc
   return (body.results ?? []).flatMap((feed) => {
     const url = feed.feedId?.replace(/^feed\//, "");
     if (!url || !/^https?:\/\//.test(url) || !feed.title) return [];
+    // Feedly still lists YouTube's retired pre-2015 feeds; channels come from YouTube search.
+    if (/gdata\.youtube\.com/.test(url) || /\(uploads\) on YouTube/i.test(feed.title)) return [];
     return [
       {
         url,
