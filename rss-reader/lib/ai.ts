@@ -5,7 +5,9 @@
  */
 
 const BASE_URL = process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com";
-const EMBED_MODEL = process.env.GEMINI_EMBED_MODEL || "gemini-embedding-001";
+// Measured on real headlines: gemini-embedding-2 separates "same story" from
+// "similar topic" far better than gemini-embedding-001, which scores both ~0.93.
+const EMBED_MODEL = process.env.GEMINI_EMBED_MODEL || "gemini-embedding-2";
 export const EMBED_DIMENSIONS = 256;
 
 // Tried in order; "-latest" aliases survive Google's model retirements.
@@ -63,14 +65,14 @@ export function cosine(a: number[], b: number[]) {
   return dot;
 }
 
-/** Unit-length embeddings, one per input, tuned for grouping similar stories. */
+/** Unit-length embeddings, one per input, for spotting the same story across sources. */
 export async function embedTexts(texts: string[]): Promise<number[][]> {
   if (texts.length === 0) return [];
   const data = await callGemini(EMBED_MODEL, "batchEmbedContents", {
     requests: texts.map((text) => ({
       model: `models/${EMBED_MODEL}`,
       content: { parts: [{ text: text.slice(0, 2000) }] },
-      taskType: "CLUSTERING",
+      taskType: "SEMANTIC_SIMILARITY",
       outputDimensionality: EMBED_DIMENSIONS,
     })),
   });
