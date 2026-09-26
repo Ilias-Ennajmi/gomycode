@@ -4,6 +4,12 @@ import * as React from "react";
 import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { youTubeEmbedUrl, youTubeVideoId } from "@/lib/youtube";
+import {
+  READER_FONTS,
+  READER_LEADING,
+  READER_SIZES,
+  useReaderPrefs,
+} from "@/lib/hooks/useReaderPrefs";
 import "highlight.js/styles/github-dark.css";
 
 interface ArticleContentProps {
@@ -61,6 +67,13 @@ function VideoPlayer({ videoId, summary, link }: { videoId: string; summary?: st
 
 export function ArticleContent({ content, summary, link, isVideo }: ArticleContentProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const { prefs } = useReaderPrefs();
+  // prose sizes everything in em, so one font-size scales the whole article.
+  const readerStyle: React.CSSProperties = {
+    fontFamily: READER_FONTS[prefs.font],
+    fontSize: READER_SIZES[prefs.size],
+    lineHeight: READER_LEADING[prefs.spacing],
+  };
   const [sanitized, setSanitized] = React.useState<string | null>(null);
   const videoId = isVideo ? youTubeVideoId(link) : null;
 
@@ -92,7 +105,11 @@ export function ArticleContent({ content, summary, link, isVideo }: ArticleConte
   if (!content) {
     return (
       <div className="space-y-4">
-        {summary && <p className="text-base leading-relaxed text-foreground/90">{summary}</p>}
+        {summary && (
+          <p className="text-foreground/90" style={readerStyle}>
+            {summary}
+          </p>
+        )}
         <a
           href={link}
           target="_blank"
@@ -118,11 +135,17 @@ export function ArticleContent({ content, summary, link, isVideo }: ArticleConte
   return (
     <div
       ref={containerRef}
+      style={readerStyle}
       className={cn(
         "prose prose-neutral max-w-none dark:prose-invert",
-        "prose-img:rounded-lg prose-img:w-full",
+        "prose-headings:font-semibold prose-headings:tracking-tight",
+        "prose-p:leading-[inherit] prose-li:leading-[inherit]",
+        "prose-img:mx-auto prose-img:w-full prose-img:rounded-lg",
+        "prose-figcaption:text-center prose-figcaption:text-sm prose-figcaption:text-muted-foreground",
+        "prose-blockquote:border-l-primary prose-blockquote:font-normal prose-blockquote:not-italic prose-blockquote:text-foreground/80",
         "prose-a:text-primary prose-a:no-underline hover:prose-a:underline",
-        "prose-pre:rounded-lg prose-pre:bg-muted"
+        "prose-pre:rounded-lg prose-pre:bg-muted prose-code:before:content-none prose-code:after:content-none",
+        "prose-table:block prose-table:overflow-x-auto prose-hr:border-border"
       )}
       dangerouslySetInnerHTML={{ __html: sanitized }}
     />

@@ -12,13 +12,20 @@ const MIN_LENGTH = 400;
 export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
   const article = await prisma.article.findUnique({
     where: { id: params.id },
-    select: { id: true, title: true, summary: true, content: true, aiSummary: true },
+    select: {
+      id: true,
+      title: true,
+      summary: true,
+      content: true,
+      fullContent: true,
+      aiSummary: true,
+    },
   });
   if (!article) return NextResponse.json({ error: "Article not found" }, { status: 404 });
   if (article.aiSummary) return NextResponse.json({ summary: article.aiSummary });
   if (!isAiEnabled()) return NextResponse.json({ summary: null, reason: "disabled" });
 
-  const text = stripHtml(article.content || article.summary);
+  const text = stripHtml(article.fullContent || article.content || article.summary);
   if (text.length < MIN_LENGTH) return NextResponse.json({ summary: null, reason: "too-short" });
 
   try {

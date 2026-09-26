@@ -1,5 +1,6 @@
 import { Readability } from "@mozilla/readability";
 import { parseHTML } from "linkedom";
+import { cleanHtml, removeClutter } from "@/lib/clean-html";
 
 const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
@@ -71,6 +72,7 @@ export async function extractPage(url: string): Promise<ExtractedPage> {
     published && !Number.isNaN(Date.parse(published)) ? new Date(published) : null;
   const metaTitle = meta(document, "og:title", "twitter:title") ?? document.title?.trim();
 
+  removeClutter(document as unknown as Document);
   const article = new Readability(document as unknown as Document).parse();
   const author = article?.byline?.trim() || meta(document, "author", "article:author");
   // Readability's excerpt is often just the byline; prefer the page's own blurb.
@@ -83,7 +85,7 @@ export async function extractPage(url: string): Promise<ExtractedPage> {
     firstParagraph(article?.content);
   return {
     title: article?.title?.trim() || metaTitle || fallback.title,
-    content: article?.content ?? null,
+    content: cleanHtml(article?.content),
     excerpt,
     author,
     siteName: article?.siteName?.trim() || meta(document, "og:site_name"),

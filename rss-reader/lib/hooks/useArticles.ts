@@ -106,3 +106,17 @@ export function toggleArticleArchived(id: string, isArchived: boolean) {
 export function saveReadingProgress(id: string, readProgress: number) {
   return patchArticle(id, { readProgress });
 }
+
+export interface FullArticle {
+  status: "full" | "limited" | "failed";
+  content: string | null;
+}
+
+/** The full page for excerpt-only feeds; fetched once, then cached server-side. */
+export function useFullArticle(id: string | null) {
+  const { data, isLoading } = useSWR<FullArticle>(id ? `/api/articles/${id}/full` : null, {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false,
+  });
+  return { full: data ?? null, isLoading };
+}

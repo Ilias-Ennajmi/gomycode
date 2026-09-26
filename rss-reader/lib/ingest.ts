@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { ParsedArticle } from "@/lib/rss";
+import { cleanHtml } from "@/lib/clean-html";
 
 /** Inserts articles that don't exist yet for this feed and returns the new rows. */
 export async function insertNewArticles(feedId: string, articles: ParsedArticle[]) {
@@ -11,7 +12,7 @@ export async function insertNewArticles(feedId: string, articles: ParsedArticle[
       title: article.title,
       link: article.link,
       summary: article.summary,
-      content: article.content,
+      content: cleanHtml(article.content),
       imageUrl: article.imageUrl,
       author: article.author,
       publishedAt: article.publishedAt,

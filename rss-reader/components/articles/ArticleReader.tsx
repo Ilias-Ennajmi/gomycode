@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import {
+  Loader2,
   Archive,
   ArchiveRestore,
   Bookmark,
@@ -23,6 +24,7 @@ import {
   useArticle,
   useArticles,
   saveReadingProgress,
+  useFullArticle,
   toggleArticleArchived,
   toggleArticleRead,
   toggleArticleSaved,
@@ -31,6 +33,9 @@ import { useSWRConfig } from "swr";
 import { useAiStatus, useArticleSummary } from "@/lib/hooks/useAi";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useReadingProgress } from "@/lib/hooks/useReadingProgress";
+import { READER_WIDTHS, useReaderPrefs } from "@/lib/hooks/useReaderPrefs";
+import { needsFullArticle, wordCount } from "@/lib/reader";
+import { ReaderSettings } from "@/components/articles/ReaderSettings";
 
 export function ArticleReader() {
   const { view, selectedArticleId, setMobilePane, listParams, sort } = useReaderState();
@@ -51,6 +56,17 @@ export function ArticleReader() {
   // Saving or archiving changes which lists (and tab counts) an item belongs in.
   const refreshAllLists = () =>
     globalMutate((key) => typeof key === "string" && key.startsWith("/api/articles"));
+
+  const { prefs } = useReaderPrefs();
+
+  // Excerpt-only feeds: fetch the full page (cached server-side) and show it
+  // by default, with a toggle back to the feed's own text.
+  const wantsFull = article ? needsFullArticle(article) : false;
+  const { full, isLoading: fullLoading } = useFullArticle(wantsFull ? (article?.id ?? null) : null);
+  const [showFeedVersion, setShowFeedVersion] = React.useState(false);
+  React.useEffect(() => setShowFeedVersion(false), [article?.id]);
+  const hasFull = full?.status === "full" && Boolean(full.content);
+  const bodyHtml = hasFull && !showFeedVersion ? full!.content : (article?.content ?? null);
 
   const { containerRef, progress } = useReadingProgress<HTMLDivElement>({
     resetKey: article?.id,
@@ -206,11 +222,18 @@ export function ArticleReader() {
           >
             <Share className="h-5 w-5" />
           </Button>
+          <ReaderSettings />
         </div>
       </div>
 
+      <ReaderSettings className="absolute right-4 top-3 z-10 hidden md:inline-flex" />
+      <MinutesLeft words={wordCount(bodyHtml || article.summary)} progress={progress} />
+
       <div ref={containerRef} className="flex-1 overflow-y-auto scrollbar-thin">
-        <div className="mx-auto max-w-[680px] px-5 py-6 md:px-8 md:py-10">
+        <div
+          className="mx-auto px-5 py-6 md:px-8 md:py-10"
+          style={{ maxWidth: READER_WIDTHS[prefs.width] + 64 }}
+        >
           {showHero && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -228,10 +251,23 @@ export function ArticleReader() {
             onToggleRead={handleToggleRead}
             onToggleArchive={handleToggleArchive}
           />
-          <AiSummary articleId={article.id} cached={article.aiSummary} />
+          <AiSummary
+            articleId={article.id}
+            cached={article.aiSummary}
+            ready={!wantsFull || !fullLoading}
+          />
+          {wantsFull && (
+            <FullArticleBar
+              loading={fullLoading}
+              status={full?.status}
+              showFeedVersion={showFeedVersion}
+              onToggle={setShowFeedVersion}
+              link={article.link}
+            />
+          )}
           <div className="mt-6">
             <ArticleContent
-              content={article.content}
+              content={bodyHtml}
               summary={article.summary}
               link={article.link}
               isVideo={article.isVideo}
@@ -243,9 +279,21 @@ export function ArticleReader() {
   );
 }
 
-function AiSummary({ articleId, cached }: { articleId: string; cached?: string | null }) {
+function AiSummary({
+  articleId,
+  cached,
+  ready,
+}: {
+  articleId: string;
+  cached?: string | null;
+  /** False while the full article is still loading, so the summary uses the whole text. */
+  ready: boolean;
+}) {
   const status = useAiStatus();
-  const { summary, isLoading } = useArticleSummary(articleId, Boolean(status?.enabled) && !cached);
+  const { summary, isLoading } = useArticleSummary(
+    articleId,
+    Boolean(status?.enabled) && !cached && ready
+  );
   const text = cached ?? summary;
   if (!text && !isLoading) return null;
 
@@ -267,5 +315,81 @@ function AiSummary({ articleId, cached }: { articleId: string; cached?: string |
         </div>
       )}
     </section>
+  );
+}
+
+function FullArticleBar({
+  loading,
+  status,
+  showFeedVersion,
+  onToggle,
+  link,
+}: {
+  loading: boolean;
+  status?: "full" | "limited" | "failed";
+  showFeedVersion: boolean;
+  onToggle: (feedVersion: boolean) => void;
+  link: string;
+}) {
+  if (loading) {
+    return (
+      <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading the full article…
+      </p>
+    );
+  }
+  if (status === "full") {
+    return (
+      <div className="mt-6 inline-flex rounded-lg bg-muted p-1 text-sm">
+        {[
+          { feed: false, label: "Full article" },
+          { feed: true, label: "Feed version" },
+        ].map((option) => (
+          <button
+            key={option.label}
+            type="button"
+            onClick={() => onToggle(option.feed)}
+            aria-pressed={showFeedVersion === option.feed}
+            className={cn(
+              "rounded-md px-3 py-1",
+              showFeedVersion === option.feed
+                ? "bg-background font-medium shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    );
+  }
+  if (status === "limited" || status === "failed") {
+    return (
+      <div className="mt-6 rounded-lg border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+        {status === "limited"
+          ? "This site limits free reading, so only the excerpt is available here."
+          : "The full article couldn’t be loaded, so this is the feed’s excerpt."}{" "}
+        <a
+          href={link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-primary hover:underline"
+        >
+          Open original
+        </a>
+      </div>
+    );
+  }
+  return null;
+}
+
+/** "4 min left" while reading, from the words still below the fold. */
+function MinutesLeft({ words, progress }: { words: number; progress: number }) {
+  const minutes = Math.ceil((words * (1 - progress / 100)) / 230);
+  if (words < 300 || progress < 3 || progress > 97 || minutes < 1) return null;
+  return (
+    <span className="pointer-events-none absolute bottom-4 right-4 z-10 rounded-full border bg-popover/90 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur">
+      {minutes} min left
+    </span>
   );
 }

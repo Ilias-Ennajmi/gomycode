@@ -46,6 +46,9 @@ function AppShellInner() {
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target;
+      // Keys pressed inside a menu or dialog belong to it (e.g. Escape closes
+      // the menu, not the article behind it).
+      if (target instanceof HTMLElement && target.closest('[role="dialog"], [role="menu"]')) return;
       if (target instanceof HTMLElement) {
         const tag = target.tagName.toLowerCase();
         if (tag === "input" || tag === "textarea" || target.isContentEditable) {

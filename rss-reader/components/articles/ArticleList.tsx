@@ -144,6 +144,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target;
+      if (target instanceof HTMLElement && target.closest('[role="dialog"], [role="menu"]')) return;
       if (target instanceof HTMLElement) {
         const tag = target.tagName.toLowerCase();
         if (tag === "input" || tag === "textarea" || target.isContentEditable) return;
