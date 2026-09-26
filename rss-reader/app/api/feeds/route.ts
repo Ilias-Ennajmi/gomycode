@@ -12,6 +12,8 @@ export async function GET() {
     const rules = await getFilterRules();
     const muted = mutedFeedIds(rules);
     const feeds = await prisma.feed.findMany({
+      // Links saved to Read Later live in a hidden feed.
+      where: { type: { not: "manual" } },
       orderBy: { title: "asc" },
       include: {
         _count: {

@@ -1,4 +1,4 @@
-export type FeedType = "rss" | "youtube" | "newsletter";
+export type FeedType = "rss" | "youtube" | "newsletter" | "manual";
 
 export interface FeedSummary {
   id: string;
@@ -42,6 +42,7 @@ export interface ArticleFeedRef {
   title: string;
   faviconUrl: string | null;
   categoryId: string | null;
+  type?: FeedType;
 }
 
 export interface ArticleSummary {
@@ -60,6 +61,8 @@ export interface ArticleSummary {
   isVideo: boolean;
   boosted?: boolean;
   isPromo?: boolean;
+  archivedAt?: string | null;
+  readProgress?: number;
   aiSummary?: string | null;
   topicId?: string | null;
   /** Present in For You when other sources cover the same story. */
@@ -80,12 +83,14 @@ export interface FilterRuleSummary {
   value: string;
 }
 
+export type LaterTab = "queue" | "archive";
 export type ArticleFilter = "all" | "unread" | "saved";
 export type ArticleSort = "newest" | "oldest";
 
 export interface ArticleListParams {
   view?: "foryou";
   source?: FeedType;
+  later?: LaterTab;
   feedId?: string;
   categoryId?: string;
   saved?: boolean;

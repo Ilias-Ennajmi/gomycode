@@ -20,6 +20,7 @@ function toSearchParams(params: ArticleListParams) {
   const search = new URLSearchParams();
   if (params.view) search.set("view", params.view);
   if (params.source) search.set("source", params.source);
+  if (params.later) search.set("later", params.later);
   if (params.feedId) search.set("feedId", params.feedId);
   if (params.categoryId) search.set("categoryId", params.categoryId);
   if (params.saved) search.set("saved", "true");
@@ -75,7 +76,10 @@ export function useArticleCount(params: ArticleListParams) {
   return data?.total ?? 0;
 }
 
-async function patchArticle(id: string, data: { isRead?: boolean; isSaved?: boolean }) {
+async function patchArticle(
+  id: string,
+  data: { isRead?: boolean; isSaved?: boolean; isArchived?: boolean; readProgress?: number }
+) {
   const res = await fetch(`/api/articles/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -92,4 +96,13 @@ export function toggleArticleRead(id: string, isRead: boolean) {
 
 export function toggleArticleSaved(id: string, isSaved: boolean) {
   return patchArticle(id, { isSaved });
+}
+
+/** Archive marks a Read Later item done; unarchiving puts it back in the queue. */
+export function toggleArticleArchived(id: string, isArchived: boolean) {
+  return patchArticle(id, { isArchived });
+}
+
+export function saveReadingProgress(id: string, readProgress: number) {
+  return patchArticle(id, { readProgress });
 }

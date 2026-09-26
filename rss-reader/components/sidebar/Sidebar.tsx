@@ -1,33 +1,20 @@
 "use client";
 
 import * as React from "react";
-import {
-  CalendarDays,
-  Inbox,
-  Mail,
-  MonitorPlay,
-  Moon,
-  Plus,
-  Rss,
-  Search,
-  Sparkles,
-  Star,
-  Sun,
-  SunMoon,
-  X,
-} from "lucide-react";
+import { CalendarDays, Inbox, Moon, Plus, Search, Sun, SunMoon, X } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NavItem } from "@/components/sidebar/NavItem";
+import { Logo } from "@/components/shared/Logo";
 import { CategoryGroup } from "@/components/sidebar/CategoryGroup";
 import { FeedItem } from "@/components/sidebar/FeedItem";
 import { SidebarFooter } from "@/components/sidebar/SidebarFooter";
 import { useCategories, useFeeds } from "@/lib/hooks/useFeeds";
 import { useArticleCount } from "@/lib/hooks/useArticles";
 import { useReaderState } from "@/lib/hooks/useReaderState";
-import type { CategorySummary, FeedSummary, FeedType } from "@/lib/types";
+import type { CategorySummary, FeedSummary } from "@/lib/types";
 
 interface SidebarProps {
   onAddFeed: () => void;
@@ -63,11 +50,6 @@ export function Sidebar({
     .filter((feed) => !feed.muted)
     .reduce((sum, feed) => sum + feed.unreadCount, 0);
   const todayCount = useArticleCount({ today: true });
-  const savedCount = useArticleCount({ saved: true });
-  const unreadByType = (type: FeedType) =>
-    feeds
-      .filter((feed) => feed.type === type && !feed.muted)
-      .reduce((sum, feed) => sum + feed.unreadCount, 0);
 
   function refetchAll() {
     mutateFeeds();
@@ -114,7 +96,11 @@ export function Sidebar({
   }
 
   return (
-    <aside className="flex h-full w-full flex-col bg-background md:border-r">
+    <aside className="flex h-full w-full flex-col bg-card/40 md:border-r">
+      <div className="hidden h-14 items-center gap-2.5 border-b px-4 md:flex">
+        <Logo className="h-7 w-7" />
+        <span className="text-[15px] font-semibold tracking-tight">Reader</span>
+      </div>
       <div className="flex items-center gap-2 border-b p-3">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -163,15 +149,8 @@ export function Sidebar({
       <div className="flex-1 space-y-4 overflow-y-auto p-3 scrollbar-thin">
         <div className="space-y-0.5">
           <NavItem
-            icon={<Sparkles className="h-4 w-4" />}
-            label="For You"
-            className="max-md:hidden"
-            active={view.type === "foryou"}
-            onClick={() => setView({ type: "foryou", label: "For You" })}
-          />
-          <NavItem
             icon={<Inbox className="h-4 w-4" />}
-            label="All"
+            label="All articles"
             count={totalUnread}
             active={view.type === "all"}
             onClick={() => setView({ type: "all", label: "All Articles" })}
@@ -182,41 +161,6 @@ export function Sidebar({
             count={todayCount}
             active={view.type === "today"}
             onClick={() => setView({ type: "today", label: "Today" })}
-          />
-          <NavItem
-            icon={<Star className="h-4 w-4" />}
-            label="Saved"
-            className="max-md:hidden"
-            count={savedCount}
-            active={view.type === "saved"}
-            onClick={() => setView({ type: "saved", label: "Saved" })}
-          />
-        </div>
-
-        <div className="space-y-0.5 max-md:hidden">
-          <p className="px-2.5 pb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Sources
-          </p>
-          <NavItem
-            icon={<Mail className="h-4 w-4" />}
-            label="Newsletters"
-            count={unreadByType("newsletter")}
-            active={view.type === "newsletters"}
-            onClick={() => setView({ type: "newsletters", label: "Newsletters" })}
-          />
-          <NavItem
-            icon={<Rss className="h-4 w-4" />}
-            label="RSS"
-            count={unreadByType("rss")}
-            active={view.type === "rss"}
-            onClick={() => setView({ type: "rss", label: "RSS" })}
-          />
-          <NavItem
-            icon={<MonitorPlay className="h-4 w-4" />}
-            label="YouTube"
-            count={unreadByType("youtube")}
-            active={view.type === "youtube"}
-            onClick={() => setView({ type: "youtube", label: "YouTube" })}
           />
         </div>
 

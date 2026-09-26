@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Providers } from "@/components/providers";
+import "@fontsource-variable/inter";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -35,8 +36,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F8F3EC" },
-    { media: "(prefers-color-scheme: dark)", color: "#15120F" },
+    { media: "(prefers-color-scheme: light)", color: "#FFFFFF" },
+    { media: "(prefers-color-scheme: dark)", color: "#14161B" },
   ],
 };
 

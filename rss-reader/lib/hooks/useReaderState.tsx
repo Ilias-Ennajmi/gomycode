@@ -1,13 +1,14 @@
 "use client";
 
 import * as React from "react";
-import type { ArticleFilter, ArticleListParams, ArticleSort } from "@/lib/types";
+import type { ArticleFilter, ArticleListParams, ArticleSort, LaterTab } from "@/lib/types";
 
 export type ViewType =
   | "foryou"
   | "rss"
   | "youtube"
   | "newsletters"
+  | "later"
   | "all"
   | "today"
   | "saved"
@@ -31,6 +32,8 @@ interface ReaderStateValue {
   setFilterTab: React.Dispatch<React.SetStateAction<ArticleFilter>>;
   sort: ArticleSort;
   setSort: React.Dispatch<React.SetStateAction<ArticleSort>>;
+  laterTab: LaterTab;
+  setLaterTab: React.Dispatch<React.SetStateAction<LaterTab>>;
   search: string;
   setSearch: React.Dispatch<React.SetStateAction<string>>;
   mobilePane: MobilePane;
@@ -47,6 +50,7 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
   const [selectedArticleId, setSelectedArticleId] = React.useState<string | null>(null);
   const [filterTab, setFilterTab] = React.useState<ArticleFilter>("all");
   const [sort, setSort] = React.useState<ArticleSort>("newest");
+  const [laterTab, setLaterTab] = React.useState<LaterTab>("queue");
   const [search, setSearch] = React.useState("");
   const [mobilePane, setMobilePane] = React.useState<MobilePane>("list");
 
@@ -63,6 +67,7 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     if (view.type === "rss") params.source = "rss";
     if (view.type === "youtube") params.source = "youtube";
     if (view.type === "newsletters") params.source = "newsletter";
+    if (view.type === "later") params.later = laterTab;
     if (view.type === "feed") params.feedId = view.id;
     if (view.type === "category") params.categoryId = view.id;
     if (view.type === "today") params.today = true;
@@ -71,7 +76,7 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     if (filterTab === "saved") params.saved = true;
     if (search.trim()) params.search = search.trim();
     return params;
-  }, [view, filterTab, search]);
+  }, [view, filterTab, search, laterTab]);
 
   const value: ReaderStateValue = {
     view,
@@ -82,6 +87,8 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     setFilterTab,
     sort,
     setSort,
+    laterTab,
+    setLaterTab,
     search,
     setSearch,
     mobilePane,

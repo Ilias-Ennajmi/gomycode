@@ -75,15 +75,7 @@ const config: Config = {
         "fade-in": "fade-in 150ms ease",
       },
       fontFamily: {
-        serif: [
-          "Iowan Old Style",
-          "Charter",
-          "Palatino Linotype",
-          "Georgia",
-          "Cambria",
-          "Times New Roman",
-          "serif",
-        ],
+        sans: ["Inter Variable", "Inter", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
       },
     },
   },

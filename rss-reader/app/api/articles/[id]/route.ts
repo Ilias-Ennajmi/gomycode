@@ -16,7 +16,12 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const body = await request.json();
-    const { isRead, isSaved } = body as { isRead?: boolean; isSaved?: boolean };
+    const { isRead, isSaved, isArchived, readProgress } = body as {
+      isRead?: boolean;
+      isSaved?: boolean;
+      isArchived?: boolean;
+      readProgress?: number;
+    };
 
     const article = await prisma.article.findUnique({ where: { id: params.id } });
     if (!article) {
@@ -28,6 +33,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       readAt?: Date | null;
       isSaved?: boolean;
       savedAt?: Date | null;
+      archivedAt?: Date | null;
+      readProgress?: number;
     } = {};
 
     if (typeof isRead === "boolean") {
@@ -37,6 +44,19 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (typeof isSaved === "boolean") {
       data.isSaved = isSaved;
       data.savedAt = isSaved ? new Date() : null;
+      if (!isSaved) data.archivedAt = null;
+    }
+    if (typeof isArchived === "boolean") {
+      // Archiving keeps the item in the library, out of the Later queue.
+      data.archivedAt = isArchived ? new Date() : null;
+      if (isArchived) {
+        data.isSaved = true;
+        data.savedAt = article.savedAt ?? new Date();
+      }
+    }
+    if (typeof readProgress === "number" && Number.isFinite(readProgress)) {
+      // Progress only moves forward, so skimming back up doesn't erase it.
+      data.readProgress = Math.max(article.readProgress, Math.min(100, Math.round(readProgress)));
     }
 
     const updated = await prisma.article.update({

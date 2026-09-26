@@ -14,8 +14,8 @@ const CONCURRENCY = 6;
 async function handleRefresh(feedId?: string) {
   try {
     const feeds = feedId
-      ? await prisma.feed.findMany({ where: { id: feedId } })
-      : await prisma.feed.findMany();
+      ? await prisma.feed.findMany({ where: { id: feedId, type: { not: "manual" } } })
+      : await prisma.feed.findMany({ where: { type: { not: "manual" } } });
 
     if (feedId && feeds.length === 0) {
       return NextResponse.json({ error: "Feed not found" }, { status: 404 });

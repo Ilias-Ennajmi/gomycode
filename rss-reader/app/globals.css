@@ -6,65 +6,65 @@
    The accent is dark enough for white text to meet WCAG AA. */
 @layer base {
   :root {
-    --background: 37 45% 95%;
-    --foreground: 28 27% 11%;
+    --background: 0 0% 100%;
+    --foreground: 224 22% 12%;
 
-    --card: 40 60% 99%;
-    --card-foreground: 28 27% 11%;
+    --card: 220 20% 98%;
+    --card-foreground: 224 22% 12%;
 
-    --popover: 40 60% 99%;
-    --popover-foreground: 28 27% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 22% 12%;
 
-    --primary: 24 74% 41%;
-    --primary-foreground: 40 60% 99%;
+    --primary: 262 72% 56%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 36 36% 90%;
-    --secondary-foreground: 28 27% 11%;
+    --secondary: 220 14% 95%;
+    --secondary-foreground: 224 22% 12%;
 
-    --muted: 36 36% 90%;
-    --muted-foreground: 29 14% 40%;
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 9% 42%;
 
-    --accent: 34 50% 89%;
-    --accent-foreground: 25 74% 30%;
+    --accent: 220 14% 94%;
+    --accent-foreground: 224 22% 12%;
 
-    --destructive: 0 68% 46%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 36 33% 85%;
-    --input: 36 30% 82%;
-    --ring: 24 74% 41%;
+    --border: 220 13% 90%;
+    --input: 220 13% 88%;
+    --ring: 262 72% 56%;
 
-    --radius: 0.75rem;
+    --radius: 0.625rem;
   }
 
   .dark {
-    --background: 30 18% 7%;
-    --foreground: 34 38% 90%;
+    --background: 228 13% 9%;
+    --foreground: 220 15% 92%;
 
-    --card: 30 20% 10%;
-    --card-foreground: 34 38% 90%;
+    --card: 228 12% 12%;
+    --card-foreground: 220 15% 92%;
 
-    --popover: 30 20% 11%;
-    --popover-foreground: 34 38% 90%;
+    --popover: 228 12% 13%;
+    --popover-foreground: 220 15% 92%;
 
-    --primary: 27 78% 60%;
-    --primary-foreground: 28 40% 7%;
+    --primary: 262 85% 72%;
+    --primary-foreground: 228 20% 8%;
 
-    --secondary: 30 19% 14%;
-    --secondary-foreground: 34 38% 90%;
+    --secondary: 228 10% 16%;
+    --secondary-foreground: 220 15% 92%;
 
-    --muted: 30 19% 14%;
-    --muted-foreground: 32 15% 62%;
+    --muted: 228 10% 16%;
+    --muted-foreground: 222 9% 60%;
 
-    --accent: 29 29% 17%;
-    --accent-foreground: 27 83% 72%;
+    --accent: 228 10% 15%;
+    --accent-foreground: 220 15% 96%;
 
-    --destructive: 0 63% 55%;
+    --destructive: 0 70% 58%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 28 19% 16%;
-    --input: 28 19% 20%;
-    --ring: 27 78% 60%;
+    --border: 228 9% 19%;
+    --input: 228 9% 22%;
+    --ring: 262 85% 72%;
   }
 }
 
@@ -78,7 +78,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     overscroll-behavior-y: none;
     font-feature-settings: "cv11", "ss01";
   }

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useInView } from "react-intersection-observer";
 import {
+  Archive,
   ArrowLeft,
   Bookmark,
   CheckCheck,
@@ -11,6 +12,7 @@ import {
   Loader2,
   Mail,
   MonitorPlay,
+  Plus,
   RefreshCw,
   Rss,
   SearchX,
@@ -31,15 +33,16 @@ import { ArticleCard } from "@/components/articles/ArticleCard";
 import { ArticleSkeletonList } from "@/components/articles/ArticleSkeleton";
 import { DailyBriefing } from "@/components/articles/DailyBriefing";
 import { useReaderState } from "@/lib/hooks/useReaderState";
-import { useArticles, toggleArticleSaved } from "@/lib/hooks/useArticles";
+import { useArticles, toggleArticleArchived, toggleArticleSaved } from "@/lib/hooks/useArticles";
 import { markAllRead, refreshFeeds, refreshToastMessage, useFeeds } from "@/lib/hooks/useFeeds";
-import type { ArticleFilter, ArticleSummary } from "@/lib/types";
+import type { ArticleFilter, ArticleSummary, LaterTab } from "@/lib/types";
 
 interface ArticleListProps {
   onAddFeed: () => void;
+  onSaveLink: () => void;
 }
 
-export function ArticleList({ onAddFeed }: ArticleListProps) {
+export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   const { mutate: globalMutate } = useSWRConfig();
   const {
     view,
@@ -52,7 +55,8 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
     search,
     listParams,
     setMobilePane,
-    setView,
+    laterTab,
+    setLaterTab,
   } = useReaderState();
 
   const { articles, total, hasMore, isLoading, isLoadingMore, loadMore, mutate, learnedFrom } =
@@ -121,6 +125,16 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
     }
   }
 
+  async function handleArchive(article: ArticleSummary, archived: boolean) {
+    try {
+      await toggleArticleArchived(article.id, archived);
+      globalMutate((key) => typeof key === "string" && key.startsWith("/api/articles"));
+      toast.success(archived ? "Archived" : "Moved back to Later");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update article");
+    }
+  }
+
   function handleSelect(article: ArticleSummary) {
     setSelectedArticleId(article.id);
     setMobilePane("reader");
@@ -163,6 +177,7 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
   }, [articles, selectedArticleId]);
 
   const ranked = view.type === "foryou";
+  const isLater = view.type === "later";
   const isSourceTab = ["rss", "youtube", "newsletters"].includes(view.type);
   const fromSourcesList = ["feed", "category", "all", "today"].includes(view.type);
   let lastDateLabel = "";
@@ -174,45 +189,32 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
           <Button
             variant="ghost"
             size="icon"
-            className={cn(
-              "h-8 w-8 shrink-0 md:hidden",
-              !fromSourcesList && view.type !== "saved" && "hidden"
-            )}
-            onClick={() =>
-              view.type === "saved"
-                ? setView({ type: "foryou", label: "For You" })
-                : setMobilePane("sidebar")
-            }
+            className={cn("h-8 w-8 shrink-0 md:hidden", !fromSourcesList && "hidden")}
+            onClick={() => setMobilePane("sidebar")}
             aria-label="Back"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-0">
-            <h2 className="truncate font-serif text-xl font-semibold leading-tight md:text-lg">
-              {view.label}
+            <h2 className="truncate text-lg font-semibold leading-tight tracking-tight">
+              {isLater ? (laterTab === "archive" ? "Archive" : "Later") : view.label}
             </h2>
             <p className="text-xs text-muted-foreground">
-              {ranked
-                ? learnedFrom
-                  ? `Learned from ${learnedFrom} articles · `
-                  : "Ranked for you · "
-                : ""}
-              {lastFetched ? `Updated ${formatRelativeTime(lastFetched)}` : "Not refreshed yet"}
+              {isLater
+                ? laterTab === "archive"
+                  ? `${total} finished`
+                  : `${total} to read`
+                : ranked
+                  ? learnedFrom
+                    ? `Learned from ${learnedFrom} articles · `
+                    : "Ranked for you · "
+                  : ""}
+              {!isLater &&
+                (lastFetched ? `Updated ${formatRelativeTime(lastFetched)}` : "Not refreshed yet")}
             </p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {view.type === "foryou" && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 md:hidden"
-              onClick={() => setView({ type: "saved", label: "Saved" })}
-              aria-label="Saved articles"
-            >
-              <Bookmark className="h-[18px] w-[18px]" />
-            </Button>
-          )}
           {isSourceTab && (
             <Button
               variant="outline"
@@ -237,14 +239,23 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-b p-2">
-        <Tabs value={filterTab} onValueChange={(v) => setFilterTab(v as ArticleFilter)}>
-          <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="unread">Unread</TabsTrigger>
-            <TabsTrigger value="saved">Saved</TabsTrigger>
-          </TabsList>
-        </Tabs>
+      <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
+        {isLater ? (
+          <Tabs value={laterTab} onValueChange={(v) => setLaterTab(v as LaterTab)}>
+            <TabsList>
+              <TabsTrigger value="queue">Later</TabsTrigger>
+              <TabsTrigger value="archive">Archive</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        ) : (
+          <Tabs value={filterTab} onValueChange={(v) => setFilterTab(v as ArticleFilter)}>
+            <TabsList>
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="unread">Unread</TabsTrigger>
+              <TabsTrigger value="saved">Saved</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
 
         <div className="flex items-center gap-1">
           {!ranked && (
@@ -258,16 +269,23 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
               </SelectContent>
             </Select>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 gap-1.5 text-xs"
-            onClick={handleMarkAllRead}
-            disabled={markingAllRead || articles.length === 0}
-          >
-            <CheckCheck className="h-3.5 w-3.5" />
-            <span className="max-sm:sr-only">Mark all read</span>
-          </Button>
+          {isLater ? (
+            <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={onSaveLink}>
+              <Plus className="h-3.5 w-3.5" />
+              <span className="max-sm:sr-only">Save link</span>
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={handleMarkAllRead}
+              disabled={markingAllRead || articles.length === 0}
+            >
+              <CheckCheck className="h-3.5 w-3.5" />
+              <span className="max-sm:sr-only">Mark all read</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -283,12 +301,17 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
         {isLoading ? (
           <ArticleSkeletonList />
         ) : articles.length === 0 ? (
-          <EmptyState search={search} view={view.type} onAddFeed={onAddFeed} />
+          <EmptyState
+            search={search}
+            view={isLater ? `later-${laterTab}` : view.type}
+            onAddFeed={onAddFeed}
+            onSaveLink={onSaveLink}
+          />
         ) : (
           <>
-            {articles.map((article, index) => {
+            {articles.map((article) => {
               const dateLabel = formatDateSeparator(article.publishedAt);
-              const showSeparator = !ranked && dateLabel !== lastDateLabel;
+              const showSeparator = !ranked && !isLater && dateLabel !== lastDateLabel;
               lastDateLabel = dateLabel;
 
               return (
@@ -301,11 +324,15 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
                   <ArticleCard
                     article={article}
                     active={article.id === selectedArticleId}
-                    variant={ranked && index === 0 && article.imageUrl ? "hero" : "default"}
                     searchQuery={search}
                     onClick={() => handleSelect(article)}
                     onToggleSave={() => handleToggleSave(article)}
                     onSelectRelated={handleSelect}
+                    onArchive={
+                      article.isSaved
+                        ? () => handleArchive(article, !article.archivedAt)
+                        : undefined
+                    }
                   />
                 </React.Fragment>
               );
@@ -334,10 +361,12 @@ function EmptyState({
   search,
   view,
   onAddFeed,
+  onSaveLink,
 }: {
   search: string;
   view: string;
   onAddFeed: () => void;
+  onSaveLink: () => void;
 }) {
   if (search) {
     return (
@@ -345,6 +374,26 @@ function EmptyState({
         <SearchX className="h-8 w-8" />
         <p className="text-sm">No results for &ldquo;{search}&rdquo;</p>
       </div>
+    );
+  }
+
+  if (view === "later-queue") {
+    return (
+      <EmptyMessage
+        icon={<Bookmark className="h-10 w-10" />}
+        text="Nothing to read later yet. Save any link, or tap the bookmark on an article."
+        action="Save a link"
+        onAction={onSaveLink}
+      />
+    );
+  }
+
+  if (view === "later-archive") {
+    return (
+      <EmptyMessage
+        icon={<Archive className="h-10 w-10" />}
+        text="Your archive is empty. Items you finish in Later end up here."
+      />
     );
   }
 

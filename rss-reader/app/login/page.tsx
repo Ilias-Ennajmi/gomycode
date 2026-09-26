@@ -44,7 +44,7 @@ function LoginForm() {
           <Rss className="h-6 w-6" />
         </div>
         <div>
-          <h1 className="font-serif text-2xl font-bold">Welcome back</h1>
+          <h1 className="tracking-tight text-2xl font-bold">Welcome back</h1>
           <p className="text-sm text-muted-foreground">Enter your password to open your reader.</p>
         </div>
       </div>

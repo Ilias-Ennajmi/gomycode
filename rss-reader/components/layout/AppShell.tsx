@@ -11,7 +11,8 @@ import { ManageCategoriesDialog } from "@/components/dialogs/ManageCategoriesDia
 import { KeyboardShortcutsDialog } from "@/components/dialogs/KeyboardShortcutsDialog";
 import { ImportOpmlDialog } from "@/components/dialogs/ImportOPMLDialog";
 import { ContentFiltersDialog } from "@/components/dialogs/ContentFiltersDialog";
-import { BottomTabBar } from "@/components/layout/BottomTabBar";
+import { TopBar } from "@/components/layout/TopBar";
+import { SaveLinkDialog } from "@/components/dialogs/SaveLinkDialog";
 import { SettingsPanel } from "@/components/layout/SettingsPanel";
 import { ReaderStateProvider, useReaderState } from "@/lib/hooks/useReaderState";
 import { refreshFeeds, refreshToastMessage, useAutoRefresh } from "@/lib/hooks/useFeeds";
@@ -34,6 +35,7 @@ function AppShellInner() {
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
   const [importOpmlOpen, setImportOpmlOpen] = React.useState(false);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const [saveLinkOpen, setSaveLinkOpen] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
 
   useAutoRefresh((result) => {
@@ -66,7 +68,9 @@ function AppShellInner() {
               globalMutate(() => true, undefined, { revalidate: true });
               toast.success(refreshToastMessage(result));
             })
-            .catch((error) => toast.error(error instanceof Error ? error.message : "Could not refresh feeds"))
+            .catch((error) =>
+              toast.error(error instanceof Error ? error.message : "Could not refresh feeds")
+            )
             .finally(() => setRefreshing(false));
         }
       } else if (event.key === "Escape") {
@@ -88,29 +92,53 @@ function AppShellInner() {
     onShowShortcuts: () => setShortcutsOpen(true),
   };
 
+  const hideTopBarOnPhone = mobilePane === "reader";
+
   return (
     <div className="flex h-dvh w-full flex-col overflow-hidden bg-background">
+      <TopBar
+        className={cn("md:hidden", hideTopBarOnPhone && "hidden")}
+        onSaveLink={() => setSaveLinkOpen(true)}
+      />
       <div className="flex min-h-0 flex-1">
-        <div className={cn("h-full w-full shrink-0 md:w-[260px]", mobilePane !== "sidebar" && "hidden md:block")}>
+        <div
+          className={cn(
+            "h-full w-full shrink-0 md:w-[260px]",
+            mobilePane !== "sidebar" && "hidden md:block"
+          )}
+        >
           <Sidebar {...dialogActions} />
         </div>
 
         <div
           className={cn(
-            "h-full w-full shrink-0 md:w-[400px] md:border-r",
-            mobilePane !== "list" && "hidden md:block"
+            "min-w-0 flex-1 flex-col",
+            mobilePane === "sidebar" || mobilePane === "settings" ? "hidden md:flex" : "flex"
           )}
         >
-          <ArticleList onAddFeed={dialogActions.onAddFeed} />
-        </div>
+          <TopBar className="hidden md:block" onSaveLink={() => setSaveLinkOpen(true)} />
+          <div className="flex min-h-0 flex-1">
+            <div
+              className={cn(
+                "h-full w-full shrink-0 md:w-[420px] md:border-r",
+                mobilePane !== "list" && "hidden md:block"
+              )}
+            >
+              <ArticleList
+                onAddFeed={dialogActions.onAddFeed}
+                onSaveLink={() => setSaveLinkOpen(true)}
+              />
+            </div>
 
-        <div
-          className={cn(
-            "h-full min-w-0 flex-1",
-            mobilePane === "reader" ? "animate-pane-in md:animate-none" : "hidden md:block"
-          )}
-        >
-          <ArticleReader />
+            <div
+              className={cn(
+                "h-full min-w-0 flex-1",
+                mobilePane === "reader" ? "animate-pane-in md:animate-none" : "hidden md:block"
+              )}
+            >
+              <ArticleReader />
+            </div>
+          </div>
         </div>
 
         {mobilePane === "settings" && (
@@ -120,8 +148,7 @@ function AppShellInner() {
         )}
       </div>
 
-      {mobilePane !== "reader" && <BottomTabBar />}
-
+      <SaveLinkDialog open={saveLinkOpen} onOpenChange={setSaveLinkOpen} />
       <AddFeedDialog open={addFeedOpen} onOpenChange={setAddFeedOpen} />
       <ManageCategoriesDialog open={manageCategoriesOpen} onOpenChange={setManageCategoriesOpen} />
       <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />

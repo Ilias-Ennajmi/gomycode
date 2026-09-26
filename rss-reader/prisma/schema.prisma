@@ -25,6 +25,8 @@ enum FeedType {
   rss
   youtube
   newsletter
+  /// Links saved to Read Later by hand; never refreshed.
+  manual
 }
 
 model Feed {
@@ -48,28 +50,32 @@ model Feed {
 }
 
 model Article {
-  id          String    @id @default(cuid())
-  feedId      String
-  feed        Feed      @relation(fields: [feedId], references: [id], onDelete: Cascade)
-  title       String
-  link        String
-  summary     String?
-  content     String?
-  imageUrl    String?
-  author      String?
-  publishedAt DateTime
-  isRead      Boolean   @default(false)
-  isSaved     Boolean   @default(false)
-  isVideo     Boolean   @default(false)
-  readAt      DateTime?
-  savedAt     DateTime?
-  createdAt   DateTime  @default(now())
+  id           String    @id @default(cuid())
+  feedId       String
+  feed         Feed      @relation(fields: [feedId], references: [id], onDelete: Cascade)
+  title        String
+  link         String
+  summary      String?
+  content      String?
+  imageUrl     String?
+  author       String?
+  publishedAt  DateTime
+  isRead       Boolean   @default(false)
+  isSaved      Boolean   @default(false)
+  isVideo      Boolean   @default(false)
+  readAt       DateTime?
+  savedAt      DateTime?
+  createdAt    DateTime  @default(now())
   /// Gemini embedding of title + summary; empty until enriched.
-  embedding   Float[]   @default([])
-  aiSummary   String?
-  isPromo     Boolean   @default(false)
-  topicId     String?
-  topic       Topic?    @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  embedding    Float[]   @default([])
+  aiSummary    String?
+  /// Read Later: set when a saved item is marked done.
+  archivedAt   DateTime?
+  /// 0-100, how far the reader got; drives the progress bar in lists.
+  readProgress Int       @default(0)
+  isPromo      Boolean   @default(false)
+  topicId      String?
+  topic        Topic?    @relation(fields: [topicId], references: [id], onDelete: SetNull)
 
   @@unique([feedId, link])
   @@index([feedId])

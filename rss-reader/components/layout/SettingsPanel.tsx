@@ -48,7 +48,7 @@ export function SettingsPanel({
   return (
     <div className="flex h-full flex-col">
       <header className="border-b px-4 py-3">
-        <h2 className="font-serif text-2xl font-semibold">Settings</h2>
+        <h2 className="tracking-tight text-2xl font-semibold">Settings</h2>
       </header>
 
       <div className="flex-1 space-y-6 overflow-y-auto px-4 py-5">

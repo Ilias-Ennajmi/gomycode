@@ -11,6 +11,7 @@ export const maxDuration = 60;
 export async function GET() {
   try {
     const feeds = await prisma.feed.findMany({
+      where: { type: { not: "manual" } },
       include: { category: { select: { name: true } } },
       orderBy: { title: "asc" },
     });

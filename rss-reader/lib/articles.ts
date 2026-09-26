@@ -1,5 +1,5 @@
 export const ARTICLE_FEED_INCLUDE = {
-  feed: { select: { id: true, title: true, faviconUrl: true, categoryId: true } },
+  feed: { select: { id: true, title: true, faviconUrl: true, categoryId: true, type: true } },
 } as const;
 
 /** Drops server-only fields (the embedding is ~256 floats) before sending to the client. */

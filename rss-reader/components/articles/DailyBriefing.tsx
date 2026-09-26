@@ -48,7 +48,7 @@ export function DailyBriefing({ onOpen }: { onOpen: (articleId: string) => void 
         >
           <Sparkles className="h-4 w-4 text-primary" />
           <span className="flex-1">
-            <span className="block font-serif text-lg font-semibold leading-tight">
+            <span className="block tracking-tight text-lg font-semibold leading-tight">
               Today&rsquo;s briefing
             </span>
             {digest && (
@@ -83,11 +83,11 @@ export function DailyBriefing({ onOpen }: { onOpen: (articleId: string) => void 
                       onClick={() => onOpen(item.articleId)}
                       className="flex w-full gap-3 rounded-lg px-2 py-2 text-left hover:bg-accent/60"
                     >
-                      <span className="mt-0.5 font-serif text-base font-semibold text-primary">
+                      <span className="mt-0.5 tracking-tight text-base font-semibold text-primary">
                         {i + 1}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block font-serif text-[15px] font-semibold leading-snug">
+                        <span className="block tracking-tight text-[15px] font-semibold leading-snug">
                           {item.headline}
                         </span>
                         {item.blurb && (

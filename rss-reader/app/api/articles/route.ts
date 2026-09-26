@@ -34,6 +34,8 @@ export async function GET(request: NextRequest) {
       sourceParam && ["rss", "youtube", "newsletter"].includes(sourceParam)
         ? (sourceParam as FeedType)
         : undefined;
+    // Read Later: "later" is the queue, "archive" what was marked done.
+    const later = searchParams.get("later");
     const search = searchParams.get("search")?.trim() || undefined;
     const sort = searchParams.get("sort") === "oldest" ? "asc" : "desc";
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
@@ -45,6 +47,8 @@ export async function GET(request: NextRequest) {
     if (feedId) where.feedId = feedId;
     if (categoryId) where.feed = { categoryId };
     if (saved) where.isSaved = true;
+    if (later === "queue") Object.assign(where, { isSaved: true, archivedAt: null });
+    if (later === "archive") where.archivedAt = { not: null };
     if (unread) where.isRead = false;
     if (today) where.publishedAt = { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) };
     if (forYou && !search) where.publishedAt = { gte: new Date(Date.now() - FOR_YOU_WINDOW_MS) };
@@ -64,7 +68,7 @@ export async function GET(request: NextRequest) {
       // Ranked in memory: one user's last 72 hours is a few hundred rows.
       const [candidates, profile] = await Promise.all([
         prisma.article.findMany({
-          where: { ...where, isPromo: false },
+          where: { ...where, isPromo: false, feed: { type: { not: "manual" } } },
           orderBy: { publishedAt: "desc" },
           take: FOR_YOU_CANDIDATES,
           include: ARTICLE_FEED_INCLUDE,
@@ -129,7 +133,9 @@ export async function GET(request: NextRequest) {
       prisma.article.count({ where }),
       prisma.article.findMany({
         where,
-        orderBy: { publishedAt: sort },
+        orderBy: later
+          ? { [later === "archive" ? "archivedAt" : "savedAt"]: sort }
+          : { publishedAt: sort },
         skip: (page - 1) * limit,
         take: limit,
         include: ARTICLE_FEED_INCLUDE,

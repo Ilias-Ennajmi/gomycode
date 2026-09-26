@@ -1,10 +1,11 @@
 "use client";
 
-import { Bookmark, Check, ExternalLink, Share2 } from "lucide-react";
+import { Archive, ArchiveRestore, Bookmark, Check, ExternalLink, Share2 } from "lucide-react";
 import { shareLink } from "@/lib/share";
 import { cn, readingTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
+import { articleSource } from "@/components/articles/ArticleCard";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import type { ArticleSummary } from "@/lib/types";
 
@@ -12,10 +13,18 @@ interface ArticleHeaderProps {
   article: ArticleSummary;
   onToggleSave: () => void;
   onToggleRead: () => void;
+  onToggleArchive: () => void;
 }
 
-export function ArticleHeader({ article, onToggleSave, onToggleRead }: ArticleHeaderProps) {
+export function ArticleHeader({
+  article,
+  onToggleSave,
+  onToggleRead,
+  onToggleArchive,
+}: ArticleHeaderProps) {
   const { setView } = useReaderState();
+  const source = articleSource(article);
+  const isSavedLink = article.feed.type === "manual";
 
   const publishedDate = new Date(article.publishedAt).toLocaleDateString(undefined, {
     weekday: "long",
@@ -28,16 +37,15 @@ export function ArticleHeader({ article, onToggleSave, onToggleRead }: ArticleHe
     <header className="space-y-4 border-b pb-6">
       <button
         type="button"
-        onClick={() =>
-          setView({ type: "feed", id: article.feedId, label: article.feed.title })
-        }
+        disabled={isSavedLink}
+        onClick={() => setView({ type: "feed", id: article.feedId, label: article.feed.title })}
         className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
       >
-        <FeedFavicon title={article.feed.title} faviconUrl={article.feed.faviconUrl} size={18} />
-        <span className="font-medium">{article.feed.title}</span>
+        <FeedFavicon title={source.name} faviconUrl={source.faviconUrl} size={18} />
+        <span className="font-medium">{source.name}</span>
       </button>
 
-      <h1 className="text-balance font-serif text-[28px] font-bold leading-tight text-foreground md:text-[34px]">
+      <h1 className="text-balance tracking-tight text-[28px] font-bold leading-tight text-foreground md:text-[34px]">
         {article.title}
       </h1>
 
@@ -57,8 +65,18 @@ export function ArticleHeader({ article, onToggleSave, onToggleRead }: ArticleHe
           onClick={onToggleSave}
         >
           <Bookmark className={cn("h-3.5 w-3.5", article.isSaved && "fill-current")} />
-          {article.isSaved ? "Saved" : "Save"}
+          {article.isSaved ? "In Later" : "Read later"}
         </Button>
+        {article.isSaved && (
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={onToggleArchive}>
+            {article.archivedAt ? (
+              <ArchiveRestore className="h-3.5 w-3.5" />
+            ) : (
+              <Archive className="h-3.5 w-3.5" />
+            )}
+            {article.archivedAt ? "Unarchive" : "Archive"}
+          </Button>
+        )}
         <Button variant="outline" size="sm" className="gap-1.5" asChild>
           <a href={article.link} target="_blank" rel="noopener noreferrer">
             <ExternalLink className="h-3.5 w-3.5" /> Open original
@@ -68,7 +86,12 @@ export function ArticleHeader({ article, onToggleSave, onToggleRead }: ArticleHe
           <Check className="h-3.5 w-3.5" />
           {article.isRead ? "Mark unread" : "Mark read"}
         </Button>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => shareLink(article.title, article.link)}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={() => shareLink(article.title, article.link)}
+        >
           <Share2 className="h-3.5 w-3.5" /> Share
         </Button>
       </div>

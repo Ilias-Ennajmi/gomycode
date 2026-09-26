@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import {
+  Archive,
+  ArchiveRestore,
   Bookmark,
   BookOpen,
   Check,
@@ -20,9 +22,12 @@ import { useReaderState } from "@/lib/hooks/useReaderState";
 import {
   useArticle,
   useArticles,
+  saveReadingProgress,
+  toggleArticleArchived,
   toggleArticleRead,
   toggleArticleSaved,
 } from "@/lib/hooks/useArticles";
+import { useSWRConfig } from "swr";
 import { useAiStatus, useArticleSummary } from "@/lib/hooks/useAi";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useReadingProgress } from "@/lib/hooks/useReadingProgress";
@@ -38,10 +43,14 @@ export function ArticleReader() {
     null;
   const { article: fetched, mutate: mutateSingle } = useArticle(listed ? null : selectedArticleId);
   const article = listed ?? fetched;
+  const { mutate: globalMutate } = useSWRConfig();
   const mutate = () => {
     mutateList();
     mutateSingle();
   };
+  // Saving or archiving changes which lists (and tab counts) an item belongs in.
+  const refreshAllLists = () =>
+    globalMutate((key) => typeof key === "string" && key.startsWith("/api/articles"));
 
   const { containerRef, progress } = useReadingProgress<HTMLDivElement>({
     resetKey: article?.id,
@@ -54,12 +63,48 @@ export function ArticleReader() {
     },
   });
 
+  // Persist how far the reader got, in 10% steps, so lists can show progress bars.
+  const savedProgress = React.useRef({ id: "", value: 0 });
+  React.useEffect(() => {
+    if (!article) return;
+    if (savedProgress.current.id !== article.id) {
+      savedProgress.current = { id: article.id, value: article.readProgress ?? 0 };
+    }
+    const step = Math.floor(progress / 10) * 10;
+    if (step <= savedProgress.current.value) return;
+    savedProgress.current.value = step;
+    saveReadingProgress(article.id, step).catch(() => undefined);
+  }, [article, progress]);
+
+  // Show the new progress in the list once the reader moves on.
+  const articleId = article?.id;
+  React.useEffect(() => {
+    return () => {
+      if (articleId) mutateList();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [articleId]);
+
+  async function handleToggleArchive() {
+    if (!article) return;
+    const archived = !article.archivedAt;
+    try {
+      await toggleArticleArchived(article.id, archived);
+      refreshAllLists();
+      mutateSingle();
+      toast.success(archived ? "Archived" : "Moved back to Later");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update article");
+    }
+  }
+
   async function handleToggleSave() {
     if (!article) return;
     try {
       await toggleArticleSaved(article.id, !article.isSaved);
-      mutate();
-      toast.success(article.isSaved ? "Removed from saved" : "Saved to bookmarks");
+      refreshAllLists();
+      mutateSingle();
+      toast.success(article.isSaved ? "Removed from Later" : "Added to Later");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not update article");
     }
@@ -123,10 +168,25 @@ export function ArticleReader() {
             size="icon"
             className={cn("h-10 w-10", article.isSaved && "text-primary")}
             onClick={handleToggleSave}
-            aria-label={article.isSaved ? "Remove from saved" : "Save article"}
+            aria-label={article.isSaved ? "Remove from Later" : "Read later"}
           >
             <Bookmark className={cn("h-5 w-5", article.isSaved && "fill-current")} />
           </Button>
+          {article.isSaved && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10"
+              onClick={handleToggleArchive}
+              aria-label={article.archivedAt ? "Move back to Later" : "Archive"}
+            >
+              {article.archivedAt ? (
+                <ArchiveRestore className="h-5 w-5" />
+              ) : (
+                <Archive className="h-5 w-5" />
+              )}
+            </Button>
+          )}
           <Button variant="ghost" size="icon" className="h-10 w-10" asChild>
             <a
               href={article.link}
@@ -166,6 +226,7 @@ export function ArticleReader() {
             article={article}
             onToggleSave={handleToggleSave}
             onToggleRead={handleToggleRead}
+            onToggleArchive={handleToggleArchive}
           />
           <AiSummary articleId={article.id} cached={article.aiSummary} />
           <div className="mt-6">
