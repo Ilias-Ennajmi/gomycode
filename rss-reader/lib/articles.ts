@@ -1,3 +1,5 @@
+import type { FeedType, Prisma } from "@prisma/client";
+
 export const ARTICLE_FEED_INCLUDE = {
   feed: { select: { id: true, title: true, faviconUrl: true, categoryId: true, type: true } },
 } as const;
@@ -12,4 +14,27 @@ export function serializeArticle<T extends { embedding?: number[]; fullContent?:
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { embedding, fullContent, ...rest } = article;
   return rest;
+}
+
+export const SOURCE_TYPES = ["rss", "youtube", "newsletter"] as const;
+
+export function parseSource(value: unknown): FeedType | undefined {
+  return SOURCE_TYPES.includes(value as (typeof SOURCE_TYPES)[number])
+    ? (value as FeedType)
+    : undefined;
+}
+
+/**
+ * Source tabs go by the article as well as the feed, so a video from a feed
+ * that wasn't recognised as YouTube still lands in YouTube, not RSS.
+ */
+export function sourceFilter(source: FeedType): Prisma.ArticleWhereInput {
+  if (source === "youtube") return { OR: [{ isVideo: true }, { feed: { type: "youtube" } }] };
+  if (source === "rss") return { isVideo: false, feed: { type: "rss" } };
+  return { feed: { type: source } };
+}
+
+/** "none" selects feeds without a category. */
+export function categoryFilter(categoryId: string): Prisma.ArticleWhereInput {
+  return { feed: { categoryId: categoryId === "none" ? null : categoryId } };
 }

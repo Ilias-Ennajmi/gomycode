@@ -1,20 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { categoryFilter, parseSource, sourceFilter } from "@/lib/articles";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { feedId, categoryId } = body as { feedId?: string; categoryId?: string };
-
-    const where: { isRead: boolean; feedId?: string; feed?: { categoryId: string } } = {
-      isRead: false,
+    const { feedId, categoryId, source } = body as {
+      feedId?: string;
+      categoryId?: string;
+      source?: string;
     };
 
-    if (feedId) where.feedId = feedId;
-    if (categoryId) where.feed = { categoryId };
+    const clauses: Prisma.ArticleWhereInput[] = [{ isRead: false }];
+    if (feedId) clauses.push({ feedId });
+    if (categoryId) clauses.push(categoryFilter(categoryId));
+    const sourceType = parseSource(source);
+    if (sourceType) clauses.push(sourceFilter(sourceType));
 
     const result = await prisma.article.updateMany({
-      where,
+      where: { AND: clauses },
       data: { isRead: true, readAt: new Date() },
     });
 

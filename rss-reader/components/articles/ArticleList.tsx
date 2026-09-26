@@ -30,9 +30,10 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArticleCard } from "@/components/articles/ArticleCard";
+import { CategoryChips } from "@/components/articles/CategoryChips";
 import { ArticleSkeletonList } from "@/components/articles/ArticleSkeleton";
 import { DailyBriefing } from "@/components/articles/DailyBriefing";
-import { useReaderState } from "@/lib/hooks/useReaderState";
+import { isSourceTab, useReaderState } from "@/lib/hooks/useReaderState";
 import { useArticles, toggleArticleArchived, toggleArticleSaved } from "@/lib/hooks/useArticles";
 import { markAllRead, refreshFeeds, refreshToastMessage, useFeeds } from "@/lib/hooks/useFeeds";
 import type { ArticleFilter, ArticleSummary, LaterTab } from "@/lib/types";
@@ -58,6 +59,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
     laterTab,
     setLaterTab,
   } = useReaderState();
+  const sourceTab = isSourceTab(view.type) ? view.type : null;
 
   const { articles, total, hasMore, isLoading, isLoadingMore, loadMore, mutate, learnedFrom } =
     useArticles(listParams, sort);
@@ -71,7 +73,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   const scrollRef = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
-  }, [view, filterTab, search]);
+  }, [view, filterTab, search, listParams.categoryId]);
 
   React.useEffect(() => {
     if (inView && hasMore && !isLoading && !isLoadingMore) {
@@ -105,7 +107,8 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
     try {
       await markAllRead({
         feedId: view.type === "feed" ? view.id : undefined,
-        categoryId: view.type === "category" ? view.id : undefined,
+        categoryId: view.type === "category" ? view.id : listParams.categoryId,
+        source: listParams.source,
       });
       await mutate();
       toast.success("Marked all as read");
@@ -179,7 +182,6 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
 
   const ranked = view.type === "foryou";
   const isLater = view.type === "later";
-  const isSourceTab = ["rss", "youtube", "newsletters"].includes(view.type);
   const fromSourcesList = ["feed", "category", "all", "today"].includes(view.type);
   let lastDateLabel = "";
 
@@ -216,7 +218,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {isSourceTab && (
+          {sourceTab && (
             <Button
               variant="outline"
               size="sm"
@@ -239,6 +241,8 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
           </Button>
         </div>
       </div>
+
+      {sourceTab && <CategoryChips tab={sourceTab} />}
 
       <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
         {isLater ? (
@@ -282,9 +286,10 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
               className="h-8 gap-1.5 text-xs"
               onClick={handleMarkAllRead}
               disabled={markingAllRead || articles.length === 0}
+              title="Mark all read"
             >
               <CheckCheck className="h-3.5 w-3.5" />
-              <span className="max-sm:sr-only">Mark all read</span>
+              <span className="sr-only">Mark all read</span>
             </Button>
           )}
         </div>

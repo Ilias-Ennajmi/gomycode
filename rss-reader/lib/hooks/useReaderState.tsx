@@ -23,6 +23,18 @@ export interface ViewState {
 
 export type MobilePane = "sidebar" | "list" | "reader" | "settings";
 
+/** The tabs that list one kind of source, and can be narrowed to a category. */
+export type SourceTab = "rss" | "youtube" | "newsletters";
+export const SOURCE_TAB_FEED_TYPE = {
+  rss: "rss",
+  youtube: "youtube",
+  newsletters: "newsletter",
+} as const;
+
+export function isSourceTab(type: ViewType): type is SourceTab {
+  return type === "rss" || type === "youtube" || type === "newsletters";
+}
+
 interface ReaderStateValue {
   view: ViewState;
   setView: (view: ViewState) => void;
@@ -38,6 +50,9 @@ interface ReaderStateValue {
   setSearch: React.Dispatch<React.SetStateAction<string>>;
   mobilePane: MobilePane;
   setMobilePane: React.Dispatch<React.SetStateAction<MobilePane>>;
+  /** Category chip per source tab: a category id, "none" for uncategorized, or null for all. */
+  tabCategory: Record<SourceTab, string | null>;
+  setTabCategory: (tab: SourceTab, categoryId: string | null) => void;
   listParams: ArticleListParams;
 }
 
@@ -53,6 +68,16 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
   const [laterTab, setLaterTab] = React.useState<LaterTab>("queue");
   const [search, setSearch] = React.useState("");
   const [mobilePane, setMobilePane] = React.useState<MobilePane>("list");
+  // Kept across tab switches, so each tab reopens on the chip it was left on.
+  const [tabCategory, setTabCategories] = React.useState<Record<SourceTab, string | null>>({
+    rss: null,
+    youtube: null,
+    newsletters: null,
+  });
+  const setTabCategory = React.useCallback((tab: SourceTab, categoryId: string | null) => {
+    setTabCategories((prev) => ({ ...prev, [tab]: categoryId }));
+    setSelectedArticleId(null);
+  }, []);
 
   const setView = React.useCallback((next: ViewState) => {
     setViewState(next);
@@ -72,11 +97,14 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     if (view.type === "category") params.categoryId = view.id;
     if (view.type === "today") params.today = true;
     if (view.type === "saved") params.saved = true;
+    if (isSourceTab(view.type) && tabCategory[view.type]) {
+      params.categoryId = tabCategory[view.type] ?? undefined;
+    }
     if (filterTab === "unread") params.unread = true;
     if (filterTab === "saved") params.saved = true;
     if (search.trim()) params.search = search.trim();
     return params;
-  }, [view, filterTab, search, laterTab]);
+  }, [view, filterTab, search, laterTab, tabCategory]);
 
   const value: ReaderStateValue = {
     view,
@@ -93,6 +121,8 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     setSearch,
     mobilePane,
     setMobilePane,
+    tabCategory,
+    setTabCategory,
     listParams,
   };
 

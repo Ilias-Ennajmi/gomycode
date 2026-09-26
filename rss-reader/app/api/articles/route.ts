@@ -1,24 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { FeedType, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getFilterRules, hiddenArticleClauses } from "@/lib/filters";
 import { buildReadingProfile, scoreArticle } from "@/lib/ranking";
-import { ARTICLE_FEED_INCLUDE, serializeArticle } from "@/lib/articles";
+import {
+  ARTICLE_FEED_INCLUDE,
+  categoryFilter,
+  parseSource,
+  serializeArticle,
+  sourceFilter,
+} from "@/lib/articles";
 
 export const dynamic = "force-dynamic";
 
 const FOR_YOU_WINDOW_MS = 72 * 60 * 60 * 1000;
 const FOR_YOU_CANDIDATES = 400;
-
-/**
- * Source tabs go by the article as well as the feed, so a video from a feed
- * that wasn't recognised as YouTube still lands in YouTube, not RSS.
- */
-function sourceFilter(source: FeedType): Prisma.ArticleWhereInput {
-  if (source === "youtube") return { OR: [{ isVideo: true }, { feed: { type: "youtube" } }] };
-  if (source === "rss") return { isVideo: false, feed: { type: "rss" } };
-  return { feed: { type: source } };
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,11 +25,7 @@ export async function GET(request: NextRequest) {
     const today = searchParams.get("today") === "true";
     const unread = searchParams.get("unread") === "true";
     const forYou = searchParams.get("view") === "foryou";
-    const sourceParam = searchParams.get("source");
-    const source =
-      sourceParam && ["rss", "youtube", "newsletter"].includes(sourceParam)
-        ? (sourceParam as FeedType)
-        : undefined;
+    const source = parseSource(searchParams.get("source"));
     // Read Later: "later" is the queue, "archive" what was marked done.
     const later = searchParams.get("later");
     const search = searchParams.get("search")?.trim() || undefined;
@@ -45,7 +37,7 @@ export async function GET(request: NextRequest) {
     const where: Prisma.ArticleWhereInput = {};
 
     if (feedId) where.feedId = feedId;
-    if (categoryId) where.feed = { categoryId };
+    if (categoryId) Object.assign(where, categoryFilter(categoryId));
     if (saved) where.isSaved = true;
     if (later === "queue") Object.assign(where, { isSaved: true, archivedAt: null });
     if (later === "archive") where.archivedAt = { not: null };

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import useSWR from "swr";
-import type { CategorySummary, FeedSummary } from "@/lib/types";
+import type { CategorySummary, FeedSummary, FeedType } from "@/lib/types";
 
 const EMPTY_FEEDS: FeedSummary[] = [];
 const EMPTY_CATEGORIES: CategorySummary[] = [];
@@ -135,7 +135,11 @@ export function useAutoRefresh(onNewArticles: (result: RefreshResult) => void) {
   }, [isLoading]);
 }
 
-export async function markAllRead(params: { feedId?: string; categoryId?: string }) {
+export async function markAllRead(params: {
+  feedId?: string;
+  categoryId?: string;
+  source?: FeedType;
+}) {
   const res = await fetch("/api/articles/mark-all-read", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
