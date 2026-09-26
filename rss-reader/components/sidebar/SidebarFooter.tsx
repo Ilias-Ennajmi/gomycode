@@ -21,12 +21,12 @@ export function SidebarFooter({
   onShowShortcuts,
 }: SidebarFooterProps) {
   return (
-    <div className="space-y-2 border-t p-3">
+    <div className="space-y-2 border-t p-3 max-md:border-t-0 max-md:pt-0">
       <Button variant="ghost" className="w-full justify-start gap-2" onClick={onAddFeed}>
         <Plus className="h-4 w-4" /> Add Feed
       </Button>
-      <Separator />
-      <div className="flex items-center justify-around">
+      <Separator className="hidden md:block" />
+      <div className="hidden items-center justify-around md:flex">
         <IconAction label="Manage categories" onClick={onManageCategories}>
           <FolderCog className="h-4 w-4" />
         </IconAction>

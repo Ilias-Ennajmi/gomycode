@@ -1,7 +1,7 @@
 "use client";
 
 import { Bookmark, Check, ExternalLink, Share2 } from "lucide-react";
-import { toast } from "sonner";
+import { shareLink } from "@/lib/share";
 import { cn, readingTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
@@ -16,19 +16,6 @@ interface ArticleHeaderProps {
 
 export function ArticleHeader({ article, onToggleSave, onToggleRead }: ArticleHeaderProps) {
   const { setView } = useReaderState();
-
-  async function handleShare() {
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: article.title, url: article.link });
-        return;
-      } catch {
-        // user cancelled or share failed — fall back to clipboard
-      }
-    }
-    await navigator.clipboard.writeText(article.link);
-    toast.success("Link copied to clipboard");
-  }
 
   const publishedDate = new Date(article.publishedAt).toLocaleDateString(undefined, {
     weekday: "long",
@@ -50,7 +37,7 @@ export function ArticleHeader({ article, onToggleSave, onToggleRead }: ArticleHe
         <span className="font-medium">{article.feed.title}</span>
       </button>
 
-      <h1 className="font-serif text-[28px] font-bold leading-tight text-foreground">
+      <h1 className="text-balance font-serif text-[28px] font-bold leading-tight text-foreground md:text-[34px]">
         {article.title}
       </h1>
 
@@ -62,7 +49,7 @@ export function ArticleHeader({ article, onToggleSave, onToggleRead }: ArticleHe
         <span>{article.isVideo ? "Video" : readingTime(article.content || article.summary)}</span>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="hidden flex-wrap items-center gap-2 md:flex">
         <Button
           variant={article.isSaved ? "default" : "outline"}
           size="sm"
@@ -81,7 +68,7 @@ export function ArticleHeader({ article, onToggleSave, onToggleRead }: ArticleHe
           <Check className="h-3.5 w-3.5" />
           {article.isRead ? "Mark unread" : "Mark read"}
         </Button>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={handleShare}>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => shareLink(article.title, article.link)}>
           <Share2 className="h-3.5 w-3.5" /> Share
         </Button>
       </div>

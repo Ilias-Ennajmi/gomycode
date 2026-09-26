@@ -41,13 +41,21 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
     setMobilePane,
   } = useReaderState();
 
-  const { articles, total, hasMore, isLoading, isLoadingMore, loadMore, mutate } =
-    useArticles(listParams, sort);
+  const { articles, total, hasMore, isLoading, isLoadingMore, loadMore, mutate } = useArticles(
+    listParams,
+    sort,
+  );
   const { feeds } = useFeeds();
   const [refreshing, setRefreshing] = React.useState(false);
   const [markingAllRead, setMarkingAllRead] = React.useState(false);
 
   const { ref: sentinelRef, inView } = useInView({ rootMargin: "200px" });
+
+  // Each view starts at the top instead of inheriting the previous scroll offset.
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [view, filterTab, search]);
 
   React.useEffect(() => {
     if (inView && hasMore && !isLoading && !isLoadingMore) {
@@ -142,6 +150,8 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articles, selectedArticleId]);
 
+  const ranked = view.type === "foryou";
+  const fromFeedsTab = view.type !== "foryou" && view.type !== "saved";
   let lastDateLabel = "";
 
   return (
@@ -151,15 +161,18 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 shrink-0 md:hidden"
+            className={cn("h-8 w-8 shrink-0 md:hidden", !fromFeedsTab && "hidden")}
             onClick={() => setMobilePane("sidebar")}
             aria-label="Back to sidebar"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-0">
-            <h2 className="truncate font-semibold">{view.label}</h2>
+            <h2 className="truncate font-serif text-xl font-semibold leading-tight md:text-lg">
+              {view.label}
+            </h2>
             <p className="text-xs text-muted-foreground">
+              {ranked ? "Ranked for you · " : ""}
               {lastFetched ? `Updated ${formatRelativeTime(lastFetched)}` : "Not refreshed yet"}
             </p>
           </div>
@@ -186,15 +199,17 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
         </Tabs>
 
         <div className="flex items-center gap-1">
-          <Select value={sort} onValueChange={(v) => setSort(v as "newest" | "oldest")}>
-            <SelectTrigger className="h-8 w-[110px] text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="newest">Newest</SelectItem>
-              <SelectItem value="oldest">Oldest</SelectItem>
-            </SelectContent>
-          </Select>
+          {!ranked && (
+            <Select value={sort} onValueChange={(v) => setSort(v as "newest" | "oldest")}>
+              <SelectTrigger className="h-8 w-[92px] text-xs sm:w-[110px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest</SelectItem>
+                <SelectItem value="oldest">Oldest</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -202,33 +217,35 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
             onClick={handleMarkAllRead}
             disabled={markingAllRead || articles.length === 0}
           >
-            <CheckCheck className="h-3.5 w-3.5" /> Mark all read
+            <CheckCheck className="h-3.5 w-3.5" />
+            <span className="max-sm:sr-only">Mark all read</span>
           </Button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin">
         {isLoading ? (
           <ArticleSkeletonList />
         ) : articles.length === 0 ? (
           <EmptyState search={search} view={view.type} onAddFeed={onAddFeed} />
         ) : (
           <>
-            {articles.map((article) => {
+            {articles.map((article, index) => {
               const dateLabel = formatDateSeparator(article.publishedAt);
-              const showSeparator = dateLabel !== lastDateLabel;
+              const showSeparator = !ranked && dateLabel !== lastDateLabel;
               lastDateLabel = dateLabel;
 
               return (
                 <React.Fragment key={article.id}>
                   {showSeparator && (
-                    <div className="sticky top-0 z-10 border-b bg-muted/90 px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
+                    <div className="sticky top-0 z-10 border-b bg-background/90 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">
                       {dateLabel}
                     </div>
                   )}
                   <ArticleCard
                     article={article}
                     active={article.id === selectedArticleId}
+                    variant={ranked && index === 0 && article.imageUrl ? "hero" : "default"}
                     searchQuery={search}
                     onClick={() => handleSelect(article)}
                     onToggleSave={() => handleToggleSave(article)}
@@ -245,7 +262,8 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
 
             {!hasMore && total > 0 && (
               <p className="py-4 text-center text-xs text-muted-foreground">
-                You&rsquo;re all caught up — {total} article{total === 1 ? "" : "s"}
+                You&rsquo;re all caught up — {total} article
+                {total === 1 ? "" : "s"}
               </p>
             )}
           </>

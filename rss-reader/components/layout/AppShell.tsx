@@ -11,6 +11,8 @@ import { ManageCategoriesDialog } from "@/components/dialogs/ManageCategoriesDia
 import { KeyboardShortcutsDialog } from "@/components/dialogs/KeyboardShortcutsDialog";
 import { ImportOpmlDialog } from "@/components/dialogs/ImportOPMLDialog";
 import { ContentFiltersDialog } from "@/components/dialogs/ContentFiltersDialog";
+import { BottomTabBar } from "@/components/layout/BottomTabBar";
+import { SettingsPanel } from "@/components/layout/SettingsPanel";
 import { ReaderStateProvider, useReaderState } from "@/lib/hooks/useReaderState";
 import { refreshFeeds, refreshToastMessage, useAutoRefresh } from "@/lib/hooks/useFeeds";
 import { useSWRConfig } from "swr";
@@ -78,30 +80,47 @@ function AppShellInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshing]);
 
+  const dialogActions = {
+    onAddFeed: () => setAddFeedOpen(true),
+    onManageCategories: () => setManageCategoriesOpen(true),
+    onContentFilters: () => setFiltersOpen(true),
+    onImportOpml: () => setImportOpmlOpen(true),
+    onShowShortcuts: () => setShortcutsOpen(true),
+  };
+
   return (
-    <div className="flex h-dvh w-full overflow-hidden bg-background">
-      <div className={cn("h-full w-full shrink-0 md:w-[240px]", mobilePane !== "sidebar" && "hidden md:block")}>
-        <Sidebar
-          onAddFeed={() => setAddFeedOpen(true)}
-          onManageCategories={() => setManageCategoriesOpen(true)}
-          onContentFilters={() => setFiltersOpen(true)}
-          onImportOpml={() => setImportOpmlOpen(true)}
-          onShowShortcuts={() => setShortcutsOpen(true)}
-        />
-      </div>
+    <div className="flex h-dvh w-full flex-col overflow-hidden bg-background">
+      <div className="flex min-h-0 flex-1">
+        <div className={cn("h-full w-full shrink-0 md:w-[260px]", mobilePane !== "sidebar" && "hidden md:block")}>
+          <Sidebar {...dialogActions} />
+        </div>
 
-      <div
-        className={cn(
-          "h-full w-full shrink-0 border-r md:w-[380px]",
-          mobilePane !== "list" && "hidden md:block"
+        <div
+          className={cn(
+            "h-full w-full shrink-0 md:w-[400px] md:border-r",
+            mobilePane !== "list" && "hidden md:block"
+          )}
+        >
+          <ArticleList onAddFeed={dialogActions.onAddFeed} />
+        </div>
+
+        <div
+          className={cn(
+            "h-full min-w-0 flex-1",
+            mobilePane === "reader" ? "animate-pane-in md:animate-none" : "hidden md:block"
+          )}
+        >
+          <ArticleReader />
+        </div>
+
+        {mobilePane === "settings" && (
+          <div className="h-full w-full md:hidden">
+            <SettingsPanel {...dialogActions} />
+          </div>
         )}
-      >
-        <ArticleList onAddFeed={() => setAddFeedOpen(true)} />
       </div>
 
-      <div className={cn("h-full min-w-0 flex-1", mobilePane !== "reader" && "hidden md:block")}>
-        <ArticleReader />
-      </div>
+      {mobilePane !== "reader" && <BottomTabBar />}
 
       <AddFeedDialog open={addFeedOpen} onOpenChange={setAddFeedOpen} />
       <ManageCategoriesDialog open={manageCategoriesOpen} onOpenChange={setManageCategoriesOpen} />

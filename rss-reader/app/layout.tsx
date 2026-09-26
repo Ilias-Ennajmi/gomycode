@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Providers } from "@/components/providers";
 import "./globals.css";
@@ -16,7 +16,28 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: "RSS Reader",
-  description: "A clean, fast, premium RSS reader.",
+  description: "Your feeds, YouTube channels, and newsletters in one calm place.",
+  applicationName: "Reader",
+  icons: {
+    icon: [{ url: "/icons/icon.svg", type: "image/svg+xml" }],
+    apple: "/icons/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Reader",
+    statusBarStyle: "default",
+  },
+  formatDetection: { telephone: false },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F8F3EC" },
+    { media: "(prefers-color-scheme: dark)", color: "#15120F" },
+  ],
 };
 
 export default function RootLayout({

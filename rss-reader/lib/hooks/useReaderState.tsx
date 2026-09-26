@@ -3,7 +3,7 @@
 import * as React from "react";
 import type { ArticleFilter, ArticleListParams, ArticleSort } from "@/lib/types";
 
-export type ViewType = "all" | "today" | "saved" | "feed" | "category";
+export type ViewType = "foryou" | "all" | "today" | "saved" | "feed" | "category";
 
 export interface ViewState {
   type: ViewType;
@@ -11,7 +11,7 @@ export interface ViewState {
   label: string;
 }
 
-export type MobilePane = "sidebar" | "list" | "reader";
+export type MobilePane = "sidebar" | "list" | "reader" | "settings";
 
 interface ReaderStateValue {
   view: ViewState;
@@ -29,7 +29,7 @@ interface ReaderStateValue {
   listParams: ArticleListParams;
 }
 
-const DEFAULT_VIEW: ViewState = { type: "all", label: "All Articles" };
+const DEFAULT_VIEW: ViewState = { type: "foryou", label: "For You" };
 
 const ReaderStateContext = React.createContext<ReaderStateValue | null>(null);
 
@@ -39,7 +39,7 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
   const [filterTab, setFilterTab] = React.useState<ArticleFilter>("all");
   const [sort, setSort] = React.useState<ArticleSort>("newest");
   const [search, setSearch] = React.useState("");
-  const [mobilePane, setMobilePane] = React.useState<MobilePane>("sidebar");
+  const [mobilePane, setMobilePane] = React.useState<MobilePane>("list");
 
   const setView = React.useCallback((next: ViewState) => {
     setViewState(next);
@@ -50,6 +50,7 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
 
   const listParams = React.useMemo<ArticleListParams>(() => {
     const params: ArticleListParams = {};
+    if (view.type === "foryou") params.view = "foryou";
     if (view.type === "feed") params.feedId = view.id;
     if (view.type === "category") params.categoryId = view.id;
     if (view.type === "today") params.today = true;

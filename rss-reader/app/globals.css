@@ -2,67 +2,69 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Warm editorial palette: paper and ink in light mode, espresso in dark.
+   The accent is dark enough for white text to meet WCAG AA. */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222 20% 12%;
+    --background: 37 45% 95%;
+    --foreground: 28 27% 11%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 20% 12%;
+    --card: 40 60% 99%;
+    --card-foreground: 28 27% 11%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 20% 12%;
+    --popover: 40 60% 99%;
+    --popover-foreground: 28 27% 11%;
 
-    --primary: 243 75% 59%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 24 74% 41%;
+    --primary-foreground: 40 60% 99%;
 
-    --secondary: 220 20% 96%;
-    --secondary-foreground: 222 20% 12%;
+    --secondary: 36 36% 90%;
+    --secondary-foreground: 28 27% 11%;
 
-    --muted: 220 20% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 36 36% 90%;
+    --muted-foreground: 29 14% 40%;
 
-    --accent: 243 75% 96%;
-    --accent-foreground: 243 75% 40%;
+    --accent: 34 50% 89%;
+    --accent-foreground: 25 74% 30%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 68% 46%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 16% 91%;
-    --input: 220 16% 88%;
-    --ring: 243 75% 59%;
+    --border: 36 33% 85%;
+    --input: 36 30% 82%;
+    --ring: 24 74% 41%;
 
-    --radius: 0.65rem;
+    --radius: 0.75rem;
   }
 
   .dark {
-    --background: 228 24% 7%;
-    --foreground: 214 32% 91%;
+    --background: 30 18% 7%;
+    --foreground: 34 38% 90%;
 
-    --card: 222 20% 12%;
-    --card-foreground: 214 32% 91%;
+    --card: 30 20% 10%;
+    --card-foreground: 34 38% 90%;
 
-    --popover: 222 20% 12%;
-    --popover-foreground: 214 32% 91%;
+    --popover: 30 20% 11%;
+    --popover-foreground: 34 38% 90%;
 
-    --primary: 243 82% 70%;
-    --primary-foreground: 228 24% 7%;
+    --primary: 27 78% 60%;
+    --primary-foreground: 28 40% 7%;
 
-    --secondary: 222 18% 16%;
-    --secondary-foreground: 214 32% 91%;
+    --secondary: 30 19% 14%;
+    --secondary-foreground: 34 38% 90%;
 
-    --muted: 222 18% 16%;
-    --muted-foreground: 220 12% 63%;
+    --muted: 30 19% 14%;
+    --muted-foreground: 32 15% 62%;
 
-    --accent: 243 40% 20%;
-    --accent-foreground: 235 100% 85%;
+    --accent: 29 29% 17%;
+    --accent-foreground: 27 83% 72%;
 
     --destructive: 0 63% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 222 16% 20%;
-    --input: 222 16% 20%;
-    --ring: 243 82% 70%;
+    --border: 28 19% 16%;
+    --input: 28 19% 20%;
+    --ring: 27 78% 60%;
   }
 }
 
@@ -70,15 +72,28 @@
   * {
     @apply border-border;
   }
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
   body {
     @apply bg-background text-foreground;
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    overscroll-behavior-y: none;
+    font-feature-settings: "cv11", "ss01";
   }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
   }
 
   .scrollbar-thin {
@@ -95,6 +110,12 @@
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;
   }
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 
   .line-clamp-2 {
     display: -webkit-box;
@@ -102,6 +123,27 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-pane-in {
+  animation: slide-in-right 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 button,
@@ -110,4 +152,13 @@ a,
   transition-property: background-color, border-color, color, box-shadow, transform, opacity;
   transition-duration: 150ms;
   transition-timing-function: ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

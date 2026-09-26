@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Inbox, Moon, Search, Star, Sun, SunMoon, X } from "lucide-react";
+import { CalendarDays, Inbox, Moon, Search, Sparkles, Star, Sun, SunMoon, X } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ export function Sidebar({
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
 
-  const { view, setView, search, setSearch } = useReaderState();
+  const { view, setView, search, setSearch, setMobilePane } = useReaderState();
   const { feeds, isLoading: feedsLoading, mutate: mutateFeeds } = useFeeds();
   const { categories, isLoading: categoriesLoading, mutate: mutateCategories } =
     useCategories();
@@ -68,7 +68,7 @@ export function Sidebar({
   }
 
   return (
-    <aside className="flex h-full w-full flex-col bg-background md:w-[240px] md:border-r">
+    <aside className="flex h-full w-full flex-col bg-background md:border-r">
       <div className="flex items-center gap-2 border-b p-3">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -76,6 +76,13 @@ export function Sidebar({
             id="sidebar-search"
             value={searchDraft}
             onChange={(e) => setSearchDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              setSearch(searchDraft);
+              setMobilePane("list");
+              e.currentTarget.blur();
+            }}
+            enterKeyHint="search"
             placeholder="Search articles…"
             className="h-8 pl-8 pr-7"
           />
@@ -110,6 +117,13 @@ export function Sidebar({
       <div className="flex-1 space-y-4 overflow-y-auto p-3 scrollbar-thin">
         <div className="space-y-0.5">
           <NavItem
+            icon={<Sparkles className="h-4 w-4" />}
+            label="For You"
+            className="max-md:hidden"
+            active={view.type === "foryou"}
+            onClick={() => setView({ type: "foryou", label: "For You" })}
+          />
+          <NavItem
             icon={<Inbox className="h-4 w-4" />}
             label="All"
             count={totalUnread}
@@ -117,7 +131,7 @@ export function Sidebar({
             onClick={() => setView({ type: "all", label: "All Articles" })}
           />
           <NavItem
-            icon={<span className="text-sm leading-none">📅</span>}
+            icon={<CalendarDays className="h-4 w-4" />}
             label="Today"
             count={todayCount}
             active={view.type === "today"}
@@ -126,6 +140,7 @@ export function Sidebar({
           <NavItem
             icon={<Star className="h-4 w-4" />}
             label="Saved"
+            className="max-md:hidden"
             count={savedCount}
             active={view.type === "saved"}
             onClick={() => setView({ type: "saved", label: "Saved" })}

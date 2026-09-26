@@ -9,10 +9,11 @@ interface NavItemProps {
   label: string;
   count?: number;
   active?: boolean;
+  className?: string;
   onClick: () => void;
 }
 
-export function NavItem({ icon, label, count, active, onClick }: NavItemProps) {
+export function NavItem({ icon, label, count, active, className, onClick }: NavItemProps) {
   return (
     <button
       type="button"
@@ -21,7 +22,8 @@ export function NavItem({ icon, label, count, active, onClick }: NavItemProps) {
         "group flex w-full items-center gap-2.5 rounded-md border-l-2 border-transparent px-2.5 py-1.5 text-sm transition-colors",
         active
           ? "border-primary bg-accent font-medium text-accent-foreground"
-          : "text-foreground/80 hover:bg-accent/60 hover:text-foreground"
+          : "text-foreground/80 hover:bg-accent/60 hover:text-foreground",
+        className
       )}
     >
       <span className={cn("shrink-0", active ? "text-primary" : "text-muted-foreground")}>

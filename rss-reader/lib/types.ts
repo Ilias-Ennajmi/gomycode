@@ -58,6 +58,7 @@ export interface ArticleSummary {
   isRead: boolean;
   isSaved: boolean;
   isVideo: boolean;
+  boosted?: boolean;
   readAt: string | null;
   savedAt: string | null;
   createdAt: string;
@@ -74,6 +75,7 @@ export type ArticleFilter ="all" | "unread" | "saved";
 export type ArticleSort = "newest" | "oldest";
 
 export interface ArticleListParams {
+  view?: "foryou";
   feedId?: string;
   categoryId?: string;
   saved?: boolean;

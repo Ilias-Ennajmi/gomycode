@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, Play } from "lucide-react";
+import { Bookmark, Play, TrendingUp } from "lucide-react";
 import { cn, formatRelativeTime, readingTime, stripHtml } from "@/lib/utils";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { Highlight } from "@/components/shared/Highlight";
@@ -9,6 +9,7 @@ import type { ArticleSummary } from "@/lib/types";
 interface ArticleCardProps {
   article: ArticleSummary;
   active: boolean;
+  variant?: "default" | "hero";
   searchQuery?: string;
   onClick: () => void;
   onToggleSave: () => void;
@@ -17,11 +18,13 @@ interface ArticleCardProps {
 export function ArticleCard({
   article,
   active,
+  variant = "default",
   searchQuery,
   onClick,
   onToggleSave,
 }: ArticleCardProps) {
   const summary = article.summary || stripHtml(article.content).slice(0, 200);
+  const largeMedia = article.imageUrl && (article.isVideo || variant === "hero");
 
   return (
     <div
@@ -35,59 +38,87 @@ export function ArticleCard({
         }
       }}
       className={cn(
-        "group relative flex w-full cursor-pointer gap-3 border-b border-border/70 p-3 text-left transition-colors",
-        active ? "border-l-2 border-l-primary bg-accent/60" : "border-l-2 border-l-transparent hover:bg-accent/30",
-        article.isRead ? "opacity-60" : "bg-background"
+        "group relative flex w-full cursor-pointer gap-3 border-b border-border/70 px-4 py-3.5 text-left",
+        active
+          ? "bg-accent/70 shadow-[inset_3px_0_0_hsl(var(--primary))]"
+          : "hover:bg-accent/40"
       )}
     >
-      <div className={cn("min-w-0 flex-1 space-y-1", article.isVideo && "space-y-2")}>
-        {article.isVideo && article.imageUrl && (
-          <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted">
+      <div className={cn("min-w-0 flex-1 space-y-1.5", largeMedia && "space-y-2.5")}>
+        {largeMedia && (
+          <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-muted">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={article.imageUrl}
+              src={article.imageUrl!}
               alt=""
-              loading="lazy"
-              className="h-full w-full object-cover"
+              loading={variant === "hero" ? "eager" : "lazy"}
+              className={cn("h-full w-full object-cover", article.isRead && "opacity-70")}
+              onError={(e) => {
+                (e.currentTarget.parentElement as HTMLElement).style.display = "none";
+              }}
             />
-            <span className="absolute inset-0 flex items-center justify-center">
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white shadow-lg backdrop-blur-sm">
-                <Play className="ml-0.5 h-5 w-5 fill-current" />
+            {article.isVideo && (
+              <span className="absolute inset-0 flex items-center justify-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-white shadow-lg backdrop-blur-sm">
+                  <Play className="ml-0.5 h-5 w-5 fill-current" />
+                </span>
               </span>
-            </span>
+            )}
           </div>
         )}
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+
+        <div className={cn("flex items-center gap-1.5 text-xs text-muted-foreground", !largeMedia && "pr-7")}>
+          {!article.isRead && (
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-label="Unread" />
+          )}
           <FeedFavicon title={article.feed.title} faviconUrl={article.feed.faviconUrl} size={14} />
-          <span className="truncate">{article.feed.title}</span>
+          <span className="truncate font-medium">{article.feed.title}</span>
+          {article.boosted && (
+            <span className="ml-auto inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+              <TrendingUp className="h-3 w-3" /> Boosted
+            </span>
+          )}
         </div>
+
         <h3
           className={cn(
-            "line-clamp-2 text-sm leading-snug",
-            article.isRead ? "font-normal text-foreground/70" : "font-semibold text-foreground"
+            "font-serif leading-snug",
+            variant === "hero" ? "line-clamp-3 text-xl" : "line-clamp-2 text-[15px]",
+            article.isRead ? "font-normal text-muted-foreground" : "font-semibold text-foreground"
           )}
         >
           <Highlight text={article.title} query={searchQuery} />
         </h3>
+
         {summary && (
-          <p className="line-clamp-2 text-xs text-muted-foreground">
+          <p
+            className={cn(
+              "text-[13px] leading-relaxed text-muted-foreground",
+              variant === "hero" ? "line-clamp-3" : "line-clamp-2",
+              article.isRead && "opacity-80"
+            )}
+          >
             <Highlight text={summary} query={searchQuery} />
           </p>
         )}
-        <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-muted-foreground">
+
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span>{formatRelativeTime(article.publishedAt)}</span>
-          <span>·</span>
+          <span aria-hidden>·</span>
           <span>{article.isVideo ? "Video" : readingTime(article.content || article.summary)}</span>
         </div>
       </div>
 
-      {article.imageUrl && !article.isVideo && (
+      {article.imageUrl && !largeMedia && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={article.imageUrl}
           alt=""
           loading="lazy"
-          className="h-[60px] w-[80px] shrink-0 rounded-lg object-cover"
+          className={cn(
+            "mt-5 h-[68px] w-[88px] shrink-0 rounded-lg object-cover",
+            article.isRead && "opacity-70"
+          )}
           onError={(e) => {
             (e.currentTarget as HTMLImageElement).style.display = "none";
           }}
@@ -101,12 +132,13 @@ export function ArticleCard({
           onToggleSave();
         }}
         className={cn(
-          "absolute right-2 top-2 rounded-full bg-background/90 p-1.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:bg-accent",
-          article.isSaved && "opacity-100 text-primary"
+          "absolute right-2 top-2 rounded-full p-2 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100",
+          largeMedia && "right-6 top-5 bg-background/85 shadow-sm backdrop-blur",
+          article.isSaved && "text-primary opacity-100"
         )}
         aria-label={article.isSaved ? "Remove from saved" : "Save article"}
       >
-        <Bookmark className={cn("h-3.5 w-3.5", article.isSaved && "fill-current")} />
+        <Bookmark className={cn("h-4 w-4", article.isSaved && "fill-current")} />
       </button>
     </div>
   );

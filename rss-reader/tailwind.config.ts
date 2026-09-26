@@ -75,7 +75,15 @@ const config: Config = {
         "fade-in": "fade-in 150ms ease",
       },
       fontFamily: {
-        serif: ["Georgia", "Cambria", "Times New Roman", "Times", "serif"],
+        serif: [
+          "Iowan Old Style",
+          "Charter",
+          "Palatino Linotype",
+          "Georgia",
+          "Cambria",
+          "Times New Roman",
+          "serif",
+        ],
       },
     },
   },

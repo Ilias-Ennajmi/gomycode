@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ArrowLeft, BookOpen } from "lucide-react";
+import { Bookmark, BookOpen, Check, ChevronLeft, ExternalLink, Share } from "lucide-react";
+import { shareLink } from "@/lib/share";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ArticleHeader } from "@/components/articles/ArticleHeader";
@@ -11,7 +13,7 @@ import { useArticles, toggleArticleRead, toggleArticleSaved } from "@/lib/hooks/
 import { useReadingProgress } from "@/lib/hooks/useReadingProgress";
 
 export function ArticleReader() {
-  const { selectedArticleId, setMobilePane, listParams, sort } = useReaderState();
+  const { view, selectedArticleId, setMobilePane, listParams, sort } = useReaderState();
   const { articles, mutate } = useArticles(listParams, sort);
 
   const article = articles.find((a) => a.id === selectedArticleId) ?? null;
@@ -48,6 +50,11 @@ export function ArticleReader() {
     }
   }
 
+  // Skip the hero when the body already opens with the same picture.
+  const showHero = Boolean(
+    article?.imageUrl && !article.isVideo && !article.content?.includes(article.imageUrl)
+  );
+
   if (!article) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center text-muted-foreground">
@@ -66,14 +73,65 @@ export function ArticleReader() {
         />
       </div>
 
-      <div className="flex items-center border-b p-2 md:hidden">
-        <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => setMobilePane("list")}>
-          <ArrowLeft className="h-4 w-4" /> Back
+      <div className="flex items-center justify-between border-b px-1 py-1 md:hidden">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-10 min-w-0 gap-0.5 pl-1.5 text-primary"
+          onClick={() => setMobilePane("list")}
+        >
+          <ChevronLeft className="h-5 w-5 shrink-0" />
+          <span className="max-w-[40vw] truncate">{view.label}</span>
         </Button>
+        <div className="flex items-center">
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn("h-10 w-10", article.isRead && "text-primary")}
+            onClick={handleToggleRead}
+            aria-label={article.isRead ? "Mark unread" : "Mark read"}
+          >
+            <Check className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn("h-10 w-10", article.isSaved && "text-primary")}
+            onClick={handleToggleSave}
+            aria-label={article.isSaved ? "Remove from saved" : "Save article"}
+          >
+            <Bookmark className={cn("h-5 w-5", article.isSaved && "fill-current")} />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-10 w-10" asChild>
+            <a href={article.link} target="_blank" rel="noopener noreferrer" aria-label="Open original">
+              <ExternalLink className="h-5 w-5" />
+            </a>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10"
+            onClick={() => shareLink(article.title, article.link)}
+            aria-label="Share"
+          >
+            <Share className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
       <div ref={containerRef} className="flex-1 overflow-y-auto scrollbar-thin">
-        <div className="mx-auto max-w-[680px] px-6 py-8">
+        <div className="mx-auto max-w-[680px] px-5 py-6 md:px-8 md:py-10">
+          {showHero && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={article.imageUrl!}
+              alt=""
+              className="mb-6 aspect-[16/9] w-full rounded-2xl object-cover shadow-sm"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+              }}
+            />
+          )}
           <ArticleHeader
             article={article}
             onToggleSave={handleToggleSave}

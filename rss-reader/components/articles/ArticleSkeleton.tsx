@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function ArticleSkeleton() {
   return (
-    <div className="flex gap-3 border-b p-3">
+    <div className="flex gap-3 border-b px-4 py-3.5">
       <div className="min-w-0 flex-1 space-y-2">
         <Skeleton className="h-3 w-24" />
         <Skeleton className="h-4 w-full" />
