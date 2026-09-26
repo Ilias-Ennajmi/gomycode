@@ -3,9 +3,11 @@ generator client {
 }
 
 datasource db {
-  // SQLite for local dev. Swap to "postgresql" + a Neon DATABASE_URL for prod.
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Supabase: DATABASE_URL is the transaction pooler, DIRECT_URL the session
+  // pooler used for migrations. Locally both can point at the same database.
+  directUrl = env("DIRECT_URL")
 }
 
 model Category {

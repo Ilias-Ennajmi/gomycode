@@ -2,11 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
-const isPostgres = (process.env.DATABASE_URL || "").startsWith("postgres");
-const stringFilterMode = isPostgres
-  ? ({ mode: "insensitive" } as const)
-  : ({} as const);
-
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -34,8 +29,8 @@ export async function GET(request: NextRequest) {
     }
     if (search) {
       where.OR = [
-        { title: { contains: search, ...stringFilterMode } },
-        { summary: { contains: search, ...stringFilterMode } },
+        { title: { contains: search, mode: "insensitive" } },
+        { summary: { contains: search, mode: "insensitive" } },
       ];
     }
 

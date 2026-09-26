@@ -7,6 +7,10 @@ import { Toaster } from "@/components/ui/sonner";
 
 async function fetcher(url: string) {
   const res = await fetch(url);
+  if (res.status === 401) {
+    window.location.href = "/login";
+    throw new Error("Not signed in");
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || "Request failed");

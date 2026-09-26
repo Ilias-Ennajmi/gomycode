@@ -19,7 +19,7 @@ import { ArticleCard } from "@/components/articles/ArticleCard";
 import { ArticleSkeletonList } from "@/components/articles/ArticleSkeleton";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import { useArticles, toggleArticleSaved } from "@/lib/hooks/useArticles";
-import { markAllRead, refreshFeeds, useFeeds } from "@/lib/hooks/useFeeds";
+import { markAllRead, refreshFeeds, refreshToastMessage, useFeeds } from "@/lib/hooks/useFeeds";
 import type { ArticleFilter, ArticleSummary } from "@/lib/types";
 
 interface ArticleListProps {
@@ -68,11 +68,7 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
       const result = await refreshFeeds();
       globalMutate(() => true, undefined, { revalidate: true });
       mutate();
-      if (result.errors.length > 0) {
-        toast.error(`Refreshed with ${result.errors.length} error(s)`);
-      } else {
-        toast.success(`Refreshed — feeds are up to date`);
-      }
+      toast.success(refreshToastMessage(result));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not refresh feeds");
     } finally {

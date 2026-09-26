@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchAndParseFeed, discoverFeedUrl } from "@/lib/rss";
 import { discoverFaviconUrl } from "@/lib/favicon";
+import { insertNewArticles } from "@/lib/ingest";
 
 export async function GET() {
   try {
@@ -96,24 +97,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const uniqueArticles = Array.from(
-      new Map(parsed.articles.map((article) => [article.link, article])).values()
-    );
-
-    if (uniqueArticles.length > 0) {
-      await prisma.article.createMany({
-        data: uniqueArticles.map((article) => ({
-          feedId: feed.id,
-          title: article.title,
-          link: article.link,
-          summary: article.summary,
-          content: article.content,
-          imageUrl: article.imageUrl,
-          author: article.author,
-          publishedAt: article.publishedAt,
-        })),
-      });
-    }
+    await insertNewArticles(feed.id, parsed.articles);
 
     return NextResponse.json({ feed }, { status: 201 });
   } catch (error) {

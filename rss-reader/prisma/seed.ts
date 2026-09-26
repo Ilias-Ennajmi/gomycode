@@ -55,13 +55,10 @@ async function main() {
         },
       });
 
-      const uniqueArticles = Array.from(
-        new Map(parsed.articles.map((article) => [article.link, article])).values()
-      );
-
-      if (uniqueArticles.length > 0) {
+      if (parsed.articles.length > 0) {
         await prisma.article.createMany({
-          data: uniqueArticles.map((article) => ({
+          skipDuplicates: true,
+          data: parsed.articles.map((article) => ({
             feedId: feed.id,
             title: article.title,
             link: article.link,

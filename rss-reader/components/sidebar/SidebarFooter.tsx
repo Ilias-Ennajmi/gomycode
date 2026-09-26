@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FolderCog, Keyboard, Plus, Upload } from "lucide-react";
+import { Download, FolderCog, Keyboard, LogOut, Plus, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
@@ -37,9 +37,17 @@ export function SidebarFooter({
         <IconAction label="Keyboard shortcuts" onClick={onShowShortcuts}>
           <Keyboard className="h-4 w-4" />
         </IconAction>
+        <IconAction label="Sign out" onClick={signOut}>
+          <LogOut className="h-4 w-4" />
+        </IconAction>
       </div>
     </div>
   );
+}
+
+async function signOut() {
+  await fetch("/api/auth/logout", { method: "POST" });
+  window.location.href = "/login";
 }
 
 function IconAction({

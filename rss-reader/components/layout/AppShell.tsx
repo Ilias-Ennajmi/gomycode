@@ -11,7 +11,7 @@ import { ManageCategoriesDialog } from "@/components/dialogs/ManageCategoriesDia
 import { KeyboardShortcutsDialog } from "@/components/dialogs/KeyboardShortcutsDialog";
 import { ImportOpmlDialog } from "@/components/dialogs/ImportOPMLDialog";
 import { ReaderStateProvider, useReaderState } from "@/lib/hooks/useReaderState";
-import { refreshFeeds } from "@/lib/hooks/useFeeds";
+import { refreshFeeds, refreshToastMessage } from "@/lib/hooks/useFeeds";
 import { useSWRConfig } from "swr";
 
 export function AppShell() {
@@ -55,11 +55,7 @@ function AppShellInner() {
           refreshFeeds()
             .then((result) => {
               globalMutate(() => true, undefined, { revalidate: true });
-              toast.success(
-                result.errors.length > 0
-                  ? `Refreshed with ${result.errors.length} error(s)`
-                  : "Refreshed — feeds are up to date"
-              );
+              toast.success(refreshToastMessage(result));
             })
             .catch((error) => toast.error(error instanceof Error ? error.message : "Could not refresh feeds"))
             .finally(() => setRefreshing(false));

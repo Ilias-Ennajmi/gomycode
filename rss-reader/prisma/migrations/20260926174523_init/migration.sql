@@ -1,17 +1,19 @@
 -- CreateTable
 CREATE TABLE "Category" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "color" TEXT NOT NULL DEFAULT '#6366f1',
     "icon" TEXT,
     "order" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Category_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Feed" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "url" TEXT NOT NULL,
     "siteUrl" TEXT,
@@ -19,16 +21,17 @@ CREATE TABLE "Feed" (
     "faviconUrl" TEXT,
     "coverUrl" TEXT,
     "categoryId" TEXT,
-    "lastFetched" DATETIME,
+    "lastFetched" TIMESTAMP(3),
     "errorCount" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    CONSTRAINT "Feed_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Feed_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Article" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" TEXT NOT NULL,
     "feedId" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "link" TEXT NOT NULL,
@@ -36,19 +39,22 @@ CREATE TABLE "Article" (
     "content" TEXT,
     "imageUrl" TEXT,
     "author" TEXT,
-    "publishedAt" DATETIME NOT NULL,
+    "publishedAt" TIMESTAMP(3) NOT NULL,
     "isRead" BOOLEAN NOT NULL DEFAULT false,
     "isSaved" BOOLEAN NOT NULL DEFAULT false,
-    "readAt" DATETIME,
-    "savedAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "Article_feedId_fkey" FOREIGN KEY ("feedId") REFERENCES "Feed" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    "readAt" TIMESTAMP(3),
+    "savedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Article_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Setting" (
-    "key" TEXT NOT NULL PRIMARY KEY,
-    "value" TEXT NOT NULL
+    "key" TEXT NOT NULL,
+    "value" TEXT NOT NULL,
+
+    CONSTRAINT "Setting_pkey" PRIMARY KEY ("key")
 );
 
 -- CreateIndex
@@ -71,3 +77,9 @@ CREATE INDEX "Article_publishedAt_idx" ON "Article"("publishedAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Article_feedId_link_key" ON "Article"("feedId", "link");
+
+-- AddForeignKey
+ALTER TABLE "Feed" ADD CONSTRAINT "Feed_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Article" ADD CONSTRAINT "Article_feedId_fkey" FOREIGN KEY ("feedId") REFERENCES "Feed"("id") ON DELETE CASCADE ON UPDATE CASCADE;
