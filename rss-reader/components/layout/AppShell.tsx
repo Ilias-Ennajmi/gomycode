@@ -10,6 +10,7 @@ import { AddFeedDialog } from "@/components/dialogs/AddFeedDialog";
 import { ManageCategoriesDialog } from "@/components/dialogs/ManageCategoriesDialog";
 import { KeyboardShortcutsDialog } from "@/components/dialogs/KeyboardShortcutsDialog";
 import { ImportOpmlDialog } from "@/components/dialogs/ImportOPMLDialog";
+import { ContentFiltersDialog } from "@/components/dialogs/ContentFiltersDialog";
 import { ReaderStateProvider, useReaderState } from "@/lib/hooks/useReaderState";
 import { refreshFeeds, refreshToastMessage, useAutoRefresh } from "@/lib/hooks/useFeeds";
 import { useSWRConfig } from "swr";
@@ -30,6 +31,7 @@ function AppShellInner() {
   const [manageCategoriesOpen, setManageCategoriesOpen] = React.useState(false);
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
   const [importOpmlOpen, setImportOpmlOpen] = React.useState(false);
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
 
   useAutoRefresh((result) => {
@@ -82,6 +84,7 @@ function AppShellInner() {
         <Sidebar
           onAddFeed={() => setAddFeedOpen(true)}
           onManageCategories={() => setManageCategoriesOpen(true)}
+          onContentFilters={() => setFiltersOpen(true)}
           onImportOpml={() => setImportOpmlOpen(true)}
           onShowShortcuts={() => setShortcutsOpen(true)}
         />
@@ -104,6 +107,7 @@ function AppShellInner() {
       <ManageCategoriesDialog open={manageCategoriesOpen} onOpenChange={setManageCategoriesOpen} />
       <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       <ImportOpmlDialog open={importOpmlOpen} onOpenChange={setImportOpmlOpen} />
+      <ContentFiltersDialog open={filtersOpen} onOpenChange={setFiltersOpen} />
     </div>
   );
 }

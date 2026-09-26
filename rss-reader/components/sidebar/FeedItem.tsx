@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangle, CheckCheck, FolderInput, Pencil, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCheck, Eye, EyeOff, FolderInput, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import {
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { deleteFeed, markAllRead, updateFeed } from "@/lib/hooks/useFeeds";
+import { useFilters } from "@/lib/hooks/useFilters";
 import type { CategorySummary } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -28,6 +29,7 @@ interface FeedItemProps {
   faviconUrl?: string | null;
   unreadCount: number;
   errorCount: number;
+  muted: boolean;
   active: boolean;
   categories: CategorySummary[];
   onClick: () => void;
@@ -40,11 +42,29 @@ export function FeedItem({
   faviconUrl,
   unreadCount,
   errorCount,
+  muted,
   active,
   categories,
   onClick,
   onChanged,
 }: FeedItemProps) {
+  const { rules, addRule, removeRule } = useFilters();
+
+  async function handleToggleMute() {
+    try {
+      if (muted) {
+        const rule = rules.find((r) => r.action === "hide" && r.match === "feed" && r.value === id);
+        if (rule) await removeRule(rule.id);
+        toast.success(`Unmuted ${title}`);
+      } else {
+        await addRule({ action: "hide", match: "feed", value: id });
+        toast.success(`Muted ${title} — it won't appear in All or Today`);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update feed");
+    }
+  }
+
   const [renaming, setRenaming] = React.useState(false);
   const [draftTitle, setDraftTitle] = React.useState(title);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
@@ -110,7 +130,8 @@ export function FeedItem({
               "group flex w-full items-center gap-2.5 rounded-md border-l-2 border-transparent py-1.5 pl-6 pr-2.5 text-sm transition-colors",
               active
                 ? "border-primary bg-accent font-medium text-accent-foreground"
-                : "text-foreground/80 hover:bg-accent/60 hover:text-foreground"
+                : "text-foreground/80 hover:bg-accent/60 hover:text-foreground",
+              muted && !active && "opacity-50"
             )}
           >
             <FeedFavicon title={title} faviconUrl={faviconUrl} size={16} />
@@ -134,6 +155,7 @@ export function FeedItem({
             ) : (
               <span className="flex-1 truncate text-left">{title}</span>
             )}
+            {muted && <EyeOff className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Muted" />}
             {errorCount >= 5 && (
               <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-label="Feed is failing" />
             )}
@@ -176,6 +198,17 @@ export function FeedItem({
             </ContextMenuSub>
             <ContextMenuItem onSelect={handleMarkAllRead}>
               <CheckCheck className="mr-2 h-3.5 w-3.5" /> Mark all read
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={handleToggleMute}>
+              {muted ? (
+                <>
+                  <Eye className="mr-2 h-3.5 w-3.5" /> Unmute feed
+                </>
+              ) : (
+                <>
+                  <EyeOff className="mr-2 h-3.5 w-3.5" /> Mute feed
+                </>
+              )}
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem

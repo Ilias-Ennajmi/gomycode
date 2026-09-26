@@ -1,5 +1,9 @@
+export type FeedType = "rss" | "youtube" | "newsletter";
+
 export interface FeedSummary {
   id: string;
+  type: FeedType;
+  muted: boolean;
   title: string;
   url: string;
   siteUrl: string | null;
@@ -14,6 +18,8 @@ export interface FeedSummary {
 
 export interface CategoryFeedSummary {
   id: string;
+  type: FeedType;
+  muted: boolean;
   title: string;
   url: string;
   faviconUrl: string | null;
@@ -51,12 +57,20 @@ export interface ArticleSummary {
   publishedAt: string;
   isRead: boolean;
   isSaved: boolean;
+  isVideo: boolean;
   readAt: string | null;
   savedAt: string | null;
   createdAt: string;
 }
 
-export type ArticleFilter = "all" | "unread" | "saved";
+export interface FilterRuleSummary {
+  id: string;
+  action: "hide" | "boost";
+  match: "keyword" | "feed";
+  value: string;
+}
+
+export type ArticleFilter ="all" | "unread" | "saved";
 export type ArticleSort = "newest" | "oldest";
 
 export interface ArticleListParams {

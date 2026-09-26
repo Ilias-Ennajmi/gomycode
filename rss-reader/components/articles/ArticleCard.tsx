@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark } from "lucide-react";
+import { Bookmark, Play } from "lucide-react";
 import { cn, formatRelativeTime, readingTime, stripHtml } from "@/lib/utils";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { Highlight } from "@/components/shared/Highlight";
@@ -40,7 +40,23 @@ export function ArticleCard({
         article.isRead ? "opacity-60" : "bg-background"
       )}
     >
-      <div className="min-w-0 flex-1 space-y-1">
+      <div className={cn("min-w-0 flex-1 space-y-1", article.isVideo && "space-y-2")}>
+        {article.isVideo && article.imageUrl && (
+          <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={article.imageUrl}
+              alt=""
+              loading="lazy"
+              className="h-full w-full object-cover"
+            />
+            <span className="absolute inset-0 flex items-center justify-center">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white shadow-lg backdrop-blur-sm">
+                <Play className="ml-0.5 h-5 w-5 fill-current" />
+              </span>
+            </span>
+          </div>
+        )}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <FeedFavicon title={article.feed.title} faviconUrl={article.feed.faviconUrl} size={14} />
           <span className="truncate">{article.feed.title}</span>
@@ -61,11 +77,11 @@ export function ArticleCard({
         <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-muted-foreground">
           <span>{formatRelativeTime(article.publishedAt)}</span>
           <span>·</span>
-          <span>{readingTime(article.content || article.summary)}</span>
+          <span>{article.isVideo ? "Video" : readingTime(article.content || article.summary)}</span>
         </div>
       </div>
 
-      {article.imageUrl && (
+      {article.imageUrl && !article.isVideo && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={article.imageUrl}

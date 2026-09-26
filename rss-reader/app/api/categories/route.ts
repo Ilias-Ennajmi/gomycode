@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getFilterRules, hiddenKeywordClauses, mutedFeedIds } from "@/lib/filters";
 
 export async function GET() {
   try {
+    const rules = await getFilterRules();
+    const muted = mutedFeedIds(rules);
     const categories = await prisma.category.findMany({
       orderBy: { order: "asc" },
       include: {
@@ -10,7 +13,9 @@ export async function GET() {
           orderBy: { title: "asc" },
           include: {
             _count: {
-              select: { articles: { where: { isRead: false } } },
+              select: {
+                articles: { where: { isRead: false, AND: hiddenKeywordClauses(rules) } },
+              },
             },
           },
         },
@@ -25,13 +30,18 @@ export async function GET() {
       order: category.order,
       feeds: category.feeds.map((feed) => ({
         id: feed.id,
+        type: feed.type,
+        muted: muted.has(feed.id),
         title: feed.title,
         url: feed.url,
         faviconUrl: feed.faviconUrl,
         errorCount: feed.errorCount,
         unreadCount: feed._count.articles,
       })),
-      unreadCount: category.feeds.reduce((sum, feed) => sum + feed._count.articles, 0),
+      // Muted feeds are hidden from the category view, so they don't count here.
+      unreadCount: category.feeds
+        .filter((feed) => !muted.has(feed.id))
+        .reduce((sum, feed) => sum + feed._count.articles, 0),
     }));
 
     return NextResponse.json({ categories: result });

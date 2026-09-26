@@ -1,22 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { fetchAndParseFeed, discoverFeedUrl } from "@/lib/rss";
+import { fetchAndParseFeed } from "@/lib/rss";
+import { resolveSource, type ResolvedSource } from "@/lib/feed-source";
 import { discoverFaviconUrl } from "@/lib/favicon";
 import { insertNewArticles } from "@/lib/ingest";
+import { getFilterRules, hiddenKeywordClauses, mutedFeedIds } from "@/lib/filters";
 
 export async function GET() {
   try {
+    const rules = await getFilterRules();
+    const muted = mutedFeedIds(rules);
     const feeds = await prisma.feed.findMany({
       orderBy: { title: "asc" },
       include: {
         _count: {
-          select: { articles: { where: { isRead: false } } },
+          select: {
+            articles: { where: { isRead: false, AND: hiddenKeywordClauses(rules) } },
+          },
         },
       },
     });
 
     const result = feeds.map((feed) => ({
       id: feed.id,
+      type: feed.type,
+      muted: muted.has(feed.id),
       title: feed.title,
       url: feed.url,
       siteUrl: feed.siteUrl,
@@ -45,15 +53,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "URL is required" }, { status: 400 });
     }
 
-    let feedUrl: string;
+    let source: ResolvedSource;
     try {
-      feedUrl = await discoverFeedUrl(url);
+      source = await resolveSource(url);
     } catch {
       return NextResponse.json(
-        { error: "Could not find an RSS feed at this URL" },
+        { error: "Could not find a feed or YouTube channel at this URL" },
         { status: 422 }
       );
     }
+    const { feedUrl } = source;
 
     const existing = await prisma.feed.findUnique({ where: { url: feedUrl } });
     if (existing) {
@@ -70,12 +79,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let faviconUrl: string | undefined;
-    try {
-      faviconUrl = await discoverFaviconUrl(parsed.meta.siteUrl || feedUrl);
-    } catch {
-      faviconUrl = undefined;
-    }
+    const faviconUrl =
+      source.faviconUrl ??
+      (await discoverFaviconUrl(parsed.meta.siteUrl || feedUrl).catch(() => undefined));
 
     if (categoryId) {
       const category = await prisma.category.findUnique({ where: { id: categoryId } });
@@ -86,6 +92,7 @@ export async function POST(request: NextRequest) {
 
     const feed = await prisma.feed.create({
       data: {
+        type: source.type,
         title: parsed.meta.title,
         url: feedUrl,
         siteUrl: parsed.meta.siteUrl,

@@ -59,7 +59,7 @@ export function ArticleHeader({ article, onToggleSave, onToggleRead }: ArticleHe
         {article.author && <span aria-hidden>·</span>}
         <span>{publishedDate}</span>
         <span aria-hidden>·</span>
-        <span>{readingTime(article.content || article.summary)}</span>
+        <span>{article.isVideo ? "Video" : readingTime(article.content || article.summary)}</span>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

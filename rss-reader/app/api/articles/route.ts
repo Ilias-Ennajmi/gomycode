@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getFilterRules, hiddenArticleClauses } from "@/lib/filters";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,6 +36,9 @@ export async function GET(request: NextRequest) {
         { summary: { contains: search, mode: "insensitive" } },
       ];
     }
+
+    const hidden = hiddenArticleClauses(await getFilterRules(), feedId);
+    if (hidden.length > 0) where.AND = hidden;
 
     const [total, articles] = await Promise.all([
       prisma.article.count({ where }),

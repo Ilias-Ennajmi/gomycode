@@ -84,6 +84,7 @@ export function ArticleReader() {
               content={article.content}
               summary={article.summary}
               link={article.link}
+              isVideo={article.isVideo}
             />
           </div>
         </div>

@@ -15,6 +15,7 @@ export async function insertNewArticles(feedId: string, articles: ParsedArticle[
       imageUrl: article.imageUrl,
       author: article.author,
       publishedAt: article.publishedAt,
+      isVideo: article.isVideo ?? false,
     })),
     skipDuplicates: true,
     select: { id: true },

@@ -107,16 +107,16 @@ export function AddFeedDialog({ open, onOpenChange }: AddFeedDialogProps) {
         <DialogHeader>
           <DialogTitle>Add Feed</DialogTitle>
           <DialogDescription>
-            Paste an RSS feed URL or a website URL — we&rsquo;ll find the feed for you.
+            Paste a website, an RSS feed, or a YouTube channel — we&rsquo;ll find the feed for you.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="feed-url">Feed or site URL</Label>
+            <Label htmlFor="feed-url">URL</Label>
             <Input
               id="feed-url"
-              placeholder="https://example.com/feed.xml"
+              placeholder="Site, RSS feed, or YouTube channel URL"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               autoFocus

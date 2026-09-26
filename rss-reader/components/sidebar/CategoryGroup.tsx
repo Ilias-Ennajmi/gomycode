@@ -77,6 +77,7 @@ export function CategoryGroup({
                 faviconUrl={feed.faviconUrl}
                 unreadCount={feed.unreadCount}
                 errorCount={feed.errorCount}
+                muted={feed.muted}
                 active={activeView.type === "feed" && activeView.id === feed.id}
                 categories={categories}
                 onClick={() => onSelectFeed(feed.id, feed.title)}

@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateOpml, parseOpml } from "@/lib/opml";
-import { fetchAndParseFeed } from "@/lib/rss";
+import { fetchAndParseFeed, type ParsedFeed } from "@/lib/rss";
 import { discoverFaviconUrl } from "@/lib/favicon";
+import { feedTypeForUrl } from "@/lib/feed-source";
+import { insertNewArticles, mapWithConcurrency } from "@/lib/ingest";
+
+export const maxDuration = 60;
 
 export async function GET() {
   try {
@@ -48,67 +52,62 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No feeds found in OPML file" }, { status: 400 });
     }
 
-    const categoryCache = new Map<string, string>();
-    let imported = 0;
+    // Create categories up front, sequentially, so concurrent feed imports
+    // below never race to create the same one.
+    const categoryIds = new Map<string, string>();
+    const categoryNames = Array.from(
+      new Set(entries.map((e) => e.category).filter((c): c is string => Boolean(c)))
+    );
+    for (const name of categoryNames) {
+      const category =
+        (await prisma.category.findFirst({ where: { name } })) ??
+        (await prisma.category.create({ data: { name } }));
+      categoryIds.set(name, category.id);
+    }
+
+    const existingUrls = new Set(
+      (await prisma.feed.findMany({ select: { url: true } })).map((f) => f.url)
+    );
+    const toImport = entries.filter((entry) => !existingUrls.has(entry.xmlUrl));
     const errors: string[] = [];
 
-    for (const entry of entries) {
+    const results = await mapWithConcurrency(toImport, 6, async (entry) => {
       try {
-        const existing = await prisma.feed.findUnique({ where: { url: entry.xmlUrl } });
-        if (existing) continue;
-
-        let categoryId: string | undefined;
-        if (entry.category) {
-          if (categoryCache.has(entry.category)) {
-            categoryId = categoryCache.get(entry.category);
-          } else {
-            const category =
-              (await prisma.category.findFirst({ where: { name: entry.category } })) ??
-              (await prisma.category.create({ data: { name: entry.category } }));
-            categoryId = category.id;
-            categoryCache.set(entry.category, category.id);
-          }
-        }
-
-        let title = entry.title;
-        let siteUrl = entry.htmlUrl;
-        let description: string | undefined;
-        let coverUrl: string | undefined;
-
+        let parsed: ParsedFeed | null = null;
         try {
-          const parsed = await fetchAndParseFeed(entry.xmlUrl);
-          title = parsed.meta.title || title;
-          siteUrl = parsed.meta.siteUrl || siteUrl;
-          description = parsed.meta.description;
-          coverUrl = parsed.meta.coverUrl;
+          parsed = await fetchAndParseFeed(entry.xmlUrl);
         } catch {
           // Keep OPML-provided metadata if the feed can't be fetched right now.
         }
 
+        const siteUrl = parsed?.meta.siteUrl || entry.htmlUrl;
         const faviconUrl = await discoverFaviconUrl(siteUrl || entry.xmlUrl).catch(
           () => undefined
         );
 
-        await prisma.feed.create({
+        const feed = await prisma.feed.create({
           data: {
-            title,
+            type: feedTypeForUrl(entry.xmlUrl),
+            title: parsed?.meta.title || entry.title,
             url: entry.xmlUrl,
             siteUrl,
-            description,
-            coverUrl,
+            description: parsed?.meta.description,
+            coverUrl: parsed?.meta.coverUrl,
             faviconUrl,
-            categoryId,
-            lastFetched: new Date(),
+            categoryId: entry.category ? categoryIds.get(entry.category) : undefined,
+            lastFetched: parsed ? new Date() : null,
           },
         });
-        imported += 1;
+        if (parsed) await insertNewArticles(feed.id, parsed.articles);
+        return true;
       } catch (error) {
         console.error(`Failed to import feed ${entry.xmlUrl}`, error);
         errors.push(entry.title);
+        return false;
       }
-    }
+    });
 
-    return NextResponse.json({ imported, errors });
+    return NextResponse.json({ imported: results.filter(Boolean).length, errors });
   } catch (error) {
     console.error("POST /api/opml failed", error);
     return NextResponse.json({ error: "Failed to import OPML file" }, { status: 500 });

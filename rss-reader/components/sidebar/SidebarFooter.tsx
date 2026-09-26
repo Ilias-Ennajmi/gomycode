@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FolderCog, Keyboard, LogOut, Plus, Upload } from "lucide-react";
+import { Download, FolderCog, Keyboard, LogOut, Plus, SlidersHorizontal, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 interface SidebarFooterProps {
   onAddFeed: () => void;
   onManageCategories: () => void;
+  onContentFilters: () => void;
   onImportOpml: () => void;
   onShowShortcuts: () => void;
 }
@@ -15,6 +16,7 @@ interface SidebarFooterProps {
 export function SidebarFooter({
   onAddFeed,
   onManageCategories,
+  onContentFilters,
   onImportOpml,
   onShowShortcuts,
 }: SidebarFooterProps) {
@@ -27,6 +29,9 @@ export function SidebarFooter({
       <div className="flex items-center justify-around">
         <IconAction label="Manage categories" onClick={onManageCategories}>
           <FolderCog className="h-4 w-4" />
+        </IconAction>
+        <IconAction label="Content filters" onClick={onContentFilters}>
+          <SlidersHorizontal className="h-4 w-4" />
         </IconAction>
         <IconAction label="Import OPML" onClick={onImportOpml}>
           <Upload className="h-4 w-4" />

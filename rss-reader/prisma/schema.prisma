@@ -21,8 +21,15 @@ model Category {
   updatedAt DateTime @updatedAt
 }
 
+enum FeedType {
+  rss
+  youtube
+  newsletter
+}
+
 model Feed {
   id          String    @id @default(cuid())
+  type        FeedType  @default(rss)
   title       String
   url         String    @unique
   siteUrl     String?
@@ -53,6 +60,7 @@ model Article {
   publishedAt DateTime
   isRead      Boolean   @default(false)
   isSaved     Boolean   @default(false)
+  isVideo     Boolean   @default(false)
   readAt      DateTime?
   savedAt     DateTime?
   createdAt   DateTime  @default(now())
@@ -62,6 +70,27 @@ model Article {
   @@index([isRead])
   @@index([isSaved])
   @@index([publishedAt])
+}
+
+enum FilterAction {
+  hide
+  boost
+}
+
+enum FilterMatch {
+  keyword
+  feed
+}
+
+model FilterRule {
+  id        String       @id @default(cuid())
+  action    FilterAction
+  match     FilterMatch
+  // The keyword text, or the feed id when match = feed.
+  value     String
+  createdAt DateTime     @default(now())
+
+  @@unique([action, match, value])
 }
 
 model Setting {

@@ -1,4 +1,5 @@
 import Parser from "rss-parser";
+import { youTubeThumbnailUrl, youTubeVideoId } from "@/lib/youtube";
 
 type CustomFeed = {
   image?: { url?: string };
@@ -6,8 +7,11 @@ type CustomFeed = {
 
 type MediaNode = { $?: { url?: string; medium?: string } };
 
+type XmlText = string | string[] | { _?: string } | Array<{ _?: string }>;
+
 type CustomItem = {
   "content:encoded"?: string;
+  "media:group"?: { "media:description"?: XmlText };
   "media:content"?: MediaNode | MediaNode[];
   "media:thumbnail"?: { $?: { url?: string } };
   enclosure?: { url?: string; type?: string };
@@ -26,6 +30,7 @@ const parser = new Parser<CustomFeed, CustomItem>({
       ["content:encoded", "content:encoded"],
       ["media:content", "media:content"],
       ["media:thumbnail", "media:thumbnail"],
+      ["media:group", "media:group"],
       ["dc:creator", "dc:creator"],
     ],
   },
@@ -46,11 +51,18 @@ export interface ParsedArticle {
   imageUrl?: string;
   author?: string;
   publishedAt: Date;
+  isVideo?: boolean;
 }
 
 export interface ParsedFeed {
   meta: ParsedFeedMeta;
   articles: ParsedArticle[];
+}
+
+function xmlText(value: XmlText | undefined): string | undefined {
+  const first = Array.isArray(value) ? value[0] : value;
+  if (typeof first === "string") return first;
+  return first?._;
 }
 
 function firstImageFromHtml(html?: string): string | undefined {
@@ -88,19 +100,23 @@ export async function fetchAndParseFeed(url: string): Promise<ParsedFeed> {
   const articles: ParsedArticle[] = (feed.items || [])
     .filter((item) => item.link)
     .map((item) => {
-      const content = item["content:encoded"] || item.content || undefined;
-      const summary = item.contentSnippet || item.summary || undefined;
       const rawDate = item.isoDate || item.pubDate;
       const publishedAt = rawDate ? new Date(rawDate) : new Date();
+      const videoId = youTubeVideoId(item.link);
+      const content = videoId ? undefined : item["content:encoded"] || item.content || undefined;
+      const summary = videoId
+        ? xmlText(item["media:group"]?.["media:description"])
+        : item.contentSnippet || item.summary || undefined;
 
       return {
         title: item.title?.trim() || "Untitled",
         link: item.link as string,
         summary: summary ? summary.slice(0, 500) : undefined,
         content,
-        imageUrl: extractImageUrl(item),
+        imageUrl: videoId ? youTubeThumbnailUrl(videoId) : extractImageUrl(item),
         author: item.author || item["dc:creator"] || item.creator || undefined,
         publishedAt: isNaN(publishedAt.getTime()) ? new Date() : publishedAt,
+        isVideo: Boolean(videoId),
       };
     });
 

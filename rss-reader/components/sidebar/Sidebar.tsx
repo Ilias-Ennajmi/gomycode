@@ -18,6 +18,7 @@ import type { CategorySummary } from "@/lib/types";
 interface SidebarProps {
   onAddFeed: () => void;
   onManageCategories: () => void;
+  onContentFilters: () => void;
   onImportOpml: () => void;
   onShowShortcuts: () => void;
 }
@@ -25,6 +26,7 @@ interface SidebarProps {
 export function Sidebar({
   onAddFeed,
   onManageCategories,
+  onContentFilters,
   onImportOpml,
   onShowShortcuts,
 }: SidebarProps) {
@@ -44,7 +46,9 @@ export function Sidebar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchDraft]);
 
-  const totalUnread = feeds.reduce((sum, feed) => sum + feed.unreadCount, 0);
+  const totalUnread = feeds
+    .filter((feed) => !feed.muted)
+    .reduce((sum, feed) => sum + feed.unreadCount, 0);
   const todayCount = useArticleCount({ today: true });
   const savedCount = useArticleCount({ saved: true });
 
@@ -166,6 +170,7 @@ export function Sidebar({
                         faviconUrl={feed.faviconUrl}
                         unreadCount={feed.unreadCount}
                         errorCount={feed.errorCount}
+                        muted={feed.muted}
                         active={view.type === "feed" && view.id === feed.id}
                         categories={categories}
                         onClick={() => selectFeed(feed.id, feed.title)}
@@ -189,6 +194,7 @@ export function Sidebar({
       <SidebarFooter
         onAddFeed={onAddFeed}
         onManageCategories={onManageCategories}
+        onContentFilters={onContentFilters}
         onImportOpml={onImportOpml}
         onShowShortcuts={onShowShortcuts}
       />

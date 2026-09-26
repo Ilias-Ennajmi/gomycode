@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { discoverFeedUrl, fetchAndParseFeed } from "@/lib/rss";
+import { fetchAndParseFeed } from "@/lib/rss";
 import { discoverFaviconUrl } from "@/lib/favicon";
+import { resolveSource } from "@/lib/feed-source";
 
 export async function GET(request: NextRequest) {
   const url = request.nextUrl.searchParams.get("url");
@@ -10,14 +11,15 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const feedUrl = await discoverFeedUrl(url);
-    const parsed = await fetchAndParseFeed(feedUrl);
-    const faviconUrl = await discoverFaviconUrl(parsed.meta.siteUrl || feedUrl).catch(
-      () => undefined
-    );
+    const source = await resolveSource(url);
+    const parsed = await fetchAndParseFeed(source.feedUrl);
+    const faviconUrl =
+      source.faviconUrl ??
+      (await discoverFaviconUrl(parsed.meta.siteUrl || source.feedUrl).catch(() => undefined));
 
     return NextResponse.json({
-      feedUrl,
+      feedUrl: source.feedUrl,
+      type: source.type,
       title: parsed.meta.title,
       description: parsed.meta.description,
       siteUrl: parsed.meta.siteUrl,
@@ -26,7 +28,7 @@ export async function GET(request: NextRequest) {
     });
   } catch {
     return NextResponse.json(
-      { error: "Could not fetch feed — check URL" },
+      { error: "Could not find a feed or YouTube channel at this URL" },
       { status: 422 }
     );
   }
