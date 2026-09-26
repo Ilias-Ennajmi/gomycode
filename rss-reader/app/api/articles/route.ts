@@ -2,13 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { FeedType, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getFilterRules, hiddenArticleClauses } from "@/lib/filters";
-import { scoreArticle } from "@/lib/ranking";
+import { buildReadingProfile, scoreArticle } from "@/lib/ranking";
+import { ARTICLE_FEED_INCLUDE, serializeArticle } from "@/lib/articles";
 
 export const dynamic = "force-dynamic";
-
-const FEED_SELECT = {
-  feed: { select: { id: true, title: true, faviconUrl: true, categoryId: true } },
-} as const;
 
 const FOR_YOU_WINDOW_MS = 72 * 60 * 60 * 1000;
 const FOR_YOU_CANDIDATES = 400;
@@ -65,26 +62,66 @@ export async function GET(request: NextRequest) {
 
     if (forYou) {
       // Ranked in memory: one user's last 72 hours is a few hundred rows.
-      const candidates = await prisma.article.findMany({
-        where,
-        orderBy: { publishedAt: "desc" },
-        take: FOR_YOU_CANDIDATES,
-        include: FEED_SELECT,
-      });
+      const [candidates, profile] = await Promise.all([
+        prisma.article.findMany({
+          where: { ...where, isPromo: false },
+          orderBy: { publishedAt: "desc" },
+          take: FOR_YOU_CANDIDATES,
+          include: ARTICLE_FEED_INCLUDE,
+        }),
+        buildReadingProfile(),
+      ]);
+
+      const topicSizes = new Map<string, number>();
+      for (const a of candidates) {
+        if (a.topicId) topicSizes.set(a.topicId, (topicSizes.get(a.topicId) ?? 0) + 1);
+      }
+
       const now = Date.now();
       const ranked = candidates
-        .map((article) => ({ article, ...scoreArticle(article, rules, now) }))
+        .map((article) => ({
+          article,
+          ...scoreArticle(article, rules, now, profile, topicSizes.get(article.topicId ?? "") ?? 1),
+        }))
         .sort((a, b) => b.score - a.score);
-      const start = (page - 1) * limit;
 
+      // One card per story: the best-ranked article leads, the rest of its
+      // topic travels with it as "also covered by".
+      const byTopic = new Map<string, typeof ranked>();
+      for (const entry of ranked) {
+        const topicId = entry.article.topicId;
+        if (!topicId || (topicSizes.get(topicId) ?? 0) < 2) continue;
+        byTopic.set(topicId, [...(byTopic.get(topicId) ?? []), entry]);
+      }
+      const seen = new Set<string>();
+      const stories = ranked.flatMap(({ article, boosted }) => {
+        const topicId = article.topicId;
+        const group = topicId ? byTopic.get(topicId) : undefined;
+        if (!group) return [{ ...serializeArticle(article), boosted }];
+        if (seen.has(topicId!)) return [];
+        seen.add(topicId!);
+        const related = group.slice(1).map((e) => serializeArticle(e.article));
+        return [
+          {
+            ...serializeArticle(article),
+            boosted,
+            topic: {
+              id: topicId!,
+              sources: Array.from(new Set(group.map((e) => e.article.feed.title))),
+              related,
+            },
+          },
+        ];
+      });
+
+      const start = (page - 1) * limit;
       return NextResponse.json({
-        articles: ranked
-          .slice(start, start + limit)
-          .map(({ article, boosted }) => ({ ...article, boosted })),
-        total: ranked.length,
+        articles: stories.slice(start, start + limit),
+        total: stories.length,
         page,
         limit,
-        hasMore: start + limit < ranked.length,
+        hasMore: start + limit < stories.length,
+        learnedFrom: profile.learnedFrom,
       });
     }
 
@@ -95,12 +132,12 @@ export async function GET(request: NextRequest) {
         orderBy: { publishedAt: sort },
         skip: (page - 1) * limit,
         take: limit,
-        include: FEED_SELECT,
+        include: ARTICLE_FEED_INCLUDE,
       }),
     ]);
 
     return NextResponse.json({
-      articles,
+      articles: articles.map(serializeArticle),
       total,
       page,
       limit,

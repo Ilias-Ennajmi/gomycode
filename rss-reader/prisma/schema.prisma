@@ -64,12 +64,34 @@ model Article {
   readAt      DateTime?
   savedAt     DateTime?
   createdAt   DateTime  @default(now())
+  /// Gemini embedding of title + summary; empty until enriched.
+  embedding   Float[]   @default([])
+  aiSummary   String?
+  isPromo     Boolean   @default(false)
+  topicId     String?
+  topic       Topic?    @relation(fields: [topicId], references: [id], onDelete: SetNull)
 
   @@unique([feedId, link])
   @@index([feedId])
   @@index([isRead])
   @@index([isSaved])
   @@index([publishedAt])
+  @@index([topicId])
+}
+
+/// Articles from different sources covering the same story (last 48h).
+model Topic {
+  id        String    @id @default(cuid())
+  title     String
+  createdAt DateTime  @default(now())
+  articles  Article[]
+}
+
+/// One AI briefing per local calendar day, generated on first request.
+model DailyDigest {
+  date      String   @id
+  content   String
+  createdAt DateTime @default(now())
 }
 
 enum FilterAction {

@@ -1,6 +1,7 @@
 "use client";
 
-import { Bookmark, Play, TrendingUp } from "lucide-react";
+import * as React from "react";
+import { Bookmark, ChevronDown, Layers, Play, TrendingUp } from "lucide-react";
 import { cn, formatRelativeTime, readingTime, stripHtml } from "@/lib/utils";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { Highlight } from "@/components/shared/Highlight";
@@ -13,6 +14,7 @@ interface ArticleCardProps {
   searchQuery?: string;
   onClick: () => void;
   onToggleSave: () => void;
+  onSelectRelated?: (article: ArticleSummary) => void;
 }
 
 export function ArticleCard({
@@ -22,7 +24,9 @@ export function ArticleCard({
   searchQuery,
   onClick,
   onToggleSave,
+  onSelectRelated,
 }: ArticleCardProps) {
+  const [showRelated, setShowRelated] = React.useState(false);
   const summary = article.summary || stripHtml(article.content).slice(0, 200);
   const largeMedia = article.imageUrl && (article.isVideo || variant === "hero");
 
@@ -39,9 +43,7 @@ export function ArticleCard({
       }}
       className={cn(
         "group relative flex w-full cursor-pointer gap-3 border-b border-border/70 px-4 py-3.5 text-left",
-        active
-          ? "bg-accent/70 shadow-[inset_3px_0_0_hsl(var(--primary))]"
-          : "hover:bg-accent/40"
+        active ? "bg-accent/70 shadow-[inset_3px_0_0_hsl(var(--primary))]" : "hover:bg-accent/40"
       )}
     >
       <div className={cn("min-w-0 flex-1 space-y-1.5", largeMedia && "space-y-2.5")}>
@@ -67,12 +69,22 @@ export function ArticleCard({
           </div>
         )}
 
-        <div className={cn("flex items-center gap-1.5 text-xs text-muted-foreground", !largeMedia && "pr-7")}>
+        <div
+          className={cn(
+            "flex items-center gap-1.5 text-xs text-muted-foreground",
+            !largeMedia && "pr-7"
+          )}
+        >
           {!article.isRead && (
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-label="Unread" />
           )}
           <FeedFavicon title={article.feed.title} faviconUrl={article.feed.faviconUrl} size={14} />
           <span className="truncate font-medium">{article.feed.title}</span>
+          {article.isPromo && (
+            <span className="ml-auto shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              Sponsored
+            </span>
+          )}
           {article.boosted && (
             <span className="ml-auto inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
               <TrendingUp className="h-3 w-3" /> Boosted
@@ -100,6 +112,15 @@ export function ArticleCard({
           >
             <Highlight text={summary} query={searchQuery} />
           </p>
+        )}
+
+        {article.topic && article.topic.related.length > 0 && (
+          <RelatedCoverage
+            article={article}
+            expanded={showRelated}
+            onToggle={() => setShowRelated((v) => !v)}
+            onSelect={onSelectRelated}
+          />
         )}
 
         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -140,6 +161,70 @@ export function ArticleCard({
       >
         <Bookmark className={cn("h-4 w-4", article.isSaved && "fill-current")} />
       </button>
+    </div>
+  );
+}
+
+function RelatedCoverage({
+  article,
+  expanded,
+  onToggle,
+  onSelect,
+}: {
+  article: ArticleSummary;
+  expanded: boolean;
+  onToggle: () => void;
+  onSelect?: (article: ArticleSummary) => void;
+}) {
+  const others = article.topic!.sources.filter((s) => s !== article.feed.title);
+  const label =
+    others.length <= 2
+      ? others.join(" and ")
+      : `${others.slice(0, 2).join(", ")} +${others.length - 2}`;
+
+  return (
+    <div className="rounded-lg bg-muted/60" onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        className="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-left text-xs text-muted-foreground hover:text-foreground"
+      >
+        <Layers className="h-3.5 w-3.5 shrink-0 text-primary" />
+        <span className="min-w-0 flex-1 truncate">
+          Also covered by <span className="font-medium text-foreground/80">{label}</span>
+        </span>
+        <ChevronDown
+          className={cn("h-3.5 w-3.5 shrink-0 transition-transform", expanded && "rotate-180")}
+        />
+      </button>
+      {expanded && (
+        <ul className="border-t border-border/60 py-1">
+          {article.topic!.related.map((related) => (
+            <li key={related.id}>
+              <button
+                type="button"
+                onClick={() => onSelect?.(related)}
+                className="flex w-full items-start gap-2 px-2.5 py-1.5 text-left hover:bg-accent/60"
+              >
+                <FeedFavicon
+                  title={related.feed.title}
+                  faviconUrl={related.feed.faviconUrl}
+                  size={14}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[11px] text-muted-foreground">
+                    {related.feed.title}
+                  </span>
+                  <span className="line-clamp-2 font-serif text-[13px] leading-snug text-foreground">
+                    {related.title}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

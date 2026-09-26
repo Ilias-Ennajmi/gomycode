@@ -59,6 +59,15 @@ export interface ArticleSummary {
   isSaved: boolean;
   isVideo: boolean;
   boosted?: boolean;
+  isPromo?: boolean;
+  aiSummary?: string | null;
+  topicId?: string | null;
+  /** Present in For You when other sources cover the same story. */
+  topic?: {
+    id: string;
+    sources: string[];
+    related: ArticleSummary[];
+  };
   readAt: string | null;
   savedAt: string | null;
   createdAt: string;
@@ -71,7 +80,7 @@ export interface FilterRuleSummary {
   value: string;
 }
 
-export type ArticleFilter ="all" | "unread" | "saved";
+export type ArticleFilter = "all" | "unread" | "saved";
 export type ArticleSort = "newest" | "oldest";
 
 export interface ArticleListParams {

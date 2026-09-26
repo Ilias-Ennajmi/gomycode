@@ -13,6 +13,7 @@ interface ArticlesResponse {
   page: number;
   limit: number;
   hasMore: boolean;
+  learnedFrom?: number;
 }
 
 function toSearchParams(params: ArticleListParams) {
@@ -49,6 +50,7 @@ export function useArticles(params: ArticleListParams, sort: ArticleSort = "newe
   return {
     articles,
     total: data?.[0]?.total ?? 0,
+    learnedFrom: data?.[0]?.learnedFrom,
     hasMore: data ? Boolean(data[data.length - 1]?.hasMore) : false,
     isLoading,
     isLoadingMore: isValidating && size > 0,
@@ -56,6 +58,12 @@ export function useArticles(params: ArticleListParams, sort: ArticleSort = "newe
     loadMore: () => setSize(size + 1),
     mutate,
   };
+}
+
+/** A single article, for ones opened from a briefing or a grouped story. */
+export function useArticle(id: string | null) {
+  const { data, mutate } = useSWR<{ article: ArticleSummary }>(id ? `/api/articles/${id}` : null);
+  return { article: data?.article ?? null, mutate };
 }
 
 export function useArticleCount(params: ArticleListParams) {

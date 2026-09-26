@@ -11,11 +11,13 @@ import {
   Moon,
   Plus,
   SlidersHorizontal,
+  Sparkles,
   Sun,
   Upload,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
+import { useAiStatus } from "@/lib/hooks/useAi";
 
 interface SettingsPanelProps {
   onAddFeed: () => void;
@@ -54,6 +56,10 @@ export function SettingsPanel({
           <Row icon={Plus} label="Add a source" hint="Site, RSS feed, or YouTube channel" onClick={onAddFeed} />
           <Row icon={FolderCog} label="Categories" onClick={onManageCategories} />
           <Row icon={SlidersHorizontal} label="Content filters" hint="Hide or boost topics and sources" onClick={onContentFilters} />
+        </Section>
+
+        <Section title="AI">
+          <AiStatusRow />
         </Section>
 
         <Section title="Appearance">
@@ -145,5 +151,37 @@ function Row({
       </span>
       {!destructive && <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
     </button>
+  );
+}
+
+function AiStatusRow() {
+  const status = useAiStatus();
+  if (!status) return <div className="h-[68px]" />;
+
+  return (
+    <div className="flex items-start gap-3 px-4 py-3.5">
+      <Sparkles
+        className={cn("mt-0.5 h-5 w-5 shrink-0", status.enabled ? "text-primary" : "text-muted-foreground")}
+      />
+      <div className="min-w-0 flex-1 text-sm">
+        {status.enabled ? (
+          <>
+            <p className="font-medium">On · Google Gemini (free tier)</p>
+            <p className="text-xs text-muted-foreground">
+              Learned from {status.learnedFrom} article{status.learnedFrom === 1 ? "" : "s"} you read
+              or saved · {status.analyzed} analyzed · {status.topics} stories grouped
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="font-medium">Off</p>
+            <p className="text-xs text-muted-foreground">
+              Add a free GEMINI_API_KEY in Vercel to turn on summaries, story grouping, and the
+              daily briefing. For You still learns from the sources you read.
+            </p>
+          </>
+        )}
+      </div>
+    </div>
   );
 }

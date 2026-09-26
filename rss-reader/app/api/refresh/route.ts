@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchAndParseFeed } from "@/lib/rss";
 import { insertNewArticles, mapWithConcurrency } from "@/lib/ingest";
+import { runAiPipeline } from "@/lib/enrich";
 
 export const maxDuration = 60;
 
@@ -46,6 +47,7 @@ async function handleRefresh(feedId?: string) {
     });
 
     const newArticles = results.reduce((sum, n) => sum + n, 0);
+    await runAiPipeline();
     return NextResponse.json({ updated: feeds.length - errors.length, newArticles, errors });
   } catch (error) {
     console.error("/api/refresh failed", error);

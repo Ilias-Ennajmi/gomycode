@@ -4,6 +4,7 @@ import { fetchAndParseFeed } from "@/lib/rss";
 import { resolveSource, type ResolvedSource } from "@/lib/feed-source";
 import { discoverFaviconUrl } from "@/lib/favicon";
 import { insertNewArticles } from "@/lib/ingest";
+import { runAiPipeline } from "@/lib/enrich";
 import { getFilterRules, hiddenKeywordClauses, mutedFeedIds } from "@/lib/filters";
 
 export async function GET() {
@@ -107,6 +108,7 @@ export async function POST(request: NextRequest) {
     });
 
     await insertNewArticles(feed.id, parsed.articles);
+    await runAiPipeline();
 
     return NextResponse.json({ feed }, { status: 201 });
   } catch (error) {

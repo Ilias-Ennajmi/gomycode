@@ -29,6 +29,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { ArticleSkeletonList } from "@/components/articles/ArticleSkeleton";
+import { DailyBriefing } from "@/components/articles/DailyBriefing";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import { useArticles, toggleArticleSaved } from "@/lib/hooks/useArticles";
 import { markAllRead, refreshFeeds, refreshToastMessage, useFeeds } from "@/lib/hooks/useFeeds";
@@ -54,10 +55,8 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
     setView,
   } = useReaderState();
 
-  const { articles, total, hasMore, isLoading, isLoadingMore, loadMore, mutate } = useArticles(
-    listParams,
-    sort
-  );
+  const { articles, total, hasMore, isLoading, isLoadingMore, loadMore, mutate, learnedFrom } =
+    useArticles(listParams, sort);
   const { feeds } = useFeeds();
   const [refreshing, setRefreshing] = React.useState(false);
   const [markingAllRead, setMarkingAllRead] = React.useState(false);
@@ -193,7 +192,11 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
               {view.label}
             </h2>
             <p className="text-xs text-muted-foreground">
-              {ranked ? "Ranked for you · " : ""}
+              {ranked
+                ? learnedFrom
+                  ? `Learned from ${learnedFrom} articles · `
+                  : "Ranked for you · "
+                : ""}
               {lastFetched ? `Updated ${formatRelativeTime(lastFetched)}` : "Not refreshed yet"}
             </p>
           </div>
@@ -269,6 +272,14 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin">
+        {ranked && !search && filterTab === "all" && (
+          <DailyBriefing
+            onOpen={(articleId) => {
+              setSelectedArticleId(articleId);
+              setMobilePane("reader");
+            }}
+          />
+        )}
         {isLoading ? (
           <ArticleSkeletonList />
         ) : articles.length === 0 ? (
@@ -294,6 +305,7 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
                     searchQuery={search}
                     onClick={() => handleSelect(article)}
                     onToggleSave={() => handleToggleSave(article)}
+                    onSelectRelated={handleSelect}
                   />
                 </React.Fragment>
               );

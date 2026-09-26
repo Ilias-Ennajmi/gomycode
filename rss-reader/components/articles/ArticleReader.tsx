@@ -1,7 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { Bookmark, BookOpen, Check, ChevronLeft, ExternalLink, Share } from "lucide-react";
+import {
+  Bookmark,
+  BookOpen,
+  Check,
+  ChevronLeft,
+  ExternalLink,
+  Share,
+  Sparkles,
+} from "lucide-react";
 import { shareLink } from "@/lib/share";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -9,14 +17,31 @@ import { Button } from "@/components/ui/button";
 import { ArticleHeader } from "@/components/articles/ArticleHeader";
 import { ArticleContent } from "@/components/articles/ArticleContent";
 import { useReaderState } from "@/lib/hooks/useReaderState";
-import { useArticles, toggleArticleRead, toggleArticleSaved } from "@/lib/hooks/useArticles";
+import {
+  useArticle,
+  useArticles,
+  toggleArticleRead,
+  toggleArticleSaved,
+} from "@/lib/hooks/useArticles";
+import { useAiStatus, useArticleSummary } from "@/lib/hooks/useAi";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useReadingProgress } from "@/lib/hooks/useReadingProgress";
 
 export function ArticleReader() {
   const { view, selectedArticleId, setMobilePane, listParams, sort } = useReaderState();
-  const { articles, mutate } = useArticles(listParams, sort);
+  const { articles, mutate: mutateList } = useArticles(listParams, sort);
 
-  const article = articles.find((a) => a.id === selectedArticleId) ?? null;
+  // Grouped stories and briefing links can point outside the loaded list.
+  const listed =
+    articles.find((a) => a.id === selectedArticleId) ??
+    articles.flatMap((a) => a.topic?.related ?? []).find((a) => a.id === selectedArticleId) ??
+    null;
+  const { article: fetched, mutate: mutateSingle } = useArticle(listed ? null : selectedArticleId);
+  const article = listed ?? fetched;
+  const mutate = () => {
+    mutateList();
+    mutateSingle();
+  };
 
   const { containerRef, progress } = useReadingProgress<HTMLDivElement>({
     resetKey: article?.id,
@@ -103,7 +128,12 @@ export function ArticleReader() {
             <Bookmark className={cn("h-5 w-5", article.isSaved && "fill-current")} />
           </Button>
           <Button variant="ghost" size="icon" className="h-10 w-10" asChild>
-            <a href={article.link} target="_blank" rel="noopener noreferrer" aria-label="Open original">
+            <a
+              href={article.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Open original"
+            >
               <ExternalLink className="h-5 w-5" />
             </a>
           </Button>
@@ -137,6 +167,7 @@ export function ArticleReader() {
             onToggleSave={handleToggleSave}
             onToggleRead={handleToggleRead}
           />
+          <AiSummary articleId={article.id} cached={article.aiSummary} />
           <div className="mt-6">
             <ArticleContent
               content={article.content}
@@ -148,5 +179,32 @@ export function ArticleReader() {
         </div>
       </div>
     </div>
+  );
+}
+
+function AiSummary({ articleId, cached }: { articleId: string; cached?: string | null }) {
+  const status = useAiStatus();
+  const { summary, isLoading } = useArticleSummary(articleId, Boolean(status?.enabled) && !cached);
+  const text = cached ?? summary;
+  if (!text && !isLoading) return null;
+
+  return (
+    <section
+      aria-label="AI summary"
+      className="mt-6 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3.5"
+    >
+      <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
+        <Sparkles className="h-3.5 w-3.5" /> Summary
+      </p>
+      {text ? (
+        <p className="text-[15px] leading-relaxed text-foreground/90">{text}</p>
+      ) : (
+        <div className="space-y-2 py-1">
+          <Skeleton className="h-3.5 w-full" />
+          <Skeleton className="h-3.5 w-11/12" />
+          <Skeleton className="h-3.5 w-2/3" />
+        </div>
+      )}
+    </section>
   );
 }
