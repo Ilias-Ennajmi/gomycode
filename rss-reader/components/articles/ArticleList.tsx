@@ -2,7 +2,19 @@
 
 import * as React from "react";
 import { useInView } from "react-intersection-observer";
-import { ArrowLeft, CheckCheck, Inbox, Loader2, RefreshCw, SearchX } from "lucide-react";
+import {
+  ArrowLeft,
+  Bookmark,
+  CheckCheck,
+  Inbox,
+  ListTree,
+  Loader2,
+  Mail,
+  MonitorPlay,
+  RefreshCw,
+  Rss,
+  SearchX,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { cn, formatDateSeparator, formatRelativeTime } from "@/lib/utils";
@@ -39,11 +51,12 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
     search,
     listParams,
     setMobilePane,
+    setView,
   } = useReaderState();
 
   const { articles, total, hasMore, isLoading, isLoadingMore, loadMore, mutate } = useArticles(
     listParams,
-    sort,
+    sort
   );
   const { feeds } = useFeeds();
   const [refreshing, setRefreshing] = React.useState(false);
@@ -151,7 +164,8 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
   }, [articles, selectedArticleId]);
 
   const ranked = view.type === "foryou";
-  const fromFeedsTab = view.type !== "foryou" && view.type !== "saved";
+  const isSourceTab = ["rss", "youtube", "newsletters"].includes(view.type);
+  const fromSourcesList = ["feed", "category", "all", "today"].includes(view.type);
   let lastDateLabel = "";
 
   return (
@@ -161,9 +175,16 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
           <Button
             variant="ghost"
             size="icon"
-            className={cn("h-8 w-8 shrink-0 md:hidden", !fromFeedsTab && "hidden")}
-            onClick={() => setMobilePane("sidebar")}
-            aria-label="Back to sidebar"
+            className={cn(
+              "h-8 w-8 shrink-0 md:hidden",
+              !fromSourcesList && view.type !== "saved" && "hidden"
+            )}
+            onClick={() =>
+              view.type === "saved"
+                ? setView({ type: "foryou", label: "For You" })
+                : setMobilePane("sidebar")
+            }
+            aria-label="Back"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -177,16 +198,40 @@ export function ArticleList({ onAddFeed }: ArticleListProps) {
             </p>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 shrink-0"
-          onClick={handleRefresh}
-          disabled={refreshing}
-          aria-label="Refresh feeds"
-        >
-          <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
-        </Button>
+        <div className="flex shrink-0 items-center gap-1">
+          {view.type === "foryou" && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 md:hidden"
+              onClick={() => setView({ type: "saved", label: "Saved" })}
+              aria-label="Saved articles"
+            >
+              <Bookmark className="h-[18px] w-[18px]" />
+            </Button>
+          )}
+          {isSourceTab && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 rounded-full text-xs md:hidden"
+              onClick={() => setMobilePane("sidebar")}
+            >
+              <ListTree className="h-3.5 w-3.5" />
+              {view.type === "youtube" ? "Channels" : "Sources"}
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            aria-label="Refresh feeds"
+          >
+            <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center justify-between gap-2 border-b p-2">
@@ -291,6 +336,37 @@ function EmptyState({
     );
   }
 
+  if (view === "youtube") {
+    return (
+      <EmptyMessage
+        icon={<MonitorPlay className="h-10 w-10" />}
+        text="No videos yet. Follow a YouTube channel and its new uploads land here."
+        action="Add a YouTube channel"
+        onAction={onAddFeed}
+      />
+    );
+  }
+
+  if (view === "newsletters") {
+    return (
+      <EmptyMessage
+        icon={<Mail className="h-10 w-10" />}
+        text="Newsletters will land here. Newsletter support is coming soon: you'll get a personal address to subscribe with."
+      />
+    );
+  }
+
+  if (view === "rss") {
+    return (
+      <EmptyMessage
+        icon={<Rss className="h-10 w-10" />}
+        text="No RSS articles yet. Add a site or feed to get started."
+        action="Add an RSS feed"
+        onAction={onAddFeed}
+      />
+    );
+  }
+
   if (view === "feed") {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center text-muted-foreground">
@@ -307,6 +383,30 @@ function EmptyState({
       <Button size="sm" onClick={onAddFeed}>
         Add your first RSS feed
       </Button>
+    </div>
+  );
+}
+
+function EmptyMessage({
+  icon,
+  text,
+  action,
+  onAction,
+}: {
+  icon: React.ReactNode;
+  text: string;
+  action?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center text-muted-foreground">
+      {icon}
+      <p className="max-w-xs text-sm">{text}</p>
+      {action && onAction && (
+        <Button size="sm" onClick={onAction}>
+          {action}
+        </Button>
+      )}
     </div>
   );
 }

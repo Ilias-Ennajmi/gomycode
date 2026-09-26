@@ -1,7 +1,21 @@
 "use client";
 
 import * as React from "react";
-import { CalendarDays, Inbox, Moon, Search, Sparkles, Star, Sun, SunMoon, X } from "lucide-react";
+import {
+  CalendarDays,
+  Inbox,
+  Mail,
+  MonitorPlay,
+  Moon,
+  Plus,
+  Rss,
+  Search,
+  Sparkles,
+  Star,
+  Sun,
+  SunMoon,
+  X,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,7 +27,7 @@ import { SidebarFooter } from "@/components/sidebar/SidebarFooter";
 import { useCategories, useFeeds } from "@/lib/hooks/useFeeds";
 import { useArticleCount } from "@/lib/hooks/useArticles";
 import { useReaderState } from "@/lib/hooks/useReaderState";
-import type { CategorySummary } from "@/lib/types";
+import type { CategorySummary, FeedSummary, FeedType } from "@/lib/types";
 
 interface SidebarProps {
   onAddFeed: () => void;
@@ -36,8 +50,7 @@ export function Sidebar({
 
   const { view, setView, search, setSearch, setMobilePane } = useReaderState();
   const { feeds, isLoading: feedsLoading, mutate: mutateFeeds } = useFeeds();
-  const { categories, isLoading: categoriesLoading, mutate: mutateCategories } =
-    useCategories();
+  const { categories, isLoading: categoriesLoading, mutate: mutateCategories } = useCategories();
 
   const [searchDraft, setSearchDraft] = React.useState(search);
   React.useEffect(() => {
@@ -51,13 +64,19 @@ export function Sidebar({
     .reduce((sum, feed) => sum + feed.unreadCount, 0);
   const todayCount = useArticleCount({ today: true });
   const savedCount = useArticleCount({ saved: true });
+  const unreadByType = (type: FeedType) =>
+    feeds
+      .filter((feed) => feed.type === type && !feed.muted)
+      .reduce((sum, feed) => sum + feed.unreadCount, 0);
 
   function refetchAll() {
     mutateFeeds();
     mutateCategories();
   }
 
-  const uncategorizedFeeds = feeds.filter((feed) => !feed.categoryId);
+  const uncategorizedFeeds = feeds.filter((feed) => !feed.categoryId && feed.type === "rss");
+  const youTubeChannels = feeds.filter((feed) => !feed.categoryId && feed.type === "youtube");
+  const newsletterSenders = feeds.filter((feed) => !feed.categoryId && feed.type === "newsletter");
 
   function selectCategory(category: CategorySummary) {
     setView({ type: "category", id: category.id, label: category.name });
@@ -65,6 +84,33 @@ export function Sidebar({
 
   function selectFeed(feedId: string, title: string) {
     setView({ type: "feed", id: feedId, label: title });
+  }
+
+  function renderFeedGroup(label: string, groupFeeds: FeedSummary[], empty?: React.ReactNode) {
+    if (groupFeeds.length === 0 && !empty) return null;
+    return (
+      <div key={label}>
+        <p className="px-2.5 pb-1 pt-2 text-xs text-muted-foreground">{label}</p>
+        <div className="space-y-0.5">
+          {groupFeeds.length === 0 && empty}
+          {groupFeeds.map((feed) => (
+            <FeedItem
+              key={feed.id}
+              id={feed.id}
+              title={feed.title}
+              faviconUrl={feed.faviconUrl}
+              unreadCount={feed.unreadCount}
+              errorCount={feed.errorCount}
+              muted={feed.muted}
+              active={view.type === "feed" && view.id === feed.id}
+              categories={categories}
+              onClick={() => selectFeed(feed.id, feed.title)}
+              onChanged={refetchAll}
+            />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -147,9 +193,36 @@ export function Sidebar({
           />
         </div>
 
+        <div className="space-y-0.5 max-md:hidden">
+          <p className="px-2.5 pb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Sources
+          </p>
+          <NavItem
+            icon={<Mail className="h-4 w-4" />}
+            label="Newsletters"
+            count={unreadByType("newsletter")}
+            active={view.type === "newsletters"}
+            onClick={() => setView({ type: "newsletters", label: "Newsletters" })}
+          />
+          <NavItem
+            icon={<Rss className="h-4 w-4" />}
+            label="RSS"
+            count={unreadByType("rss")}
+            active={view.type === "rss"}
+            onClick={() => setView({ type: "rss", label: "RSS" })}
+          />
+          <NavItem
+            icon={<MonitorPlay className="h-4 w-4" />}
+            label="YouTube"
+            count={unreadByType("youtube")}
+            active={view.type === "youtube"}
+            onClick={() => setView({ type: "youtube", label: "YouTube" })}
+          />
+        </div>
+
         <div>
           <p className="px-2.5 pb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Categories
+            Library
           </p>
           {categoriesLoading || feedsLoading ? (
             <div className="space-y-2 px-2">
@@ -171,34 +244,23 @@ export function Sidebar({
                 />
               ))}
 
-              {uncategorizedFeeds.length > 0 && (
-                <div>
-                  <p className="px-2.5 pb-1 pt-2 text-xs text-muted-foreground">
-                    Uncategorized
-                  </p>
-                  <div className="space-y-0.5">
-                    {uncategorizedFeeds.map((feed) => (
-                      <FeedItem
-                        key={feed.id}
-                        id={feed.id}
-                        title={feed.title}
-                        faviconUrl={feed.faviconUrl}
-                        unreadCount={feed.unreadCount}
-                        errorCount={feed.errorCount}
-                        muted={feed.muted}
-                        active={view.type === "feed" && view.id === feed.id}
-                        categories={categories}
-                        onClick={() => selectFeed(feed.id, feed.title)}
-                        onChanged={refetchAll}
-                      />
-                    ))}
-                  </div>
-                </div>
+              {renderFeedGroup("RSS feeds", uncategorizedFeeds)}
+              {renderFeedGroup(
+                "YouTube channels",
+                youTubeChannels,
+                <button
+                  type="button"
+                  onClick={onAddFeed}
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                >
+                  <Plus className="h-4 w-4" /> Add a channel
+                </button>
               )}
-
-              {categories.length === 0 && feeds.length === 0 && !feedsLoading && (
-                <p className="px-2.5 py-2 text-sm text-muted-foreground">
-                  No feeds yet.
+              {renderFeedGroup(
+                "Newsletters",
+                newsletterSenders,
+                <p className="px-2.5 py-1.5 text-sm text-muted-foreground">
+                  Newsletter inbox coming soon.
                 </p>
               )}
             </div>

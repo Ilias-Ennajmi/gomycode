@@ -76,6 +76,7 @@ export type ArticleSort = "newest" | "oldest";
 
 export interface ArticleListParams {
   view?: "foryou";
+  source?: FeedType;
   feedId?: string;
   categoryId?: string;
   saved?: boolean;

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
+import { FeedType, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getFilterRules, hiddenArticleClauses } from "@/lib/filters";
 import { scoreArticle } from "@/lib/ranking";
@@ -13,6 +13,16 @@ const FEED_SELECT = {
 const FOR_YOU_WINDOW_MS = 72 * 60 * 60 * 1000;
 const FOR_YOU_CANDIDATES = 400;
 
+/**
+ * Source tabs go by the article as well as the feed, so a video from a feed
+ * that wasn't recognised as YouTube still lands in YouTube, not RSS.
+ */
+function sourceFilter(source: FeedType): Prisma.ArticleWhereInput {
+  if (source === "youtube") return { OR: [{ isVideo: true }, { feed: { type: "youtube" } }] };
+  if (source === "rss") return { isVideo: false, feed: { type: "rss" } };
+  return { feed: { type: source } };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -22,6 +32,11 @@ export async function GET(request: NextRequest) {
     const today = searchParams.get("today") === "true";
     const unread = searchParams.get("unread") === "true";
     const forYou = searchParams.get("view") === "foryou";
+    const sourceParam = searchParams.get("source");
+    const source =
+      sourceParam && ["rss", "youtube", "newsletter"].includes(sourceParam)
+        ? (sourceParam as FeedType)
+        : undefined;
     const search = searchParams.get("search")?.trim() || undefined;
     const sort = searchParams.get("sort") === "oldest" ? "asc" : "desc";
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
@@ -43,8 +58,10 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const hidden = hiddenArticleClauses(rules, feedId);
-    if (hidden.length > 0) where.AND = hidden;
+    const clauses: Prisma.ArticleWhereInput[] = hiddenArticleClauses(rules, feedId);
+    const sourceClause = source && sourceFilter(source);
+    if (sourceClause) clauses.push(sourceClause);
+    if (clauses.length > 0) where.AND = clauses;
 
     if (forYou) {
       // Ranked in memory: one user's last 72 hours is a few hundred rows.

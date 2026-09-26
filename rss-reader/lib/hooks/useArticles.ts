@@ -18,6 +18,7 @@ interface ArticlesResponse {
 function toSearchParams(params: ArticleListParams) {
   const search = new URLSearchParams();
   if (params.view) search.set("view", params.view);
+  if (params.source) search.set("source", params.source);
   if (params.feedId) search.set("feedId", params.feedId);
   if (params.categoryId) search.set("categoryId", params.categoryId);
   if (params.saved) search.set("saved", "true");

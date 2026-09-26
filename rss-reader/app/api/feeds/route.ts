@@ -90,9 +90,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // A feed whose items are all YouTube videos is a channel, whatever its URL.
+    const allVideos = parsed.articles.length > 0 && parsed.articles.every((a) => a.isVideo);
     const feed = await prisma.feed.create({
       data: {
-        type: source.type,
+        type: source.type === "rss" && allVideos ? "youtube" : source.type,
         title: parsed.meta.title,
         url: feedUrl,
         siteUrl: parsed.meta.siteUrl,
