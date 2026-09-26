@@ -11,7 +11,7 @@ import { ManageCategoriesDialog } from "@/components/dialogs/ManageCategoriesDia
 import { KeyboardShortcutsDialog } from "@/components/dialogs/KeyboardShortcutsDialog";
 import { ImportOpmlDialog } from "@/components/dialogs/ImportOPMLDialog";
 import { ReaderStateProvider, useReaderState } from "@/lib/hooks/useReaderState";
-import { refreshFeeds, refreshToastMessage } from "@/lib/hooks/useFeeds";
+import { refreshFeeds, refreshToastMessage, useAutoRefresh } from "@/lib/hooks/useFeeds";
 import { useSWRConfig } from "swr";
 
 export function AppShell() {
@@ -31,6 +31,11 @@ function AppShellInner() {
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
   const [importOpmlOpen, setImportOpmlOpen] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
+
+  useAutoRefresh((result) => {
+    globalMutate(() => true, undefined, { revalidate: true });
+    if (result.newArticles > 0) toast.success(refreshToastMessage(result));
+  });
 
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {

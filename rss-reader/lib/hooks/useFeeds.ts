@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import useSWR from "swr";
 import type { CategorySummary, FeedSummary } from "@/lib/types";
 
@@ -98,6 +99,50 @@ export function refreshToastMessage(result: RefreshResult) {
   }
   if (result.newArticles === 0) return "Refreshed — you're up to date";
   return `Refreshed — ${result.newArticles} new article${result.newArticles === 1 ? "" : "s"}`;
+}
+
+const STALE_AFTER_MS = 30 * 60 * 1000;
+
+/**
+ * Refreshes feeds in the background when the app is opened or brought back to
+ * the foreground and nothing has been fetched for 30 minutes. This keeps
+ * content fresh without depending on a frequent server cron.
+ */
+export function useAutoRefresh(onNewArticles: (result: RefreshResult) => void) {
+  const { feeds, isLoading } = useFeeds();
+  const inFlight = useRef(false);
+  const latestFeeds = useRef(feeds);
+  latestFeeds.current = feeds;
+  const callback = useRef(onNewArticles);
+  callback.current = onNewArticles;
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    function refreshIfStale() {
+      const current = latestFeeds.current;
+      if (inFlight.current || document.visibilityState !== "visible" || current.length === 0) {
+        return;
+      }
+      const lastFetched = Math.max(
+        0,
+        ...current.map((f) => (f.lastFetched ? new Date(f.lastFetched).getTime() : 0))
+      );
+      if (Date.now() - lastFetched < STALE_AFTER_MS) return;
+
+      inFlight.current = true;
+      refreshFeeds()
+        .then((result) => callback.current(result))
+        .catch(() => undefined)
+        .finally(() => {
+          inFlight.current = false;
+        });
+    }
+
+    refreshIfStale();
+    document.addEventListener("visibilitychange", refreshIfStale);
+    return () => document.removeEventListener("visibilitychange", refreshIfStale);
+  }, [isLoading]);
 }
 
 export async function markAllRead(params: { feedId?: string; categoryId?: string }) {
