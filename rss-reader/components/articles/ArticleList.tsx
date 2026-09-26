@@ -403,7 +403,7 @@ function EmptyState({
       <EmptyMessage
         icon={<MonitorPlay className="h-10 w-10" />}
         text="No videos yet. Follow a YouTube channel and its new uploads land here."
-        action="Add a YouTube channel"
+        action="Find YouTube channels"
         onAction={onAddFeed}
       />
     );
@@ -413,7 +413,9 @@ function EmptyState({
     return (
       <EmptyMessage
         icon={<Mail className="h-10 w-10" />}
-        text="Newsletters will land here. Newsletter support is coming soon: you'll get a personal address to subscribe with."
+        text="No newsletters yet. Follow Substack and other newsletters and new issues land here."
+        action="Find newsletters"
+        onAction={onAddFeed}
       />
     );
   }
@@ -422,8 +424,8 @@ function EmptyState({
     return (
       <EmptyMessage
         icon={<Rss className="h-10 w-10" />}
-        text="No RSS articles yet. Add a site or feed to get started."
-        action="Add an RSS feed"
+        text="No articles yet. Follow a few sites to get started."
+        action="Discover sites"
         onAction={onAddFeed}
       />
     );
@@ -443,7 +445,7 @@ function EmptyState({
       <Inbox className="h-10 w-10" />
       <p className="text-sm">No articles here yet.</p>
       <Button size="sm" onClick={onAddFeed}>
-        Add your first RSS feed
+        Discover sources
       </Button>
     </div>
   );

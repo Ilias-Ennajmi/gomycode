@@ -38,6 +38,10 @@ model Feed {
   description String?
   faviconUrl  String?
   coverUrl    String?
+  // Two-letter language code, from the catalog or the feed's <language>.
+  language    String?
+  // What the user followed (a site, catalog link or @handle), when it differs from url.
+  sourceUrl   String?
   categoryId  String?
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   articles    Article[]

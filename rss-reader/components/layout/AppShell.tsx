@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { ArticleList } from "@/components/articles/ArticleList";
 import { ArticleReader } from "@/components/articles/ArticleReader";
-import { AddFeedDialog } from "@/components/dialogs/AddFeedDialog";
+import { DiscoverDialog } from "@/components/discover/DiscoverDialog";
 import { ManageCategoriesDialog } from "@/components/dialogs/ManageCategoriesDialog";
 import { KeyboardShortcutsDialog } from "@/components/dialogs/KeyboardShortcutsDialog";
 import { ImportOpmlDialog } from "@/components/dialogs/ImportOPMLDialog";
@@ -15,7 +15,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { SaveLinkDialog } from "@/components/dialogs/SaveLinkDialog";
 import { SettingsPanel } from "@/components/layout/SettingsPanel";
 import { ReaderStateProvider, useReaderState } from "@/lib/hooks/useReaderState";
-import { refreshFeeds, refreshToastMessage, useAutoRefresh } from "@/lib/hooks/useFeeds";
+import { refreshFeeds, refreshToastMessage, useAutoRefresh, useFeeds } from "@/lib/hooks/useFeeds";
 import { useSWRConfig } from "swr";
 
 export function AppShell() {
@@ -30,13 +30,26 @@ function AppShellInner() {
   const { mobilePane, setMobilePane, setSelectedArticleId } = useReaderState();
   const { mutate: globalMutate } = useSWRConfig();
 
-  const [addFeedOpen, setAddFeedOpen] = React.useState(false);
+  const [discoverOpen, setDiscoverOpen] = React.useState(false);
   const [manageCategoriesOpen, setManageCategoriesOpen] = React.useState(false);
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
   const [importOpmlOpen, setImportOpmlOpen] = React.useState(false);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [saveLinkOpen, setSaveLinkOpen] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
+
+  // With nothing followed yet, start in Discover (once per visit).
+  const { feeds, isLoading: feedsLoading } = useFeeds();
+  React.useEffect(() => {
+    if (feedsLoading || feeds.length > 0) return;
+    try {
+      if (sessionStorage.getItem("discover-shown")) return;
+      sessionStorage.setItem("discover-shown", "1");
+    } catch {
+      // Storage unavailable: still show it.
+    }
+    setDiscoverOpen(true);
+  }, [feedsLoading, feeds.length]);
 
   useAutoRefresh((result) => {
     globalMutate(() => true, undefined, { revalidate: true });
@@ -88,7 +101,7 @@ function AppShellInner() {
   }, [refreshing]);
 
   const dialogActions = {
-    onAddFeed: () => setAddFeedOpen(true),
+    onAddFeed: () => setDiscoverOpen(true),
     onManageCategories: () => setManageCategoriesOpen(true),
     onContentFilters: () => setFiltersOpen(true),
     onImportOpml: () => setImportOpmlOpen(true),
@@ -152,7 +165,7 @@ function AppShellInner() {
       </div>
 
       <SaveLinkDialog open={saveLinkOpen} onOpenChange={setSaveLinkOpen} />
-      <AddFeedDialog open={addFeedOpen} onOpenChange={setAddFeedOpen} />
+      <DiscoverDialog open={discoverOpen} onOpenChange={setDiscoverOpen} />
       <ManageCategoriesDialog open={manageCategoriesOpen} onOpenChange={setManageCategoriesOpen} />
       <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       <ImportOpmlDialog open={importOpmlOpen} onOpenChange={setImportOpmlOpen} />

@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   ChevronRight,
+  Compass,
   Download,
   FolderCog,
   Keyboard,
@@ -53,9 +54,19 @@ export function SettingsPanel({
 
       <div className="flex-1 space-y-6 overflow-y-auto px-4 py-5">
         <Section title="Sources">
-          <Row icon={Plus} label="Add a source" hint="Site, RSS feed, or YouTube channel" onClick={onAddFeed} />
+          <Row
+            icon={Compass}
+            label="Discover sources"
+            hint="Browse by interest, search, or paste a link"
+            onClick={onAddFeed}
+          />
           <Row icon={FolderCog} label="Categories" onClick={onManageCategories} />
-          <Row icon={SlidersHorizontal} label="Content filters" hint="Hide or boost topics and sources" onClick={onContentFilters} />
+          <Row
+            icon={SlidersHorizontal}
+            label="Content filters"
+            hint="Hide or boost topics and sources"
+            onClick={onContentFilters}
+          />
         </Section>
 
         <Section title="AI">
@@ -89,7 +100,11 @@ export function SettingsPanel({
 
         <Section title="Your data">
           <Row icon={Upload} label="Import OPML" onClick={onImportOpml} />
-          <Row icon={Download} label="Export OPML" onClick={() => window.open("/api/opml", "_blank")} />
+          <Row
+            icon={Download}
+            label="Export OPML"
+            onClick={() => window.open("/api/opml", "_blank")}
+          />
         </Section>
 
         <Section title="Help">
@@ -161,15 +176,18 @@ function AiStatusRow() {
   return (
     <div className="flex items-start gap-3 px-4 py-3.5">
       <Sparkles
-        className={cn("mt-0.5 h-5 w-5 shrink-0", status.enabled ? "text-primary" : "text-muted-foreground")}
+        className={cn(
+          "mt-0.5 h-5 w-5 shrink-0",
+          status.enabled ? "text-primary" : "text-muted-foreground"
+        )}
       />
       <div className="min-w-0 flex-1 text-sm">
         {status.enabled ? (
           <>
             <p className="font-medium">On · Google Gemini (free tier)</p>
             <p className="text-xs text-muted-foreground">
-              Learned from {status.learnedFrom} article{status.learnedFrom === 1 ? "" : "s"} you read
-              or saved · {status.analyzed} analyzed · {status.topics} stories grouped
+              Learned from {status.learnedFrom} article{status.learnedFrom === 1 ? "" : "s"} you
+              read or saved · {status.analyzed} analyzed · {status.topics} stories grouped
             </p>
           </>
         ) : (

@@ -1,6 +1,14 @@
 "use client";
 
-import { Download, FolderCog, Keyboard, LogOut, Plus, SlidersHorizontal, Upload } from "lucide-react";
+import {
+  Compass,
+  Download,
+  FolderCog,
+  Keyboard,
+  LogOut,
+  SlidersHorizontal,
+  Upload,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
@@ -23,7 +31,7 @@ export function SidebarFooter({
   return (
     <div className="space-y-2 border-t p-3 max-md:border-t-0 max-md:pt-0">
       <Button variant="ghost" className="w-full justify-start gap-2" onClick={onAddFeed}>
-        <Plus className="h-4 w-4" /> Add Feed
+        <Compass className="h-4 w-4" /> Discover sources
       </Button>
       <Separator className="hidden md:block" />
       <div className="hidden items-center justify-around md:flex">
@@ -67,7 +75,12 @@ function IconAction({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={onClick}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground"
+          onClick={onClick}
+        >
           {children}
           <span className="sr-only">{label}</span>
         </Button>

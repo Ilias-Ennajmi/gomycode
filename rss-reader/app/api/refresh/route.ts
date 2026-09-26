@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchAndParseFeed } from "@/lib/rss";
 import { insertNewArticles, mapWithConcurrency } from "@/lib/ingest";
 import { runAiPipeline } from "@/lib/enrich";
+import { checkCatalogBatch } from "@/lib/discover/health";
 
 export const maxDuration = 60;
 
@@ -57,7 +58,10 @@ async function handleRefresh(feedId?: string) {
 
 // Triggered by the Vercel Cron Job, which sends a GET request.
 export async function GET() {
-  return handleRefresh();
+  const response = await handleRefresh();
+  // The daily cron also re-checks part of the Discover catalog.
+  await checkCatalogBatch().catch((error) => console.error("Catalog health check failed", error));
+  return response;
 }
 
 // Triggered by the in-app manual refresh button.

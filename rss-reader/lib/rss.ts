@@ -3,6 +3,8 @@ import { youTubeThumbnailUrl, youTubeVideoId } from "@/lib/youtube";
 
 type CustomFeed = {
   image?: { url?: string };
+  language?: string;
+  generator?: string;
 };
 
 type MediaNode = { $?: { url?: string; medium?: string } };
@@ -25,7 +27,7 @@ const parser = new Parser<CustomFeed, CustomItem>({
     "User-Agent": "Mozilla/5.0 (compatible; RSSReaderBot/1.0)",
   },
   customFields: {
-    feed: ["image"],
+    feed: ["image", "language", "generator"],
     item: [
       ["content:encoded", "content:encoded"],
       ["media:content", "media:content"],
@@ -41,6 +43,9 @@ export interface ParsedFeedMeta {
   description?: string;
   siteUrl?: string;
   coverUrl?: string;
+  /** Two-letter code from <language>, e.g. "fr". */
+  language?: string;
+  generator?: string;
 }
 
 export interface ParsedArticle {
@@ -95,6 +100,8 @@ export async function fetchAndParseFeed(url: string): Promise<ParsedFeed> {
     description: feed.description?.trim() || undefined,
     siteUrl: feed.link || undefined,
     coverUrl: feed.image?.url || undefined,
+    language: feed.language?.trim().slice(0, 2).toLowerCase() || undefined,
+    generator: feed.generator?.trim() || undefined,
   };
 
   const articles: ParsedArticle[] = (feed.items || [])

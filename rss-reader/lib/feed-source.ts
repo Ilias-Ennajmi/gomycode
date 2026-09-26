@@ -14,8 +14,21 @@ export function normalizeInputUrl(input: string): string {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
+// Newsletter platforms that publish every issue as RSS.
+const NEWSLETTER_HOSTS =
+  /(^|\.)(substack\.com|beehiiv\.com|buttondown\.(email|com)|ghost\.io|kit\.com|convertkit\.com|mailchimp\.com|revue\.co)$/i;
+
+export function isNewsletterUrl(url: string): boolean {
+  try {
+    return NEWSLETTER_HOSTS.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
 export function feedTypeForUrl(feedUrl: string): FeedType {
-  return isYouTubeFeedUrl(feedUrl) ? "youtube" : "rss";
+  if (isYouTubeFeedUrl(feedUrl)) return "youtube";
+  return isNewsletterUrl(feedUrl) ? "newsletter" : "rss";
 }
 
 /** Resolves a pasted URL (site, feed, or YouTube channel/video) to a feed. */
@@ -27,5 +40,6 @@ export async function resolveSource(input: string): Promise<ResolvedSource> {
     return { feedUrl, type: "youtube", faviconUrl: avatarUrl };
   }
 
-  return { feedUrl: await discoverFeedUrl(url), type: "rss" };
+  const feedUrl = await discoverFeedUrl(url);
+  return { feedUrl, type: feedTypeForUrl(feedUrl) };
 }

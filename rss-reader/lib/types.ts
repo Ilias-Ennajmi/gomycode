@@ -11,6 +11,7 @@ export interface FeedSummary {
   faviconUrl: string | null;
   coverUrl: string | null;
   categoryId: string | null;
+  language: string | null;
   lastFetched: string | null;
   errorCount: number;
   unreadCount: number;

@@ -203,9 +203,13 @@ export function Sidebar({
               {renderFeedGroup(
                 "Newsletters",
                 newsletterSenders,
-                <p className="px-2.5 py-1.5 text-sm text-muted-foreground">
-                  Newsletter inbox coming soon.
-                </p>
+                <button
+                  type="button"
+                  onClick={onAddFeed}
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                >
+                  <Plus className="h-4 w-4" /> Add a newsletter
+                </button>
               )}
             </div>
           )}

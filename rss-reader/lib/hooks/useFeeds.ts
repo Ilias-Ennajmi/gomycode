@@ -25,16 +25,6 @@ export function useCategories() {
   return { categories: data?.categories ?? EMPTY_CATEGORIES, isLoading, error, mutate };
 }
 
-export async function addFeed(url: string, categoryId?: string) {
-  const res = await fetch("/api/feeds", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url, categoryId }),
-  });
-  const body = await jsonOrThrow<{ feed: FeedSummary }>(res, "Could not fetch feed — check URL");
-  return body.feed;
-}
-
 export async function updateFeed(id: string, data: { title?: string; categoryId?: string | null }) {
   const res = await fetch(`/api/feeds/${id}`, {
     method: "PATCH",
