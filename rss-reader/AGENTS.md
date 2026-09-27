@@ -1,0 +1,127 @@
+# Guide for coding agents
+
+Read this file and `README.md` before making changes. The app lives in `rss-reader/`
+inside the `Ilias-Ennajmi/gomycode` repo. Run every command from `rss-reader/`.
+Don't touch the other folders (`mallathon/`, `nbrc-gala/`, notebooks): they are
+separate projects with their own Vercel deployments.
+
+## Ground rules
+
+1. **Secrets never go in git.** No passwords, API keys, or database URLs in code,
+   docs, commits, or logs. Real values live only in `.env.local` / `.env` (gitignored)
+   and in Vercel's environment settings. Before each commit, check
+   `git diff --cached` for anything that looks like a key or password.
+2. **Keep it working at every commit:** `npx tsc --noEmit` and `npm run lint` must pass,
+   and `npm run build` for larger changes.
+3. **Database changes go through Prisma migrations** (`npx prisma migrate dev --name <what>`),
+   never manual SQL on production. Migrations must be additive/safe: production
+   applies them automatically on deploy (`prisma migrate deploy`).
+4. **Test phones and desktop.** It's used mostly on a phone. Check 360–390px wide
+   (no sideways page scroll) and 1440px wide, dark and light themes.
+5. **Small, descriptive commits.** Don't force-push, and don't rewrite history.
+6. Format only the files you touch: `npx prettier --print-width 100 --trailing-comma es5 --write <files>`.
+7. Match the surrounding code: its comment density, naming and idioms. Comments explain _why_.
+
+## Architecture
+
+```
+app/
+  reader/page.tsx        the single-page app shell (AppShell)
+  login/                 password gate page
+  api/                   route handlers (all JSON, all behind the password middleware)
+    articles/            list (filters, paging), [id] update, [id]/full (extract), [id]/summary
+    feeds/, categories/, filters/, later/, opml/
+    discover/            catalog, search, suggest (AI), explore (live paging), follow, health
+    news/                front page (hero + desks), insights (AI, cached hourly), prefs
+    digest/              daily briefing v2 (GET current, POST more/shuffle/refresh)
+    refresh/             fetch all stale feeds (cron: Bearer CRON_SECRET)
+    weather/             Open-Meteo forecast, location from Vercel IP headers or saved city
+    ai/                  AI status
+middleware.ts            password gate (session cookie signed with APP_PASSWORD + AUTH_SECRET)
+components/
+  layout/                AppShell (panes, dialogs), TopBar (tabs, unread counts, "+" menu), SettingsPanel
+  articles/              ArticleList, ArticleCard (swipe), ArticleReader (next/prev, listen), DailyBriefing banner
+  news/                  NewsView, HeroSlider, StoryParts, WeatherWidget, NewsSourcesDialog
+  today/TodayView.tsx    the briefing page
+  discover/, sources/, sidebar/, dialogs/, ui/ (shadcn)
+lib/
+  prisma.ts              Prisma client singleton
+  rss.ts                 fetch + parse feeds (rss-parser on XML fetched with fetch)
+  ingest.ts              store new articles (the refresh route then runs the AI pipeline)
+  enrich.ts              Gemini embeddings, story grouping (Topic), summaries, promo detection
+  ai.ts                  Gemini client: generateText (JSON mode), embeddings, isAiEnabled, AiError
+  digest.ts              briefing generation (ranked stories, batched summaries, cached per day)
+  ranking.ts             For You ranking from reading history
+  articles.ts            article query building (tabs, news desks, filters)
+  follow.ts              follow a source (site, feed, YouTube handle, topic) with readable errors
+  youtube.ts, extract.ts, reader.ts, clean-html.ts, favicon.ts, opml.ts, filters.ts
+  discover/              catalog (curated sources), search providers (Feedly, YouTube), topics (Bing News RSS)
+  news/                  news catalog, desks (+ MOROCCO_PATTERN), front-page builder, prefs
+  hooks/                 SWR hooks (useArticles, useFeeds, useNews, useAi, useDiscover...) and useReaderState
+prisma/schema.prisma     Category, Feed, Article, Topic, DailyDigest, FilterRule, Setting
+```
+
+**Data model in one paragraph.** A `Feed` has a `type` (rss, youtube, newsletter) and, when
+it's a news outlet, a `newsDesk` (morocco, world, europe, africa, economy, sports, tech) and
+`region` ("ma"). News feeds show only in the News tab, not in RSS. `Article` holds reading
+state (isRead, isSaved, archivedAt, readProgress), AI data (embedding, aiSummary, isPromo) and
+an optional `topicId` that groups articles about the same story. `DailyDigest` stores the
+briefing as JSON (`version: 2`). `Setting` is a key/value store (news prefs, cached news
+insights, weather city).
+
+**State on the client.** `useReaderState` holds the current view (`type`: foryou, briefing,
+news, rss, youtube, newsletters, later, all, today, saved, feed, category), the selected article and
+the mobile pane (sidebar, list, reader, settings). Data comes from SWR hooks in `lib/hooks`.
+
+## Gotchas learned the hard way
+
+- **Feed fields can be arrays.** xml2js returns `image`, `language`, etc. as arrays for many
+  feeds (Substack, WordPress). Always normalise with `firstText()` in `lib/rss.ts` before saving.
+- **Mobile grid blowout.** A CSS grid without a column template sizes to its widest child,
+  so one horizontal strip makes the page scroll sideways. Use `grid-cols-1` (not a bare
+  `grid`) plus `min-w-0` on grid/flex children.
+- **Article HTML is unpredictable.** Clutter and trackers are stripped in `lib/clean-html.ts`, and
+  `.reader-content` rules in `app/globals.css` keep images/iframes/tables inside the column.
+- **Gemini free tier is rate-limited.** Batch calls (JSON mode), cache results (insights
+  hourly, briefing per day, refresh at most every 3h), and keep every AI feature optional:
+  the app must work when `GEMINI_API_KEY` is empty or the quota is spent (`AiError`).
+- **Vercel Hobby cron runs once a day.** Freshness comes from refresh-on-open plus the
+  daily cron. An hourly external ping to `/api/refresh` with `Authorization: Bearer
+$CRON_SECRET` is the way to go further.
+- **Bing News topic feeds** need `setlang` and `mkt` (e.g. `fr-FR`) or results come back in
+  other languages; article links are wrapped and unwrapped via the `url` param.
+- **lucide-react has no YouTube icon** in this version; the code uses `Play`.
+- The repo-root `.gitignore` ignores `lib/` (Python template); `rss-reader/.gitignore`
+  re-includes it. Don't remove that line.
+- Toasts with Undo must stay clickable over Radix dialogs (see `components/ui/sonner.tsx`).
+
+## Testing
+
+- Types and lint: `npx tsc --noEmit && npm run lint`.
+- Run locally against a local Postgres (see README), then check in a browser at phone
+  and desktop sizes. Playwright works well for scripted checks (log in at `/login`).
+- For anything that reads external feeds, test against the real feed once; many sites
+  block default user agents or send odd XML.
+- After a deploy, check the Vercel deployment is READY and the runtime logs have no new errors.
+
+## History
+
+Built in this order (see `git log -- rss-reader`):
+
+1. Postgres + password gate, YouTube channels, content filters, PWA, mobile tab bar.
+2. AI layer on Gemini (summaries, story grouping, briefing), For You ranking.
+3. Readwise-style redesign with top tabs and Read Later; full-article reader.
+4. Discover (catalog, search, AI suggestions, languages), category chips.
+5. Fix for "can't add most sources" (array feed fields), Discover per channel, topic
+   follows, Undo, sources manager.
+6. News tab (hero, desks, insights, weather, curated FR/EN sources), Today briefing page.
+7. UX polish: mobile layout fits the screen, reader up next/listen/swipe, list swipe
+   actions, one "+" menu, unread counts.
+
+## Open ideas (not built yet)
+
+- Hourly refresh via an external cron (GitHub Actions or cron-job.org) calling `/api/refresh`.
+- Skeleton loaders everywhere spinners remain; pull-to-refresh on mobile.
+- Card layout option (big images) for News and YouTube lists; "mark read when scrolled past".
+- Email-only newsletters through an inbound email service (e.g. Postmark inbound webhook).
+- Offline reading and push notifications (service worker).
