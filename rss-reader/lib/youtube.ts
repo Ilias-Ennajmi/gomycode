@@ -70,7 +70,10 @@ export async function resolveYouTubeChannel(inputUrl: string): Promise<ResolvedC
 
   let html = "";
   try {
-    const res = await fetch(inputUrl, { headers: PAGE_HEADERS, signal: AbortSignal.timeout(10000) });
+    const res = await fetch(inputUrl, {
+      headers: PAGE_HEADERS,
+      signal: AbortSignal.timeout(10000),
+    });
     if (res.ok) html = await res.text();
   } catch {
     // A direct /channel/ URL still resolves without the page; otherwise we fail below.
@@ -81,4 +84,105 @@ export async function resolveYouTubeChannel(inputUrl: string): Promise<ResolvedC
 
   const avatarUrl = html.match(/<meta property="og:image" content="([^"]+)"/)?.[1];
   return { feedUrl: channelFeedUrl(channelId), avatarUrl };
+}
+
+export function channelIdFromFeedUrl(url: string): string | null {
+  if (!isYouTubeFeedUrl(url)) return null;
+  return new URL(url).searchParams.get("channel_id")?.match(CHANNEL_ID)?.[1] ?? null;
+}
+
+const UNIT_MS: [RegExp, number][] = [
+  [/^(s|sec|second)/, 1000],
+  [/^mo/, 30 * 86_400_000],
+  [/^(m|min|minute)/, 60_000],
+  [/^(h|hr|hour)/, 3_600_000],
+  [/^(d|day)/, 86_400_000],
+  [/^(w|wk|week)/, 7 * 86_400_000],
+  [/^(y|yr|year)/, 365 * 86_400_000],
+];
+
+/** "2d ago", "3 weeks ago" → an approximate date; YouTube pages only give ages. */
+export function dateFromAge(text: string | undefined, now = Date.now()): Date | null {
+  const match = text?.toLowerCase().match(/(\d+)\s*([a-z]+)\s+ago/);
+  if (!match) return null;
+  const unit = UNIT_MS.find(([pattern]) => pattern.test(match[2]));
+  return unit ? new Date(now - Number(match[1]) * unit[1]) : null;
+}
+
+interface Lockup {
+  contentId?: string;
+  contentType?: string;
+  metadata?: {
+    lockupMetadataViewModel?: {
+      title?: { content?: string };
+      metadata?: {
+        contentMetadataViewModel?: {
+          metadataRows?: { metadataParts?: { text?: { content?: string } }[] }[];
+        };
+      };
+    };
+  };
+}
+
+export interface ChannelVideos {
+  title: string;
+  description?: string;
+  avatarUrl?: string;
+  videos: { videoId: string; title: string; publishedAt: Date }[];
+}
+
+/**
+ * Reads a channel's latest uploads from its /videos page. Used when YouTube's
+ * RSS endpoint is down (it regularly returns 404 for hours at a time).
+ */
+export async function fetchChannelVideos(channelId: string): Promise<ChannelVideos> {
+  const res = await fetch(`https://www.youtube.com/channel/${channelId}/videos`, {
+    headers: {
+      ...PAGE_HEADERS,
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+    },
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!res.ok) throw new Error(`Could not load the YouTube channel (status ${res.status})`);
+  const json = (await res.text()).match(/var ytInitialData = (\{[\s\S]*?\});<\/script>/)?.[1];
+  if (!json) throw new Error("YouTube returned an unexpected page");
+  const data = JSON.parse(json);
+
+  const lockups: Lockup[] = [];
+  (function collect(node: unknown) {
+    if (!node || typeof node !== "object") return;
+    if ("lockupViewModel" in node) {
+      lockups.push((node as { lockupViewModel: Lockup }).lockupViewModel);
+      return;
+    }
+    for (const value of Object.values(node)) collect(value);
+  })(data);
+
+  // Videos are listed newest first; spacing them a minute apart keeps that
+  // order even when several share the same "1 day ago".
+  const now = Date.now();
+  const videos = lockups
+    .filter((l) => l.contentId && l.contentType === "LOCKUP_CONTENT_TYPE_VIDEO")
+    .slice(0, 15)
+    .map((l, index) => {
+      const meta = l.metadata?.lockupMetadataViewModel;
+      const parts = meta?.metadata?.contentMetadataViewModel?.metadataRows?.flatMap(
+        (row) => row.metadataParts?.map((p) => p.text?.content ?? "") ?? []
+      );
+      const age = parts?.map((p) => dateFromAge(p, now)).find(Boolean);
+      return {
+        videoId: l.contentId!,
+        title: meta?.title?.content ?? "Untitled",
+        publishedAt: new Date((age ?? new Date(now)).getTime() - index * 60_000),
+      };
+    });
+
+  const channel = data.metadata?.channelMetadataRenderer ?? {};
+  return {
+    title: channel.title ?? "YouTube channel",
+    description: channel.description || undefined,
+    avatarUrl: channel.avatar?.thumbnails?.at(-1)?.url,
+    videos,
+  };
 }

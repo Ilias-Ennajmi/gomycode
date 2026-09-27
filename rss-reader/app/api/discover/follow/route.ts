@@ -30,7 +30,9 @@ export async function POST(request: NextRequest) {
         );
         return { url: item.url, ok: true, feedId: feed.id, title: feed.title, existed };
       } catch (error) {
-        const message = error instanceof FollowError ? error.message : "Could not follow";
+        if (!(error instanceof FollowError)) console.error(`Follow failed for ${item.url}`, error);
+        const message =
+          error instanceof FollowError ? error.message : "Something went wrong saving this source";
         return { url: item.url, ok: false, error: message };
       }
     });
