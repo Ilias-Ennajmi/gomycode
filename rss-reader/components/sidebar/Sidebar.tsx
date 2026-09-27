@@ -1,5 +1,6 @@
 "use client";
 
+import type { DiscoverKind } from "@/lib/discover/catalog";
 import * as React from "react";
 import { CalendarDays, Inbox, Moon, Plus, Search, Sun, SunMoon, X } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -17,7 +18,8 @@ import { useReaderState } from "@/lib/hooks/useReaderState";
 import type { CategorySummary, FeedSummary } from "@/lib/types";
 
 interface SidebarProps {
-  onAddFeed: () => void;
+  onAddFeed: (kind?: DiscoverKind) => void;
+  onManageSources: () => void;
   onManageCategories: () => void;
   onContentFilters: () => void;
   onImportOpml: () => void;
@@ -26,6 +28,7 @@ interface SidebarProps {
 
 export function Sidebar({
   onAddFeed,
+  onManageSources,
   onManageCategories,
   onContentFilters,
   onImportOpml,
@@ -194,7 +197,7 @@ export function Sidebar({
                 youTubeChannels,
                 <button
                   type="button"
-                  onClick={onAddFeed}
+                  onClick={() => onAddFeed("youtube")}
                   className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground"
                 >
                   <Plus className="h-4 w-4" /> Add a channel
@@ -205,7 +208,7 @@ export function Sidebar({
                 newsletterSenders,
                 <button
                   type="button"
-                  onClick={onAddFeed}
+                  onClick={() => onAddFeed("newsletter")}
                   className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground"
                 >
                   <Plus className="h-4 w-4" /> Add a newsletter
@@ -218,6 +221,7 @@ export function Sidebar({
 
       <SidebarFooter
         onAddFeed={onAddFeed}
+        onManageSources={onManageSources}
         onManageCategories={onManageCategories}
         onContentFilters={onContentFilters}
         onImportOpml={onImportOpml}

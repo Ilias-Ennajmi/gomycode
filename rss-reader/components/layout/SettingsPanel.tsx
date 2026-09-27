@@ -1,5 +1,6 @@
 "use client";
 
+import type { DiscoverKind } from "@/lib/discover/catalog";
 import * as React from "react";
 import {
   ChevronRight,
@@ -7,6 +8,7 @@ import {
   Download,
   FolderCog,
   Keyboard,
+  Library,
   LogOut,
   Monitor,
   Moon,
@@ -21,7 +23,8 @@ import { cn } from "@/lib/utils";
 import { useAiStatus } from "@/lib/hooks/useAi";
 
 interface SettingsPanelProps {
-  onAddFeed: () => void;
+  onAddFeed: (kind?: DiscoverKind) => void;
+  onManageSources: () => void;
   onManageCategories: () => void;
   onContentFilters: () => void;
   onImportOpml: () => void;
@@ -37,6 +40,7 @@ const THEMES = [
 /** Mobile settings screen; on desktop the same actions live in the sidebar footer. */
 export function SettingsPanel({
   onAddFeed,
+  onManageSources,
   onManageCategories,
   onContentFilters,
   onImportOpml,
@@ -58,7 +62,13 @@ export function SettingsPanel({
             icon={Compass}
             label="Discover sources"
             hint="Browse by interest, search, or paste a link"
-            onClick={onAddFeed}
+            onClick={() => onAddFeed()}
+          />
+          <Row
+            icon={Library}
+            label="Your sources"
+            hint="Rename, move, mute or unfollow; spot broken feeds"
+            onClick={onManageSources}
           />
           <Row icon={FolderCog} label="Categories" onClick={onManageCategories} />
           <Row

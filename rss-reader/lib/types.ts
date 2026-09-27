@@ -15,6 +15,9 @@ export interface FeedSummary {
   lastFetched: string | null;
   errorCount: number;
   unreadCount: number;
+  /** Date of the newest article, or null before the first one. */
+  lastPublished: string | null;
+  createdAt: string;
 }
 
 export interface CategoryFeedSummary {

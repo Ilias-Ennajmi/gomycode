@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { parseLangs } from "@/lib/discover/langs";
+import { parseKind, parseLangs } from "@/lib/discover/langs";
 import { searchSources } from "@/lib/discover/search";
 
 export const maxDuration = 20;
@@ -9,7 +9,8 @@ export async function GET(request: NextRequest) {
   if (query.length < 2) return NextResponse.json({ results: [], unavailable: [] });
   try {
     const langs = parseLangs(request.nextUrl.searchParams.get("langs"));
-    return NextResponse.json(await searchSources(query.slice(0, 200), langs));
+    const kind = parseKind(request.nextUrl.searchParams.get("kind"));
+    return NextResponse.json(await searchSources(query.slice(0, 200), langs, kind));
   } catch (error) {
     console.error("GET /api/discover/search failed", error);
     return NextResponse.json({ error: "Search failed" }, { status: 500 });

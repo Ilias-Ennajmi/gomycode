@@ -1,10 +1,12 @@
 "use client";
 
+import type { DiscoverKind } from "@/lib/discover/catalog";
 import {
   Compass,
   Download,
   FolderCog,
   Keyboard,
+  Library,
   LogOut,
   SlidersHorizontal,
   Upload,
@@ -14,7 +16,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Separator } from "@/components/ui/separator";
 
 interface SidebarFooterProps {
-  onAddFeed: () => void;
+  onAddFeed: (kind?: DiscoverKind) => void;
+  onManageSources: () => void;
   onManageCategories: () => void;
   onContentFilters: () => void;
   onImportOpml: () => void;
@@ -23,6 +26,7 @@ interface SidebarFooterProps {
 
 export function SidebarFooter({
   onAddFeed,
+  onManageSources,
   onManageCategories,
   onContentFilters,
   onImportOpml,
@@ -30,9 +34,14 @@ export function SidebarFooter({
 }: SidebarFooterProps) {
   return (
     <div className="space-y-2 border-t p-3 max-md:border-t-0 max-md:pt-0">
-      <Button variant="ghost" className="w-full justify-start gap-2" onClick={onAddFeed}>
-        <Compass className="h-4 w-4" /> Discover sources
-      </Button>
+      <div className="grid grid-cols-2 gap-1">
+        <Button variant="ghost" className="justify-start gap-2 px-2.5" onClick={() => onAddFeed()}>
+          <Compass className="h-4 w-4" /> Discover
+        </Button>
+        <Button variant="ghost" className="justify-start gap-2 px-2.5" onClick={onManageSources}>
+          <Library className="h-4 w-4" /> Sources
+        </Button>
+      </div>
       <Separator className="hidden md:block" />
       <div className="hidden items-center justify-around md:flex">
         <IconAction label="Manage categories" onClick={onManageCategories}>

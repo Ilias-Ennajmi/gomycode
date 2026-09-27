@@ -16,7 +16,7 @@ export interface DiscoverResult {
   followers?: number;
   /** Human text such as "58.8K subscribers" when there's no exact count. */
   followersLabel?: string;
-  provider: "catalog" | "feedly" | "youtube" | "link" | "ai";
+  provider: "catalog" | "feedly" | "youtube" | "link" | "ai" | "topic";
   /** Catalog category name, used to file the feed when followed. */
   category?: string;
   /** Why the AI suggested it. */

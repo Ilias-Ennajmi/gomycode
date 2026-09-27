@@ -14,9 +14,11 @@ import { ContentFiltersDialog } from "@/components/dialogs/ContentFiltersDialog"
 import { TopBar } from "@/components/layout/TopBar";
 import { SaveLinkDialog } from "@/components/dialogs/SaveLinkDialog";
 import { SettingsPanel } from "@/components/layout/SettingsPanel";
+import { SourcesManager } from "@/components/sources/SourcesManager";
 import { ReaderStateProvider, useReaderState } from "@/lib/hooks/useReaderState";
 import { refreshFeeds, refreshToastMessage, useAutoRefresh, useFeeds } from "@/lib/hooks/useFeeds";
 import { useSWRConfig } from "swr";
+import type { DiscoverKind } from "@/lib/discover/catalog";
 
 export function AppShell() {
   return (
@@ -31,7 +33,9 @@ function AppShellInner() {
   const { mutate: globalMutate } = useSWRConfig();
 
   const [discoverOpen, setDiscoverOpen] = React.useState(false);
+  const [discoverKind, setDiscoverKind] = React.useState<DiscoverKind>("all");
   const [manageCategoriesOpen, setManageCategoriesOpen] = React.useState(false);
+  const [sourcesOpen, setSourcesOpen] = React.useState(false);
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
   const [importOpmlOpen, setImportOpmlOpen] = React.useState(false);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
@@ -48,6 +52,7 @@ function AppShellInner() {
     } catch {
       // Storage unavailable: still show it.
     }
+    setDiscoverKind("all");
     setDiscoverOpen(true);
   }, [feedsLoading, feeds.length]);
 
@@ -101,7 +106,11 @@ function AppShellInner() {
   }, [refreshing]);
 
   const dialogActions = {
-    onAddFeed: () => setDiscoverOpen(true),
+    onAddFeed: (kind: DiscoverKind = "all") => {
+      setDiscoverKind(kind);
+      setDiscoverOpen(true);
+    },
+    onManageSources: () => setSourcesOpen(true),
     onManageCategories: () => setManageCategoriesOpen(true),
     onContentFilters: () => setFiltersOpen(true),
     onImportOpml: () => setImportOpmlOpen(true),
@@ -165,7 +174,16 @@ function AppShellInner() {
       </div>
 
       <SaveLinkDialog open={saveLinkOpen} onOpenChange={setSaveLinkOpen} />
-      <DiscoverDialog open={discoverOpen} onOpenChange={setDiscoverOpen} />
+      <DiscoverDialog
+        open={discoverOpen}
+        onOpenChange={setDiscoverOpen}
+        initialKind={discoverKind}
+      />
+      <SourcesManager
+        open={sourcesOpen}
+        onOpenChange={setSourcesOpen}
+        onAddFeed={dialogActions.onAddFeed}
+      />
       <ManageCategoriesDialog open={manageCategoriesOpen} onOpenChange={setManageCategoriesOpen} />
       <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       <ImportOpmlDialog open={importOpmlOpen} onOpenChange={setImportOpmlOpen} />

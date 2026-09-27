@@ -6,6 +6,7 @@ import { discoverFaviconUrl } from "@/lib/favicon";
 import { insertNewArticles } from "@/lib/ingest";
 import { getFaviconFallbackColor } from "@/lib/utils";
 import { sourceKey } from "@/lib/source-key";
+import { topicQuery, topicTitle } from "@/lib/discover/topics";
 
 export interface FollowInput {
   url: string;
@@ -13,14 +14,20 @@ export interface FollowInput {
   /** Put the feed in the category with this name, creating it if needed. */
   categoryName?: string;
   language?: string;
+  /** Overrides the feed's own title. */
+  title?: string;
   /** A hint from Discover; only ever upgrades an RSS feed to a newsletter. */
   kind?: "rss" | "youtube" | "newsletter";
 }
 
+/** "no-feed": the site has no feed we can read; it can still be followed through news search. */
+export type FollowErrorCode = "no-feed" | "unreachable";
+
 export class FollowError extends Error {
   constructor(
     message: string,
-    public status: number
+    public status: number,
+    public code?: FollowErrorCode
   ) {
     super(message);
   }
@@ -81,8 +88,19 @@ export async function followSource(
   let source: ResolvedSource;
   try {
     source = await resolveSource(input.url);
-  } catch {
-    throw new FollowError("Could not find a feed or YouTube channel at this URL", 422);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (/No RSS feed/i.test(message)) {
+      throw new FollowError("This site doesn't publish a feed", 422, "no-feed");
+    }
+    const status = message.match(/status (\d+)/)?.[1];
+    throw new FollowError(
+      status === "403" || status === "401"
+        ? "This site blocks feed readers"
+        : "Couldn't reach this address. Check the link and try again",
+      422,
+      status === "403" || status === "401" ? "no-feed" : "unreachable"
+    );
   }
 
   const existing = await prisma.feed.findUnique({ where: { url: source.feedUrl } });
@@ -94,13 +112,26 @@ export async function followSource(
   let parsed: ParsedFeed;
   try {
     parsed = await fetchAndParseFeed(source.feedUrl);
-  } catch {
-    throw new FollowError("Could not fetch feed — check URL", 422);
+  } catch (error) {
+    const blocked = /status 40[13]/.test(error instanceof Error ? error.message : "");
+    throw new FollowError(
+      blocked ? "This site blocks feed readers" : "The feed didn't load. Try again in a moment",
+      422,
+      blocked ? "no-feed" : "unreachable"
+    );
   }
 
+  const topic = topicQuery(source.feedUrl);
+  // A site followed through news search gets that site's icon; a plain topic gets none.
+  const topicSite = topic?.match(/^site:(\S+)$/i)?.[1];
+  const iconFrom = topic
+    ? topicSite
+      ? `https://${topicSite}`
+      : null
+    : parsed.meta.siteUrl || source.feedUrl;
   const [faviconUrl, categoryId] = await Promise.all([
     source.faviconUrl ??
-      discoverFaviconUrl(parsed.meta.siteUrl || source.feedUrl).catch(() => undefined),
+      (iconFrom ? discoverFaviconUrl(iconFrom).catch(() => undefined) : undefined),
     categoryIdFor(input),
   ]);
 
@@ -108,11 +139,11 @@ export async function followSource(
   const feed = await prisma.feed.create({
     data: {
       type: feedType(source, parsed, input),
-      title: parsed.meta.title,
+      title: input.title?.trim() || (topic ? topicTitle(topic) : parsed.meta.title),
       url: source.feedUrl,
       sourceUrl: sourceKey(followedUrl) === sourceKey(source.feedUrl) ? null : followedUrl,
-      siteUrl: parsed.meta.siteUrl,
-      description: parsed.meta.description,
+      siteUrl: topic ? (topicSite ? `https://${topicSite}` : undefined) : parsed.meta.siteUrl,
+      description: topic ? `News search: ${topic}` : parsed.meta.description,
       faviconUrl,
       coverUrl: parsed.meta.coverUrl,
       language: input.language || parsed.meta.language || null,

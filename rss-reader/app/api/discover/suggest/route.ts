@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AiError, isAiEnabled } from "@/lib/ai";
-import { parseLangs } from "@/lib/discover/langs";
+import { parseKind, parseLangs } from "@/lib/discover/langs";
 import { suggestForFeed, suggestForYou, suggestFromDescription } from "@/lib/discover/suggest";
 
 export const maxDuration = 60;
@@ -10,8 +10,11 @@ export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const langs = parseLangs(params.get("langs"));
   const feedId = params.get("feedId");
+  const kind = parseKind(params.get("kind"));
   try {
-    const results = feedId ? await suggestForFeed(feedId, langs) : await suggestForYou(langs);
+    const results = feedId
+      ? await suggestForFeed(feedId, langs, kind)
+      : await suggestForYou(langs, kind);
     return NextResponse.json({ results });
   } catch (error) {
     console.error("GET /api/discover/suggest failed", error);
@@ -25,14 +28,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "AI suggestions need a Gemini key" }, { status: 503 });
   }
   try {
-    const { description, langs } = (await request.json()) as {
+    const { description, langs, kind } = (await request.json()) as {
       description?: string;
       langs?: string;
+      kind?: string;
     };
     if (!description?.trim()) {
       return NextResponse.json({ error: "Describe what you like first" }, { status: 400 });
     }
-    const results = await suggestFromDescription(description.trim(), parseLangs(langs));
+    const results = await suggestFromDescription(
+      description.trim(),
+      parseLangs(langs),
+      parseKind(kind)
+    );
     return NextResponse.json({ results });
   } catch (error) {
     console.error("POST /api/discover/suggest failed", error);

@@ -10,6 +10,7 @@ interface FollowItem {
   kind?: FollowInput["kind"];
   lang?: string;
   category?: string;
+  title?: string;
 }
 
 // Follows one or many sources (e.g. "Follow all" in a category). Something
@@ -25,15 +26,29 @@ export async function POST(request: NextRequest) {
     const results = await mapWithConcurrency(valid, 4, async (item) => {
       try {
         const { feed, existed } = await followSource(
-          { url: item.url, kind: item.kind, language: item.lang, categoryName: item.category },
+          {
+            url: item.url,
+            kind: item.kind,
+            language: item.lang,
+            categoryName: item.category,
+            title: item.title,
+          },
           { allowExisting: true }
         );
-        return { url: item.url, ok: true, feedId: feed.id, title: feed.title, existed };
+        return {
+          url: item.url,
+          ok: true,
+          feedId: feed.id,
+          title: feed.title,
+          categoryId: feed.categoryId,
+          existed,
+        };
       } catch (error) {
         if (!(error instanceof FollowError)) console.error(`Follow failed for ${item.url}`, error);
         const message =
           error instanceof FollowError ? error.message : "Something went wrong saving this source";
-        return { url: item.url, ok: false, error: message };
+        const code = error instanceof FollowError ? error.code : undefined;
+        return { url: item.url, ok: false, error: message, code };
       }
     });
 

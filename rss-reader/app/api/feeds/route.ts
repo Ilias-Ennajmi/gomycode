@@ -21,6 +21,14 @@ export async function GET() {
       },
     });
 
+    // Newest article per feed, so the sources manager can flag quiet feeds.
+    const latest = await prisma.article.groupBy({
+      by: ["feedId"],
+      _max: { publishedAt: true },
+      where: { feedId: { in: feeds.map((f) => f.id) } },
+    });
+    const lastPublished = new Map(latest.map((row) => [row.feedId, row._max.publishedAt]));
+
     const result = feeds.map((feed) => ({
       id: feed.id,
       type: feed.type,
@@ -36,6 +44,8 @@ export async function GET() {
       lastFetched: feed.lastFetched,
       errorCount: feed.errorCount,
       unreadCount: feed._count.articles,
+      lastPublished: lastPublished.get(feed.id) ?? null,
+      createdAt: feed.createdAt,
     }));
 
     return NextResponse.json({ feeds: result });

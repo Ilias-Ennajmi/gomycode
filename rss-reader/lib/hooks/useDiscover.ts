@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import useSWR, { useSWRConfig } from "swr";
+import useSWRInfinite from "swr/infinite";
 import type { DiscoverResult } from "@/lib/discover/providers";
-import type { Language } from "@/lib/discover/catalog";
+import type { DiscoverKind, Language } from "@/lib/discover/catalog";
 
 export type { DiscoverResult };
 
@@ -59,11 +60,14 @@ export function useDiscoverLangs() {
   return { langs, toggle };
 }
 
-export function useCatalog(langs: Language[]) {
+export function useCatalog(langs: Language[], kind: DiscoverKind = "all") {
   const { data, isLoading, mutate } = useSWR<{
     categories: { id: string; name: string }[];
     entries: CatalogItem[];
-  }>(`/api/discover/catalog?langs=${langs.join(",")}`, { revalidateOnFocus: false });
+  }>(`/api/discover/catalog?langs=${langs.join(",")}&kind=${kind}`, {
+    revalidateOnFocus: false,
+    keepPreviousData: true,
+  });
   return {
     categories: data?.categories ?? [],
     entries: data?.entries ?? [],
@@ -72,7 +76,14 @@ export function useCatalog(langs: Language[]) {
   };
 }
 
-export function useDiscoverSearch(query: string, langs: Language[]) {
+export interface SearchData {
+  results: DiscoverResult[];
+  unavailable: string[];
+  topic?: DiscoverResult;
+  noFeed?: boolean;
+}
+
+export function useDiscoverSearch(query: string, langs: Language[], kind: DiscoverKind = "all") {
   const [debounced, setDebounced] = React.useState(query);
   React.useEffect(() => {
     const timer = setTimeout(() => setDebounced(query.trim()), 350);
@@ -81,15 +92,17 @@ export function useDiscoverSearch(query: string, langs: Language[]) {
 
   const key =
     debounced.length >= 2
-      ? `/api/discover/search?q=${encodeURIComponent(debounced)}&langs=${langs.join(",")}`
+      ? `/api/discover/search?q=${encodeURIComponent(debounced)}&langs=${langs.join(",")}&kind=${kind}`
       : null;
-  const { data, isLoading, mutate } = useSWR<{ results: DiscoverResult[]; unavailable: string[] }>(
-    key,
-    { revalidateOnFocus: false, keepPreviousData: true }
-  );
+  const { data, isLoading, mutate } = useSWR<SearchData>(key, {
+    revalidateOnFocus: false,
+    keepPreviousData: true,
+  });
   return {
     results: key ? (data?.results ?? []) : [],
     unavailable: data?.unavailable ?? [],
+    topic: key ? data?.topic : undefined,
+    noFeed: Boolean(key && data?.noFeed),
     isLoading: Boolean(key) && isLoading,
     isPending: query.trim() !== debounced,
     mutate,
@@ -100,9 +113,10 @@ export function useDiscoverSearch(query: string, langs: Language[]) {
 export function useSuggestions(
   feedId: string | null | undefined,
   langs: Language[],
+  kind: DiscoverKind = "all",
   enabled = true
 ) {
-  const params = new URLSearchParams({ langs: langs.join(",") });
+  const params = new URLSearchParams({ langs: langs.join(","), kind });
   if (feedId) params.set("feedId", feedId);
   const { data, isLoading, mutate } = useSWR<{ results: DiscoverResult[] }>(
     enabled ? `/api/discover/suggest?${params}` : null,
@@ -111,11 +125,43 @@ export function useSuggestions(
   return { results: data?.results ?? [], isLoading, mutate };
 }
 
-export async function describeInterests(description: string, langs: Language[]) {
+/** Live "More like this" results for a category, a page (one search) at a time. */
+export function useExplore(
+  category: string | null,
+  kind: DiscoverKind,
+  langs: Language[],
+  enabled: boolean
+) {
+  const { data, size, setSize, isLoading, isValidating } = useSWRInfinite<{
+    results: DiscoverResult[];
+    hasMore: boolean;
+  }>(
+    (page, previous: { hasMore: boolean } | null) => {
+      if (!enabled || !category || (previous && !previous.hasMore)) return null;
+      return `/api/discover/explore?category=${category}&kind=${kind}&langs=${langs.join(",")}&page=${page}`;
+    },
+    { revalidateOnFocus: false, revalidateFirstPage: false }
+  );
+  const pages = data ?? [];
+  const last = pages[pages.length - 1];
+  return {
+    pages,
+    hasMore: pages.length === 0 || Boolean(last?.hasMore),
+    // A page is loading when it was asked for but hasn't arrived yet.
+    isLoading: isLoading || (isValidating && pages.length < size),
+    loadMore: () => setSize(size + 1),
+  };
+}
+
+export async function describeInterests(
+  description: string,
+  langs: Language[],
+  kind: DiscoverKind = "all"
+) {
   const res = await fetch("/api/discover/suggest", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ description, langs: langs.join(",") }),
+    body: JSON.stringify({ description, langs: langs.join(","), kind }),
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || "Could not get suggestions right now");
@@ -127,8 +173,22 @@ export interface FollowResult {
   ok: boolean;
   feedId?: string;
   title?: string;
+  categoryId?: string | null;
   existed?: boolean;
   error?: string;
+  /** "no-feed": offer following the site through news search instead. */
+  code?: "no-feed" | "unreachable";
+}
+
+function isFeedListKey(key: unknown) {
+  return (
+    typeof key === "string" &&
+    (key.startsWith("/api/feeds") ||
+      key.startsWith("/api/categories") ||
+      key.startsWith("/api/articles") ||
+      // Suggestions call the AI, so they aren't refetched on every follow.
+      key.startsWith("/api/discover/catalog"))
+  );
 }
 
 /** Follows sources and refreshes everything that lists feeds or articles. */
@@ -145,21 +205,47 @@ export function useFollow() {
             kind: item.kind,
             lang: item.lang,
             category: item.category,
+            // Topic feeds are named after the search, not Bing's channel title.
+            title: item.provider === "topic" ? item.name.replace(/[“”]/g, "") : undefined,
           })),
         }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Could not follow");
-      await mutate(
-        (key) =>
-          typeof key === "string" &&
-          (key.startsWith("/api/feeds") ||
-            key.startsWith("/api/categories") ||
-            key.startsWith("/api/articles") ||
-            // Suggestions call the AI, so they aren't refetched on every follow.
-            key.startsWith("/api/discover/catalog"))
-      );
+      await mutate(isFeedListKey);
       return body.results as FollowResult[];
+    },
+    [mutate]
+  );
+}
+
+/** Unfollows feeds (Undo after a follow) and refreshes the lists. */
+export function useUnfollow() {
+  const { mutate } = useSWRConfig();
+  return React.useCallback(
+    async (feedIds: string[]) => {
+      const responses = await Promise.all(
+        feedIds.map((id) => fetch(`/api/feeds/${id}`, { method: "DELETE" }))
+      );
+      await mutate(isFeedListKey);
+      if (responses.some((r) => !r.ok)) throw new Error("Could not undo right now");
+    },
+    [mutate]
+  );
+}
+
+/** Files a followed feed under another category (or none). */
+export function useMoveFeed() {
+  const { mutate } = useSWRConfig();
+  return React.useCallback(
+    async (feedId: string, categoryId: string | null) => {
+      const res = await fetch(`/api/feeds/${feedId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categoryId }),
+      });
+      if (!res.ok) throw new Error("Could not move this source");
+      await mutate(isFeedListKey);
     },
     [mutate]
   );

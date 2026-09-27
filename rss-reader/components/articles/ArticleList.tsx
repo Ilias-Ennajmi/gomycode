@@ -37,9 +37,16 @@ import { isSourceTab, useReaderState } from "@/lib/hooks/useReaderState";
 import { useArticles, toggleArticleArchived, toggleArticleSaved } from "@/lib/hooks/useArticles";
 import { markAllRead, refreshFeeds, refreshToastMessage, useFeeds } from "@/lib/hooks/useFeeds";
 import type { ArticleFilter, ArticleSummary, LaterTab } from "@/lib/types";
+import type { DiscoverKind } from "@/lib/discover/catalog";
+
+const TAB_DISCOVER: Record<string, { kind: DiscoverKind; label: string }> = {
+  rss: { kind: "rss", label: "Add site" },
+  youtube: { kind: "youtube", label: "Add channel" },
+  newsletters: { kind: "newsletter", label: "Add newsletter" },
+};
 
 interface ArticleListProps {
-  onAddFeed: () => void;
+  onAddFeed: (kind?: DiscoverKind) => void;
   onSaveLink: () => void;
 }
 
@@ -218,6 +225,19 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          {!isLater && (
+            <Button
+              size="sm"
+              className="h-8 gap-1 rounded-full px-3 text-xs"
+              onClick={() => onAddFeed(TAB_DISCOVER[view.type]?.kind ?? "all")}
+              title={TAB_DISCOVER[view.type] ? undefined : "Discover sources"}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span className={cn(!TAB_DISCOVER[view.type] && "max-sm:sr-only")}>
+                {TAB_DISCOVER[view.type]?.label ?? "Discover"}
+              </span>
+            </Button>
+          )}
           {sourceTab && (
             <Button
               variant="outline"
@@ -371,7 +391,7 @@ function EmptyState({
 }: {
   search: string;
   view: string;
-  onAddFeed: () => void;
+  onAddFeed: (kind?: DiscoverKind) => void;
   onSaveLink: () => void;
 }) {
   if (search) {
@@ -409,7 +429,7 @@ function EmptyState({
         icon={<MonitorPlay className="h-10 w-10" />}
         text="No videos yet. Follow a YouTube channel and its new uploads land here."
         action="Find YouTube channels"
-        onAction={onAddFeed}
+        onAction={() => onAddFeed("youtube")}
       />
     );
   }
@@ -420,7 +440,7 @@ function EmptyState({
         icon={<Mail className="h-10 w-10" />}
         text="No newsletters yet. Follow Substack and other newsletters and new issues land here."
         action="Find newsletters"
-        onAction={onAddFeed}
+        onAction={() => onAddFeed("newsletter")}
       />
     );
   }
@@ -431,7 +451,7 @@ function EmptyState({
         icon={<Rss className="h-10 w-10" />}
         text="No articles yet. Follow a few sites to get started."
         action="Discover sites"
-        onAction={onAddFeed}
+        onAction={() => onAddFeed("rss")}
       />
     );
   }
@@ -449,7 +469,7 @@ function EmptyState({
     <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center text-muted-foreground">
       <Inbox className="h-10 w-10" />
       <p className="text-sm">No articles here yet.</p>
-      <Button size="sm" onClick={onAddFeed}>
+      <Button size="sm" onClick={() => onAddFeed()}>
         Discover sources
       </Button>
     </div>

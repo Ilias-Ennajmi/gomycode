@@ -5,6 +5,7 @@ import {
   youTubeThumbnailUrl,
   youTubeVideoId,
 } from "@/lib/youtube";
+import { unwrapBingLink } from "@/lib/discover/topics";
 
 // Feed-level fields come straight from xml2js, so any of them can be a string,
 // an array of strings, or an object ({ _: text } / { url } / { $: { href } }).
@@ -24,6 +25,9 @@ type CustomItem = {
   enclosure?: { url?: string; type?: string };
   author?: unknown;
   "dc:creator"?: unknown;
+  // Bing News search feeds (topic follows).
+  "News:Image"?: unknown;
+  "News:Source"?: unknown;
 };
 
 const parser = new Parser<CustomFeed, CustomItem>({
@@ -35,6 +39,8 @@ const parser = new Parser<CustomFeed, CustomItem>({
       ["media:thumbnail", "media:thumbnail"],
       ["media:group", "media:group"],
       ["dc:creator", "dc:creator"],
+      ["News:Image", "News:Image"],
+      ["News:Source", "News:Source"],
     ],
   },
 });
@@ -145,6 +151,9 @@ function extractImageUrl(item: Parser.Item & CustomItem): string | undefined {
   const thumb = item["media:thumbnail"];
   if (thumb?.$?.url) return thumb.$.url;
 
+  const newsImage = firstText(item["News:Image"]);
+  if (newsImage) return newsImage;
+
   return firstImageFromHtml(item["content:encoded"] || item.content);
 }
 
@@ -168,7 +177,7 @@ async function parseFeedXml(xml: string, url: string): Promise<ParsedFeed> {
   const articles: ParsedArticle[] = (feed.items || [])
     .filter((item) => firstText(item.link))
     .map((item) => {
-      const link = firstText(item.link) as string;
+      const link = unwrapBingLink(firstText(item.link) as string);
       const rawDate = item.isoDate || item.pubDate;
       const publishedAt = rawDate ? new Date(rawDate) : new Date();
       const videoId = youTubeVideoId(link);
@@ -183,7 +192,11 @@ async function parseFeedXml(xml: string, url: string): Promise<ParsedFeed> {
         summary: summary ? summary.slice(0, 500) : undefined,
         content,
         imageUrl: videoId ? youTubeThumbnailUrl(videoId) : extractImageUrl(item),
-        author: firstText(item.author) || firstText(item["dc:creator"]) || firstText(item.creator),
+        author:
+          firstText(item.author) ||
+          firstText(item["dc:creator"]) ||
+          firstText(item.creator) ||
+          firstText(item["News:Source"]),
         publishedAt: isNaN(publishedAt.getTime()) ? new Date() : publishedAt,
         isVideo: Boolean(videoId),
       };
