@@ -330,14 +330,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin">
-        {ranked && !search && filterTab === "all" && (
-          <DailyBriefing
-            onOpen={(articleId) => {
-              setSelectedArticleId(articleId);
-              setMobilePane("reader");
-            }}
-          />
-        )}
+        {ranked && !search && filterTab === "all" && <DailyBriefing />}
         {isLoading ? (
           <ArticleSkeletonList />
         ) : articles.length === 0 ? (

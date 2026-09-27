@@ -1,5 +1,6 @@
 "use client";
 
+import type { Briefing } from "@/lib/digest";
 import useSWR from "swr";
 
 export interface AiStatus {
@@ -9,30 +10,19 @@ export interface AiStatus {
   topics: number;
 }
 
-export interface DigestItem {
-  articleId: string;
-  headline: string;
-  blurb: string;
-  sources: string[];
-}
-
-export interface Digest {
-  date: string;
-  intro: string;
-  items: DigestItem[];
-}
+export type { Briefing, BriefStory, BriefPick } from "@/lib/digest";
 
 export function useAiStatus() {
   const { data } = useSWR<AiStatus>("/api/ai", { refreshInterval: 10 * 60 * 1000 });
   return data;
 }
 
-export function useDigest(enabled: boolean) {
-  const { data, isLoading } = useSWR<{ enabled: boolean; digest: Digest | null }>(
+export function useBriefing(enabled: boolean) {
+  const { data, isLoading, mutate } = useSWR<{ enabled: boolean; briefing: Briefing | null }>(
     enabled ? "/api/digest" : null,
     { revalidateOnFocus: false }
   );
-  return { digest: data?.digest ?? null, isLoading };
+  return { briefing: data?.briefing ?? null, isLoading, mutate };
 }
 
 /** Cached server-side after the first request, so reopening an article is free. */

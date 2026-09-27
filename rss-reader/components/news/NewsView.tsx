@@ -1,7 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { ArrowRight, Globe2, Newspaper, RefreshCw, Settings2, Sparkles, Zap } from "lucide-react";
+import {
+  ArrowRight,
+  Globe2,
+  Newspaper,
+  RefreshCw,
+  Settings2,
+  Sparkles,
+  Sunrise,
+  Zap,
+} from "lucide-react";
 import { useSWRConfig } from "swr";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -66,6 +75,15 @@ export function NewsView({ onManageSources }: NewsViewProps) {
             </h1>
           </div>
           <div className="flex items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 gap-1.5 rounded-full text-primary"
+              onClick={() => setView({ type: "briefing", label: "Today's briefing" })}
+            >
+              <Sunrise className="h-4 w-4" />
+              <span className="max-sm:sr-only">Briefing</span>
+            </Button>
             <WeatherWidget />
             <Button
               variant="ghost"

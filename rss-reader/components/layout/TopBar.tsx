@@ -31,6 +31,8 @@ export function TopBar({ className, onSaveLink }: TopBarProps) {
   // A single feed belongs to the tab for its kind of source.
   function activeTab(): ViewType | null {
     if (mobilePane === "settings") return null;
+    // The briefing is reached from For You.
+    if (view.type === "briefing") return "foryou";
     if (view.type !== "feed") return TABS.some((t) => t.type === view.type) ? view.type : null;
     const feed = feeds.find((f) => f.id === view.id);
     if (feed?.newsDesk) return "news";

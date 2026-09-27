@@ -16,6 +16,7 @@ import { SaveLinkDialog } from "@/components/dialogs/SaveLinkDialog";
 import { SettingsPanel } from "@/components/layout/SettingsPanel";
 import { SourcesManager } from "@/components/sources/SourcesManager";
 import { NewsView } from "@/components/news/NewsView";
+import { TodayView } from "@/components/today/TodayView";
 import { NewsSourcesDialog } from "@/components/news/NewsSourcesDialog";
 import { X } from "lucide-react";
 import { ReaderStateProvider, useReaderState } from "@/lib/hooks/useReaderState";
@@ -34,7 +35,9 @@ export function AppShell() {
 function AppShellInner() {
   const { mobilePane, setMobilePane, selectedArticleId, setSelectedArticleId, view } =
     useReaderState();
+  // Full-width pages with the reader as a panel on top: the News front page and the briefing.
   const newsFront = view.type === "news" && !view.id;
+  const fullPage = newsFront || view.type === "briefing";
   const [newsSources, setNewsSources] = React.useState<{ open: boolean; setup: boolean }>({
     open: false,
     setup: false,
@@ -151,7 +154,7 @@ function AppShellInner() {
           )}
         >
           <TopBar className="hidden md:block" onSaveLink={() => setSaveLinkOpen(true)} />
-          {newsFront ? (
+          {fullPage ? (
             <div className="relative flex min-h-0 flex-1">
               <div
                 className={cn(
@@ -159,9 +162,13 @@ function AppShellInner() {
                   mobilePane === "reader" && "hidden md:block"
                 )}
               >
-                <NewsView
-                  onManageSources={(setup = false) => setNewsSources({ open: true, setup })}
-                />
+                {newsFront ? (
+                  <NewsView
+                    onManageSources={(setup = false) => setNewsSources({ open: true, setup })}
+                  />
+                ) : (
+                  <TodayView />
+                )}
               </div>
               {selectedArticleId && (
                 <div
