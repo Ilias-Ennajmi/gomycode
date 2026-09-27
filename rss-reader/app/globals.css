@@ -78,7 +78,14 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-family:
+      "Inter Variable",
+      Inter,
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      sans-serif;
     overscroll-behavior-y: none;
     font-feature-settings: "cv11", "ss01";
   }
@@ -161,4 +168,58 @@ a,
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Article bodies come from any site, often with fixed pixel widths. Everything
+   fits the screen: media shrink to the column, long words and links wrap, and
+   only code blocks and tables scroll sideways (inside themselves). */
+.reader-content {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.reader-content * {
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+.reader-content div,
+.reader-content figure,
+.reader-content section,
+.reader-content article,
+.reader-content p {
+  width: auto !important;
+  min-width: 0 !important;
+}
+.reader-content img,
+.reader-content picture,
+.reader-content video,
+.reader-content svg,
+.reader-content canvas {
+  height: auto !important;
+}
+.reader-content img {
+  width: auto;
+}
+/* Big pictures use the full column; small ones (icons, emoji) keep their size. */
+.reader-content img[width]:not([width="1"]),
+.reader-content figure img,
+.reader-content p > img:only-child {
+  width: 100% !important;
+}
+.reader-content iframe,
+.reader-content embed,
+.reader-content object {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 0.5rem;
+}
+.reader-content pre,
+.reader-content table {
+  display: block;
+  overflow-x: auto;
+  overflow-wrap: normal;
+}
+.reader-content pre code {
+  white-space: pre;
 }

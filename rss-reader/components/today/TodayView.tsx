@@ -183,7 +183,7 @@ export function TodayView() {
             {briefing.numbers.length > 0 && (
               <section>
                 <SectionTitle>By the numbers</SectionTitle>
-                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
                   {briefing.numbers.map((n) => (
                     <button
                       key={`${n.value}-${n.label}`}
@@ -204,7 +204,7 @@ export function TodayView() {
             {briefing.interests.length > 0 && (
               <section>
                 <SectionTitle>In your interests</SectionTitle>
-                <div className="mt-3 grid gap-x-8 gap-y-6 sm:grid-cols-2">
+                <div className="mt-3 grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
                   {briefing.interests.map((interest) => (
                     <div key={interest.name}>
                       <h3 className="border-b pb-1.5 text-sm font-semibold">{interest.name}</h3>
@@ -249,7 +249,7 @@ export function TodayView() {
             )}
 
             {(briefing.newsletters.length > 0 || briefing.longRead) && (
-              <div className="grid gap-8 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
                 {briefing.newsletters.length > 0 && (
                   <section className={cn(!briefing.longRead && "sm:col-span-2")}>
                     <SectionTitle icon={<Mail className="h-4 w-4 text-muted-foreground" />}>

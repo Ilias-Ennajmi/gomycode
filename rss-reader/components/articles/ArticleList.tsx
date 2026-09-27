@@ -34,7 +34,12 @@ import { CategoryChips } from "@/components/articles/CategoryChips";
 import { ArticleSkeletonList } from "@/components/articles/ArticleSkeleton";
 import { DailyBriefing } from "@/components/articles/DailyBriefing";
 import { isSourceTab, useReaderState } from "@/lib/hooks/useReaderState";
-import { useArticles, toggleArticleArchived, toggleArticleSaved } from "@/lib/hooks/useArticles";
+import {
+  useArticles,
+  toggleArticleArchived,
+  toggleArticleRead,
+  toggleArticleSaved,
+} from "@/lib/hooks/useArticles";
 import { markAllRead, refreshFeeds, refreshToastMessage, useFeeds } from "@/lib/hooks/useFeeds";
 import type { ArticleFilter, ArticleSummary, LaterTab } from "@/lib/types";
 import type { DiscoverKind } from "@/lib/discover/catalog";
@@ -131,6 +136,21 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
     try {
       await toggleArticleSaved(article.id, !article.isSaved);
       mutate();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update article");
+    }
+  }
+
+  async function handleToggleRead(article: ArticleSummary) {
+    try {
+      await toggleArticleRead(article.id, !article.isRead);
+      mutate();
+      toast(article.isRead ? "Marked unread" : "Marked read", {
+        action: {
+          label: "Undo",
+          onClick: () => toggleArticleRead(article.id, article.isRead).then(() => mutate()),
+        },
+      });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not update article");
     }
@@ -360,6 +380,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
                     searchQuery={search}
                     onClick={() => handleSelect(article)}
                     onToggleSave={() => handleToggleSave(article)}
+                    onToggleRead={() => handleToggleRead(article)}
                     onSelectRelated={handleSelect}
                     onArchive={
                       article.isSaved

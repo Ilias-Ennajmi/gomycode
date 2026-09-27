@@ -43,7 +43,7 @@ export function HeroSlider({
     <section
       aria-roledescription="carousel"
       aria-label="Top stories"
-      className="relative"
+      className="relative min-w-0"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onTouchStart={() => setPaused(true)}
@@ -67,7 +67,7 @@ export function HeroSlider({
             <button
               type="button"
               onClick={() => onOpen(story)}
-              className="group relative block aspect-[5/6] w-full overflow-hidden text-left sm:aspect-[16/9] lg:aspect-[21/9]"
+              className="group relative block h-[min(64vh,440px)] w-full overflow-hidden text-left sm:h-auto sm:aspect-[16/9] lg:aspect-[21/9]"
             >
               <StoryImage
                 src={story.imageUrl}

@@ -1,12 +1,39 @@
 "use client";
 
-import { Plus, Search, Settings } from "lucide-react";
+import * as React from "react";
+import { Compass, Link2, Newspaper, Plus, Search, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/shared/Logo";
 import { useFeeds } from "@/lib/hooks/useFeeds";
 import { useArticleCount } from "@/lib/hooks/useArticles";
 import { useReaderState, type ViewState, type ViewType } from "@/lib/hooks/useReaderState";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import type { DiscoverKind } from "@/lib/discover/catalog";
+
+/** The Discover channel that fits each tab. */
+const TAB_KIND: Partial<Record<ViewType, DiscoverKind>> = {
+  rss: "rss",
+  youtube: "youtube",
+  newsletters: "newsletter",
+};
+const KIND_LABEL: Record<DiscoverKind, string> = {
+  all: "Add sources",
+  rss: "Add sites & blogs",
+  youtube: "Add YouTube channels",
+  newsletter: "Add newsletters",
+};
+
+function short(n: number) {
+  return n > 99 ? "99+" : String(n);
+}
 
 const TABS: ViewState[] = [
   { type: "foryou", label: "For You" },
@@ -20,13 +47,22 @@ const TABS: ViewState[] = [
 interface TopBarProps {
   className?: string;
   onSaveLink: () => void;
+  onAddFeed: (kind?: DiscoverKind) => void;
+  onManageNews: () => void;
 }
 
 /** Section tabs across the top, Readwise-style; phones also get search and settings. */
-export function TopBar({ className, onSaveLink }: TopBarProps) {
+export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBarProps) {
   const { view, setView, mobilePane, setMobilePane } = useReaderState();
   const { feeds } = useFeeds();
   const laterCount = useArticleCount({ later: "queue" });
+  // Unread per tab, so it's clear where something new is waiting.
+  const unread: Partial<Record<ViewType, number>> = {
+    news: useArticleCount({ news: "all", unread: true }),
+    rss: useArticleCount({ source: "rss", unread: true }),
+    youtube: useArticleCount({ source: "youtube", unread: true }),
+    newsletters: useArticleCount({ source: "newsletter", unread: true }),
+  };
 
   // A single feed belongs to the tab for its kind of source.
   function activeTab(): ViewType | null {
@@ -70,15 +106,16 @@ export function TopBar({ className, onSaveLink }: TopBarProps) {
           >
             <Search className="h-[18px] w-[18px]" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9"
-            onClick={onSaveLink}
-            aria-label="Save a link"
+          <AddMenu
+            kind={TAB_KIND[view.type] ?? "all"}
+            onAddFeed={onAddFeed}
+            onManageNews={onManageNews}
+            onSaveLink={onSaveLink}
           >
-            <Plus className="h-5 w-5" />
-          </Button>
+            <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Add">
+              <Plus className="h-5 w-5" />
+            </Button>
+          </AddMenu>
           <Button
             variant="ghost"
             size="icon"
@@ -115,7 +152,15 @@ export function TopBar({ className, onSaveLink }: TopBarProps) {
                 {tab.label}
                 {tab.type === "later" && laterCount > 0 && (
                   <span className="rounded-full bg-primary/15 px-1.5 py-px text-[10.5px] font-semibold tracking-normal text-primary">
-                    {laterCount > 99 ? "99+" : laterCount}
+                    {short(laterCount)}
+                  </span>
+                )}
+                {(unread[tab.type] ?? 0) > 0 && (
+                  <span
+                    className="text-[10.5px] font-medium tabular-nums tracking-normal text-muted-foreground/80"
+                    aria-label={`${unread[tab.type]} unread`}
+                  >
+                    {short(unread[tab.type]!)}
                   </span>
                 )}
                 {isActive && (
@@ -125,14 +170,65 @@ export function TopBar({ className, onSaveLink }: TopBarProps) {
             );
           })}
         </nav>
-        <Button
-          size="sm"
-          className="hidden h-8 gap-1.5 rounded-full md:inline-flex"
-          onClick={onSaveLink}
+        <AddMenu
+          kind={TAB_KIND[view.type] ?? "all"}
+          onAddFeed={onAddFeed}
+          onManageNews={onManageNews}
+          onSaveLink={onSaveLink}
         >
-          <Plus className="h-4 w-4" /> Save link
-        </Button>
+          <Button size="sm" className="hidden h-8 gap-1.5 rounded-full md:inline-flex">
+            <Plus className="h-4 w-4" /> Add
+          </Button>
+        </AddMenu>
       </div>
     </header>
+  );
+}
+
+/** One "+" for everything you can add, scoped to the tab you're on. */
+function AddMenu({
+  kind,
+  onAddFeed,
+  onManageNews,
+  onSaveLink,
+  children,
+}: {
+  kind: DiscoverKind;
+  onAddFeed: (kind?: DiscoverKind) => void;
+  onManageNews: () => void;
+  onSaveLink: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-60">
+        <DropdownMenuLabel className="text-xs text-muted-foreground">Add</DropdownMenuLabel>
+        <DropdownMenuItem onSelect={() => onAddFeed(kind)} className="gap-2.5 py-2">
+          <Compass className="h-4 w-4 text-primary" />
+          <span>
+            <span className="block text-sm">{KIND_LABEL[kind]}</span>
+            <span className="block text-xs text-muted-foreground">
+              Browse, search, or follow a topic
+            </span>
+          </span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={onManageNews} className="gap-2.5 py-2">
+          <Newspaper className="h-4 w-4 text-primary" />
+          <span>
+            <span className="block text-sm">News sources</span>
+            <span className="block text-xs text-muted-foreground">Choose the outlets in News</span>
+          </span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={onSaveLink} className="gap-2.5 py-2">
+          <Link2 className="h-4 w-4 text-primary" />
+          <span>
+            <span className="block text-sm">Save a link</span>
+            <span className="block text-xs text-muted-foreground">Read it later</span>
+          </span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

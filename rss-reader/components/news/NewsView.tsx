@@ -125,7 +125,7 @@ export function NewsView({ onManageSources }: NewsViewProps) {
           </div>
         ) : page ? (
           <div className="space-y-10 pt-5">
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
               <HeroSlider stories={page.hero} onOpen={open} />
               <Insights />
             </div>
@@ -140,7 +140,7 @@ export function NewsView({ onManageSources }: NewsViewProps) {
               />
             )}
 
-            <div className="grid gap-x-10 gap-y-12 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-x-10 gap-y-12 md:grid-cols-2">
               {page.sections.map((section, i) => (
                 <React.Fragment key={section.id}>
                   <SectionBlock
@@ -153,7 +153,7 @@ export function NewsView({ onManageSources }: NewsViewProps) {
                     }
                   />
                   {section.id === "morocco" && page.moroccoAbroad.length > 0 && (
-                    <div className="md:col-span-2">
+                    <div className="min-w-0 md:col-span-2">
                       <StoryRow
                         title="Morocco in the world press"
                         icon={<Globe2 className="h-4 w-4 text-primary" />}
@@ -219,7 +219,7 @@ function SectionBlock({
 }) {
   const [lead, ...rest] = section.stories;
   return (
-    <section className={cn(wide && "md:col-span-2")}>
+    <section className={cn("min-w-0", wide && "md:col-span-2")}>
       <header className="flex items-baseline justify-between border-t pt-3">
         <h2 className="font-serif text-2xl font-semibold tracking-tight">{section.name}</h2>
         <button
@@ -231,7 +231,10 @@ function SectionBlock({
         </button>
       </header>
       <div
-        className={cn("mt-4 grid gap-6", wide && "lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]")}
+        className={cn(
+          "mt-4 grid grid-cols-1 gap-6",
+          wide && "lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]"
+        )}
       >
         {lead && (
           <button
@@ -239,7 +242,7 @@ function SectionBlock({
             onClick={() => onOpen(lead)}
             className={cn(
               "group text-left",
-              wide ? "" : "grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"
+              wide ? "" : "grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"
             )}
           >
             {lead.imageUrl && (
@@ -368,11 +371,11 @@ function Welcome({ onSetup }: { onSetup: () => void }) {
 function FrontPageSkeleton() {
   return (
     <div className="space-y-10 pt-5">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <Skeleton className="aspect-[5/6] w-full rounded-2xl sm:aspect-[16/9] lg:aspect-[21/9]" />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <Skeleton className="h-[min(64vh,440px)] w-full rounded-2xl sm:h-auto sm:aspect-[16/9] lg:aspect-[21/9]" />
         <Skeleton className="h-64 w-full rounded-2xl" />
       </div>
-      <div className="grid gap-10 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
         {[0, 1].map((i) => (
           <div key={i} className="space-y-3">
             <Skeleton className="h-7 w-32" />

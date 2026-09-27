@@ -136,6 +136,8 @@ function AppShellInner() {
       <TopBar
         className={cn("md:hidden", hideTopBarOnPhone && "hidden")}
         onSaveLink={() => setSaveLinkOpen(true)}
+        onAddFeed={dialogActions.onAddFeed}
+        onManageNews={() => setNewsSources({ open: true, setup: false })}
       />
       <div className="flex min-h-0 flex-1">
         <div
@@ -153,7 +155,12 @@ function AppShellInner() {
             mobilePane === "sidebar" || mobilePane === "settings" ? "hidden md:flex" : "flex"
           )}
         >
-          <TopBar className="hidden md:block" onSaveLink={() => setSaveLinkOpen(true)} />
+          <TopBar
+            className="hidden md:block"
+            onSaveLink={() => setSaveLinkOpen(true)}
+            onAddFeed={dialogActions.onAddFeed}
+            onManageNews={() => setNewsSources({ open: true, setup: false })}
+          />
           {fullPage ? (
             <div className="relative flex min-h-0 flex-1">
               <div

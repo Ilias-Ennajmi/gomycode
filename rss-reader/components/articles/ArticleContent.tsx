@@ -37,7 +37,15 @@ function getPurifier(): Promise<Purifier> {
   return purifierPromise;
 }
 
-function VideoPlayer({ videoId, summary, link }: { videoId: string; summary?: string | null; link: string }) {
+function VideoPlayer({
+  videoId,
+  summary,
+  link,
+}: {
+  videoId: string;
+  summary?: string | null;
+  link: string;
+}) {
   return (
     <div className="space-y-4">
       <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black shadow-sm">
@@ -51,7 +59,9 @@ function VideoPlayer({ videoId, summary, link }: { videoId: string; summary?: st
         />
       </div>
       {summary && (
-        <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{summary}</p>
+        <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+          {summary}
+        </p>
       )}
       <a
         href={link}
@@ -137,10 +147,10 @@ export function ArticleContent({ content, summary, link, isVideo }: ArticleConte
       ref={containerRef}
       style={readerStyle}
       className={cn(
-        "prose prose-neutral max-w-none dark:prose-invert",
+        "reader-content prose prose-neutral max-w-none dark:prose-invert",
         "prose-headings:font-semibold prose-headings:tracking-tight",
         "prose-p:leading-[inherit] prose-li:leading-[inherit]",
-        "prose-img:mx-auto prose-img:w-full prose-img:rounded-lg",
+        "prose-img:mx-auto prose-img:rounded-lg",
         "prose-figcaption:text-center prose-figcaption:text-sm prose-figcaption:text-muted-foreground",
         "prose-blockquote:border-l-primary prose-blockquote:font-normal prose-blockquote:not-italic prose-blockquote:text-foreground/80",
         "prose-a:text-primary prose-a:no-underline hover:prose-a:underline",

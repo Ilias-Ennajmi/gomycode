@@ -9,6 +9,7 @@ import {
   BookOpen,
   Check,
   ChevronLeft,
+  ChevronRight,
   ExternalLink,
   Share,
   Sparkles,
@@ -36,9 +37,12 @@ import { useReadingProgress } from "@/lib/hooks/useReadingProgress";
 import { READER_WIDTHS, useReaderPrefs } from "@/lib/hooks/useReaderPrefs";
 import { needsFullArticle, wordCount } from "@/lib/reader";
 import { ReaderSettings } from "@/components/articles/ReaderSettings";
+import { ListenBar, ListenButton, useSpeech } from "@/components/articles/ListenButton";
+import type { ArticleSummary } from "@/lib/types";
 
 export function ArticleReader() {
-  const { view, selectedArticleId, setMobilePane, listParams, sort } = useReaderState();
+  const { view, selectedArticleId, setSelectedArticleId, setMobilePane, listParams, sort } =
+    useReaderState();
   const { articles, mutate: mutateList } = useArticles(listParams, sort);
 
   // Grouped stories and briefing links can point outside the loaded list.
@@ -58,6 +62,40 @@ export function ArticleReader() {
     globalMutate((key) => typeof key === "string" && key.startsWith("/api/articles"));
 
   const { prefs } = useReaderPrefs();
+
+  // Previous / next in the list the article was opened from (not on the News
+  // front page or the briefing, whose order isn't a list).
+  const inList = view.type !== "briefing" && !(view.type === "news" && !view.id);
+  const index = inList && article ? articles.findIndex((a) => a.id === article.id) : -1;
+  const previous = index > 0 ? articles[index - 1] : null;
+  const next = index >= 0 ? (articles[index + 1] ?? null) : null;
+  const goTo = React.useCallback(
+    (target: ArticleSummary | null) => {
+      if (target) setSelectedArticleId(target.id);
+    },
+    [setSelectedArticleId]
+  );
+
+  const speech = useSpeech(article?.id);
+
+  // Phones: swipe left for the next article, right for the previous one.
+  const touch = React.useRef<{ x: number; y: number } | null>(null);
+  function onTouchStart(event: React.TouchEvent) {
+    const t = event.touches[0];
+    touch.current = { x: t.clientX, y: t.clientY };
+  }
+  function onTouchEnd(event: React.TouchEvent) {
+    const start = touch.current;
+    touch.current = null;
+    if (!start) return;
+    const t = event.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) < 90 || Math.abs(dy) > 50) return;
+    // Not when the swipe scrolled something sideways (a table or code block).
+    if ((event.target as HTMLElement).closest("pre, table, [data-scroll-x]")) return;
+    goTo(dx < 0 ? next : previous);
+  }
 
   // Excerpt-only feeds: fetch the full page (cached server-side) and show it
   // by default, with a toggle back to the feed's own text.
@@ -222,14 +260,30 @@ export function ArticleReader() {
           >
             <Share className="h-5 w-5" />
           </Button>
+          <ListenButton
+            speech={speech}
+            html={bodyHtml || article.summary || ""}
+            className="h-10 w-10"
+          />
           <ReaderSettings />
         </div>
       </div>
 
       <ReaderSettings className="absolute right-4 top-3 z-10 hidden md:inline-flex" />
+      <ListenButton
+        speech={speech}
+        html={bodyHtml || article.summary || ""}
+        className="absolute right-14 top-3 z-10 hidden h-9 w-9 md:inline-flex"
+      />
+      <ListenBar speech={speech} html={bodyHtml || article.summary || ""} />
       <MinutesLeft words={wordCount(bodyHtml || article.summary)} progress={progress} />
 
-      <div ref={containerRef} className="flex-1 overflow-y-auto scrollbar-thin">
+      <div
+        ref={containerRef}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        className="flex-1 overflow-y-auto scrollbar-thin"
+      >
         <div
           className="mx-auto px-5 py-6 md:px-8 md:py-10"
           style={{ maxWidth: READER_WIDTHS[prefs.width] + 64 }}
@@ -273,9 +327,69 @@ export function ArticleReader() {
               isVideo={article.isVideo}
             />
           </div>
+          {(previous || next) && <UpNext previous={previous} next={next} onGo={goTo} />}
         </div>
       </div>
     </div>
+  );
+}
+
+/** "Up next" at the end of an article, so reading flows without going back to the list. */
+function UpNext({
+  previous,
+  next,
+  onGo,
+}: {
+  previous: ArticleSummary | null;
+  next: ArticleSummary | null;
+  onGo: (article: ArticleSummary) => void;
+}) {
+  return (
+    <nav aria-label="More articles" className="mt-12 border-t pt-6">
+      {next && (
+        <button
+          type="button"
+          onClick={() => onGo(next)}
+          className="group flex w-full items-center gap-4 rounded-2xl border bg-card/60 p-4 text-left transition-colors hover:bg-accent/60"
+        >
+          {next.imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={next.imageUrl}
+              alt=""
+              loading="lazy"
+              className="h-16 w-20 shrink-0 rounded-lg object-cover"
+              onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
+            />
+          )}
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs font-semibold uppercase tracking-wide text-primary">
+              Up next
+            </span>
+            <span className="mt-0.5 line-clamp-2 block text-[15px] font-semibold leading-snug">
+              {next.title}
+            </span>
+            <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+              {next.feed.title}
+            </span>
+          </span>
+          <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+        </button>
+      )}
+      {previous && (
+        <button
+          type="button"
+          onClick={() => onGo(previous)}
+          className="mt-3 flex w-full items-center gap-1.5 text-left text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ChevronLeft className="h-4 w-4 shrink-0" />
+          <span className="truncate">Previous: {previous.title}</span>
+        </button>
+      )}
+      <p className="mt-4 text-center text-xs text-muted-foreground md:hidden">
+        Tip: swipe left or right to move between articles
+      </p>
+    </nav>
   );
 }
 
