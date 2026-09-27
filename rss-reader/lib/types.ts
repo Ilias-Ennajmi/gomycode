@@ -12,6 +12,9 @@ export interface FeedSummary {
   coverUrl: string | null;
   categoryId: string | null;
   language: string | null;
+  /** The News section this source feeds, or null when it isn't a News source. */
+  newsDesk: string | null;
+  region: string | null;
   lastFetched: string | null;
   errorCount: number;
   unreadCount: number;
@@ -93,6 +96,8 @@ export type ArticleSort = "newest" | "oldest";
 
 export interface ArticleListParams {
   view?: "foryou";
+  /** News sources: "all" or one section id. */
+  news?: string;
   source?: FeedType;
   later?: LaterTab;
   feedId?: string;

@@ -10,6 +10,7 @@ import { useReaderState, type ViewState, type ViewType } from "@/lib/hooks/useRe
 
 const TABS: ViewState[] = [
   { type: "foryou", label: "For You" },
+  { type: "news", label: "News" },
   { type: "rss", label: "RSS" },
   { type: "youtube", label: "YouTube" },
   { type: "newsletters", label: "Newsletters" },
@@ -31,13 +32,19 @@ export function TopBar({ className, onSaveLink }: TopBarProps) {
   function activeTab(): ViewType | null {
     if (mobilePane === "settings") return null;
     if (view.type !== "feed") return TABS.some((t) => t.type === view.type) ? view.type : null;
-    const type = feeds.find((feed) => feed.id === view.id)?.type;
-    return type === "youtube" ? "youtube" : type === "newsletter" ? "newsletters" : "rss";
+    const feed = feeds.find((f) => f.id === view.id);
+    if (feed?.newsDesk) return "news";
+    return feed?.type === "youtube"
+      ? "youtube"
+      : feed?.type === "newsletter"
+        ? "newsletters"
+        : "rss";
   }
   const active = activeTab();
 
   function select(tab: ViewState) {
-    if (view.type === tab.type) setMobilePane("list");
+    // From a section list inside News, the tab goes back to the front page.
+    if (view.type === tab.type && !(tab.type === "news" && view.id)) setMobilePane("list");
     else setView(tab);
   }
 

@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isDesk } from "@/lib/news/desks";
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const body = await request.json();
-    const { title, categoryId } = body as {
+    const { title, categoryId, newsDesk } = body as {
       title?: string;
       categoryId?: string | null;
+      /** A News section id to show the source in News, or null to take it out. */
+      newsDesk?: string | null;
     };
+    if (newsDesk !== undefined && newsDesk !== null && !isDesk(newsDesk)) {
+      return NextResponse.json({ error: "Unknown News section" }, { status: 400 });
+    }
 
     const feed = await prisma.feed.findUnique({ where: { id: params.id } });
     if (!feed) {
@@ -29,6 +32,7 @@ export async function PATCH(
       data: {
         ...(title !== undefined ? { title } : {}),
         ...(categoryId !== undefined ? { categoryId } : {}),
+        ...(newsDesk !== undefined ? { newsDesk } : {}),
       },
     });
 
@@ -39,10 +43,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const feed = await prisma.feed.findUnique({ where: { id: params.id } });
     if (!feed) {

@@ -75,7 +75,16 @@ const config: Config = {
         "fade-in": "fade-in 150ms ease",
       },
       fontFamily: {
-        sans: ["Inter Variable", "Inter", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+        sans: [
+          "Inter Variable",
+          "Inter",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "Segoe UI",
+          "sans-serif",
+        ],
+        serif: ["Newsreader Variable", "Newsreader", "Georgia", "ui-serif", "serif"],
       },
     },
   },

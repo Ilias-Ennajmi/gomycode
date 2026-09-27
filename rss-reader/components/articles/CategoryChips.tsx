@@ -13,10 +13,12 @@ export function CategoryChips({ tab }: { tab: SourceTab }) {
   const selected = tabCategory[tab];
   const type = SOURCE_TAB_FEED_TYPE[tab];
 
+  // News sources show in the News tab, not RSS.
+  const tabFeeds = feeds.filter((feed) => feed.type === type && !(tab === "rss" && feed.newsDesk));
   const options = categories
-    .filter((category) => category.feeds.some((feed) => feed.type === type))
+    .filter((category) => tabFeeds.some((feed) => feed.categoryId === category.id))
     .map((category) => ({ id: category.id, name: category.name, color: category.color }));
-  if (options.length > 0 && feeds.some((feed) => feed.type === type && !feed.categoryId)) {
+  if (options.length > 0 && tabFeeds.some((feed) => !feed.categoryId)) {
     options.push({ id: "none", name: "Other", color: "" });
   }
 

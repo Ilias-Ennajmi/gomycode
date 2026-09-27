@@ -22,6 +22,9 @@ export interface DiscoverResult {
   /** Why the AI suggested it. */
   reason?: string;
   following?: boolean;
+  /** News tab section to file the source under. */
+  newsDesk?: string;
+  region?: string;
 }
 
 const TIMEOUT_MS = 6000;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { runAiPipeline } from "@/lib/enrich";
 import { mapWithConcurrency } from "@/lib/ingest";
 import { FollowError, followSource, type FollowInput } from "@/lib/follow";
+import { isDesk } from "@/lib/news/desks";
 
 export const maxDuration = 60;
 
@@ -11,6 +12,8 @@ interface FollowItem {
   lang?: string;
   category?: string;
   title?: string;
+  newsDesk?: string;
+  region?: string;
 }
 
 // Follows one or many sources (e.g. "Follow all" in a category). Something
@@ -32,6 +35,8 @@ export async function POST(request: NextRequest) {
             language: item.lang,
             categoryName: item.category,
             title: item.title,
+            newsDesk: isDesk(item.newsDesk) ? item.newsDesk : null,
+            region: item.region === "ma" ? "ma" : null,
           },
           { allowExisting: true }
         );

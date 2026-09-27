@@ -59,7 +59,10 @@ export function Sidebar({
     mutateCategories();
   }
 
-  const uncategorizedFeeds = feeds.filter((feed) => !feed.categoryId && feed.type === "rss");
+  const uncategorizedFeeds = feeds.filter(
+    (feed) => !feed.categoryId && feed.type === "rss" && !feed.newsDesk
+  );
+  const newsFeeds = feeds.filter((feed) => !feed.categoryId && feed.newsDesk);
   const youTubeChannels = feeds.filter((feed) => !feed.categoryId && feed.type === "youtube");
   const newsletterSenders = feeds.filter((feed) => !feed.categoryId && feed.type === "newsletter");
 
@@ -192,6 +195,7 @@ export function Sidebar({
               ))}
 
               {renderFeedGroup("RSS feeds", uncategorizedFeeds)}
+              {renderFeedGroup("News sources", newsFeeds)}
               {renderFeedGroup(
                 "YouTube channels",
                 youTubeChannels,

@@ -20,6 +20,7 @@ function toSearchParams(params: ArticleListParams) {
   const search = new URLSearchParams();
   if (params.view) search.set("view", params.view);
   if (params.source) search.set("source", params.source);
+  if (params.news) search.set("news", params.news);
   if (params.later) search.set("later", params.later);
   if (params.feedId) search.set("feedId", params.feedId);
   if (params.categoryId) search.set("categoryId", params.categoryId);

@@ -16,6 +16,9 @@ export interface FollowInput {
   language?: string;
   /** Overrides the feed's own title. */
   title?: string;
+  /** Shows the source in the News tab, in this section. */
+  newsDesk?: string | null;
+  region?: string | null;
   /** A hint from Discover; only ever upgrades an RSS feed to a newsletter. */
   kind?: "rss" | "youtube" | "newsletter";
 }
@@ -106,6 +109,14 @@ export async function followSource(
   const existing = await prisma.feed.findUnique({ where: { url: source.feedUrl } });
   if (existing) {
     if (!allowExisting) throw new FollowError("This feed is already added", 409);
+    // Adding an already-followed source to News moves it there.
+    if (input.newsDesk && existing.newsDesk !== input.newsDesk) {
+      const feed = await prisma.feed.update({
+        where: { id: existing.id },
+        data: { newsDesk: input.newsDesk, region: input.region ?? existing.region },
+      });
+      return { feed, existed: true };
+    }
     return { feed: existing, existed: true };
   }
 
@@ -148,6 +159,8 @@ export async function followSource(
       coverUrl: parsed.meta.coverUrl,
       language: input.language || parsed.meta.language || null,
       categoryId,
+      newsDesk: input.newsDesk || null,
+      region: input.region || null,
       lastFetched: new Date(),
     },
   });

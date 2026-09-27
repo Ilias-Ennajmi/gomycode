@@ -186,6 +186,7 @@ function isFeedListKey(key: unknown) {
     (key.startsWith("/api/feeds") ||
       key.startsWith("/api/categories") ||
       key.startsWith("/api/articles") ||
+      key.startsWith("/api/news") ||
       // Suggestions call the AI, so they aren't refetched on every follow.
       key.startsWith("/api/discover/catalog"))
   );
@@ -207,6 +208,8 @@ export function useFollow() {
             category: item.category,
             // Topic feeds are named after the search, not Bing's channel title.
             title: item.provider === "topic" ? item.name.replace(/[“”]/g, "") : undefined,
+            newsDesk: item.newsDesk,
+            region: item.region,
           })),
         }),
       });

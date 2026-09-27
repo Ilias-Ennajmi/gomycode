@@ -15,6 +15,9 @@ import { TopBar } from "@/components/layout/TopBar";
 import { SaveLinkDialog } from "@/components/dialogs/SaveLinkDialog";
 import { SettingsPanel } from "@/components/layout/SettingsPanel";
 import { SourcesManager } from "@/components/sources/SourcesManager";
+import { NewsView } from "@/components/news/NewsView";
+import { NewsSourcesDialog } from "@/components/news/NewsSourcesDialog";
+import { X } from "lucide-react";
 import { ReaderStateProvider, useReaderState } from "@/lib/hooks/useReaderState";
 import { refreshFeeds, refreshToastMessage, useAutoRefresh, useFeeds } from "@/lib/hooks/useFeeds";
 import { useSWRConfig } from "swr";
@@ -29,7 +32,13 @@ export function AppShell() {
 }
 
 function AppShellInner() {
-  const { mobilePane, setMobilePane, setSelectedArticleId } = useReaderState();
+  const { mobilePane, setMobilePane, selectedArticleId, setSelectedArticleId, view } =
+    useReaderState();
+  const newsFront = view.type === "news" && !view.id;
+  const [newsSources, setNewsSources] = React.useState<{ open: boolean; setup: boolean }>({
+    open: false,
+    setup: false,
+  });
   const { mutate: globalMutate } = useSWRConfig();
 
   const [discoverOpen, setDiscoverOpen] = React.useState(false);
@@ -142,28 +151,65 @@ function AppShellInner() {
           )}
         >
           <TopBar className="hidden md:block" onSaveLink={() => setSaveLinkOpen(true)} />
-          <div className="flex min-h-0 flex-1">
-            <div
-              className={cn(
-                "h-full w-full shrink-0 md:w-[420px] md:border-r",
-                mobilePane !== "list" && "hidden md:block"
+          {newsFront ? (
+            <div className="relative flex min-h-0 flex-1">
+              <div
+                className={cn(
+                  "h-full min-w-0 flex-1",
+                  mobilePane === "reader" && "hidden md:block"
+                )}
+              >
+                <NewsView
+                  onManageSources={(setup = false) => setNewsSources({ open: true, setup })}
+                />
+              </div>
+              {selectedArticleId && (
+                <div
+                  className={cn(
+                    "h-full min-w-0 bg-background",
+                    // Phones: full screen. Desktop: a panel over the front page.
+                    mobilePane === "reader"
+                      ? "w-full animate-pane-in md:animate-none"
+                      : "hidden md:block",
+                    "md:absolute md:inset-y-0 md:right-0 md:z-20 md:w-[min(760px,62%)] md:border-l md:shadow-2xl"
+                  )}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setSelectedArticleId(null)}
+                    className="absolute left-3 top-3 z-10 hidden h-9 w-9 items-center justify-center rounded-full bg-background/90 text-muted-foreground shadow ring-1 ring-border backdrop-blur hover:text-foreground md:flex"
+                    aria-label="Close article"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                  <ArticleReader />
+                </div>
               )}
-            >
-              <ArticleList
-                onAddFeed={dialogActions.onAddFeed}
-                onSaveLink={() => setSaveLinkOpen(true)}
-              />
             </div>
+          ) : (
+            <div className="flex min-h-0 flex-1">
+              <div
+                className={cn(
+                  "h-full w-full shrink-0 md:w-[420px] md:border-r",
+                  mobilePane !== "list" && "hidden md:block"
+                )}
+              >
+                <ArticleList
+                  onAddFeed={dialogActions.onAddFeed}
+                  onSaveLink={() => setSaveLinkOpen(true)}
+                />
+              </div>
 
-            <div
-              className={cn(
-                "h-full min-w-0 flex-1",
-                mobilePane === "reader" ? "animate-pane-in md:animate-none" : "hidden md:block"
-              )}
-            >
-              <ArticleReader />
+              <div
+                className={cn(
+                  "h-full min-w-0 flex-1",
+                  mobilePane === "reader" ? "animate-pane-in md:animate-none" : "hidden md:block"
+                )}
+              >
+                <ArticleReader />
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {mobilePane === "settings" && (
@@ -178,6 +224,11 @@ function AppShellInner() {
         open={discoverOpen}
         onOpenChange={setDiscoverOpen}
         initialKind={discoverKind}
+      />
+      <NewsSourcesDialog
+        open={newsSources.open}
+        setup={newsSources.setup}
+        onOpenChange={(open) => setNewsSources((prev) => ({ ...prev, open }))}
       />
       <SourcesManager
         open={sourcesOpen}

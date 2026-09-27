@@ -41,6 +41,8 @@ export async function GET() {
       coverUrl: feed.coverUrl,
       categoryId: feed.categoryId,
       language: feed.language,
+      newsDesk: feed.newsDesk,
+      region: feed.region,
       lastFetched: feed.lastFetched,
       errorCount: feed.errorCount,
       unreadCount: feed._count.articles,

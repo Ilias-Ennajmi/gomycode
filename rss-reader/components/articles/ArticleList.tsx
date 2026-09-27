@@ -65,6 +65,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
     setMobilePane,
     laterTab,
     setLaterTab,
+    setView,
   } = useReaderState();
   const sourceTab = isSourceTab(view.type) ? view.type : null;
 
@@ -190,21 +191,34 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   const ranked = view.type === "foryou";
   const isLater = view.type === "later";
   const fromSourcesList = ["feed", "category", "all", "today"].includes(view.type);
+  const newsSection = view.type === "news" && Boolean(view.id);
   let lastDateLabel = "";
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between gap-2 border-b p-3">
         <div className="flex min-w-0 items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn("h-8 w-8 shrink-0 md:hidden", !fromSourcesList && "hidden")}
-            onClick={() => setMobilePane("sidebar")}
-            aria-label="Back"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+          {newsSection ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={() => setView({ type: "news", label: "News" })}
+              aria-label="Back to the front page"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn("h-8 w-8 shrink-0 md:hidden", !fromSourcesList && "hidden")}
+              onClick={() => setMobilePane("sidebar")}
+              aria-label="Back"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          )}
           <div className="min-w-0">
             <h2 className="truncate text-lg font-semibold leading-tight tracking-tight">
               {isLater ? (laterTab === "archive" ? "Archive" : "Later") : view.label}
@@ -225,7 +239,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {!isLater && (
+          {!isLater && !newsSection && (
             <Button
               size="sm"
               className="h-8 gap-1 rounded-full px-3 text-xs"

@@ -6,6 +6,7 @@ import { buildReadingProfile, scoreArticle } from "@/lib/ranking";
 import {
   ARTICLE_FEED_INCLUDE,
   categoryFilter,
+  newsFilter,
   parseSource,
   serializeArticle,
   sourceFilter,
@@ -29,6 +30,7 @@ export async function GET(request: NextRequest) {
     // Read Later: "later" is the queue, "archive" what was marked done.
     const later = searchParams.get("later");
     const search = searchParams.get("search")?.trim() || undefined;
+    const news = searchParams.get("news") || undefined;
     const sort = searchParams.get("sort") === "oldest" ? "asc" : "desc";
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20", 10) || 20));
@@ -54,6 +56,7 @@ export async function GET(request: NextRequest) {
     const clauses: Prisma.ArticleWhereInput[] = hiddenArticleClauses(rules, feedId);
     const sourceClause = source && sourceFilter(source);
     if (sourceClause) clauses.push(sourceClause);
+    if (news) clauses.push(newsFilter(news));
     if (clauses.length > 0) where.AND = clauses;
 
     if (forYou) {

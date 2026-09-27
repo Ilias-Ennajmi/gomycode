@@ -5,6 +5,7 @@ import type { ArticleFilter, ArticleListParams, ArticleSort, LaterTab } from "@/
 
 export type ViewType =
   | "foryou"
+  | "news"
   | "rss"
   | "youtube"
   | "newsletters"
@@ -89,6 +90,7 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
   const listParams = React.useMemo<ArticleListParams>(() => {
     const params: ArticleListParams = {};
     if (view.type === "foryou") params.view = "foryou";
+    if (view.type === "news") params.news = view.id ?? "all";
     if (view.type === "rss") params.source = "rss";
     if (view.type === "youtube") params.source = "youtube";
     if (view.type === "newsletters") params.source = "newsletter";

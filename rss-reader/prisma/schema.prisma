@@ -42,6 +42,10 @@ model Feed {
   language    String?
   // What the user followed (a site, catalog link or @handle), when it differs from url.
   sourceUrl   String?
+  /// Set for sources shown in the News tab: morocco, world, europe, africa, economy, sports, tech.
+  newsDesk    String?
+  /// Where a news source reports from: "ma" for Moroccan outlets, else null.
+  region      String?
   categoryId  String?
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   articles    Article[]

@@ -30,11 +30,17 @@ export function parseSource(value: unknown): FeedType | undefined {
  */
 export function sourceFilter(source: FeedType): Prisma.ArticleWhereInput {
   if (source === "youtube") return { OR: [{ isVideo: true }, { feed: { type: "youtube" } }] };
-  if (source === "rss") return { isVideo: false, feed: { type: "rss" } };
+  // News sources live in the News tab, not RSS.
+  if (source === "rss") return { isVideo: false, feed: { type: "rss", newsDesk: null } };
   return { feed: { type: source } };
 }
 
 /** "none" selects feeds without a category. */
 export function categoryFilter(categoryId: string): Prisma.ArticleWhereInput {
   return { feed: { categoryId: categoryId === "none" ? null : categoryId } };
+}
+
+/** "all" selects every News source; a section id just that section. */
+export function newsFilter(desk: string): Prisma.ArticleWhereInput {
+  return { feed: { newsDesk: desk === "all" ? { not: null } : desk } };
 }
