@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { PullIndicator, usePullToRefresh } from "@/lib/hooks/usePullToRefresh";
 import { toast } from "sonner";
 import {
   BookOpen,
@@ -36,6 +37,7 @@ function time(iso: string) {
 
 /** The Today briefing: the big picture, top stories, numbers, interests, and more on demand. */
 export function TodayView() {
+  const { bind: bindPull, pull, refreshing: pulling } = usePullToRefresh();
   const { briefing, isLoading, mutate } = useBriefing(true);
   const { setSelectedArticleId, setMobilePane, selectedArticleId } = useReaderState();
   const [refreshing, setRefreshing] = React.useState(false);
@@ -106,7 +108,8 @@ export function TodayView() {
   });
 
   return (
-    <div className="h-full overflow-y-auto overscroll-contain scrollbar-thin">
+    <div ref={bindPull} className="h-full overflow-y-auto overscroll-contain scrollbar-thin">
+      <PullIndicator pull={pull} refreshing={pulling} />
       <div className="mx-auto max-w-3xl px-4 pb-24 pt-5 md:px-8 md:pt-8">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>

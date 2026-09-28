@@ -75,6 +75,13 @@ released on `android-v*` tags. The web side:
 - Always spread `window.history.state` when writing history entries: Next.js reloads the
   page when going back to an entry without its `__NA` field.
 
+**Offline.** `public/sw.js` (registered by `components/layout/OfflineSupport.tsx`, production
+builds only) caches the app shell and Next assets, serves lists/articles network-first with a
+cached fallback, keeps images stale-while-revalidate, and pre-caches everything in Later on
+the "cache-later" message. Uncached pages fall back to the static `public/offline.html`
+(it can't be a Next page: its scripts wouldn't be cached). Bump `VERSION` in `sw.js` when
+its rules change. Pull-to-refresh lives in `lib/hooks/usePullToRefresh.tsx`.
+
 **Data model in one paragraph.** A `Feed` has a `type` (rss, youtube, newsletter) and, when
 it's a news outlet, a `newsDesk` (morocco, world, europe, africa, economy, sports, tech) and
 `region` ("ma"). News feeds show only in the News tab, not in RSS. `Article` holds reading
@@ -108,6 +115,11 @@ $CRON_SECRET` is the way to go further.
 - The repo-root `.gitignore` ignores `lib/` (Python template); `rss-reader/.gitignore`
   re-includes it. Don't remove that line.
 - Toasts with Undo must stay clickable over Radix dialogs (see `components/ui/sonner.tsx`).
+- **NULL-safe filters.** `NOT (summary ILIKE …)` is NULL when summary is NULL, which hides the
+  row. Guard nullable columns (`summary: { not: null }`) inside any `NOT` clause.
+- The production minifier breaks at least one highlight.js grammar; `ArticleContent` drops
+  grammars that fail to compile. Playwright's `setOffline` doesn't affect the service worker's
+  own requests: test offline mode by stopping the server instead.
 
 ## Testing
 
@@ -135,8 +147,8 @@ Built in this order (see `git log -- rss-reader`):
 ## Open ideas (not built yet)
 
 - Hourly refresh via an external cron (GitHub Actions or cron-job.org) calling `/api/refresh`.
-- Skeleton loaders everywhere spinners remain; pull-to-refresh on mobile.
+- Skeleton loaders everywhere spinners remain.
 - Card layout option (big images) for News and YouTube lists; "mark read when scrolled past".
 - Email-only newsletters through an inbound email service (e.g. Postmark inbound webhook).
-- Offline reading and push notifications (service worker); the Android app already
-  delegates web notifications.
+- Push notifications (the service worker and the Android app's notification delegation
+  are in place).

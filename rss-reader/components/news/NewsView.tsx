@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { PullIndicator, usePullToRefresh } from "@/lib/hooks/usePullToRefresh";
 import {
   ArrowRight,
   Globe2,
@@ -29,6 +30,7 @@ interface NewsViewProps {
 
 /** The News tab: a front page with top stories, insights, sections and the weather. */
 export function NewsView({ onManageSources }: NewsViewProps) {
+  const { bind: bindPull, pull, refreshing: pulling } = usePullToRefresh();
   const { page, isLoading, error, mutate } = useFrontPage();
   const { setSelectedArticleId, setMobilePane, setView, selectedArticleId } = useReaderState();
   const { mutate: globalMutate } = useSWRConfig();
@@ -63,7 +65,8 @@ export function NewsView({ onManageSources }: NewsViewProps) {
   });
 
   return (
-    <div className="h-full overflow-y-auto overscroll-contain scrollbar-thin">
+    <div ref={bindPull} className="h-full overflow-y-auto overscroll-contain scrollbar-thin">
+      <PullIndicator pull={pull} refreshing={pulling} />
       <div className="mx-auto max-w-6xl px-4 pb-20 pt-4 md:px-8 md:pt-6">
         <header className="flex flex-wrap items-end justify-between gap-3 border-b-2 border-foreground pb-3">
           <div>

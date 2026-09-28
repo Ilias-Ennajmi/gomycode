@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import type { ArticleSummary } from "@/lib/types";
+import { cacheLaterForOffline } from "@/components/layout/OfflineSupport";
 
 interface SaveLinkDialogProps {
   open: boolean;
@@ -48,6 +49,7 @@ export function SaveLinkDialog({ open, onOpenChange }: SaveLinkDialogProps) {
       const article = body.article as ArticleSummary;
       await mutate((key) => typeof key === "string" && key.startsWith("/api/articles"));
       toast.success(body.existed ? "Moved to the top of Later" : "Saved to Later");
+      cacheLaterForOffline();
       onOpenChange(false);
       setView({ type: "later", label: "Later" });
       setLaterTab("queue");

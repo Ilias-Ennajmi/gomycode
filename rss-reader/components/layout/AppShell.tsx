@@ -22,6 +22,7 @@ import { X } from "lucide-react";
 import { ReaderStateProvider, useReaderState } from "@/lib/hooks/useReaderState";
 import { useBackToClose } from "@/lib/hooks/useHistorySync";
 import { AppUpdateBanner } from "@/components/layout/AppUpdateBanner";
+import { OfflineSupport } from "@/components/layout/OfflineSupport";
 import { refreshFeeds, refreshToastMessage, useAutoRefresh, useFeeds } from "@/lib/hooks/useFeeds";
 import { useSWRConfig } from "swr";
 import type { DiscoverKind } from "@/lib/discover/catalog";
@@ -161,6 +162,7 @@ function AppShellInner() {
   return (
     <div className="flex h-dvh w-full flex-col overflow-hidden bg-background">
       <AppUpdateBanner />
+      <OfflineSupport />
       <TopBar
         className={cn("md:hidden", hideTopBarOnPhone && "hidden")}
         onSaveLink={() => setSaveLinkOpen(true)}

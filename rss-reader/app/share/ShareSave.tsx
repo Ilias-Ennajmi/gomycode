@@ -6,6 +6,7 @@ import { Check, Loader2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/shared/Logo";
 import { haptic } from "@/lib/native";
+import { cacheLaterForOffline } from "@/components/layout/OfflineSupport";
 
 type State =
   | { status: "saving" }
@@ -32,6 +33,7 @@ export function ShareSave({ link, title }: { link: string | null; title?: string
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || "Could not save this link");
         haptic();
+        cacheLaterForOffline();
         setState({
           status: "saved",
           articleId: body.article.id,

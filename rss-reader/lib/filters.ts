@@ -6,7 +6,9 @@ export function getFilterRules() {
 }
 
 export function mutedFeedIds(rules: FilterRule[]): Set<string> {
-  return new Set(rules.filter((r) => r.action === "hide" && r.match === "feed").map((r) => r.value));
+  return new Set(
+    rules.filter((r) => r.action === "hide" && r.match === "feed").map((r) => r.value)
+  );
 }
 
 /** Excludes articles whose title or summary contains a hidden keyword. */
@@ -17,7 +19,14 @@ export function hiddenKeywordClauses(rules: FilterRule[]): Prisma.ArticleWhereIn
       NOT: {
         OR: [
           { title: { contains: r.value, mode: "insensitive" } },
-          { summary: { contains: r.value, mode: "insensitive" } },
+          // "summary IS NOT NULL" first: SQL's NOT over a NULL comparison is NULL, which
+          // would hide every article without a summary (saved links, some videos).
+          {
+            AND: [
+              { summary: { not: null } },
+              { summary: { contains: r.value, mode: "insensitive" } },
+            ],
+          },
         ],
       },
     }));

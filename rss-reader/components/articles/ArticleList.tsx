@@ -41,6 +41,7 @@ import {
   toggleArticleSaved,
 } from "@/lib/hooks/useArticles";
 import { markAllRead, refreshFeeds, refreshToastMessage, useFeeds } from "@/lib/hooks/useFeeds";
+import { PullIndicator, usePullToRefresh } from "@/lib/hooks/usePullToRefresh";
 import type { ArticleFilter, ArticleSummary, LaterTab } from "@/lib/types";
 import type { DiscoverKind } from "@/lib/discover/catalog";
 
@@ -84,6 +85,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
 
   // Each view starts at the top instead of inheriting the previous scroll offset.
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  const { bind: bindPull, pull, refreshing: pulling } = usePullToRefresh();
   React.useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [view, filterTab, search, listParams.categoryId]);
@@ -349,7 +351,14 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
         </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin">
+      <div
+        ref={(node) => {
+          (scrollRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          bindPull(node);
+        }}
+        className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin"
+      >
+        <PullIndicator pull={pull} refreshing={pulling} />
         {ranked && !search && filterTab === "all" && <DailyBriefing />}
         {isLoading ? (
           <ArticleSkeletonList />

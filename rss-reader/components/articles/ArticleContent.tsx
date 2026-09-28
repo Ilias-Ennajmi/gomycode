@@ -103,10 +103,17 @@ export function ArticleContent({ content, summary, link, isVideo }: ArticleConte
 
   React.useEffect(() => {
     if (!sanitized || !containerRef.current) return;
-    import("highlight.js").then(({ default: hljs }) => {
-      containerRef.current
-        ?.querySelectorAll("pre code")
-        .forEach((block) => hljs.highlightElement(block as HTMLElement));
+    const blocks = containerRef.current.querySelectorAll("pre code");
+    if (blocks.length === 0) return;
+    import("highlight.js/lib/common").then(({ default: hljs }) => {
+      dropBrokenLanguages(hljs);
+      blocks.forEach((block) => {
+        try {
+          hljs.highlightElement(block as HTMLElement);
+        } catch {
+          // Unhighlighted code is still readable.
+        }
+      });
     });
   }, [sanitized]);
 
@@ -160,4 +167,22 @@ export function ArticleContent({ content, summary, link, isVideo }: ArticleConte
       dangerouslySetInnerHTML={{ __html: sanitized }}
     />
   );
+}
+
+let languagesChecked = false;
+
+/**
+ * The production minifier corrupts at least one grammar's regex (it compiles fine in Node),
+ * and one bad grammar makes auto-detection throw for every block. Drop the ones that fail.
+ */
+function dropBrokenLanguages(hljs: typeof import("highlight.js/lib/common").default) {
+  if (languagesChecked) return;
+  languagesChecked = true;
+  for (const language of hljs.listLanguages()) {
+    try {
+      hljs.highlight("x", { language, ignoreIllegals: true });
+    } catch {
+      hljs.unregisterLanguage(language);
+    }
+  }
 }
