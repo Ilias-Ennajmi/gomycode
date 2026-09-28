@@ -2,6 +2,7 @@
 
 import type { DiscoverKind } from "@/lib/discover/catalog";
 import {
+  Bell,
   Compass,
   Download,
   FolderCog,
@@ -14,6 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { NotificationSettings } from "@/components/layout/NotificationSettings";
 
 interface SidebarFooterProps {
   onAddFeed: (kind?: DiscoverKind) => void;
@@ -56,6 +59,22 @@ export function SidebarFooter({
         <IconAction label="Export OPML" onClick={() => window.open("/api/opml", "_blank")}>
           <Download className="h-4 w-4" />
         </IconAction>
+        <Popover>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+                  <Bell className="h-4 w-4" />
+                  <span className="sr-only">Notifications</span>
+                </Button>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Notifications</TooltipContent>
+          </Tooltip>
+          <PopoverContent side="top" align="start" className="w-80 p-1">
+            <NotificationSettings />
+          </PopoverContent>
+        </Popover>
         <IconAction label="Keyboard shortcuts" onClick={onShowShortcuts}>
           <Keyboard className="h-4 w-4" />
         </IconAction>

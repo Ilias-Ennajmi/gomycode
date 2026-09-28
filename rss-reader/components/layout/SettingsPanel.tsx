@@ -23,6 +23,7 @@ import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { useAiStatus } from "@/lib/hooks/useAi";
 import { androidAppVersion, RELEASES_PAGE } from "@/lib/native";
+import { NotificationSettings } from "@/components/layout/NotificationSettings";
 
 interface SettingsPanelProps {
   onAddFeed: (kind?: DiscoverKind) => void;
@@ -117,6 +118,10 @@ export function SettingsPanel({
             label="Export OPML"
             onClick={() => window.open("/api/opml", "_blank")}
           />
+        </Section>
+
+        <Section title="Notifications">
+          <NotificationSettings />
         </Section>
 
         <Section title="App">

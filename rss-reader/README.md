@@ -49,16 +49,17 @@ docker run -d --name rss-pg -p 5432:5432 -e POSTGRES_USER=rss -e POSTGRES_PASSWO
 
 ### Environment variables
 
-| Name                  | Needed      | Where to get it                                                                                                                                                                    |
-| --------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`        | yes         | Local: `postgresql://rss:rss@localhost:5432/rss_reader`. Production: Supabase → Connect → Prisma, the **transaction pooler** (port 6543) with `?pgbouncer=true&connection_limit=1` |
-| `DIRECT_URL`          | yes         | Local: same as above. Production: Supabase **session pooler** (port 5432), used by migrations                                                                                      |
-| `APP_PASSWORD`        | yes         | The login password. Any value locally                                                                                                                                              |
-| `AUTH_SECRET`         | recommended | Any long random string (signs the session cookie)                                                                                                                                  |
-| `CRON_SECRET`         | optional    | Any random string; protects `/api/refresh` for cron calls                                                                                                                          |
-| `GEMINI_API_KEY`      | optional    | Free key from https://aistudio.google.com/apikey. Without it AI features switch off                                                                                                |
-| `APP_TIMEZONE`        | optional    | Default `Europe/Paris`; when a new daily briefing starts                                                                                                                           |
-| `NEXT_PUBLIC_APP_URL` | optional    | `http://localhost:3000` locally                                                                                                                                                    |
+| Name                                                     | Needed      | Where to get it                                                                                                                                                                    |
+| -------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                           | yes         | Local: `postgresql://rss:rss@localhost:5432/rss_reader`. Production: Supabase → Connect → Prisma, the **transaction pooler** (port 6543) with `?pgbouncer=true&connection_limit=1` |
+| `DIRECT_URL`                                             | yes         | Local: same as above. Production: Supabase **session pooler** (port 5432), used by migrations                                                                                      |
+| `APP_PASSWORD`                                           | yes         | The login password. Any value locally                                                                                                                                              |
+| `AUTH_SECRET`                                            | recommended | Any long random string (signs the session cookie)                                                                                                                                  |
+| `CRON_SECRET`                                            | optional    | Any random string; protects `/api/refresh` for cron calls                                                                                                                          |
+| `GEMINI_API_KEY`                                         | optional    | Free key from https://aistudio.google.com/apikey. Without it AI features switch off                                                                                                |
+| `APP_TIMEZONE`                                           | optional    | Default `Europe/Paris`; when a new daily briefing starts                                                                                                                           |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | optional    | Web Push keys for notifications; generate with `web-push` (see `.env.example`). Without them notifications are off                                                                 |
+| `NEXT_PUBLIC_APP_URL`                                    | optional    | `http://localhost:3000` locally                                                                                                                                                    |
 
 **Never commit real values.** `.env`, `.env.local` are gitignored. In Vercel all
 variables are stored as _sensitive_, so they can't be pulled with `vercel env pull`;

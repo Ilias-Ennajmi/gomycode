@@ -137,3 +137,11 @@ model Setting {
   key   String @id
   value String
 }
+
+/// A browser or the Android app subscribed to Web Push notifications.
+model PushSubscription {
+  endpoint  String   @id
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+}

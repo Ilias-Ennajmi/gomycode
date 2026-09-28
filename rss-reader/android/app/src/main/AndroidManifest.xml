@@ -91,6 +91,10 @@
         </activity>
 
         <activity android:name="com.google.androidbrowserhelper.trusted.FocusActivity" />
+        <!-- Android 13+ asks for notification permission through this screen. -->
+        <activity
+            android:name="com.google.androidbrowserhelper.trusted.NotificationPermissionRequestActivity"
+            android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

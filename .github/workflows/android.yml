@@ -73,6 +73,20 @@ jobs:
           ./gradlew --no-daemon assembleDebug
           cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/Reader-${{ steps.version.outputs.name }}-debug.apk"
 
+      # A class named in AndroidManifest.xml that the library doesn't have would only crash on
+      # the phone, so check them here.
+      - name: Check the manifest's library classes exist
+        run: |
+          aar=$(find ~/.gradle/caches -name 'androidbrowserhelper-*.aar' | head -1)
+          unzip -p "$aar" classes.jar > "$RUNNER_TEMP/abh.jar"
+          classes=$(unzip -l "$RUNNER_TEMP/abh.jar" | awk '{print $4}')
+          missing=0
+          for name in $(grep -o 'com\.google\.androidbrowserhelper\.[A-Za-z.]*' app/src/main/AndroidManifest.xml | sort -u); do
+            path="$(echo "$name" | tr . /).class"
+            if echo "$classes" | grep -qx "$path"; then echo "ok  $name"; else echo "::error::Missing in androidbrowserhelper: $name"; missing=1; fi
+          done
+          exit $missing
+
       # The website only trusts the app (no browser bar) if this fingerprint matches assetlinks.json.
       - name: Check the signature matches the website
         if: steps.signing.outputs.signed == 'true'

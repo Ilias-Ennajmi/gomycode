@@ -82,6 +82,15 @@ the "cache-later" message. Uncached pages fall back to the static `public/offlin
 (it can't be a Next page: its scripts wouldn't be cached). Bump `VERSION` in `sw.js` when
 its rules change. Pull-to-refresh lives in `lib/hooks/usePullToRefresh.tsx`.
 
+**Notifications.** Web Push with VAPID keys (`VAPID_*` env vars): devices subscribe from
+`components/layout/NotificationSettings.tsx` (Settings, and the bell in the desktop
+sidebar) through `/api/push`; `lib/push.ts` sends and drops expired subscriptions.
+`/api/refresh` calls `sendScheduledPushes`: the morning briefing from the daily cron (GET),
+and a breaking-news alert when a story reaches 4+ News outlets within 6 hours (any
+refresh). Sent articles are remembered in the `push-sent` Setting, because story groups
+get new ids on every refresh. `public/sw.js` shows them and opens the app on tap; in the
+Android app they appear as the app's own notifications.
+
 **Data model in one paragraph.** A `Feed` has a `type` (rss, youtube, newsletter) and, when
 it's a news outlet, a `newsDesk` (morocco, world, europe, africa, economy, sports, tech) and
 `region` ("ma"). News feeds show only in the News tab, not in RSS. `Article` holds reading
@@ -146,9 +155,8 @@ Built in this order (see `git log -- rss-reader`):
 
 ## Open ideas (not built yet)
 
-- Hourly refresh via an external cron (GitHub Actions or cron-job.org) calling `/api/refresh`.
 - Skeleton loaders everywhere spinners remain.
 - Card layout option (big images) for News and YouTube lists; "mark read when scrolled past".
 - Email-only newsletters through an inbound email service (e.g. Postmark inbound webhook).
-- Push notifications (the service worker and the Android app's notification delegation
-  are in place).
+- An hourly refresh (GitHub Actions schedule, which only runs from the default branch) so
+  breaking-news alerts arrive promptly; today they fire when a refresh happens.

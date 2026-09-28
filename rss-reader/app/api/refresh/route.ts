@@ -4,6 +4,7 @@ import { fetchAndParseFeed } from "@/lib/rss";
 import { insertNewArticles, mapWithConcurrency } from "@/lib/ingest";
 import { runAiPipeline } from "@/lib/enrich";
 import { checkCatalogBatch } from "@/lib/discover/health";
+import { sendScheduledPushes } from "@/lib/push";
 
 export const maxDuration = 60;
 
@@ -59,6 +60,10 @@ async function handleRefresh(feedId?: string) {
 // Triggered by the Vercel Cron Job, which sends a GET request.
 export async function GET() {
   const response = await handleRefresh();
+  // The cron runs in the morning: that's when the briefing notification goes out.
+  await sendScheduledPushes({ morning: true }).catch((error) =>
+    console.error("Push notifications failed", error)
+  );
   // The daily cron also re-checks part of the Discover catalog.
   await checkCatalogBatch().catch((error) => console.error("Catalog health check failed", error));
   return response;
@@ -68,5 +73,11 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   const { feedId } = body as { feedId?: string };
-  return handleRefresh(feedId);
+  const response = await handleRefresh(feedId);
+  if (!feedId) {
+    await sendScheduledPushes({ morning: false }).catch((error) =>
+      console.error("Push notifications failed", error)
+    );
+  }
+  return response;
 }
