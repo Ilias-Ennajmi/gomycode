@@ -1,0 +1,105 @@
+# Builds the Reader Android app (rss-reader/android) and publishes it as a GitHub Release.
+# See rss-reader/android/README.md for how releases and signing work.
+name: Android app
+
+on:
+  push:
+    # With only tags listed, branch pushes wouldn't run at all.
+    branches: ["**"]
+    paths:
+      - "rss-reader/android/**"
+      - "rss-reader/public/.well-known/assetlinks.json"
+      - ".github/workflows/android.yml"
+    tags:
+      - "android-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rss-reader/android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Read the app version
+        id: version
+        run: |
+          name=$(sed -n 's/^def appVersionName = "\(.*\)"/\1/p' app/build.gradle)
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "App version $name"
+
+      - name: Set up the signing key
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+              echo "::error::Releases need the ANDROID_KEYSTORE_BASE64 and ANDROID_KEYSTORE_PASSWORD secrets (see rss-reader/android/README.md)."
+              exit 1
+            fi
+            echo "::warning::Signing secrets are not set, so this builds a test (debug) APK only."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/reader-release.jks"
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build the signed APK
+        if: steps.signing.outputs.signed == 'true'
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/reader-release.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          ./gradlew --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/Reader-${{ steps.version.outputs.name }}.apk"
+
+      - name: Build a test APK
+        if: steps.signing.outputs.signed != 'true'
+        run: |
+          ./gradlew --no-daemon assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/Reader-${{ steps.version.outputs.name }}-debug.apk"
+
+      # The website only trusts the app (no browser bar) if this fingerprint matches assetlinks.json.
+      - name: Check the signature matches the website
+        if: steps.signing.outputs.signed == 'true'
+        run: |
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          actual=$("$apksigner" verify --print-certs "$RUNNER_TEMP/Reader-${{ steps.version.outputs.name }}.apk" \
+            | sed -n 's/.*SHA-256 digest: //p' | head -1 | tr 'a-f' 'A-F')
+          expected=$(grep -o '"[0-9A-F:]\{95\}"' ../public/.well-known/assetlinks.json | tr -d '":' | head -1)
+          echo "APK:          $actual"
+          echo "assetlinks:   $expected"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::The APK's signing key doesn't match public/.well-known/assetlinks.json."
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Reader-${{ steps.version.outputs.name }}
+          path: ${{ runner.temp }}/Reader-*.apk
+
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/android-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Reader for Android ${{ steps.version.outputs.name }}
+          files: ${{ runner.temp }}/Reader-${{ steps.version.outputs.name }}.apk
+          body: |
+            Install or update: download the APK below on your phone and open it
+            (or let Obtainium update it automatically). Everything else in the app
+            updates through the website, without a new APK.

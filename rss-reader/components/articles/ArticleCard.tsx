@@ -15,6 +15,7 @@ import { cn, formatRelativeTime, readingTime, stripHtml } from "@/lib/utils";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { Highlight } from "@/components/shared/Highlight";
 import type { ArticleSummary } from "@/lib/types";
+import { haptic } from "@/lib/native";
 
 interface ArticleCardProps {
   article: ArticleSummary;
@@ -93,7 +94,10 @@ export function ArticleCard({
     }
     if (!d.horizontal) return;
     const limited = onToggleRead ? mx : Math.max(0, mx);
-    d.dx = Math.max(-SWIPE_MAX, Math.min(SWIPE_MAX, limited));
+    const next = Math.max(-SWIPE_MAX, Math.min(SWIPE_MAX, limited));
+    // A tick when the swipe starts to count, like native list actions.
+    if (Math.abs(next) >= SWIPE_TRIGGER !== Math.abs(d.dx) >= SWIPE_TRIGGER) haptic();
+    d.dx = next;
     setDx(d.dx);
   }
   function onTouchEnd() {

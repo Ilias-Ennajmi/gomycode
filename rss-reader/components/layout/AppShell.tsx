@@ -20,6 +20,8 @@ import { TodayView } from "@/components/today/TodayView";
 import { NewsSourcesDialog } from "@/components/news/NewsSourcesDialog";
 import { X } from "lucide-react";
 import { ReaderStateProvider, useReaderState } from "@/lib/hooks/useReaderState";
+import { useBackToClose } from "@/lib/hooks/useHistorySync";
+import { AppUpdateBanner } from "@/components/layout/AppUpdateBanner";
 import { refreshFeeds, refreshToastMessage, useAutoRefresh, useFeeds } from "@/lib/hooks/useFeeds";
 import { useSWRConfig } from "swr";
 import type { DiscoverKind } from "@/lib/discover/catalog";
@@ -33,8 +35,15 @@ export function AppShell() {
 }
 
 function AppShellInner() {
-  const { mobilePane, setMobilePane, selectedArticleId, setSelectedArticleId, view } =
-    useReaderState();
+  const {
+    mobilePane,
+    setMobilePane,
+    selectedArticleId,
+    setSelectedArticleId,
+    view,
+    addRequested,
+    clearAddRequest,
+  } = useReaderState();
   // Full-width pages with the reader as a panel on top: the News front page and the briefing.
   const newsFront = view.type === "news" && !view.id;
   const fullPage = newsFront || view.type === "briefing";
@@ -53,6 +62,24 @@ function AppShellInner() {
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [saveLinkOpen, setSaveLinkOpen] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
+
+  // Android back (and browser back) closes the open dialog first.
+  useBackToClose(discoverOpen, () => setDiscoverOpen(false));
+  useBackToClose(saveLinkOpen, () => setSaveLinkOpen(false));
+  useBackToClose(sourcesOpen, () => setSourcesOpen(false));
+  useBackToClose(newsSources.open, () => setNewsSources((prev) => ({ ...prev, open: false })));
+  useBackToClose(manageCategoriesOpen, () => setManageCategoriesOpen(false));
+  useBackToClose(shortcutsOpen, () => setShortcutsOpen(false));
+  useBackToClose(importOpmlOpen, () => setImportOpmlOpen(false));
+  useBackToClose(filtersOpen, () => setFiltersOpen(false));
+
+  // The "Add source" shortcut on the app icon.
+  React.useEffect(() => {
+    if (!addRequested) return;
+    clearAddRequest();
+    setDiscoverKind("all");
+    setDiscoverOpen(true);
+  }, [addRequested, clearAddRequest]);
 
   // With nothing followed yet, start in Discover (once per visit).
   const { feeds, isLoading: feedsLoading } = useFeeds();
@@ -133,6 +160,7 @@ function AppShellInner() {
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-hidden bg-background">
+      <AppUpdateBanner />
       <TopBar
         className={cn("md:hidden", hideTopBarOnPhone && "hidden")}
         onSaveLink={() => setSaveLinkOpen(true)}

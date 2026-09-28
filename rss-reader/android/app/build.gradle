@@ -1,0 +1,67 @@
+plugins {
+    id "com.android.application"
+}
+
+// Bump both for every release; the tag is android-v<versionName> (see android/README.md).
+def appVersionCode = 1
+def appVersionName = "1.0.0"
+
+def siteHost = "rss-reader-jet.vercel.app"
+def siteUrl = "https://" + siteHost
+
+// Release signing comes from CI secrets (or local env vars); the key is never in git.
+def keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+def keystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+
+android {
+    namespace "io.github.iliasennajmi.reader"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "io.github.iliasennajmi.reader"
+        minSdk 26
+        targetSdk 35
+        versionCode appVersionCode
+        versionName appVersionName
+
+        manifestPlaceholders = [hostName: siteHost]
+        resValue "string", "siteUrl", siteUrl
+        // The web app reads source/v to know it runs inside the Android app, and which version.
+        resValue "string", "launchUrl", siteUrl + "/reader?source=android&v=" + appVersionName
+        resValue "string", "webManifestUrl", siteUrl + "/manifest.webmanifest"
+        resValue "string", "providerAuthority", "io.github.iliasennajmi.reader.fileprovider"
+        resValue "string", "assetStatements",
+            "[{\\\"relation\\\": [\\\"delegate_permission/common.handle_all_urls\\\"], " +
+            "\\\"target\\\": {\\\"namespace\\\": \\\"web\\\", \\\"site\\\": \\\"" + siteUrl + "\\\"}}]"
+        resValue "string", "shareTarget",
+            "{\\\"action\\\": \\\"" + siteUrl + "/share\\\", \\\"method\\\": \\\"GET\\\", " +
+            "\\\"params\\\": {\\\"title\\\": \\\"title\\\", \\\"text\\\": \\\"text\\\", \\\"url\\\": \\\"url\\\"}}"
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePath) {
+                storeFile file(keystorePath)
+                storePassword keystorePassword
+                keyAlias "reader"
+                keyPassword keystorePassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig keystorePath ? signingConfigs.release : null
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation "com.google.androidbrowserhelper:androidbrowserhelper:2.5.0"
+}

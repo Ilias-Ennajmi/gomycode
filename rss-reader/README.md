@@ -11,15 +11,16 @@ Google Gemini's free tier.
 
 ## What it does
 
-| Area     | What's there                                                                                                                                                       |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Tabs     | For You (ranked by reading history) · News · RSS · YouTube · Newsletters · Later                                                                                   |
-| News     | Hero slider of the biggest stories, desks (Maroc, Monde, Europe, Afrique, Économie, Sport, Tech), AI "What's happening", Morocco in the world press, local weather |
-| Today    | A daily briefing page: top stories with bullets and "why it matters", per-interest picks, more on demand                                                           |
-| Discover | Curated catalog (~230 sources) scoped by channel, live search (Feedly + YouTube), AI suggestions, follow a topic (Bing News search feed)                           |
-| Reader   | Full-article extraction, clutter removal, reading settings, up next / previous, swipe between articles, listen (browser text-to-speech)                            |
-| Lists    | Swipe right for Later, left to mark read, Undo toasts, unread counts per tab, story grouping ("also covered by")                                                   |
-| Sources  | Manager for every followed source: rename, move, unfollow, health                                                                                                  |
+| Area        | What's there                                                                                                                                                       |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Tabs        | For You (ranked by reading history) · News · RSS · YouTube · Newsletters · Later                                                                                   |
+| News        | Hero slider of the biggest stories, desks (Maroc, Monde, Europe, Afrique, Économie, Sport, Tech), AI "What's happening", Morocco in the world press, local weather |
+| Today       | A daily briefing page: top stories with bullets and "why it matters", per-interest picks, more on demand                                                           |
+| Discover    | Curated catalog (~230 sources) scoped by channel, live search (Feedly + YouTube), AI suggestions, follow a topic (Bing News search feed)                           |
+| Reader      | Full-article extraction, clutter removal, reading settings, up next / previous, swipe between articles, listen (browser text-to-speech)                            |
+| Lists       | Swipe right for Later, left to mark read, Undo toasts, unread counts per tab, story grouping ("also covered by")                                                   |
+| Sources     | Manager for every followed source: rename, move, unfollow, health                                                                                                  |
+| Android app | Installable app (`android/`): share links to Later, icon shortcuts, back gesture, deep links                                                                       |
 
 ## Stack
 

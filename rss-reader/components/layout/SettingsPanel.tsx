@@ -14,6 +14,7 @@ import {
   Moon,
   Plus,
   SlidersHorizontal,
+  Smartphone,
   Sparkles,
   Sun,
   Upload,
@@ -21,6 +22,7 @@ import {
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { useAiStatus } from "@/lib/hooks/useAi";
+import { androidAppVersion, RELEASES_PAGE } from "@/lib/native";
 
 interface SettingsPanelProps {
   onAddFeed: (kind?: DiscoverKind) => void;
@@ -117,6 +119,10 @@ export function SettingsPanel({
           />
         </Section>
 
+        <Section title="App">
+          <AppRow />
+        </Section>
+
         <Section title="Help">
           <Row icon={Keyboard} label="Keyboard shortcuts" onClick={onShowShortcuts} />
         </Section>
@@ -126,6 +132,23 @@ export function SettingsPanel({
         </Section>
       </div>
     </div>
+  );
+}
+
+function AppRow() {
+  const [version, setVersion] = React.useState<string | null>(null);
+  React.useEffect(() => setVersion(androidAppVersion()), []);
+  return (
+    <Row
+      icon={Smartphone}
+      label={version ? `Reader for Android ${version}` : "Get the Android app"}
+      hint={
+        version
+          ? "Updates arrive through the website; new app versions are on GitHub"
+          : "Install Reader as an app, with sharing and shortcuts"
+      }
+      onClick={() => window.open(RELEASES_PAGE, "_blank")}
+    />
   );
 }
 

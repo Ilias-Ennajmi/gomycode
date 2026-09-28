@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import type { ArticleFilter, ArticleListParams, ArticleSort, LaterTab } from "@/lib/types";
+import { useHistorySync, type NavSnapshot } from "@/lib/hooks/useHistorySync";
+import { rememberAppLaunch } from "@/lib/native";
 
 export type ViewType =
   | "foryou"
@@ -56,9 +58,25 @@ interface ReaderStateValue {
   tabCategory: Record<SourceTab, string | null>;
   setTabCategory: (tab: SourceTab, categoryId: string | null) => void;
   listParams: ArticleListParams;
+  /** Set when the app was opened to add a source (?add=1, e.g. the Android shortcut). */
+  addRequested: boolean;
+  clearAddRequest: () => void;
 }
 
 const DEFAULT_VIEW: ViewState = { type: "foryou", label: "For You" };
+
+// Views that links, shortcuts and the Android app can open with ?view=.
+const LINKABLE_VIEWS: Record<string, ViewState> = {
+  foryou: DEFAULT_VIEW,
+  news: { type: "news", label: "News" },
+  briefing: { type: "briefing", label: "Today's briefing" },
+  rss: { type: "rss", label: "RSS" },
+  youtube: { type: "youtube", label: "YouTube" },
+  newsletters: { type: "newsletters", label: "Newsletters" },
+  later: { type: "later", label: "Later" },
+  today: { type: "today", label: "Today" },
+  all: { type: "all", label: "All articles" },
+};
 
 const ReaderStateContext = React.createContext<ReaderStateValue | null>(null);
 
@@ -80,6 +98,39 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     setTabCategories((prev) => ({ ...prev, [tab]: categoryId }));
     setSelectedArticleId(null);
   }, []);
+
+  const [addRequested, setAddRequested] = React.useState(false);
+  const clearAddRequest = React.useCallback(() => setAddRequested(false), []);
+
+  // Links into the app: ?view=news, ?article=<id>, ?add=1, and the Android app's
+  // ?source=android&v=. Read once, then the address goes back to plain /reader.
+  const [ready, setReady] = React.useState(false);
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    rememberAppLaunch(params);
+    const linked = LINKABLE_VIEWS[params.get("view") ?? ""];
+    if (linked) setViewState(linked);
+    const articleId = params.get("article");
+    if (articleId) {
+      setSelectedArticleId(articleId);
+      setMobilePane("reader");
+    }
+    if (params.get("add") === "1") setAddRequested(true);
+    if (params.toString())
+      window.history.replaceState(window.history.state, "", window.location.pathname);
+    setReady(true);
+  }, []);
+
+  const navSnapshot = React.useMemo<NavSnapshot>(
+    () => ({ view, articleId: selectedArticleId, pane: mobilePane }),
+    [view, selectedArticleId, mobilePane]
+  );
+  const applyNav = React.useCallback((nav: NavSnapshot) => {
+    setViewState(nav.view);
+    setSelectedArticleId(nav.articleId);
+    setMobilePane(nav.pane);
+  }, []);
+  useHistorySync(navSnapshot, applyNav, ready);
 
   const setView = React.useCallback((next: ViewState) => {
     setViewState(next);
@@ -128,6 +179,8 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     tabCategory,
     setTabCategory,
     listParams,
+    addRequested,
+    clearAddRequest,
   };
 
   return <ReaderStateContext.Provider value={value}>{children}</ReaderStateContext.Provider>;

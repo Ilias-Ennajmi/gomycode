@@ -44,5 +44,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icons/|manifest.webmanifest|sw.js).*)"],
+  // .well-known/ holds assetlinks.json, which Android must read without logging in.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|icons/|manifest.webmanifest|sw.js|\\.well-known/).*)",
+  ],
 };

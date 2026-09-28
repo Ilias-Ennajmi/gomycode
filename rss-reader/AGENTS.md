@@ -59,7 +59,21 @@ lib/
   news/                  news catalog, desks (+ MOROCCO_PATTERN), front-page builder, prefs
   hooks/                 SWR hooks (useArticles, useFeeds, useNews, useAi, useDiscover...) and useReaderState
 prisma/schema.prisma     Category, Feed, Article, Topic, DailyDigest, FilterRule, Setting
+android/                 the Android app: a Trusted Web Activity around the site (see android/README.md)
 ```
+
+**Android app.** `android/` is a thin shell that opens the site in Chrome full-screen, so
+web deploys update the app. It's built by `.github/workflows/android.yml` (repo root) and
+released on `android-v*` tags. The web side:
+
+- `public/.well-known/assetlinks.json` must stay public (excluded in `middleware.ts`) and
+  keep the signing key's SHA-256, or the app shows a browser bar.
+- `/share` saves links shared from other apps; `?view=`, `?article=` and `?add=1` open parts
+  of the app (shortcuts, deep links).
+- `lib/hooks/useHistorySync.ts` mirrors navigation into browser history so Android's back
+  gesture closes the article, pane or dialog. Use `useBackToClose` for new dialogs.
+- Always spread `window.history.state` when writing history entries: Next.js reloads the
+  page when going back to an entry without its `__NA` field.
 
 **Data model in one paragraph.** A `Feed` has a `type` (rss, youtube, newsletter) and, when
 it's a news outlet, a `newsDesk` (morocco, world, europe, africa, economy, sports, tech) and
@@ -124,4 +138,5 @@ Built in this order (see `git log -- rss-reader`):
 - Skeleton loaders everywhere spinners remain; pull-to-refresh on mobile.
 - Card layout option (big images) for News and YouTube lists; "mark read when scrolled past".
 - Email-only newsletters through an inbound email service (e.g. Postmark inbound webhook).
-- Offline reading and push notifications (service worker).
+- Offline reading and push notifications (service worker); the Android app already
+  delegates web notifications.
