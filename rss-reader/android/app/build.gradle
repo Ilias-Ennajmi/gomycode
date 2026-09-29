@@ -15,7 +15,7 @@ def keystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
 
 android {
     namespace "io.github.iliasennajmi.reader"
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId "io.github.iliasennajmi.reader"
