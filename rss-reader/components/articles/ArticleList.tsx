@@ -418,20 +418,29 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
           )}
           {sourceTab && <CategoryChips tab={sourceTab} />}
 
-          <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
             {isLater ? (
+              // Up to four tabs: on phones they get the whole row, the controls go below.
               <Tabs
                 value={laterTab}
                 onValueChange={(v) => setLaterTab(v as LaterTab)}
-                className="min-w-0 overflow-x-auto scrollbar-none"
+                className="w-full min-w-0 md:w-auto"
               >
-                <TabsList>
-                  <TabsTrigger value="queue">Later</TabsTrigger>
+                <TabsList className="w-full md:w-auto">
+                  <TabsTrigger value="queue" className="flex-1 md:flex-none">
+                    Later
+                  </TabsTrigger>
                   {(snoozedCount > 0 || laterTab === "snoozed") && (
-                    <TabsTrigger value="snoozed">Snoozed</TabsTrigger>
+                    <TabsTrigger value="snoozed" className="flex-1 md:flex-none">
+                      Snoozed
+                    </TabsTrigger>
                   )}
-                  <TabsTrigger value="archive">Archive</TabsTrigger>
-                  <TabsTrigger value="highlights">Highlights</TabsTrigger>
+                  <TabsTrigger value="archive" className="flex-1 md:flex-none">
+                    Archive
+                  </TabsTrigger>
+                  <TabsTrigger value="highlights" className="flex-1 md:flex-none">
+                    Highlights
+                  </TabsTrigger>
                 </TabsList>
               </Tabs>
             ) : (
@@ -444,7 +453,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
               </Tabs>
             )}
 
-            <div className="flex items-center gap-1">
+            <div className="ml-auto flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="icon"

@@ -30,7 +30,7 @@ import type { CategorySummary, FeedSummary } from "@/lib/types";
 
 interface SidebarProps {
   onAddFeed: (kind?: DiscoverKind) => void;
-  onManageSources: () => void;
+  onManageSources: (attention?: boolean) => void;
   onManageCategories: () => void;
   onContentFilters: () => void;
   onImportOpml: () => void;

@@ -129,6 +129,16 @@ Android app they appear as the app's own notifications.
   (job `reader-hourly-refresh`). The endpoint is public but runs at most every 40 minutes
   and returns only counts.
 
+**Housekeeping** (`lib/maintenance.ts`, run after the hourly tick and the daily cron):
+articles dated in the future move to when they arrived; an article stored by two feeds
+(same link) keeps one copy; recent articles without a picture get their page's share
+image (`imageCheckedAt` marks the attempt; a picture reused across a feed is a logo and is
+ignored); once a day, articles past retention are deleted (`lib/retention.ts`: News 14 days,
+the rest 60, never saved/archived/snoozed/highlighted ones, and each feed keeps its newest
+10). Ingest skips links already stored and backlog older than retention, so deleted
+articles don't come back. The free database is 500 MB and about a thousand articles arrive
+a day: keep retention in mind before storing more per article.
+
 **Data model in one paragraph.** A `Feed` has a `type` (rss, youtube, newsletter) and, when
 it's a news outlet, a `newsDesk` (morocco, world, europe, africa, economy, sports, tech) and
 `region` ("ma"). News feeds show only in the News tab, not in RSS. `Article` holds reading

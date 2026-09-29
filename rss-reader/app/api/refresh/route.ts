@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { refreshFeeds } from "@/lib/refresh";
+import { runMaintenance } from "@/lib/maintenance";
 import { checkCatalogBatch } from "@/lib/discover/health";
 import { sendScheduledPushes, wakeSnoozedArticles } from "@/lib/push";
 
@@ -20,6 +21,7 @@ async function handleRefresh(feedId?: string) {
 
 // Triggered by the Vercel Cron Job, which sends a GET request.
 export async function GET() {
+  const started = Date.now();
   const response = await handleRefresh();
   await wakeSnoozedArticles().catch((error) => console.error("Waking snoozes failed", error));
   // The cron runs in the morning: that's when the briefing notification goes out.
@@ -28,6 +30,7 @@ export async function GET() {
   );
   // The daily cron also re-checks part of the Discover catalog.
   await checkCatalogBatch().catch((error) => console.error("Catalog health check failed", error));
+  await runMaintenance(started + 45_000);
   return response;
 }
 

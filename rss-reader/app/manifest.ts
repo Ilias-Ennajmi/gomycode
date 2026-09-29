@@ -31,18 +31,23 @@ export default function manifest(): MetadataRoute.Manifest {
     // Long-press the app icon. Mirrors android/app/src/main/res/xml/shortcuts.xml.
     shortcuts: [
       {
+        name: "Search",
+        url: "/reader?search=1",
+        icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }],
+      },
+      {
         name: "News",
         url: "/reader?view=news",
         icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }],
       },
       {
-        name: "Briefing",
-        url: "/reader?view=briefing",
+        name: "Later",
+        url: "/reader?view=later",
         icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }],
       },
       {
-        name: "Later",
-        url: "/reader?view=later",
+        name: "Highlights",
+        url: "/reader?view=highlights",
         icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }],
       },
       {

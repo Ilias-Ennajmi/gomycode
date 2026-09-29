@@ -143,7 +143,7 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
   const [addRequested, setAddRequested] = React.useState(false);
   const clearAddRequest = React.useCallback(() => setAddRequested(false), []);
 
-  // Links into the app: ?view=news, ?article=<id>, ?add=1, and the Android app's
+  // Links into the app: ?view=news, ?article=<id>, ?add=1, ?search=1, and the Android app's
   // ?source=android&v=. Read once, then the address goes back to plain /reader.
   const [ready, setReady] = React.useState(false);
   React.useEffect(() => {
@@ -162,6 +162,11 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
       setMobilePane("reader");
     }
     if (params.get("add") === "1") setAddRequested(true);
+    if (params.get("search") === "1") {
+      // The search box lives in the sidebar (the whole screen on phones).
+      setMobilePane("sidebar");
+      setTimeout(() => document.getElementById("sidebar-search")?.focus(), 300);
+    }
     if (params.toString())
       window.history.replaceState(window.history.state, "", window.location.pathname);
     setReady(true);

@@ -26,6 +26,7 @@ import { X } from "lucide-react";
 import { ReaderStateProvider, useReaderState } from "@/lib/hooks/useReaderState";
 import { useBackToClose } from "@/lib/hooks/useHistorySync";
 import { AppUpdateBanner } from "@/components/layout/AppUpdateBanner";
+import { NotificationPrompt } from "@/components/layout/NotificationPrompt";
 import { OfflineSupport } from "@/components/layout/OfflineSupport";
 import { refreshFeeds, refreshToastMessage, useAutoRefresh, useFeeds } from "@/lib/hooks/useFeeds";
 import { useSWRConfig } from "swr";
@@ -66,6 +67,7 @@ function AppShellInner() {
   const [discoverKind, setDiscoverKind] = React.useState<DiscoverKind>("all");
   const [manageCategoriesOpen, setManageCategoriesOpen] = React.useState(false);
   const [sourcesOpen, setSourcesOpen] = React.useState(false);
+  const [sourcesAttention, setSourcesAttention] = React.useState(false);
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
   const [importOpmlOpen, setImportOpmlOpen] = React.useState(false);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
@@ -176,7 +178,11 @@ function AppShellInner() {
       setDiscoverKind(kind);
       setDiscoverOpen(true);
     },
-    onManageSources: () => setSourcesOpen(true),
+    // Buttons pass their click event: only a literal true opens on "Needs attention".
+    onManageSources: (attention?: unknown) => {
+      setSourcesAttention(attention === true);
+      setSourcesOpen(true);
+    },
     onManageCategories: () => setManageCategoriesOpen(true),
     onContentFilters: () => setFiltersOpen(true),
     onImportOpml: () => setImportOpmlOpen(true),
@@ -187,7 +193,10 @@ function AppShellInner() {
   const openDiscover = React.useCallback(() => dialogActions.onAddFeed("all"), []); // eslint-disable-line react-hooks/exhaustive-deps
   const openSaveLink = React.useCallback(() => setSaveLinkOpen(true), []);
   const openEmailNewsletter = React.useCallback(() => setEmailNewsletterOpen(true), []);
-  const openSources = React.useCallback(() => setSourcesOpen(true), []);
+  const openSources = React.useCallback(() => {
+    setSourcesAttention(false);
+    setSourcesOpen(true);
+  }, []);
   const openShortcuts = React.useCallback(() => setShortcutsOpen(true), []);
 
   const hideTopBarOnPhone = mobilePane === "reader";
@@ -224,6 +233,7 @@ function AppShellInner() {
             onAddFeed={dialogActions.onAddFeed}
             onManageNews={() => setNewsSources({ open: true, setup: false })}
           />
+          {!hideTopBarOnPhone && feeds.length > 0 && <NotificationPrompt />}
           {fullPage ? (
             <div className="relative flex min-h-0 flex-1">
               <div
@@ -314,6 +324,7 @@ function AppShellInner() {
         open={sourcesOpen}
         onOpenChange={setSourcesOpen}
         onAddFeed={dialogActions.onAddFeed}
+        attention={sourcesAttention}
       />
       <ManageCategoriesDialog open={manageCategoriesOpen} onOpenChange={setManageCategoriesOpen} />
       <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />

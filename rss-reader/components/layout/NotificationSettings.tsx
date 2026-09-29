@@ -5,34 +5,9 @@ import { toast } from "sonner";
 import { BellRing, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-
-interface PushStatus {
-  configured: boolean;
-  publicKey: string | null;
-  prefs: { briefing: boolean; breaking: boolean; recap: boolean };
-  subscribed: boolean;
-}
+import { loadPushStatus, turnOnPush, type PushStatus } from "@/lib/push-client";
 
 type Support = "checking" | "unsupported" | "ready";
-
-function keyToBytes(base64: string) {
-  const padded = (base64 + "=".repeat((4 - (base64.length % 4)) % 4))
-    .replace(/-/g, "+")
-    .replace(/_/g, "/");
-  const raw = atob(padded);
-  const bytes = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
-  return bytes;
-}
-
-/** The service worker, if it registers within a few seconds (it doesn't in development). */
-async function readyRegistration() {
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
-  return Promise.race([
-    navigator.serviceWorker.ready,
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
-  ]);
-}
 
 /**
  * Notifications on this device (web push; inside the Android app they show up as the app's
@@ -44,15 +19,12 @@ export function NotificationSettings() {
   const [busy, setBusy] = React.useState(false);
 
   const load = React.useCallback(async () => {
-    const registration = await readyRegistration();
-    if (!registration) {
+    const next = await loadPushStatus();
+    if (!next) {
       setSupport("unsupported");
       return;
     }
-    const subscription = await registration.pushManager.getSubscription();
-    const query = subscription ? `?endpoint=${encodeURIComponent(subscription.endpoint)}` : "";
-    const res = await fetch(`/api/push${query}`);
-    if (res.ok) setStatus(await res.json());
+    setStatus(next);
     setSupport("ready");
   }, []);
 
@@ -64,24 +36,7 @@ export function NotificationSettings() {
     if (!status?.publicKey) return;
     setBusy(true);
     try {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        toast.error("Notifications are blocked. Allow them in your phone or browser settings.");
-        return;
-      }
-      const registration = await navigator.serviceWorker.ready;
-      const subscription =
-        (await registration.pushManager.getSubscription()) ??
-        (await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: keyToBytes(status.publicKey),
-        }));
-      const res = await fetch("/api/push", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subscription: subscription.toJSON() }),
-      });
-      if (!res.ok) throw new Error("Could not turn on notifications");
+      await turnOnPush(status.publicKey);
       setStatus({ ...status, subscribed: true });
       toast.success("Notifications are on");
     } catch (error) {

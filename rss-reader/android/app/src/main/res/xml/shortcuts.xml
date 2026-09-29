@@ -1,6 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Long-press the app icon. Each opens a view of the web app (see useReaderState's URL handling). -->
+<!-- Long-press the app icon. Each opens a view of the web app (see useReaderState's URL handling).
+     Launchers show the first four or five, so the most used come first. -->
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_search"
+        android:shortcutId="search"
+        android:shortcutLongLabel="@string/shortcutSearchLong"
+        android:shortcutShortLabel="@string/shortcutSearch">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="https://rss-reader-jet.vercel.app/reader?search=1&amp;source=android"
+            android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity"
+            android:targetPackage="io.github.iliasennajmi.reader" />
+    </shortcut>
     <shortcut
         android:enabled="true"
         android:icon="@drawable/ic_shortcut_news"
@@ -15,18 +28,6 @@
     </shortcut>
     <shortcut
         android:enabled="true"
-        android:icon="@drawable/ic_shortcut_today"
-        android:shortcutId="briefing"
-        android:shortcutLongLabel="@string/shortcutTodayLong"
-        android:shortcutShortLabel="@string/shortcutToday">
-        <intent
-            android:action="android.intent.action.VIEW"
-            android:data="https://rss-reader-jet.vercel.app/reader?view=briefing&amp;source=android"
-            android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity"
-            android:targetPackage="io.github.iliasennajmi.reader" />
-    </shortcut>
-    <shortcut
-        android:enabled="true"
         android:icon="@drawable/ic_shortcut_later"
         android:shortcutId="later"
         android:shortcutLongLabel="@string/shortcutLaterLong"
@@ -34,6 +35,18 @@
         <intent
             android:action="android.intent.action.VIEW"
             android:data="https://rss-reader-jet.vercel.app/reader?view=later&amp;source=android"
+            android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity"
+            android:targetPackage="io.github.iliasennajmi.reader" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_highlights"
+        android:shortcutId="highlights"
+        android:shortcutLongLabel="@string/shortcutHighlightsLong"
+        android:shortcutShortLabel="@string/shortcutHighlights">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="https://rss-reader-jet.vercel.app/reader?view=highlights&amp;source=android"
             android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity"
             android:targetPackage="io.github.iliasennajmi.reader" />
     </shortcut>

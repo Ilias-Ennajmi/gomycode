@@ -70,6 +70,8 @@ model Article {
   summary           String?
   content           String?
   imageUrl          String?
+  /// When a picture was last looked for on the article's page (feeds without pictures).
+  imageCheckedAt    DateTime?
   author            String?
   publishedAt       DateTime
   isRead            Boolean                  @default(false)

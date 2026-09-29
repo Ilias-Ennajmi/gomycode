@@ -17,10 +17,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { NotificationSettings } from "@/components/layout/NotificationSettings";
+import { useFeeds } from "@/lib/hooks/useFeeds";
+import { needingAttention } from "@/lib/feed-health";
 
 interface SidebarFooterProps {
   onAddFeed: (kind?: DiscoverKind) => void;
-  onManageSources: () => void;
+  onManageSources: (attention?: boolean) => void;
   onManageCategories: () => void;
   onContentFilters: () => void;
   onImportOpml: () => void;
@@ -35,14 +37,26 @@ export function SidebarFooter({
   onImportOpml,
   onShowShortcuts,
 }: SidebarFooterProps) {
+  const { feeds } = useFeeds();
+  const attention = needingAttention(feeds).length;
   return (
     <div className="space-y-2 border-t p-3 max-md:border-t-0 max-md:pt-0">
       <div className="grid grid-cols-2 gap-1">
         <Button variant="ghost" className="justify-start gap-2 px-2.5" onClick={() => onAddFeed()}>
           <Compass className="h-4 w-4" /> Discover
         </Button>
-        <Button variant="ghost" className="justify-start gap-2 px-2.5" onClick={onManageSources}>
+        <Button
+          variant="ghost"
+          className="justify-start gap-2 px-2.5"
+          onClick={() => onManageSources(attention > 0)}
+          title={attention > 0 ? `${attention} need attention` : undefined}
+        >
           <Library className="h-4 w-4" /> Sources
+          {attention > 0 && (
+            <span className="ml-auto rounded-full bg-amber-500/15 px-1.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+              {attention}
+            </span>
+          )}
         </Button>
       </div>
       <Separator className="hidden md:block" />

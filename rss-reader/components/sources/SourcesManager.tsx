@@ -41,6 +41,7 @@ import { deleteFeed, updateFeed, useCategories, useFeeds } from "@/lib/hooks/use
 import { useFilters } from "@/lib/hooks/useFilters";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import { isTopicFeedUrl } from "@/lib/discover/topics";
+import { QUIET_DAYS, healthOf, needingAttention } from "@/lib/feed-health";
 import type { DiscoverKind } from "@/lib/discover/catalog";
 import type { CategorySummary, FeedSummary } from "@/lib/types";
 
@@ -48,6 +49,8 @@ interface SourcesManagerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAddFeed: (kind?: DiscoverKind) => void;
+  /** Open on "Needs attention" instead of every source. */
+  attention?: boolean;
 }
 
 type Channel = "all" | "rss" | "youtube" | "newsletter" | "attention";
@@ -60,25 +63,12 @@ const CHANNELS: { id: Channel; label: string; icon: React.ElementType }[] = [
   { id: "attention", label: "Needs attention", icon: AlertTriangle },
 ];
 
-const QUIET_DAYS = 30;
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-type Health = "failing" | "quiet" | "ok";
-
-function healthOf(feed: FeedSummary): Health {
-  if (feed.errorCount >= 3) return "failing";
-  // A feed followed recently hasn't had time to go quiet.
-  const since = feed.lastPublished ?? feed.createdAt;
-  if (Date.now() - new Date(since).getTime() > QUIET_DAYS * DAY_MS) return "quiet";
-  return "ok";
-}
-
 function fold(text: string) {
   return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
 /** Every followed source in one place: search, rename, move, mute, unfollow, and spot broken feeds. */
-export function SourcesManager({ open, onOpenChange, onAddFeed }: SourcesManagerProps) {
+export function SourcesManager({ open, onOpenChange, onAddFeed, attention }: SourcesManagerProps) {
   const { feeds, mutate: mutateFeeds } = useFeeds();
   const { categories, mutate: mutateCategories } = useCategories();
   const { setView } = useReaderState();
@@ -86,15 +76,34 @@ export function SourcesManager({ open, onOpenChange, onAddFeed }: SourcesManager
   const [query, setQuery] = React.useState("");
 
   React.useEffect(() => {
-    if (open) setQuery("");
-  }, [open]);
+    if (!open) return;
+    setQuery("");
+    setChannel(attention ? "attention" : "all");
+  }, [open, attention]);
+
+  // On phones the chips scroll sideways: keep the selected one in view.
+  const chipsRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!open) return;
+    // After the dialog has laid out.
+    const frame = requestAnimationFrame(() => {
+      const row = chipsRef.current;
+      const chip = row?.querySelector<HTMLElement>('[aria-pressed="true"]');
+      if (!row || !chip) return;
+      const left = chip.offsetLeft - row.offsetLeft;
+      if (left < row.scrollLeft || left + chip.offsetWidth > row.scrollLeft + row.clientWidth) {
+        row.scrollLeft = left - 16;
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [channel, open]);
 
   function refetch() {
     mutateFeeds();
     mutateCategories();
   }
 
-  const needsAttention = feeds.filter((f) => healthOf(f) !== "ok");
+  const needsAttention = needingAttention(feeds);
   const counts: Record<Channel, number> = {
     all: feeds.length,
     rss: feeds.filter((f) => f.type === "rss").length,
@@ -181,7 +190,10 @@ export function SourcesManager({ open, onOpenChange, onAddFeed }: SourcesManager
               />
             </div>
 
-            <div className="-mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4 scrollbar-none sm:-mx-6 sm:px-6">
+            <div
+              ref={chipsRef}
+              className="-mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4 scrollbar-none sm:-mx-6 sm:px-6"
+            >
               {CHANNELS.map(({ id, label, icon: Icon }) => {
                 if (id === "attention" && counts.attention === 0) return null;
                 const active = channel === id;

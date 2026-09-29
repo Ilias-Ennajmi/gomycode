@@ -33,6 +33,7 @@ import { copySignupAddress, openUnsubscribe } from "@/lib/hooks/useNewsletter";
 import { useFilters } from "@/lib/hooks/useFilters";
 import type { CategorySummary } from "@/lib/types";
 import { toast } from "sonner";
+import { FAILING_ERRORS } from "@/lib/feed-health";
 
 interface FeedItemProps {
   id: string;
@@ -170,7 +171,7 @@ export function FeedItem({
             {muted && (
               <EyeOff className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Muted" />
             )}
-            {errorCount >= 5 && (
+            {errorCount >= FAILING_ERRORS && (
               <AlertTriangle
                 className="h-3.5 w-3.5 shrink-0 text-amber-500"
                 aria-label="Feed is failing"

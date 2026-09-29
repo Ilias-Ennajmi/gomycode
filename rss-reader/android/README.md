@@ -8,14 +8,14 @@ changes.
 
 ## What the app adds
 
-| Feature                                                 | Where                                                                    |
-| ------------------------------------------------------- | ------------------------------------------------------------------------ |
-| App icon, splash screen, dark system bars               | `app/src/main/res/drawable`, `values/colors.xml`                         |
-| Links to the site open in the app                       | VIEW intent filter in `AndroidManifest.xml`                              |
-| Share → Reader saves a link to Later                    | SEND intent filter + `shareTarget` in `app/build.gradle` → `/share` page |
-| Long-press shortcuts: News, Briefing, Later, Add source | `res/xml/shortcuts.xml` → `/reader?view=…` / `?add=1`                    |
-| Web notifications shown as the app's own                | `DelegationService` in `AndroidManifest.xml`                             |
-| Update banner when a newer release exists               | web side: `components/layout/AppUpdateBanner.tsx`                        |
+| Feature                                                           | Where                                                                    |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| App icon, splash screen, dark system bars                         | `app/src/main/res/drawable`, `values/colors.xml`                         |
+| Links to the site open in the app                                 | VIEW intent filter in `AndroidManifest.xml`                              |
+| Share → Reader saves a link to Later                              | SEND intent filter + `shareTarget` in `app/build.gradle` → `/share` page |
+| Long-press shortcuts: Search, News, Later, Highlights, Add source | `res/xml/shortcuts.xml` → `/reader?view=…` / `?search=1` / `?add=1`      |
+| Web notifications shown as the app's own                          | `DelegationService` in `AndroidManifest.xml`                             |
+| Update banner when a newer release exists                         | web side: `components/layout/AppUpdateBanner.tsx`                        |
 
 The web side of the connection:
 

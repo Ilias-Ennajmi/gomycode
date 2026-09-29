@@ -78,7 +78,7 @@ const TITLES: Record<DiscoverKind, string> = {
 };
 
 const PLACEHOLDERS: Record<DiscoverKind, string> = {
-  all: "Search topics, sites, channels… or paste a link",
+  all: "Search or paste a link",
   rss: "Search sites or paste a link",
   youtube: "Search channels or paste a link",
   newsletter: "Search newsletters or paste a link",
