@@ -103,7 +103,14 @@ export async function analyzeVideo(
   try {
     data = JSON.parse(raw);
   } catch {
-    throw new AiError("Gemini returned something that isn't JSON");
+    // Now and then the JSON comes wrapped in a code fence or a sentence: keep the object.
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    try {
+      data = JSON.parse(raw.slice(start, end + 1));
+    } catch {
+      throw new AiError("Gemini returned something that isn't JSON");
+    }
   }
   const summary = typeof data.summary === "string" ? data.summary.trim() : "";
   if (!summary) throw new AiError("Gemini returned no summary");
