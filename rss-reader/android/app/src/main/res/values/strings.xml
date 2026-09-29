@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="appName">Reader</string>
+    <string name="shortcutNews">News</string>
+    <string name="shortcutNewsLong">Open the news front page</string>
+    <string name="shortcutToday">Briefing</string>
+    <string name="shortcutTodayLong">Open today\'s briefing</string>
+    <string name="shortcutLater">Later</string>
+    <string name="shortcutLaterLong">Open your Read Later list</string>
+    <string name="shortcutAdd">Add source</string>
+    <string name="shortcutAddLong">Add sites, channels or topics</string>
+</resources>

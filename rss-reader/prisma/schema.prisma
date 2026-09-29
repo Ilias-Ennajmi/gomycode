@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Supabase: DATABASE_URL is the transaction pooler, DIRECT_URL the session
+  // pooler used for migrations. Locally both can point at the same database.
+  directUrl = env("DIRECT_URL")
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#6366f1")
+  icon      String?
+  order     Int      @default(0)
+  feeds     Feed[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum FeedType {
+  rss
+  youtube
+  newsletter
+  /// Links saved to Read Later by hand; never refreshed.
+  manual
+}
+
+model Feed {
+  id          String    @id @default(cuid())
+  type        FeedType  @default(rss)
+  title       String
+  url         String    @unique
+  siteUrl     String?
+  description String?
+  faviconUrl  String?
+  coverUrl    String?
+  // Two-letter language code, from the catalog or the feed's <language>.
+  language    String?
+  // What the user followed (a site, catalog link or @handle), when it differs from url.
+  sourceUrl   String?
+  /// Set for sources shown in the News tab: morocco, world, europe, africa, economy, sports, tech.
+  newsDesk    String?
+  /// Where a news source reports from: "ma" for Moroccan outlets, else null.
+  region      String?
+  /// Newsletters: where it comes from, "substack", "beehiiv", "ghost", "buttondown" or "email".
+  platform    String?
+  /// Email newsletters: the address to subscribe with (a Kill the Newsletter inbox).
+  email       String?
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  articles    Article[]
+  lastFetched DateTime?
+  errorCount  Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([categoryId])
+}
+
+model Article {
+  id                String                   @id @default(cuid())
+  feedId            String
+  feed              Feed                     @relation(fields: [feedId], references: [id], onDelete: Cascade)
+  title             String
+  link              String
+  summary           String?
+  content           String?
+  imageUrl          String?
+  author            String?
+  publishedAt       DateTime
+  isRead            Boolean                  @default(false)
+  isSaved           Boolean                  @default(false)
+  isVideo           Boolean                  @default(false)
+  readAt            DateTime?
+  savedAt           DateTime?
+  createdAt         DateTime                 @default(now())
+  /// Gemini embedding of title + summary; empty until enriched.
+  embedding         Float[]                  @default([])
+  aiSummary         String?
+  /// Full page text fetched when the feed only sends an excerpt.
+  fullContent       String?
+  /// "full" when fetched, "limited" for paywalled/teaser pages, "failed" if unreachable.
+  fullContentStatus String?
+  /// Read Later: set when a saved item is marked done.
+  archivedAt        DateTime?
+  /// 0-100, how far the reader got; drives the progress bar in lists.
+  readProgress      Int                      @default(0)
+  isPromo           Boolean                  @default(false)
+  topicId           String?
+  topic             Topic?                   @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  /// Hidden until then, when it comes back to the top of Later (with a notification).
+  snoozedUntil      DateTime?
+  highlights        Highlight[]
+  /// Full-text search: a generated column (title, summaries, author, start of the text).
+  /// Defined in the v2_library migration; Prisma only knows it exists.
+  search            Unsupported("tsvector")?
+
+  @@unique([feedId, link])
+  @@index([feedId])
+  @@index([isRead])
+  @@index([isSaved])
+  @@index([publishedAt])
+  @@index([topicId])
+  @@index([snoozedUntil])
+  @@index([search], type: Gin)
+}
+
+/// A passage the reader highlighted, with an optional note.
+model Highlight {
+  id        String   @id @default(cuid())
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  text      String
+  note      String?
+  /// yellow, green, blue or pink
+  color     String   @default("yellow")
+  /// Text just before and after, to find the passage again in the article.
+  prefix    String   @default("")
+  suffix    String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([articleId])
+  @@index([createdAt])
+}
+
+/// Articles from different sources covering the same story (last 48h).
+model Topic {
+  id        String    @id @default(cuid())
+  title     String
+  createdAt DateTime  @default(now())
+  articles  Article[]
+}
+
+/// One AI briefing per local calendar day, generated on first request.
+model DailyDigest {
+  date      String   @id
+  content   String
+  createdAt DateTime @default(now())
+}
+
+enum FilterAction {
+  hide
+  boost
+}
+
+enum FilterMatch {
+  keyword
+  feed
+}
+
+model FilterRule {
+  id        String       @id @default(cuid())
+  action    FilterAction
+  match     FilterMatch
+  // The keyword text, or the feed id when match = feed.
+  value     String
+  createdAt DateTime     @default(now())
+
+  @@unique([action, match, value])
+}
+
+model Setting {
+  key   String @id
+  value String
+}
+
+/// A browser or the Android app subscribed to Web Push notifications.
+model PushSubscription {
+  endpoint  String   @id
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+}

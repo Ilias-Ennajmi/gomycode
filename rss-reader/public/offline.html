@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Offline · Reader</title>
+    <!-- Served by public/sw.js for pages that aren't saved offline. Plain HTML on purpose:
+         it must work without any of the app's scripts. -->
+    <style>
+      :root {
+        color-scheme: dark light;
+        --bg: #14161b;
+        --fg: #e8e9ec;
+        --muted: #9a9ca5;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #ffffff;
+          --fg: #14161b;
+          --muted: #5f626b;
+        }
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        padding: 0 24px;
+        text-align: center;
+        background: var(--bg);
+        color: var(--fg);
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+      }
+      h1 {
+        margin: 0;
+        font-size: 20px;
+      }
+      p {
+        margin: 0;
+        max-width: 20rem;
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+      a {
+        border-radius: 999px;
+        background: #7c3aed;
+        color: #fff;
+        padding: 10px 20px;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <svg
+      width="40"
+      height="40"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+      style="color: var(--muted)"
+    >
+      <path d="M12 20h.01" />
+      <path d="M8.5 16.43a5 5 0 0 1 7 0" />
+      <path d="M5 12.86a10 10 0 0 1 5.17-2.69" />
+      <path d="M19 12.86a10 10 0 0 0-2-1.54" />
+      <path d="M2 8.82a15 15 0 0 1 4.17-2.65" />
+      <path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76" />
+      <path d="m2 2 20 20" />
+    </svg>
+    <h1>You’re offline</h1>
+    <p>
+      This page isn’t saved on your phone. Your lists and everything in Later are still available.
+    </p>
+    <a href="/reader">Open Reader</a>
+  </body>
+</html>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The app opens in its dark theme, so the system bars match it in both modes. -->
+    <color name="barColor">#14161B</color>
+    <color name="barColorDark">#14161B</color>
+    <color name="splashBackground">#14161B</color>
+    <color name="brand">#7C3AED</color>
+</resources>

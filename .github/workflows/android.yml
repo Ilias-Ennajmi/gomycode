@@ -1,0 +1,189 @@
+# Builds, releases and tests the Reader Android app (rss-reader/android).
+# See rss-reader/android/README.md for the whole flow.
+#
+# The release key never reaches GitHub:
+#   1. Branch pushes build an unsigned APK and publish it as the "android-unsigned" prerelease.
+#   2. It's signed offline (android/sign.sh) and committed to rss-reader/android/releases/.
+#   3. The next push publishes that signed APK as the release android-v<version> (creating the
+#      tag), after checking its signature matches assetlinks.json, then tests it on an emulator.
+#      Versions that already have a release are skipped.
+name: Android app
+
+on:
+  push:
+    # With only tags listed, branch pushes wouldn't run at all.
+    branches: ["**"]
+    paths:
+      - "rss-reader/android/**"
+      - "rss-reader/public/.well-known/assetlinks.json"
+      - ".github/workflows/android.yml"
+    tags:
+      - "android-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rss-reader/android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Read the app version
+        id: version
+        run: |
+          name=$(sed -n 's/^def appVersionName = "\(.*\)"/\1/p' app/build.gradle)
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "App version $name"
+
+      - name: Build the unsigned release APK
+        run: |
+          ./gradlew --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release-unsigned.apk \
+            "$RUNNER_TEMP/Reader-${{ steps.version.outputs.name }}-unsigned.apk"
+
+      # A class named in AndroidManifest.xml that the library doesn't have would only crash on
+      # the phone, so check them here.
+      - name: Check the manifest's library classes exist
+        run: |
+          aar=$(find ~/.gradle/caches -name 'androidbrowserhelper-*.aar' | head -1)
+          unzip -p "$aar" classes.jar > "$RUNNER_TEMP/abh.jar"
+          classes=$(unzip -l "$RUNNER_TEMP/abh.jar" | awk '{print $4}')
+          missing=0
+          for name in $(grep -o 'com\.google\.androidbrowserhelper\.[A-Za-z.]*' app/src/main/AndroidManifest.xml | sort -u); do
+            path="$(echo "$name" | tr . /).class"
+            if echo "$classes" | grep -qx "$path"; then echo "ok  $name"; else echo "::error::Missing in androidbrowserhelper: $name"; missing=1; fi
+          done
+          exit $missing
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Reader-${{ steps.version.outputs.name }}-unsigned
+          path: ${{ runner.temp }}/Reader-*-unsigned.apk
+
+      # Where the offline signing step picks it up. Not for installing: it has no signature.
+      - name: Publish the unsigned build
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-unsigned
+          name: Unsigned Android build (not for installing)
+          prerelease: true
+          make_latest: false
+          files: ${{ runner.temp }}/Reader-${{ steps.version.outputs.name }}-unsigned.apk
+          body: |
+            Built from ${{ github.sha }}. This APK is unsigned and can't be installed; it is
+            signed offline and published as a Reader for Android release.
+
+  release:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rss-reader/android
+    outputs:
+      published: ${{ steps.check.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Publishes when releases/ has the signed APK of the version in build.gradle and that
+      # version has no release yet. Its certificate must match the website's assetlinks.json
+      # (or Android shows a browser bar).
+      - name: Check the signed APK
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(sed -n 's/^def appVersionName = "\(.*\)"/\1/p' app/build.gradle)
+          apk="releases/Reader-$version.apk"
+          if [[ "$GITHUB_REF" == refs/tags/* && "$GITHUB_REF_NAME" != "android-v$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME but build.gradle says $version"; exit 1
+          fi
+          if [ ! -f "$apk" ]; then
+            echo "No $apk yet: sign the android-unsigned build with sign.sh and commit it."
+            echo "publish=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if gh release view "android-v$version" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "android-v$version is already released."
+            echo "publish=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$tools/apksigner" verify --verbose "$apk"
+          actual=$("$tools/apksigner" verify --print-certs "$apk" | sed -n 's/.*SHA-256 digest: //p' | head -1 | tr 'a-f' 'A-F')
+          expected=$(grep -o '"[0-9A-F:]\{95\}"' ../public/.well-known/assetlinks.json | tr -d '":' | head -1)
+          echo "APK:        $actual"
+          echo "assetlinks: $expected"
+          [ "$actual" = "$expected" ] || { echo "::error::Signature doesn't match assetlinks.json"; exit 1; }
+          "$tools/aapt2" dump badging "$apk" | head -3
+          "$tools/aapt2" dump badging "$apk" | grep -q "versionName='$version'" || { echo "::error::APK isn't version $version"; exit 1; }
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "apk=rss-reader/android/$apk" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the release
+        if: steps.check.outputs.publish == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-v${{ steps.check.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Reader for Android ${{ steps.check.outputs.version }}
+          files: ${{ steps.check.outputs.apk }}
+          make_latest: true
+          body: |
+            Install or update: download the APK below on your phone and open it, or let
+            Obtainium update it automatically. Everything else in the app updates through
+            the website, without a new APK.
+
+  # Installs the signed APK on an Android 14 emulator with Chrome, opens it, shares a link to
+  # it, and records screenshots, the UI tree and crash logs as the "android-e2e" prerelease.
+  e2e:
+    needs: release
+    if: ${{ needs.release.outputs.published == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Pick the newest signed APK
+        run: echo "APK=$(ls rss-reader/android/releases/Reader-*.apk | sort -V | tail -1)" >> "$GITHUB_ENV"
+
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: bash rss-reader/android/e2e.sh "$APK" "$RUNNER_TEMP/e2e"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-e2e
+          path: ${{ runner.temp }}/e2e
+
+      - name: Publish the test results
+        if: always()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-e2e
+          name: Android emulator test results (not for installing)
+          prerelease: true
+          make_latest: false
+          files: ${{ runner.temp }}/e2e/*
+          body: Screenshots and logs from the last emulator test of ${{ env.APK }} (${{ github.sha }}).

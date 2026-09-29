@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The full app icon (public/icons/icon.svg) shown while the site loads. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="144dp"
+    android:height="144dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <path android:pathData="M116,0h280a116,116 0,0 1,116 116v280a116,116 0,0 1,-116 116h-280a116,116 0,0 1,-116 -116v-280a116,116 0,0 1,116 -116z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:endColor="#C026D3"
+                android:endX="512"
+                android:endY="512"
+                android:startColor="#7C3AED"
+                android:startX="0"
+                android:startY="0"
+                android:type="linear" />
+        </aapt:attr>
+    </path>
+        <path
+            android:pathData="M150,238a124,124 0,0 1,124 124M150,142a220,220 0,0 1,220 220"
+            android:strokeWidth="44"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="round" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M128,350a34,34 0,1 0,68 0a34,34 0,1 0,-68 0z" />
+</vector>
