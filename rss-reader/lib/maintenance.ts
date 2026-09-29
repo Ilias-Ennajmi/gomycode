@@ -77,14 +77,28 @@ function contentOf(tag: string) {
   return tag.match(/\bcontent\s*=\s*["']([^"']+)["']/i)?.[1]?.trim() ?? null;
 }
 
+export interface PageImage {
+  image: string | null;
+  /** The site asked us to slow down or didn't answer: try again at the next run. */
+  retry: boolean;
+}
+
 /** The share picture (og:image / twitter:image) a page declares, if any. */
-export async function pageImage(url: string): Promise<string | null> {
-  const res = await fetch(url, {
-    headers: { "User-Agent": USER_AGENT, Accept: "text/html,application/xhtml+xml" },
-    redirect: "follow",
-    signal: AbortSignal.timeout(6_000),
-  });
-  if (!res.ok || !(res.headers.get("content-type") ?? "").includes("html")) return null;
+export async function pageImage(url: string): Promise<PageImage> {
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: { "User-Agent": USER_AGENT, Accept: "text/html,application/xhtml+xml" },
+      redirect: "follow",
+      signal: AbortSignal.timeout(6_000),
+    });
+  } catch {
+    return { image: null, retry: true };
+  }
+  if (res.status === 429 || res.status >= 500) return { image: null, retry: true };
+  if (!res.ok || !(res.headers.get("content-type") ?? "").includes("html")) {
+    return { image: null, retry: false };
+  }
   const html = await res.text();
   const end = html.search(/<\/head>/i);
   const head = end > 0 ? html.slice(0, end) : html.slice(0, 200_000);
@@ -94,23 +108,34 @@ export async function pageImage(url: string): Promise<string | null> {
     try {
       const absolute = new URL(value, res.url || url);
       if (absolute.protocol === "http:") absolute.protocol = "https:";
-      if (absolute.protocol === "https:") return absolute.toString();
+      if (absolute.protocol === "https:") return { image: absolute.toString(), retry: false };
     } catch {
       // Not a URL: try the next tag.
     }
   }
-  return null;
+  return { image: null, retry: false };
 }
 
-const IMAGE_BATCH = 36;
-const IMAGE_CONCURRENCY = 8;
+const IMAGE_BATCH = 40;
+// Sites rate-limit parallel requests (Jeune Afrique answers 429): one at a time per site,
+// a few per site per run, several sites at once.
+const PER_SITE = 5;
+const SITES_AT_ONCE = 8;
+
+function hostOf(link: string) {
+  try {
+    return new URL(link).hostname;
+  } catch {
+    return link;
+  }
+}
 
 /**
  * Many news feeds send no pictures. Recent articles without one get their page's share
  * picture, News first. A picture the site uses for everything (its logo) is ignored.
  */
 export async function fillMissingImages(deadline: number) {
-  const candidates = await prisma.article.findMany({
+  const recent = await prisma.article.findMany({
     where: {
       imageUrl: null,
       imageCheckedAt: null,
@@ -119,25 +144,45 @@ export async function fillMissingImages(deadline: number) {
       feed: { type: { in: ["rss", "newsletter"] } },
     },
     orderBy: [{ feed: { newsDesk: { sort: "asc", nulls: "last" } } }, { publishedAt: "desc" }],
-    take: IMAGE_BATCH,
+    take: 400,
     select: { id: true, link: true, feedId: true },
   });
-  if (candidates.length === 0) return 0;
+  if (recent.length === 0) return 0;
 
-  const found = await mapWithConcurrency(candidates, IMAGE_CONCURRENCY, async (article) => {
-    if (Date.now() > deadline) return { article, image: null, tried: false };
-    const image = await pageImage(article.link).catch(() => null);
-    return { article, image, tried: true };
+  // A few per site, so every site gets its turn.
+  const bySite = new Map<string, typeof recent>();
+  for (const article of recent) {
+    const host = hostOf(article.link);
+    const list = bySite.get(host) ?? [];
+    if (list.length < PER_SITE) list.push(article);
+    bySite.set(host, list);
+  }
+  let budget = IMAGE_BATCH;
+  const sites: (typeof recent)[] = [];
+  for (const list of Array.from(bySite.values())) {
+    if (budget <= 0) break;
+    sites.push(list.slice(0, budget));
+    budget -= list.length;
+  }
+
+  type Found = { article: (typeof recent)[number]; image: string | null };
+  const found: Found[] = [];
+  await mapWithConcurrency(sites, SITES_AT_ONCE, async (articles) => {
+    for (const article of articles) {
+      if (Date.now() > deadline) return;
+      const result = await pageImage(article.link);
+      // The site is busy: leave the rest for the next run.
+      if (result.retry) return;
+      found.push({ article, image: result.image });
+    }
   });
 
   // The same picture on several articles of one feed is a logo, not a photo.
   const perFeed = new Map<string, number>();
+  const key = (feedId: string, image: string) => `${feedId} ${image}`;
   for (const { article, image } of found) {
     if (image)
-      perFeed.set(
-        `${article.feedId} ${image}`,
-        (perFeed.get(`${article.feedId} ${image}`) ?? 0) + 1
-      );
+      perFeed.set(key(article.feedId, image), (perFeed.get(key(article.feedId, image)) ?? 0) + 1);
   }
   const withImage = found.filter((f) => f.image);
   const reused = withImage.length
@@ -150,15 +195,15 @@ export async function fillMissingImages(deadline: number) {
       })
     : [];
   for (const row of reused) {
-    const key = `${row.feedId} ${row.imageUrl}`;
-    perFeed.set(key, (perFeed.get(key) ?? 0) + row._count._all);
+    if (!row.imageUrl) continue;
+    const k = key(row.feedId, row.imageUrl);
+    perFeed.set(k, (perFeed.get(k) ?? 0) + row._count._all);
   }
 
   let filled = 0;
   const now = new Date();
-  for (const { article, image, tried } of found) {
-    if (!tried) continue;
-    const keep = image && (perFeed.get(`${article.feedId} ${image}`) ?? 0) < 2;
+  for (const { article, image } of found) {
+    const keep = image && (perFeed.get(key(article.feedId, image)) ?? 0) < 2;
     await prisma.article.update({
       where: { id: article.id },
       data: { imageCheckedAt: now, ...(keep ? { imageUrl: image } : {}) },
