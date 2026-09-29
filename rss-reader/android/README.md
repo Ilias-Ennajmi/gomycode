@@ -26,33 +26,34 @@ The web side of the connection:
 - `lib/hooks/useHistorySync.ts` makes the Android back gesture close the article, pane or
   dialog instead of the app.
 
-## Building
+## Building, signing and releasing
 
-GitHub Actions builds it: `.github/workflows/android.yml`, on any push touching this
-folder, on `android-v*` tags, or manually (Actions → Android app → Run workflow).
+The release key never goes to GitHub (no repository secrets). Instead:
 
-- Without signing secrets it builds a test APK (debug-signed, shows a browser bar).
-- With the secrets `ANDROID_KEYSTORE_BASE64` and `ANDROID_KEYSTORE_PASSWORD` it builds the
-  signed APK and checks its fingerprint matches `assetlinks.json`.
+1. **Build** – any push touching this folder runs `.github/workflows/android.yml`, which builds
+   an unsigned release APK and publishes it as the `android-unsigned` prerelease.
+2. **Sign** – on a machine that has the key, run
+   `./sign.sh reader-release.jks password.txt`. It downloads that unsigned APK, signs it with
+   Google's apksig library (`signer/SignApk.java`, v1 + v2 signatures), verifies it, checks the
+   certificate matches `assetlinks.json` and that the file is aligned, and writes
+   `releases/Reader-<version>.apk`.
+3. **Release** – commit that APK, then push the tag `android-v<version>`. The workflow checks
+   the tag, version and signature again, publishes the GitHub Release (Obtainium and the in-app
+   banner pick it up), and runs the emulator test.
+4. **Test** – the `e2e` job installs the APK on an Android 14 emulator with Chrome, opens it,
+   shares a link to it and opens a site link, and publishes screenshots, UI dumps and
+   `summary.txt` as the `android-e2e` prerelease. "full screen (verified)" means no browser bar.
+   It can also be run by hand (Actions → Android app → Run workflow).
 
-Locally (needs Android Studio or the Android SDK, JDK 17+):
+For a new version, bump `appVersionCode` (+1) and `appVersionName` in `app/build.gradle`
+first, push, wait for the unsigned build, then sign and tag as above.
 
-```bash
-cd rss-reader/android
-./gradlew assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
-ANDROID_KEYSTORE_PATH=/path/reader-release.jks ANDROID_KEYSTORE_PASSWORD=… ./gradlew assembleRelease
-```
-
-## Releasing a new version
-
-1. In `app/build.gradle`, bump `appVersionCode` (+1) and `appVersionName` (e.g. `1.1.0`).
-2. Commit, then tag and push: `git tag android-v1.1.0 && git push origin android-v1.1.0`.
-3. The workflow publishes a GitHub Release with `Reader-1.1.0.apk`. Obtainium (or the
-   in-app banner) picks it up.
+Building locally needs the Android SDK and JDK 17+: `./gradlew assembleRelease`.
 
 ## Signing key
 
-- Alias `reader`, stored in the two GitHub secrets above. **Never commit it.**
+- A PKCS#12 keystore, alias `reader`. **Never commit it or its password.** The owner keeps
+  a copy; `assetlinks.json` holds its public SHA-256 fingerprint.
 - Every update must be signed with the same key, or Android refuses to install it over the
   old app. If it's lost: make a new key, update `assetlinks.json`, and reinstall. No data
   is lost, because everything lives on the server.
