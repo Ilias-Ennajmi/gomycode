@@ -3,7 +3,7 @@
 import * as React from "react";
 import {
   AlarmClock,
-  Loader2,
+  ArrowDownToLine,
   Archive,
   ArchiveRestore,
   Bookmark,
@@ -305,6 +305,12 @@ export function ArticleReader() {
       />
       <ListenBar speech={speech} html={bodyHtml || article.summary || ""} />
       <MinutesLeft words={wordCount(bodyHtml || article.summary)} progress={progress} />
+      <ResumeReading
+        key={article.id}
+        startProgress={article.readProgress ?? 0}
+        progress={progress}
+        scrollRef={containerRef}
+      />
       <ReaderHighlights
         article={article}
         bodyRef={bodyRef}
@@ -502,9 +508,10 @@ function FullArticleBar({
 }) {
   if (loading) {
     return (
-      <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading the full article…
-      </p>
+      <div className="mt-6 space-y-2" role="status" aria-label="Loading the full article">
+        <Skeleton className="h-8 w-56 rounded-lg" />
+        <p className="text-xs text-muted-foreground">Loading the full article…</p>
+      </div>
     );
   }
   if (status === "full") {
@@ -560,5 +567,52 @@ function MinutesLeft({ words, progress }: { words: number; progress: number }) {
     <span className="pointer-events-none absolute bottom-4 right-4 z-10 rounded-full border bg-popover/90 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur">
       {minutes} min left
     </span>
+  );
+}
+
+/**
+ * "Continue where you left off": an article opened again after reading part of it offers to
+ * jump back to that point. Hidden once the reader scrolls on their own.
+ */
+function ResumeReading({
+  startProgress,
+  progress,
+  scrollRef,
+}: {
+  startProgress: number;
+  progress: number;
+  scrollRef: React.RefObject<HTMLDivElement>;
+}) {
+  const [visible, setVisible] = React.useState(startProgress >= 10 && startProgress <= 90);
+  React.useEffect(() => {
+    if (!visible) return;
+    const timeout = setTimeout(() => setVisible(false), 10_000);
+    return () => clearTimeout(timeout);
+  }, [visible]);
+  React.useEffect(() => {
+    if (progress > 5) setVisible(false);
+  }, [progress]);
+  if (!visible) return null;
+
+  function resume() {
+    const el = scrollRef.current;
+    if (el) {
+      el.scrollTo({
+        top: ((el.scrollHeight - el.clientHeight) * startProgress) / 100,
+        behavior: "smooth",
+      });
+    }
+    setVisible(false);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={resume}
+      className="absolute bottom-[calc(env(safe-area-inset-bottom)+16px)] left-1/2 z-20 flex -translate-x-1/2 whitespace-nowrap animate-fade-in items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-medium text-background shadow-xl"
+    >
+      <ArrowDownToLine className="h-4 w-4" />
+      Continue where you left off · {startProgress}%
+    </button>
   );
 }

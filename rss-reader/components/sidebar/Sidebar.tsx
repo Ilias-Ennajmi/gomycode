@@ -61,9 +61,9 @@ export function Sidebar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchDraft]);
 
-  // Cleared from the results list: empty the box too.
+  // Cleared from the results list, or started from the command palette: keep the box in step.
   React.useEffect(() => {
-    if (!search) setSearchDraft("");
+    setSearchDraft((draft) => (draft.trim() === search.trim() ? draft : search));
   }, [search]);
 
   const totalUnread = feeds

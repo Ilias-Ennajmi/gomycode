@@ -14,6 +14,7 @@ import { ContentFiltersDialog } from "@/components/dialogs/ContentFiltersDialog"
 import { TopBar } from "@/components/layout/TopBar";
 import { SaveLinkDialog } from "@/components/dialogs/SaveLinkDialog";
 import { EmailNewsletterDialog } from "@/components/dialogs/EmailNewsletterDialog";
+import { CommandPalette } from "@/components/dialogs/CommandPalette";
 import { useAppEvent } from "@/lib/app-events";
 import { SettingsPanel } from "@/components/layout/SettingsPanel";
 import { SourcesManager } from "@/components/sources/SourcesManager";
@@ -70,11 +71,11 @@ function AppShellInner() {
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [saveLinkOpen, setSaveLinkOpen] = React.useState(false);
   const [emailNewsletterOpen, setEmailNewsletterOpen] = React.useState(false);
+  const [paletteOpen, setPaletteOpen] = React.useState(false);
   useAppEvent("email-newsletter", () => {
     setDiscoverOpen(false);
     setEmailNewsletterOpen(true);
   });
-  const [refreshing, setRefreshing] = React.useState(false);
 
   // Android back (and browser back) closes the open dialog first.
   useBackToClose(discoverOpen, () => setDiscoverOpen(false));
@@ -86,6 +87,7 @@ function AppShellInner() {
   useBackToClose(shortcutsOpen, () => setShortcutsOpen(false));
   useBackToClose(importOpmlOpen, () => setImportOpmlOpen(false));
   useBackToClose(filtersOpen, () => setFiltersOpen(false));
+  useBackToClose(paletteOpen, () => setPaletteOpen(false));
 
   // The "Add source" shortcut on the app icon.
   React.useEffect(() => {
@@ -114,8 +116,31 @@ function AppShellInner() {
     if (result.newArticles > 0) toast.success(refreshToastMessage(result));
   });
 
+  const refreshingRef = React.useRef(false);
+  const refreshNow = React.useCallback(() => {
+    if (refreshingRef.current) return;
+    refreshingRef.current = true;
+    refreshFeeds()
+      .then((result) => {
+        globalMutate(() => true, undefined, { revalidate: true });
+        toast.success(refreshToastMessage(result));
+      })
+      .catch((error) =>
+        toast.error(error instanceof Error ? error.message : "Could not refresh feeds")
+      )
+      .finally(() => {
+        refreshingRef.current = false;
+      });
+  }, [globalMutate]);
+
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      // ⌘K / Ctrl+K works from anywhere, even while typing.
+      if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen((v) => !v);
+        return;
+      }
       const target = event.target;
       // Keys pressed inside a menu or dialog belong to it (e.g. Escape closes
       // the menu, not the article behind it).
@@ -135,18 +160,7 @@ function AppShellInner() {
       } else if (event.key === "?") {
         setShortcutsOpen((v) => !v);
       } else if (event.key.toLowerCase() === "r") {
-        if (!refreshing) {
-          setRefreshing(true);
-          refreshFeeds()
-            .then((result) => {
-              globalMutate(() => true, undefined, { revalidate: true });
-              toast.success(refreshToastMessage(result));
-            })
-            .catch((error) =>
-              toast.error(error instanceof Error ? error.message : "Could not refresh feeds")
-            )
-            .finally(() => setRefreshing(false));
-        }
+        refreshNow();
       } else if (event.key === "Escape") {
         setSelectedArticleId(null);
         setMobilePane((prev) => (prev === "reader" ? "list" : prev));
@@ -155,8 +169,7 @@ function AppShellInner() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshing]);
+  }, [refreshNow, setMobilePane, setSelectedArticleId]);
 
   const dialogActions = {
     onAddFeed: (kind: DiscoverKind = "all") => {
@@ -169,6 +182,13 @@ function AppShellInner() {
     onImportOpml: () => setImportOpmlOpen(true),
     onShowShortcuts: () => setShortcutsOpen(true),
   };
+
+  // Stable, so the palette's command list isn't rebuilt on every render.
+  const openDiscover = React.useCallback(() => dialogActions.onAddFeed("all"), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const openSaveLink = React.useCallback(() => setSaveLinkOpen(true), []);
+  const openEmailNewsletter = React.useCallback(() => setEmailNewsletterOpen(true), []);
+  const openSources = React.useCallback(() => setSourcesOpen(true), []);
+  const openShortcuts = React.useCallback(() => setShortcutsOpen(true), []);
 
   const hideTopBarOnPhone = mobilePane === "reader";
 
@@ -297,6 +317,16 @@ function AppShellInner() {
       />
       <ManageCategoriesDialog open={manageCategoriesOpen} onOpenChange={setManageCategoriesOpen} />
       <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        onAddFeed={openDiscover}
+        onSaveLink={openSaveLink}
+        onEmailNewsletter={openEmailNewsletter}
+        onManageSources={openSources}
+        onShowShortcuts={openShortcuts}
+        onRefresh={refreshNow}
+      />
       <ImportOpmlDialog open={importOpmlOpen} onOpenChange={setImportOpmlOpen} />
       <ContentFiltersDialog open={filtersOpen} onOpenChange={setFiltersOpen} />
     </div>

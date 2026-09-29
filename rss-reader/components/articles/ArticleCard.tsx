@@ -32,6 +32,8 @@ interface ArticleCardProps {
   onArchive?: () => void;
   /** Swipe left on phones. */
   onToggleRead?: () => void;
+  /** "cards": a big picture on top (News, YouTube); "list": a thumbnail on the side. */
+  layout?: "list" | "cards";
 }
 
 const SWIPE_TRIGGER = 80;
@@ -58,6 +60,7 @@ export function ArticleCard({
   onSelectRelated,
   onArchive,
   onToggleRead,
+  layout = "list",
 }: ArticleCardProps) {
   const [showRelated, setShowRelated] = React.useState(false);
   const [imageFailed, setImageFailed] = React.useState(false);
@@ -65,6 +68,8 @@ export function ArticleCard({
   const source = articleSource(article);
   const progress = article.readProgress ?? 0;
   const showImage = article.imageUrl && !imageFailed;
+  // Without a picture, a card falls back to the list look.
+  const big = layout === "cards" && Boolean(showImage);
 
   // Keep the open article visible in the list when the reader moves to the next one.
   const cardRef = React.useRef<HTMLDivElement>(null);
@@ -168,15 +173,27 @@ export function ArticleCard({
           }
         }}
         className={cn(
-          "group relative flex w-full cursor-pointer gap-4 border-b border-border/60 bg-background px-4 py-4 text-left md:px-5",
+          "group relative flex w-full cursor-pointer border-b border-border/60 bg-background px-4 py-4 text-left md:px-5",
+          big ? "flex-col gap-3" : "gap-4",
           !dx && "transition-transform duration-200",
           active ? "bg-accent" : "hover:bg-accent/60"
         )}
       >
         {active && <span className="absolute inset-y-0 left-0 w-[3px] bg-primary" aria-hidden />}
 
-        <div className="relative mt-0.5 h-14 w-14 shrink-0 md:h-16 md:w-16">
-          <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-muted ring-1 ring-border/60">
+        <div
+          className={cn(
+            "relative shrink-0",
+            big ? "aspect-video w-full" : "mt-0.5 h-14 w-14 md:h-16 md:w-16"
+          )}
+        >
+          <div
+            className={cn(
+              "flex items-center justify-center overflow-hidden bg-muted ring-1 ring-border/60",
+              // Pinned to the 16:9 box, or the picture's own height would stretch it.
+              big ? "absolute inset-0 rounded-xl" : "h-full w-full rounded-lg"
+            )}
+          >
             {showImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -191,15 +208,23 @@ export function ArticleCard({
             )}
             {article.isVideo && (
               <span className="absolute inset-0 flex items-center justify-center">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/65 text-white">
-                  <Play className="ml-0.5 h-3.5 w-3.5 fill-current" />
+                <span
+                  className={cn(
+                    "flex items-center justify-center rounded-full bg-black/65 text-white",
+                    big ? "h-12 w-12" : "h-7 w-7"
+                  )}
+                >
+                  <Play className={cn("ml-0.5 fill-current", big ? "h-5 w-5" : "h-3.5 w-3.5")} />
                 </span>
               </span>
             )}
           </div>
           {!article.isRead && (
             <span
-              className="absolute -left-1 -top-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background"
+              className={cn(
+                "absolute h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background",
+                big ? "left-2.5 top-2.5" : "-left-1 -top-1"
+              )}
               aria-label="Unread"
             />
           )}

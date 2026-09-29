@@ -9,12 +9,14 @@ import {
 } from "@/components/ui/dialog";
 
 const SHORTCUTS: Array<[string, string]> = [
+  ["⌘K / Ctrl+K", "Command palette"],
   ["j", "Next article"],
   ["k", "Previous article"],
   ["o / Enter", "Open article in reader"],
   ["v", "Open original in new tab"],
   ["s / b", "Toggle save / bookmark"],
   ["m", "Toggle read / unread"],
+  ["h", "Highlight the selected text"],
   ["r", "Refresh feeds"],
   ["?", "Show shortcuts help"],
   ["/", "Focus search"],
@@ -39,9 +41,7 @@ export function KeyboardShortcutsDialog({ open, onOpenChange }: KeyboardShortcut
             <div key={key} className="flex items-center justify-between text-sm">
               <dt className="text-muted-foreground">{label}</dt>
               <dd>
-                <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-xs">
-                  {key}
-                </kbd>
+                <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-xs">{key}</kbd>
               </dd>
             </div>
           ))}

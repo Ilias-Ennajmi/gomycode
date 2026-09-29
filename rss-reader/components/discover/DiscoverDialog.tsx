@@ -18,6 +18,7 @@ import {
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { keepOpenOnToast } from "@/components/ui/sonner";
 import { sourceKey } from "@/lib/source-key";
 import { useAiStatus } from "@/lib/hooks/useAi";
@@ -569,9 +570,21 @@ function ResultList({ results, rowProps }: { results: DiscoverResult[]; rowProps
 
 function LoadingRows({ label }: { label: string }) {
   return (
-    <p className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
-      <Loader2 className="h-4 w-4 animate-spin" /> {label}
-    </p>
+    <div role="status" aria-live="polite">
+      <p className="pt-3 text-sm text-muted-foreground">{label}</p>
+      <ul className="divide-y divide-border/60">
+        {[0, 1, 2].map((row) => (
+          <li key={row} className="flex items-center gap-3 py-3">
+            <Skeleton className="h-10 w-10 shrink-0 rounded-xl" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skeleton className={cn("h-3.5", row === 1 ? "w-1/2" : "w-2/3")} />
+              <Skeleton className="h-3 w-5/6" />
+            </div>
+            <Skeleton className="h-8 w-16 shrink-0 rounded-lg" />
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

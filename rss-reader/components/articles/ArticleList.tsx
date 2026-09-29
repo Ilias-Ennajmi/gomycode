@@ -10,12 +10,14 @@ import {
   AtSign,
   CheckCheck,
   Inbox,
+  LayoutGrid,
   ListTree,
   Loader2,
   Mail,
   MonitorPlay,
   Plus,
   RefreshCw,
+  Rows3,
   Rss,
   SearchX,
   X,
@@ -38,6 +40,7 @@ import { ArticleSkeletonList } from "@/components/articles/ArticleSkeleton";
 import { DailyBriefing } from "@/components/articles/DailyBriefing";
 import { HighlightsList } from "@/components/highlights/HighlightsList";
 import { requestAppEvent } from "@/lib/app-events";
+import { useListLayout } from "@/lib/hooks/useListLayout";
 import { copySignupAddress, openUnsubscribe } from "@/lib/hooks/useNewsletter";
 import { isSourceTab, useReaderState } from "@/lib/hooks/useReaderState";
 import {
@@ -108,6 +111,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
     minutes,
   } = useArticles(listParams, sort);
   const snoozedCount = useArticleCount({ later: "snoozed" });
+  const { layout, setLayout } = useListLayout(search.trim() ? "search" : view.type);
   const { feeds } = useFeeds();
   const [refreshing, setRefreshing] = React.useState(false);
   const [markingAllRead, setMarkingAllRead] = React.useState(false);
@@ -441,6 +445,20 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
             )}
 
             <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setLayout(layout === "cards" ? "list" : "cards")}
+                aria-label={layout === "cards" ? "Show as a list" : "Show big pictures"}
+                title={layout === "cards" ? "Show as a list" : "Show big pictures"}
+              >
+                {layout === "cards" ? (
+                  <Rows3 className="h-4 w-4" />
+                ) : (
+                  <LayoutGrid className="h-4 w-4" />
+                )}
+              </Button>
               {!ranked && !(isLater && laterTab !== "queue" && laterTab !== "archive") && (
                 <Select value={sort} onValueChange={(v) => setSort(v as "newest" | "oldest")}>
                   <SelectTrigger className="h-8 w-[92px] text-xs sm:w-[110px]">
@@ -530,6 +548,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
                     onToggleSave={() => handleToggleSave(article)}
                     onToggleRead={() => handleToggleRead(article)}
                     onSelectRelated={handleSelect}
+                    layout={layout}
                     onArchive={
                       article.isSaved
                         ? () => handleArchive(article, !article.archivedAt)
