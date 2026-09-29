@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Compass, Link2, Newspaper, Plus, Search, Settings } from "lucide-react";
+import { AtSign, Compass, Link2, Newspaper, Plus, Search, Settings } from "lucide-react";
+import { requestAppEvent } from "@/lib/app-events";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/shared/Logo";
@@ -223,6 +224,20 @@ function AddMenu({
             </span>
           </span>
         </DropdownMenuItem>
+        {(kind === "newsletter" || kind === "all") && (
+          <DropdownMenuItem
+            onSelect={() => requestAppEvent("email-newsletter")}
+            className="gap-2.5 py-2"
+          >
+            <AtSign className="h-4 w-4 text-primary" />
+            <span>
+              <span className="block text-sm">Email newsletter</span>
+              <span className="block text-xs text-muted-foreground">
+                Get an address to sign up with
+              </span>
+            </span>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onSelect={onManageNews} className="gap-2.5 py-2">
           <Newspaper className="h-4 w-4 text-primary" />
           <span>

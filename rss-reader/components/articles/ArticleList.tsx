@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Bookmark,
   AlarmClock,
+  AtSign,
   CheckCheck,
   Inbox,
   ListTree,
@@ -36,6 +37,8 @@ import { CategoryChips } from "@/components/articles/CategoryChips";
 import { ArticleSkeletonList } from "@/components/articles/ArticleSkeleton";
 import { DailyBriefing } from "@/components/articles/DailyBriefing";
 import { HighlightsList } from "@/components/highlights/HighlightsList";
+import { requestAppEvent } from "@/lib/app-events";
+import { copySignupAddress, openUnsubscribe } from "@/lib/hooks/useNewsletter";
 import { isSourceTab, useReaderState } from "@/lib/hooks/useReaderState";
 import {
   useArticleCount,
@@ -244,6 +247,9 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   const isLater = view.type === "later" && !searching;
   const showHighlights = isLater && laterTab === "highlights";
   const showNewsletterKinds = view.type === "newsletters" && !searching;
+  // An email newsletter's own list shows its sign-up address.
+  const emailFeed =
+    view.type === "feed" && !searching ? feeds.find((f) => f.id === view.id && f.email) : undefined;
   const fromSourcesList = ["feed", "category", "all", "today"].includes(view.type);
   const newsSection = view.type === "news" && Boolean(view.id);
   let lastDateLabel = "";
@@ -326,13 +332,23 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
               <Button
                 size="sm"
                 className="h-8 gap-1 rounded-full px-3 text-xs"
-                onClick={() => onAddFeed(TAB_DISCOVER[view.type]?.kind ?? "all")}
+                onClick={() =>
+                  view.type === "newsletters" && newsletterKind === "email"
+                    ? requestAppEvent("email-newsletter")
+                    : onAddFeed(TAB_DISCOVER[view.type]?.kind ?? "all")
+                }
                 title={TAB_DISCOVER[view.type] ? undefined : "Discover sources"}
               >
                 <Plus className="h-3.5 w-3.5" />
-                <span className={cn(!TAB_DISCOVER[view.type] && "max-sm:sr-only")}>
-                  {TAB_DISCOVER[view.type]?.label ?? "Discover"}
-                </span>
+                {TAB_DISCOVER[view.type] ? (
+                  <>
+                    {/* Phones: just "Add", so the title keeps its room. */}
+                    <span className="max-sm:hidden">{TAB_DISCOVER[view.type].label}</span>
+                    <span className="sm:hidden">Add</span>
+                  </>
+                ) : (
+                  <span className="max-sm:sr-only">Discover</span>
+                )}
               </Button>
             )}
             {sourceTab && (
@@ -369,6 +385,30 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
         />
       ) : (
         <>
+          {emailFeed?.email && (
+            <div className="flex items-center gap-2 border-b bg-muted/40 px-3 py-2 text-xs">
+              <AtSign className="h-3.5 w-3.5 shrink-0 text-primary" />
+              <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                {emailFeed.email}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => copySignupAddress(emailFeed.email!)}
+              >
+                Copy
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => openUnsubscribe(emailFeed.id)}
+              >
+                Unsubscribe
+              </Button>
+            </div>
+          )}
           {showNewsletterKinds && (
             <NewsletterKinds kind={newsletterKind} onChange={setNewsletterKind} />
           )}
@@ -706,7 +746,18 @@ function EmptyState({
     );
   }
 
-  if (view === "newsletters") {
+  if (view === "newsletters-email") {
+    return (
+      <EmptyMessage
+        icon={<AtSign className="h-10 w-10" />}
+        text="No email newsletters yet. Get an address to sign up with, and every issue lands here."
+        action="Get an address"
+        onAction={() => requestAppEvent("email-newsletter")}
+      />
+    );
+  }
+
+  if (view === "newsletters" || view === "newsletters-web") {
     return (
       <EmptyMessage
         icon={<Mail className="h-10 w-10" />}

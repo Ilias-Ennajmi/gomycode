@@ -3,6 +3,7 @@
 import * as React from "react";
 import { toast } from "sonner";
 import {
+  AtSign,
   Compass,
   Layers,
   Loader2,
@@ -35,6 +36,7 @@ import {
   type FollowResult,
 } from "@/lib/hooks/useDiscover";
 import type { DiscoverKind, Language, SourceKind } from "@/lib/discover/catalog";
+import { requestAppEvent } from "@/lib/app-events";
 import { siteTopic, topicResult } from "@/lib/discover/topics";
 import { KIND_META, SourceRow } from "@/components/discover/SourceRow";
 
@@ -465,6 +467,21 @@ export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: Disc
                 </div>
               )}
 
+              {kind === "newsletter" && (
+                <button
+                  type="button"
+                  onClick={() => requestAppEvent("email-newsletter")}
+                  className="mt-3 flex w-full items-center gap-3 rounded-xl border border-dashed p-3 text-left transition-colors hover:bg-accent/60"
+                >
+                  <AtSign className="h-5 w-5 shrink-0 text-primary" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium">Only sent by email?</span>
+                    <span className="block text-xs text-muted-foreground">
+                      Get an address to sign up with; issues land in Newsletters → Email.
+                    </span>
+                  </span>
+                </button>
+              )}
               {searching ? (
                 <SearchResults query={query} langs={langs} kind={kind} rowProps={rowProps} />
               ) : activeSection === FOR_YOU ? (
@@ -944,8 +961,8 @@ function CategoryView({
           <LoadingRows label="Loading picks…" />
         ) : picks.length === 0 ? (
           <p className="pt-2 text-sm text-muted-foreground">
-            No hand-picked {kind === "all" ? "sources" : KIND_NOUNS[kind]} here
-            yet. Here&rsquo;s what&rsquo;s popular instead.
+            No hand-picked {kind === "all" ? "sources" : KIND_NOUNS[kind]} here yet. Here&rsquo;s
+            what&rsquo;s popular instead.
           </p>
         ) : (
           <GroupedResults results={picks} kind={kind} rowProps={rowProps} />

@@ -13,6 +13,8 @@ import { ImportOpmlDialog } from "@/components/dialogs/ImportOPMLDialog";
 import { ContentFiltersDialog } from "@/components/dialogs/ContentFiltersDialog";
 import { TopBar } from "@/components/layout/TopBar";
 import { SaveLinkDialog } from "@/components/dialogs/SaveLinkDialog";
+import { EmailNewsletterDialog } from "@/components/dialogs/EmailNewsletterDialog";
+import { useAppEvent } from "@/lib/app-events";
 import { SettingsPanel } from "@/components/layout/SettingsPanel";
 import { SourcesManager } from "@/components/sources/SourcesManager";
 import { NewsView } from "@/components/news/NewsView";
@@ -67,11 +69,17 @@ function AppShellInner() {
   const [importOpmlOpen, setImportOpmlOpen] = React.useState(false);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [saveLinkOpen, setSaveLinkOpen] = React.useState(false);
+  const [emailNewsletterOpen, setEmailNewsletterOpen] = React.useState(false);
+  useAppEvent("email-newsletter", () => {
+    setDiscoverOpen(false);
+    setEmailNewsletterOpen(true);
+  });
   const [refreshing, setRefreshing] = React.useState(false);
 
   // Android back (and browser back) closes the open dialog first.
   useBackToClose(discoverOpen, () => setDiscoverOpen(false));
   useBackToClose(saveLinkOpen, () => setSaveLinkOpen(false));
+  useBackToClose(emailNewsletterOpen, () => setEmailNewsletterOpen(false));
   useBackToClose(sourcesOpen, () => setSourcesOpen(false));
   useBackToClose(newsSources.open, () => setNewsSources((prev) => ({ ...prev, open: false })));
   useBackToClose(manageCategoriesOpen, () => setManageCategoriesOpen(false));
@@ -271,6 +279,7 @@ function AppShellInner() {
       </div>
 
       <SaveLinkDialog open={saveLinkOpen} onOpenChange={setSaveLinkOpen} />
+      <EmailNewsletterDialog open={emailNewsletterOpen} onOpenChange={setEmailNewsletterOpen} />
       <DiscoverDialog
         open={discoverOpen}
         onOpenChange={setDiscoverOpen}

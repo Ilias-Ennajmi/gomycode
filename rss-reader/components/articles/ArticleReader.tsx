@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
+  Lock,
   Share,
   Sparkles,
 } from "lucide-react";
@@ -37,6 +38,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useReadingProgress } from "@/lib/hooks/useReadingProgress";
 import { READER_WIDTHS, useReaderPrefs } from "@/lib/hooks/useReaderPrefs";
 import { needsFullArticle, wordCount } from "@/lib/reader";
+import { isPaidPreview } from "@/lib/newsletters";
 import { ReaderSettings } from "@/components/articles/ReaderSettings";
 import { ListenBar, ListenButton, useSpeech } from "@/components/articles/ListenButton";
 import { useArticleHighlights } from "@/lib/hooks/useHighlights";
@@ -110,7 +112,12 @@ export function ArticleReader() {
 
   // Excerpt-only feeds: fetch the full page (cached server-side) and show it
   // by default, with a toggle back to the feed's own text.
-  const wantsFull = article ? needsFullArticle(article) : false;
+  // The free preview of a paid newsletter post: the full page is paywalled too, so say so
+  // instead of fetching it.
+  const paidPreview = Boolean(
+    article && article.feed.type === "newsletter" && isPaidPreview(article.content)
+  );
+  const wantsFull = article && !paidPreview ? needsFullArticle(article) : false;
   const { full, isLoading: fullLoading } = useFullArticle(wantsFull ? (article?.id ?? null) : null);
   const [showFeedVersion, setShowFeedVersion] = React.useState(false);
   React.useEffect(() => setShowFeedVersion(false), [article?.id]);
@@ -337,6 +344,19 @@ export function ArticleReader() {
             cached={article.aiSummary}
             ready={!wantsFull || !fullLoading}
           />
+          {paidPreview && (
+            <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
+              <Lock className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span className="min-w-0 flex-1">
+                A paid post: this is the free preview. Read it all where you&rsquo;re subscribed.
+              </span>
+              <Button size="sm" variant="outline" className="gap-1.5" asChild>
+                <a href={article.link} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3.5 w-3.5" /> Open the post
+                </a>
+              </Button>
+            </div>
+          )}
           {wantsFull && (
             <FullArticleBar
               loading={fullLoading}

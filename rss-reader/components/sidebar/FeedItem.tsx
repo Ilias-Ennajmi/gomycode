@@ -1,7 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangle, CheckCheck, Eye, EyeOff, FolderInput, Pencil, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  AtSign,
+  CheckCheck,
+  Eye,
+  EyeOff,
+  FolderInput,
+  MailX,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -18,7 +28,8 @@ import {
 } from "@/components/ui/context-menu";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
-import { deleteFeed, markAllRead, updateFeed } from "@/lib/hooks/useFeeds";
+import { deleteFeed, markAllRead, updateFeed, useFeeds } from "@/lib/hooks/useFeeds";
+import { copySignupAddress, openUnsubscribe } from "@/lib/hooks/useNewsletter";
 import { useFilters } from "@/lib/hooks/useFilters";
 import type { CategorySummary } from "@/lib/types";
 import { toast } from "sonner";
@@ -49,6 +60,7 @@ export function FeedItem({
   onChanged,
 }: FeedItemProps) {
   const { rules, addRule, removeRule } = useFilters();
+  const email = useFeeds().feeds.find((feed) => feed.id === id)?.email ?? null;
 
   async function handleToggleMute() {
     try {
@@ -155,9 +167,14 @@ export function FeedItem({
             ) : (
               <span className="flex-1 truncate text-left">{title}</span>
             )}
-            {muted && <EyeOff className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Muted" />}
+            {muted && (
+              <EyeOff className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Muted" />
+            )}
             {errorCount >= 5 && (
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-label="Feed is failing" />
+              <AlertTriangle
+                className="h-3.5 w-3.5 shrink-0 text-amber-500"
+                aria-label="Feed is failing"
+              />
             )}
             {!!unreadCount && (
               <Badge
@@ -170,7 +187,7 @@ export function FeedItem({
           </button>
         </ContextMenuTrigger>
         <ContextMenuPortal>
-          <ContextMenuContent className="w-48">
+          <ContextMenuContent className="w-52">
             <ContextMenuItem onSelect={() => setRenaming(true)}>
               <Pencil className="mr-2 h-3.5 w-3.5" /> Rename
             </ContextMenuItem>
@@ -210,6 +227,17 @@ export function FeedItem({
                 </>
               )}
             </ContextMenuItem>
+            {email && (
+              <>
+                <ContextMenuSeparator />
+                <ContextMenuItem onSelect={() => copySignupAddress(email)}>
+                  <AtSign className="mr-2 h-3.5 w-3.5" /> Copy sign-up address
+                </ContextMenuItem>
+                <ContextMenuItem onSelect={() => openUnsubscribe(id)}>
+                  <MailX className="mr-2 h-3.5 w-3.5" /> Unsubscribe…
+                </ContextMenuItem>
+              </>
+            )}
             <ContextMenuSeparator />
             <ContextMenuItem
               onSelect={() => setConfirmDelete(true)}

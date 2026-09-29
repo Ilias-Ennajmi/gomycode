@@ -7,6 +7,7 @@ import { insertNewArticles } from "@/lib/ingest";
 import { getFaviconFallbackColor } from "@/lib/utils";
 import { sourceKey } from "@/lib/source-key";
 import { topicQuery, topicTitle } from "@/lib/discover/topics";
+import { detectPlatform } from "@/lib/newsletters";
 
 export interface FollowInput {
   url: string;
@@ -75,7 +76,8 @@ function feedType(source: ResolvedSource, parsed: ParsedFeed, input: FollowInput
   const allVideos = parsed.articles.length > 0 && parsed.articles.every((a) => a.isVideo);
   if (source.type === "rss" && allVideos) return "youtube";
   if (source.type !== "rss") return source.type;
-  const newsletter = input.kind === "newsletter" || /substack/i.test(parsed.meta.generator ?? "");
+  const newsletter =
+    input.kind === "newsletter" || Boolean(detectPlatform(source.feedUrl, parsed.meta.generator));
   return newsletter ? "newsletter" : "rss";
 }
 
@@ -147,9 +149,12 @@ export async function followSource(
   ]);
 
   const followedUrl = input.url.trim();
+  const type = feedType(source, parsed, input);
   const feed = await prisma.feed.create({
     data: {
-      type: feedType(source, parsed, input),
+      type,
+      platform:
+        type === "newsletter" ? detectPlatform(source.feedUrl, parsed.meta.generator) : null,
       title: input.title?.trim() || (topic ? topicTitle(topic) : parsed.meta.title),
       url: source.feedUrl,
       sourceUrl: sourceKey(followedUrl) === sourceKey(source.feedUrl) ? null : followedUrl,

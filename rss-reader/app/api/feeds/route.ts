@@ -43,6 +43,8 @@ export async function GET() {
       language: feed.language,
       newsDesk: feed.newsDesk,
       region: feed.region,
+      platform: feed.platform,
+      email: feed.email,
       lastFetched: feed.lastFetched,
       errorCount: feed.errorCount,
       unreadCount: feed._count.articles,

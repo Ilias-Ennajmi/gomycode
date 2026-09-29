@@ -15,6 +15,10 @@ export interface FeedSummary {
   /** The News section this source feeds, or null when it isn't a News source. */
   newsDesk: string | null;
   region: string | null;
+  /** Newsletters: "substack", "beehiiv", "ghost", "buttondown" or "email". */
+  platform: string | null;
+  /** Email newsletters: the address to sign up with. */
+  email: string | null;
   lastFetched: string | null;
   errorCount: number;
   unreadCount: number;

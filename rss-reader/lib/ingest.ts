@@ -14,7 +14,8 @@ export async function insertNewArticles(feedId: string, articles: ParsedArticle[
       summary: article.summary,
       content: cleanHtml(article.content),
       imageUrl: article.imageUrl,
-      author: article.author,
+      // Email newsletters send "Name <address>": keep the name.
+      author: article.author?.replace(/\s*<[^>]*@[^>]*>\s*$/, "").trim() || article.author,
       publishedAt: article.publishedAt,
       isVideo: article.isVideo ?? false,
     })),
