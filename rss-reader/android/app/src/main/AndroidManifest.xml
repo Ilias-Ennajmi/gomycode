@@ -57,8 +57,13 @@
                 android:name="android.support.customtabs.trusted.FILE_PROVIDER_AUTHORITY"
                 android:value="@string/providerAuthority" />
             <meta-data
-                android:name="android.support.customtabs.trusted.SHARE_TARGET"
+                android:name="android.support.customtabs.trusted.METADATA_SHARE_TARGET"
                 android:resource="@string/shareTarget" />
+            <!-- Otherwise the app can sit on its splash screen when Android never reports the
+                 enter animation as finished (seen on an Android 14 emulator). -->
+            <meta-data
+                android:name="android.support.customtabs.trusted.START_CHROME_BEFORE_ANIMATION_COMPLETE"
+                android:value="true" />
             <!-- Without Chrome (or another TWA browser), open in a Custom Tab instead. -->
             <meta-data
                 android:name="android.support.customtabs.trusted.FALLBACK_STRATEGY"

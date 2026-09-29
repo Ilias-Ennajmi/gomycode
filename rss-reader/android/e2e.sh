@@ -17,8 +17,8 @@ page_url() {
   adb forward tcp:9222 localabstract:chrome_devtools_remote > /dev/null 2>&1
   curl -s http://127.0.0.1:9222/json | python3 -c '
 import json, sys
-pages = [t for t in json.load(sys.stdin) if t.get("type") == "page"]
-print(pages[0]["url"] if pages else "?")' 2> /dev/null || echo "?"
+pages = [t["url"] for t in json.load(sys.stdin) if t.get("type") == "page"]
+print(" + ".join(pages) or "none")' 2> /dev/null || echo "?"
 }
 
 shot() {

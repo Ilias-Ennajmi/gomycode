@@ -3,8 +3,8 @@ plugins {
 }
 
 // Bump both for every release; the tag is android-v<versionName> (see android/README.md).
-def appVersionCode = 1
-def appVersionName = "1.0.0"
+def appVersionCode = 2
+def appVersionName = "1.0.1"
 
 def siteHost = "rss-reader-jet.vercel.app"
 def siteUrl = "https://" + siteHost
@@ -63,5 +63,5 @@ android {
 }
 
 dependencies {
-    implementation "com.google.androidbrowserhelper:androidbrowserhelper:2.5.0"
+    implementation "com.google.androidbrowserhelper:androidbrowserhelper:2.6.2"
 }
