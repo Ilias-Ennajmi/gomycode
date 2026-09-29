@@ -37,7 +37,7 @@ export function snoozeOptions(now = new Date()): SnoozeOption[] {
 /** "Today 18:00", "Tomorrow 08:00", "Sat 09:00", "Oct 29" */
 export function formatSnooze(date: Date | string, now = new Date()) {
   const d = typeof date === "string" ? new Date(date) : date;
-  const time = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   const days = Math.round(
     (new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() -
       new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) /

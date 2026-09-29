@@ -17,6 +17,7 @@ import {
   RefreshCw,
   Rss,
   SearchX,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
@@ -45,7 +46,14 @@ import {
 } from "@/lib/hooks/useArticles";
 import { markAllRead, refreshFeeds, refreshToastMessage, useFeeds } from "@/lib/hooks/useFeeds";
 import { PullIndicator, usePullToRefresh } from "@/lib/hooks/usePullToRefresh";
-import type { ArticleFilter, ArticleSummary, LaterTab } from "@/lib/types";
+import type {
+  ArticleFilter,
+  ArticleSummary,
+  LaterTab,
+  NewsletterKind,
+  SearchScope,
+  SearchSince,
+} from "@/lib/types";
 import type { DiscoverKind } from "@/lib/discover/catalog";
 
 const TAB_DISCOVER: Record<string, { kind: DiscoverKind; label: string }> = {
@@ -70,6 +78,13 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
     selectedArticleId,
     setSelectedArticleId,
     search,
+    setSearch,
+    searchScope,
+    setSearchScope,
+    searchSince,
+    setSearchSince,
+    newsletterKind,
+    setNewsletterKind,
     listParams,
     setMobilePane,
     laterTab,
@@ -101,7 +116,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   const { bind: bindPull, pull, refreshing: pulling } = usePullToRefresh();
   React.useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
-  }, [view, filterTab, search, listParams.categoryId]);
+  }, [view, filterTab, search, listParams.categoryId, searchScope, searchSince, newsletterKind]);
 
   React.useEffect(() => {
     if (inView && hasMore && !isLoading && !isLoadingMore) {
@@ -223,9 +238,12 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articles, selectedArticleId]);
 
-  const ranked = view.type === "foryou";
-  const isLater = view.type === "later";
+  const searching = Boolean(search.trim());
+  // Search results are ranked by relevance, like For You by interest: no date separators.
+  const ranked = view.type === "foryou" || searching;
+  const isLater = view.type === "later" && !searching;
   const showHighlights = isLater && laterTab === "highlights";
+  const showNewsletterKinds = view.type === "newsletters" && !searching;
   const fromSourcesList = ["feed", "category", "all", "today"].includes(view.type);
   const newsSection = view.type === "news" && Boolean(view.id);
   let lastDateLabel = "";
@@ -257,132 +275,172 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
           )}
           <div className="min-w-0">
             <h2 className="truncate text-lg font-semibold leading-tight tracking-tight">
-              {isLater ? LATER_TITLES[laterTab] : view.label}
+              {searching ? "Search" : isLater ? LATER_TITLES[laterTab] : view.label}
             </h2>
-            <p className="text-xs text-muted-foreground">
-              {isLater
-                ? laterTab === "archive"
-                  ? `${total} finished`
-                  : laterTab === "snoozed"
-                    ? `${total} coming back later`
-                    : laterTab === "highlights"
-                      ? "Passages and notes from your reading"
-                      : `${total} to read${minutes ? ` · ${formatMinutes(minutes)}` : ""}`
-                : ranked
-                  ? learnedFrom
-                    ? `Learned from ${learnedFrom} articles · `
-                    : "Ranked for you · "
-                  : ""}
+            <p className="truncate text-xs text-muted-foreground">
+              {searching ? (
+                isLoading ? (
+                  "Searching…"
+                ) : (
+                  <>
+                    {total} result{total === 1 ? "" : "s"} for &ldquo;{search.trim()}&rdquo;
+                  </>
+                )
+              ) : isLater ? (
+                laterTab === "archive" ? (
+                  `${total} finished`
+                ) : laterTab === "snoozed" ? (
+                  `${total} coming back later`
+                ) : laterTab === "highlights" ? (
+                  "Passages and notes from your reading"
+                ) : (
+                  `${total} to read${minutes ? ` · ${formatMinutes(minutes)}` : ""}`
+                )
+              ) : ranked ? (
+                learnedFrom ? (
+                  `Learned from ${learnedFrom} articles · `
+                ) : (
+                  "Ranked for you · "
+                )
+              ) : (
+                ""
+              )}
               {!isLater &&
+                !searching &&
                 (lastFetched ? `Updated ${formatRelativeTime(lastFetched)}` : "Not refreshed yet")}
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          {!isLater && !newsSection && (
-            <Button
-              size="sm"
-              className="h-8 gap-1 rounded-full px-3 text-xs"
-              onClick={() => onAddFeed(TAB_DISCOVER[view.type]?.kind ?? "all")}
-              title={TAB_DISCOVER[view.type] ? undefined : "Discover sources"}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span className={cn(!TAB_DISCOVER[view.type] && "max-sm:sr-only")}>
-                {TAB_DISCOVER[view.type]?.label ?? "Discover"}
-              </span>
-            </Button>
-          )}
-          {sourceTab && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 rounded-full text-xs md:hidden"
-              onClick={() => setMobilePane("sidebar")}
-            >
-              <ListTree className="h-3.5 w-3.5" />
-              {view.type === "youtube" ? "Channels" : "Sources"}
-            </Button>
-          )}
+        {searching ? (
           <Button
             variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            aria-label="Refresh feeds"
+            size="sm"
+            className="h-8 shrink-0 gap-1.5 text-xs"
+            onClick={() => setSearch("")}
           >
-            <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+            <X className="h-3.5 w-3.5" /> Clear
           </Button>
-        </div>
-      </div>
-
-      {sourceTab && <CategoryChips tab={sourceTab} />}
-
-      <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
-        {isLater ? (
-          <Tabs
-            value={laterTab}
-            onValueChange={(v) => setLaterTab(v as LaterTab)}
-            className="min-w-0 overflow-x-auto scrollbar-none"
-          >
-            <TabsList>
-              <TabsTrigger value="queue">Later</TabsTrigger>
-              {(snoozedCount > 0 || laterTab === "snoozed") && (
-                <TabsTrigger value="snoozed">Snoozed</TabsTrigger>
-              )}
-              <TabsTrigger value="archive">Archive</TabsTrigger>
-              <TabsTrigger value="highlights">Highlights</TabsTrigger>
-            </TabsList>
-          </Tabs>
         ) : (
-          <Tabs value={filterTab} onValueChange={(v) => setFilterTab(v as ArticleFilter)}>
-            <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="unread">Unread</TabsTrigger>
-              <TabsTrigger value="saved">Saved</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        )}
-
-        <div className="flex items-center gap-1">
-          {!ranked && !(isLater && laterTab !== "queue" && laterTab !== "archive") && (
-            <Select value={sort} onValueChange={(v) => setSort(v as "newest" | "oldest")}>
-              <SelectTrigger className="h-8 w-[92px] text-xs sm:w-[110px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="newest">Newest</SelectItem>
-                <SelectItem value="oldest">Oldest</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-          {isLater ? (
-            laterTab === "queue" && (
+          <div className="flex shrink-0 items-center gap-1">
+            {!isLater && !newsSection && (
               <Button
-                variant="ghost"
                 size="sm"
-                className="h-8 gap-1.5 text-xs"
-                onClick={onSaveLink}
+                className="h-8 gap-1 rounded-full px-3 text-xs"
+                onClick={() => onAddFeed(TAB_DISCOVER[view.type]?.kind ?? "all")}
+                title={TAB_DISCOVER[view.type] ? undefined : "Discover sources"}
               >
                 <Plus className="h-3.5 w-3.5" />
-                <span className="max-sm:sr-only">Save link</span>
+                <span className={cn(!TAB_DISCOVER[view.type] && "max-sm:sr-only")}>
+                  {TAB_DISCOVER[view.type]?.label ?? "Discover"}
+                </span>
               </Button>
-            )
-          ) : (
+            )}
+            {sourceTab && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 rounded-full text-xs md:hidden"
+                onClick={() => setMobilePane("sidebar")}
+              >
+                <ListTree className="h-3.5 w-3.5" />
+                {view.type === "youtube" ? "Channels" : "Sources"}
+              </Button>
+            )}
             <Button
               variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5 text-xs"
-              onClick={handleMarkAllRead}
-              disabled={markingAllRead || articles.length === 0}
-              title="Mark all read"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              aria-label="Refresh feeds"
             >
-              <CheckCheck className="h-3.5 w-3.5" />
-              <span className="sr-only">Mark all read</span>
+              <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
+
+      {searching ? (
+        <SearchFilters
+          scope={searchScope}
+          onScope={setSearchScope}
+          since={searchSince}
+          onSince={setSearchSince}
+        />
+      ) : (
+        <>
+          {showNewsletterKinds && (
+            <NewsletterKinds kind={newsletterKind} onChange={setNewsletterKind} />
+          )}
+          {sourceTab && <CategoryChips tab={sourceTab} />}
+
+          <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
+            {isLater ? (
+              <Tabs
+                value={laterTab}
+                onValueChange={(v) => setLaterTab(v as LaterTab)}
+                className="min-w-0 overflow-x-auto scrollbar-none"
+              >
+                <TabsList>
+                  <TabsTrigger value="queue">Later</TabsTrigger>
+                  {(snoozedCount > 0 || laterTab === "snoozed") && (
+                    <TabsTrigger value="snoozed">Snoozed</TabsTrigger>
+                  )}
+                  <TabsTrigger value="archive">Archive</TabsTrigger>
+                  <TabsTrigger value="highlights">Highlights</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            ) : (
+              <Tabs value={filterTab} onValueChange={(v) => setFilterTab(v as ArticleFilter)}>
+                <TabsList>
+                  <TabsTrigger value="all">All</TabsTrigger>
+                  <TabsTrigger value="unread">Unread</TabsTrigger>
+                  <TabsTrigger value="saved">Saved</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+
+            <div className="flex items-center gap-1">
+              {!ranked && !(isLater && laterTab !== "queue" && laterTab !== "archive") && (
+                <Select value={sort} onValueChange={(v) => setSort(v as "newest" | "oldest")}>
+                  <SelectTrigger className="h-8 w-[92px] text-xs sm:w-[110px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest</SelectItem>
+                    <SelectItem value="oldest">Oldest</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+              {isLater ? (
+                laterTab === "queue" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs"
+                    onClick={onSaveLink}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span className="max-sm:sr-only">Save link</span>
+                  </Button>
+                )
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs"
+                  onClick={handleMarkAllRead}
+                  disabled={markingAllRead || articles.length === 0}
+                  title="Mark all read"
+                >
+                  <CheckCheck className="h-3.5 w-3.5" />
+                  <span className="sr-only">Mark all read</span>
+                </Button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       <div
         ref={(node) => {
@@ -392,7 +450,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
         className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin"
       >
         <PullIndicator pull={pull} refreshing={pulling} />
-        {ranked && !search && filterTab === "all" && <DailyBriefing />}
+        {view.type === "foryou" && !searching && filterTab === "all" && <DailyBriefing />}
         {showHighlights ? (
           <HighlightsList />
         ) : isLoading ? (
@@ -400,7 +458,13 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
         ) : articles.length === 0 ? (
           <EmptyState
             search={search}
-            view={isLater ? `later-${laterTab}` : view.type}
+            view={
+              isLater
+                ? `later-${laterTab}`
+                : view.type === "newsletters" && newsletterKind
+                  ? `newsletters-${newsletterKind}`
+                  : view.type
+            }
             onAddFeed={onAddFeed}
             onSaveLink={onSaveLink}
           />
@@ -452,6 +516,118 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
         )}
       </div>
     </div>
+  );
+}
+
+const SCOPES: { id: SearchScope; label: string }[] = [
+  { id: "all", label: "Everything" },
+  { id: "news", label: "News" },
+  { id: "rss", label: "RSS" },
+  { id: "youtube", label: "YouTube" },
+  { id: "newsletter", label: "Newsletters" },
+  { id: "later", label: "Later" },
+  { id: "highlights", label: "Highlighted" },
+];
+
+/** Where to search and how far back. */
+function SearchFilters({
+  scope,
+  onScope,
+  since,
+  onSince,
+}: {
+  scope: SearchScope;
+  onScope: (scope: SearchScope) => void;
+  since: SearchSince;
+  onSince: (since: SearchSince) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 border-b px-3 py-2">
+      <div
+        role="toolbar"
+        aria-label="Search in"
+        className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto scrollbar-none"
+      >
+        {SCOPES.map((option) => (
+          <Chip
+            key={option.id}
+            active={scope === option.id}
+            onClick={(event) => {
+              event.currentTarget.scrollIntoView({ inline: "nearest", block: "nearest" });
+              onScope(option.id);
+            }}
+          >
+            {option.label}
+          </Chip>
+        ))}
+      </div>
+      <Select value={since} onValueChange={(v) => onSince(v as SearchSince)}>
+        <SelectTrigger className="h-7 w-[104px] shrink-0 text-xs" aria-label="When">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="any">Any time</SelectItem>
+          <SelectItem value="day">Past day</SelectItem>
+          <SelectItem value="week">Past week</SelectItem>
+          <SelectItem value="month">Past month</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+/** Newsletters → All · Substack & web · Email. */
+function NewsletterKinds({
+  kind,
+  onChange,
+}: {
+  kind: NewsletterKind | null;
+  onChange: (kind: NewsletterKind | null) => void;
+}) {
+  const options: { id: NewsletterKind | null; label: string; icon?: React.ReactNode }[] = [
+    { id: null, label: "All" },
+    { id: "web", label: "Substack & web", icon: <Rss className="h-3.5 w-3.5" /> },
+    { id: "email", label: "Email", icon: <Mail className="h-3.5 w-3.5" /> },
+  ];
+  return (
+    <div role="toolbar" aria-label="Kind of newsletter" className="flex gap-1.5 border-b px-3 py-2">
+      {options.map((option) => (
+        <Chip
+          key={option.id ?? "all"}
+          active={kind === option.id}
+          onClick={() => onChange(option.id)}
+        >
+          {option.icon}
+          {option.label}
+        </Chip>
+      ))}
+    </div>
+  );
+}
+
+function Chip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+        active
+          ? "border-foreground bg-foreground text-background"
+          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+      )}
+    >
+      {children}
+    </button>
   );
 }
 

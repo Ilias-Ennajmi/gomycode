@@ -16,9 +16,7 @@ const MIN_INTERVAL_MS = 40 * 60 * 1000;
  */
 export async function GET() {
   const last = await readSetting<{ at: number }>(LAST_KEY, { at: 0 });
-  if (Date.now() - last.at < MIN_INTERVAL_MS) {
-    return NextResponse.json({ skipped: true, lastRun: new Date(last.at).toISOString() });
-  }
+  if (Date.now() - last.at < MIN_INTERVAL_MS) return NextResponse.json({ skipped: true });
   await writeSetting(LAST_KEY, { at: Date.now() });
 
   const result = await refreshFeeds().catch((error) => {
@@ -32,5 +30,11 @@ export async function GET() {
   await sendScheduledPushes({ morning: false }).catch((error) =>
     console.error("Push notifications failed", error)
   );
-  return NextResponse.json({ ...result, woke });
+  // Public endpoint: counts only, not which feeds failed.
+  return NextResponse.json({
+    updated: result?.updated ?? 0,
+    newArticles: result?.newArticles ?? 0,
+    failed: result?.errors.length ?? 0,
+    woke,
+  });
 }

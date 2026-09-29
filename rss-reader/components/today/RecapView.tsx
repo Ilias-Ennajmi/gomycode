@@ -119,7 +119,10 @@ export function RecapView() {
                   icon={<Highlighter className="h-4 w-4" />}
                   value={recap.stats.highlights}
                   label={
-                    recap.stats.notes ? `highlights · ${recap.stats.notes} notes` : "highlights"
+                    `highlight${recap.stats.highlights === 1 ? "" : "s"}` +
+                    (recap.stats.notes
+                      ? ` · ${recap.stats.notes} note${recap.stats.notes === 1 ? "" : "s"}`
+                      : "")
                   }
                 />
                 <Stat
@@ -285,7 +288,7 @@ function DayBars({ days }: { days: { date: string; read: number }[] }) {
             title={`${d.read} read`}
           />
           <span className="text-[10.5px] text-muted-foreground">
-            {day(d.date).toLocaleDateString(undefined, { weekday: "narrow" })}
+            {day(d.date).toLocaleDateString(undefined, { weekday: "short" })}
           </span>
         </div>
       ))}

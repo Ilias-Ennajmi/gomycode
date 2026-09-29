@@ -45,11 +45,14 @@ function AppShellInner() {
     view,
     addRequested,
     clearAddRequest,
+    search,
   } = useReaderState();
   // Full-width pages with the reader as a panel on top: the News front page, the briefing
   // and the weekly recap.
   const newsFront = view.type === "news" && !view.id;
-  const fullPage = newsFront || view.type === "briefing" || view.type === "recap";
+  // A search shows its results as a list, whatever page it started from.
+  const fullPage =
+    !search.trim() && (newsFront || view.type === "briefing" || view.type === "recap");
   const [newsSources, setNewsSources] = React.useState<{ open: boolean; setup: boolean }>({
     open: false,
     setup: false,

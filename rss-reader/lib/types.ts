@@ -125,7 +125,14 @@ export interface HighlightSummary {
 export type NewsletterKind = "web" | "email";
 
 /** Where a search looks. */
-export type SearchScope = "all" | "news" | "rss" | "youtube" | "newsletter" | "later";
+export type SearchScope =
+  | "all"
+  | "news"
+  | "rss"
+  | "youtube"
+  | "newsletter"
+  | "later"
+  | "highlights";
 export type SearchSince = "any" | "day" | "week" | "month";
 export type ArticleFilter = "all" | "unread" | "saved";
 export type ArticleSort = "newest" | "oldest";

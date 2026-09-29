@@ -60,7 +60,7 @@ export function SnoozeMenu({
   return (
     <DropdownMenu onOpenChange={(open) => open && setOptions(snoozeOptions())}>
       <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
-      <DropdownMenuContent align={align} className="w-60" onClick={(e) => e.stopPropagation()}>
+      <DropdownMenuContent align={align} className="w-72" onClick={(e) => e.stopPropagation()}>
         <DropdownMenuLabel className="text-xs text-muted-foreground">
           {snoozed ? `Snoozed until ${formatSnooze(article.snoozedUntil!)}` : "Snooze until…"}
         </DropdownMenuLabel>
@@ -71,7 +71,9 @@ export function SnoozeMenu({
             className="justify-between gap-3"
           >
             <span>{option.label}</span>
-            <span className="text-xs text-muted-foreground">{formatSnooze(option.until)}</span>
+            <span className="whitespace-nowrap text-xs text-muted-foreground">
+              {formatSnooze(option.until)}
+            </span>
           </DropdownMenuItem>
         ))}
         {snoozed && (

@@ -61,6 +61,11 @@ export function Sidebar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchDraft]);
 
+  // Cleared from the results list: empty the box too.
+  React.useEffect(() => {
+    if (!search) setSearchDraft("");
+  }, [search]);
+
   const totalUnread = feeds
     .filter((feed) => !feed.muted)
     .reduce((sum, feed) => sum + feed.unreadCount, 0);

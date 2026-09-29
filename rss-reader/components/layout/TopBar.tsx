@@ -86,7 +86,8 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
     navRef.current
       ?.querySelector('[aria-current="page"]')
       ?.scrollIntoView({ inline: "nearest", block: "nearest" });
-  }, [active]);
+    // Again when the counts arrive and widen the tabs.
+  }, [active, laterCount, unread.news, unread.rss, unread.youtube, unread.newsletters]);
 
   function select(tab: ViewState) {
     // From a section list inside News, the tab goes back to the front page.

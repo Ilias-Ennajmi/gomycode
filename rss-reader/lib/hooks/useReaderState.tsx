@@ -1,7 +1,15 @@
 "use client";
 
 import * as React from "react";
-import type { ArticleFilter, ArticleListParams, ArticleSort, LaterTab } from "@/lib/types";
+import type {
+  ArticleFilter,
+  ArticleListParams,
+  ArticleSort,
+  LaterTab,
+  NewsletterKind,
+  SearchScope,
+  SearchSince,
+} from "@/lib/types";
 import { useHistorySync, type NavSnapshot } from "@/lib/hooks/useHistorySync";
 import { rememberAppLaunch } from "@/lib/native";
 
@@ -53,6 +61,14 @@ interface ReaderStateValue {
   setLaterTab: React.Dispatch<React.SetStateAction<LaterTab>>;
   search: string;
   setSearch: React.Dispatch<React.SetStateAction<string>>;
+  /** Search looks everywhere by default; these narrow it. */
+  searchScope: SearchScope;
+  setSearchScope: React.Dispatch<React.SetStateAction<SearchScope>>;
+  searchSince: SearchSince;
+  setSearchSince: React.Dispatch<React.SetStateAction<SearchSince>>;
+  /** Newsletters sub-tab: all, web (Substack & co) or email. */
+  newsletterKind: NewsletterKind | null;
+  setNewsletterKind: (kind: NewsletterKind | null) => void;
   mobilePane: MobilePane;
   setMobilePane: React.Dispatch<React.SetStateAction<MobilePane>>;
   /** Category chip per source tab: a category id, "none" for uncategorized, or null for all. */
@@ -85,6 +101,17 @@ const LINKABLE_LATER_TABS: Record<string, LaterTab> = {
   snoozed: "snoozed",
 };
 
+const SCOPE_PARAMS: Record<SearchScope, ArticleListParams> = {
+  all: {},
+  news: { news: "all" },
+  rss: { source: "rss" },
+  youtube: { source: "youtube" },
+  newsletter: { source: "newsletter" },
+  // Everything saved, in the queue or archived.
+  later: { saved: true },
+  highlights: { highlighted: true },
+};
+
 const ReaderStateContext = React.createContext<ReaderStateValue | null>(null);
 
 export function ReaderStateProvider({ children }: { children: React.ReactNode }) {
@@ -94,6 +121,13 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
   const [sort, setSort] = React.useState<ArticleSort>("newest");
   const [laterTab, setLaterTab] = React.useState<LaterTab>("queue");
   const [search, setSearch] = React.useState("");
+  const [searchScope, setSearchScope] = React.useState<SearchScope>("all");
+  const [searchSince, setSearchSince] = React.useState<SearchSince>("any");
+  const [newsletterKind, setNewsletterKindState] = React.useState<NewsletterKind | null>(null);
+  const setNewsletterKind = React.useCallback((kind: NewsletterKind | null) => {
+    setNewsletterKindState(kind);
+    setSelectedArticleId(null);
+  }, []);
   const [mobilePane, setMobilePane] = React.useState<MobilePane>("list");
   // Kept across tab switches, so each tab reopens on the chip it was left on.
   const [tabCategory, setTabCategories] = React.useState<Record<SourceTab, string | null>>({
@@ -152,6 +186,10 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const listParams = React.useMemo<ArticleListParams>(() => {
+    // Searching looks across everything, narrowed only by the search's own filters.
+    if (search.trim()) {
+      return { search: search.trim(), since: searchSince, ...SCOPE_PARAMS[searchScope] };
+    }
     const params: ArticleListParams = {};
     // The briefing and the recap open stories from For You's pool.
     if (view.type === "foryou" || view.type === "briefing" || view.type === "recap") {
@@ -160,7 +198,10 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     if (view.type === "news") params.news = view.id ?? "all";
     if (view.type === "rss") params.source = "rss";
     if (view.type === "youtube") params.source = "youtube";
-    if (view.type === "newsletters") params.source = "newsletter";
+    if (view.type === "newsletters") {
+      params.source = "newsletter";
+      if (newsletterKind) params.newsletter = newsletterKind;
+    }
     // Highlights lists passages, but the reader moves between the articles they're from.
     if (view.type === "later" && laterTab === "highlights") params.highlighted = true;
     else if (view.type === "later") params.later = laterTab;
@@ -173,9 +214,8 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     }
     if (filterTab === "unread") params.unread = true;
     if (filterTab === "saved") params.saved = true;
-    if (search.trim()) params.search = search.trim();
     return params;
-  }, [view, filterTab, search, laterTab, tabCategory]);
+  }, [view, filterTab, search, laterTab, tabCategory, searchScope, searchSince, newsletterKind]);
 
   const value: ReaderStateValue = {
     view,
@@ -190,6 +230,12 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     setLaterTab,
     search,
     setSearch,
+    searchScope,
+    setSearchScope,
+    searchSince,
+    setSearchSince,
+    newsletterKind,
+    setNewsletterKind,
     mobilePane,
     setMobilePane,
     tabCategory,
