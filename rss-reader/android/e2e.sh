@@ -12,7 +12,17 @@ LAUNCHER=com.google.androidbrowserhelper.trusted.LauncherActivity
 SITE=https://rss-reader-jet.vercel.app
 mkdir -p "$OUT"
 
+# The page Chrome shows, from its DevTools socket (the app has no URL bar to read).
+page_url() {
+  adb forward tcp:9222 localabstract:chrome_devtools_remote > /dev/null 2>&1
+  curl -s http://127.0.0.1:9222/json | python3 -c '
+import json, sys
+pages = [t for t in json.load(sys.stdin) if t.get("type") == "page"]
+print(pages[0]["url"] if pages else "?")' 2> /dev/null || echo "?"
+}
+
 shot() {
+  page_url > "$OUT/$1-url.txt"
   adb exec-out screencap -p > "$OUT/$1.png"
   adb shell uiautomator dump /sdcard/ui.xml > /dev/null 2>&1 && adb pull /sdcard/ui.xml "$OUT/$1.xml" > /dev/null 2>&1
   adb shell dumpsys activity activities | grep -m3 -E "topResumedActivity|mResumedActivity" > "$OUT/$1-activity.txt"
@@ -42,14 +52,15 @@ adb shell am start -W -n "$PKG/$LAUNCHER" > "$OUT/launch.txt"
 sleep 30
 shot 1-launch
 
+# adb shell joins its arguments into one command line, so the text needs its own quotes.
 adb shell am start -W -a android.intent.action.SEND -t text/plain \
-  --es android.intent.extra.TEXT "Worth reading https://www.bbc.com/news" \
-  -n "$PKG/$LAUNCHER" > /dev/null
+  --es android.intent.extra.TEXT "'Worth reading https://www.bbc.com/news'" \
+  -n "$PKG/$LAUNCHER" > "$OUT/share.txt" 2>&1
 sleep 20
 shot 2-share
 
 adb shell am start -W -a android.intent.action.VIEW -c android.intent.category.BROWSABLE \
-  -d "$SITE/reader?view=news" > /dev/null
+  -d "$SITE/reader?view=news" > "$OUT/site-link.txt" 2>&1
 sleep 20
 shot 3-site-link
 
@@ -71,8 +82,11 @@ adb logcat -d | grep -iE "TrustedWebActivity|androidbrowserhelper|TwaLauncher|Di
     else
       bar="full screen (verified)"
     fi
-    echo "$step: $bar | $(tr -s ' ' < "$OUT/$step-activity.txt" | head -1)"
+    echo "$step: $bar | page $(cat "$OUT/$step-url.txt") |$(tr -s ' ' < "$OUT/$step-activity.txt" | head -1)"
   done
+  echo
+  echo "Share intent:"; cat "$OUT/share.txt"
+  echo "Site link intent:"; cat "$OUT/site-link.txt"
   echo
   if [ -s "$OUT/crash.txt" ]; then echo "CRASHES:"; head -50 "$OUT/crash.txt"; else echo "No crashes."; fi
 } > "$OUT/summary.txt"
