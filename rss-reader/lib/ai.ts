@@ -33,7 +33,7 @@ export function isAiEnabled() {
   return Boolean(process.env.GEMINI_API_KEY);
 }
 
-async function callGemini(model: string, method: string, body: unknown) {
+async function callGemini(model: string, method: string, body: unknown, timeoutMs = 25_000) {
   const res = await fetch(`${BASE_URL}/v1beta/models/${model}:${method}`, {
     method: "POST",
     headers: {
@@ -41,7 +41,7 @@ async function callGemini(model: string, method: string, body: unknown) {
       "x-goog-api-key": process.env.GEMINI_API_KEY ?? "",
     },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(25_000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
@@ -114,6 +114,65 @@ export async function generateText(prompt: string, options: GenerateOptions = {}
       lastError = error;
       // Only a missing model is worth retrying with the next name.
       if (!(error instanceof AiError && error.status === 404)) throw error;
+    }
+  }
+  throw lastError;
+}
+
+// Video understanding: better with the full Flash model; the lighter one takes over when
+// Google reports it overloaded (503), which happens often on the free tier.
+const VIDEO_MODELS = [
+  process.env.GEMINI_VIDEO_MODEL,
+  "gemini-flash-latest",
+  "gemini-flash-lite-latest",
+].filter((m): m is string => Boolean(m));
+
+/**
+ * Asks Gemini about a public YouTube video, which Google reads on its side (YouTube blocks
+ * servers from reading captions). Few frames and low resolution: the words matter here, and
+ * a minute of video costs about 3,000 tokens this way. Returns JSON text.
+ */
+export async function generateFromVideo(
+  videoUrl: string,
+  prompt: string,
+  options: { timeoutMs: number; maxTokens: number }
+) {
+  let lastError: unknown;
+  for (const model of VIDEO_MODELS) {
+    try {
+      const data = await callGemini(
+        model,
+        "generateContent",
+        {
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { fileData: { fileUri: videoUrl }, videoMetadata: { fps: 0.2 } },
+                { text: prompt },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: options.maxTokens,
+            responseMimeType: "application/json",
+            mediaResolution: "MEDIA_RESOLUTION_LOW",
+          },
+        },
+        options.timeoutMs
+      );
+      const parts = data.candidates?.[0]?.content?.parts as { text?: string }[] | undefined;
+      const text = parts
+        ?.map((p) => p.text ?? "")
+        .join("")
+        .trim();
+      if (!text) throw new AiError("Gemini returned an empty response");
+      return text;
+    } catch (error) {
+      lastError = error;
+      const status = error instanceof AiError ? error.status : undefined;
+      if (status !== 404 && status !== 503 && status !== 429) throw error;
     }
   }
   throw lastError;

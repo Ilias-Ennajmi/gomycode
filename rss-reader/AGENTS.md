@@ -129,6 +129,29 @@ Android app they appear as the app's own notifications.
   (job `reader-hourly-refresh`). The endpoint is public but runs at most every 40 minutes
   and returns only counts.
 
+**YouTube.** From servers, YouTube's player API answers "sign in to confirm you're not a
+bot" and caption/transcript endpoints refuse, but its pages still load:
+
+- `lib/youtube-video.ts` reads a channel's /videos, /streams and /shorts tabs (lengths,
+  which videos are Shorts, live/upcoming badges) and a video's page (full description,
+  the creator's chapters). `lib/video-maintenance.ts` runs them after the hourly refresh:
+  channels every 2 hours (sooner when new videos arrive), new videos' pages once.
+- Transcripts, summaries and key moments come from Gemini reading the YouTube URL itself
+  (`generateFromVideo` in `lib/ai.ts`, `lib/video-ai.ts`): few frames, low resolution
+  (about 3,000 tokens a minute), timestamps asked as "M:SS" (seconds drifted badly).
+  The free tier is often overloaded (503): runs happen on opening a video
+  (`POST /api/articles/[id]/video`) and from `/api/videos/tick` (public, 20-minute rate
+  limit, Supabase pg_cron `reader-video-ai` at :47). Busy answers don't use up a video's
+  4 tries. An empty transcript array means "done, none" (videos over 45 minutes).
+- The reader plays videos through the IFrame API (`lib/youtube-player.ts`,
+  `components/video/VideoPlayer.tsx`): resume from `watchedSeconds`, speed remembered per
+  device, marked read at 90% (not on open), mini player when scrolled away, up next (Later
+  queue, then the channel). Times in descriptions and transcripts are `a[data-t]` links
+  the reader turns into seeks. The transcript is part of the article body, so highlights
+  work on it, and the search trigger indexes it (weight D).
+- Lists: `?video=long|short` (the YouTube tab's Videos/Shorts), `?length=short|medium|long`,
+  and the `video-prefs` Setting (`hideShorts`) removes Shorts everywhere else.
+
 **Housekeeping** (`lib/maintenance.ts`, run after the hourly tick and the daily cron):
 articles dated in the future move to when they arrived; an article stored by two feeds
 (same link) keeps one copy; recent articles without a picture get their page's share

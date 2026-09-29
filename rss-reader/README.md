@@ -11,20 +11,21 @@ Google Gemini's free tier.
 
 ## What it does
 
-| Area        | What's there                                                                                                                                                       |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Tabs        | For You (ranked by reading history) · News · RSS · YouTube · Newsletters · Later                                                                                   |
-| News        | Hero slider of the biggest stories, desks (Maroc, Monde, Europe, Afrique, Économie, Sport, Tech), AI "What's happening", Morocco in the world press, local weather |
-| Today       | A daily briefing page: top stories with bullets and "why it matters", per-interest picks, more on demand                                                           |
-| Discover    | Curated catalog (~230 sources) scoped by channel, live search (Feedly + YouTube), AI suggestions, follow a topic (Bing News search feed)                           |
-| Reader      | Full-article extraction, clutter removal, reading settings, up next / previous, swipe between articles, listen (browser text-to-speech)                            |
-| Lists       | Swipe right for Later, left to mark read, Undo toasts, unread counts per tab, story grouping ("also covered by")                                                   |
-| Sources     | Manager for every followed source: rename, move, unfollow, health                                                                                                  |
-| Highlights  | Select text to highlight in 4 colours and add notes; all highlights in Later → Highlights, Markdown export, old ones resurface on Today                            |
-| Search      | Full-text search over titles, text and your highlights, with where-to-look and time filters; ⌘K command palette                                                    |
-| Newsletters | "Substack & web" and "Email" sub-tabs; email-only newsletters get their own sign-up address (Kill the Newsletter)                                                  |
-| Later       | Reading queue with total reading time, snooze (back at a chosen time with a notification), archive, weekly recap                                                   |
-| Android app | Installable app (`android/`): share links to Later, icon shortcuts, back gesture, deep links                                                                       |
+| Area        | What's there                                                                                                                                                                                     |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Tabs        | For You (ranked by reading history) · News · RSS · YouTube · Newsletters · Later                                                                                                                 |
+| News        | Hero slider of the biggest stories, desks (Maroc, Monde, Europe, Afrique, Économie, Sport, Tech), AI "What's happening", Morocco in the world press, local weather                               |
+| Today       | A daily briefing page: top stories with bullets and "why it matters", per-interest picks, more on demand                                                                                         |
+| Discover    | Curated catalog (~230 sources) scoped by channel, live search (Feedly + YouTube), AI suggestions, follow a topic (Bing News search feed)                                                         |
+| Reader      | Full-article extraction, clutter removal, reading settings, up next / previous, swipe between articles, listen (browser text-to-speech)                                                          |
+| Lists       | Swipe right for Later, left to mark read, Undo toasts, unread counts per tab, story grouping ("also covered by")                                                                                 |
+| Sources     | Manager for every followed source: rename, move, unfollow, health                                                                                                                                |
+| Highlights  | Select text to highlight in 4 colours and add notes; all highlights in Later → Highlights, Markdown export, old ones resurface on Today                                                          |
+| Search      | Full-text search over titles, text and your highlights, with where-to-look and time filters; ⌘K command palette                                                                                  |
+| Newsletters | "Substack & web" and "Email" sub-tabs; email-only newsletters get their own sign-up address (Kill the Newsletter)                                                                                |
+| YouTube     | Videos / Shorts / length filters, lengths and watch progress on cards, resume, remembered speed, chapters, AI summary + key moments + searchable transcript, mini player, up next, channel pages |
+| Later       | Reading queue with total reading time, snooze (back at a chosen time with a notification), archive, weekly recap                                                                                 |
+| Android app | Installable app (`android/`): share links to Later, icon shortcuts, back gesture, deep links                                                                                                     |
 
 ## Stack
 

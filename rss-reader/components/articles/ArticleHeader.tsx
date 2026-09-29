@@ -18,6 +18,7 @@ import { useReaderState } from "@/lib/hooks/useReaderState";
 import { SnoozeMenu, isSnoozed } from "@/components/articles/SnoozeMenu";
 import { formatSnooze } from "@/lib/snooze";
 import type { ArticleSummary } from "@/lib/types";
+import { durationLabel } from "@/lib/hooks/useVideo";
 
 interface ArticleHeaderProps {
   article: ArticleSummary;
@@ -66,7 +67,15 @@ export function ArticleHeader({
         <span aria-hidden>·</span>
         <span>
           {article.isVideo
-            ? "Video"
+            ? article.liveStatus === "upcoming"
+              ? "Upcoming"
+              : article.liveStatus === "live"
+                ? "Live now"
+                : article.isShort
+                  ? "Short"
+                  : article.durationSeconds
+                    ? `${durationLabel(article.durationSeconds)} video`
+                    : "Video"
             : article.readingMinutes
               ? `${article.readingMinutes} min read`
               : readingTime(article.content || article.summary)}

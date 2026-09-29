@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { useFeeds } from "@/lib/hooks/useFeeds";
 import { useFilters } from "@/lib/hooks/useFilters";
+import { HideShortsSwitch } from "@/components/video/HideShortsSwitch";
 import type { FeedSummary, FilterRuleSummary } from "@/lib/types";
 
 interface ContentFiltersDialogProps {
@@ -60,6 +61,7 @@ export function ContentFiltersDialog({ open, onOpenChange }: ContentFiltersDialo
             Hide what you never want to see, and boost what you always do.
           </DialogDescription>
         </DialogHeader>
+        <HideShortsSwitch />
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as "hide" | "boost")}>
           <TabsList className="grid w-full grid-cols-2">
@@ -138,7 +140,9 @@ function RuleEditor({ action }: { action: "hide" | "boost" }) {
         <div className="flex gap-2">
           <Select value={feedId} onValueChange={setFeedId}>
             <SelectTrigger>
-              <SelectValue placeholder={availableFeeds.length ? "Choose a feed" : "No feeds left"} />
+              <SelectValue
+                placeholder={availableFeeds.length ? "Choose a feed" : "No feeds left"}
+              />
             </SelectTrigger>
             <SelectContent>
               {availableFeeds.map((feed) => (
@@ -189,10 +193,12 @@ function RuleChip({
   feed?: FeedSummary;
   onRemove: () => void;
 }) {
-  const label = rule.match === "feed" ? feed?.title ?? "Deleted feed" : rule.value;
+  const label = rule.match === "feed" ? (feed?.title ?? "Deleted feed") : rule.value;
   return (
     <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border bg-background py-1 pl-2.5 pr-1 text-sm">
-      {rule.match === "feed" && <FeedFavicon title={label} faviconUrl={feed?.faviconUrl} size={14} />}
+      {rule.match === "feed" && (
+        <FeedFavicon title={label} faviconUrl={feed?.faviconUrl} size={14} />
+      )}
       <span className="truncate">{label}</span>
       <button
         type="button"

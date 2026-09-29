@@ -47,6 +47,7 @@ export async function insertNewArticles(feedId: string, articles: ParsedArticle[
       author: article.author?.replace(/\s*<[^>]*@[^>]*>\s*$/, "").trim() || article.author,
       publishedAt: notInFuture(article.publishedAt),
       isVideo: article.isVideo ?? false,
+      isShort: /youtube\.com\/shorts\//.test(article.link),
     })),
     skipDuplicates: true,
     select: { id: true },

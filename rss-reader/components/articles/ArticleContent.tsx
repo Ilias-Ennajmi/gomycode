@@ -3,7 +3,6 @@
 import * as React from "react";
 import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { youTubeEmbedUrl, youTubeVideoId } from "@/lib/youtube";
 import { consumeHighlightJump, drawHighlights, type Highlightable } from "@/lib/highlight-dom";
 import {
   READER_FONTS,
@@ -44,44 +43,6 @@ function getPurifier(): Promise<Purifier> {
   return purifierPromise;
 }
 
-function VideoPlayer({
-  videoId,
-  summary,
-  link,
-}: {
-  videoId: string;
-  summary?: string | null;
-  link: string;
-}) {
-  return (
-    <div className="space-y-4">
-      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black shadow-sm">
-        <iframe
-          src={youTubeEmbedUrl(videoId)}
-          title="YouTube video player"
-          className="absolute inset-0 h-full w-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerPolicy="strict-origin-when-cross-origin"
-          allowFullScreen
-        />
-      </div>
-      {summary && (
-        <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-          {summary}
-        </p>
-      )}
-      <a
-        href={link}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-      >
-        Watch on YouTube <ExternalLink className="h-3.5 w-3.5" />
-      </a>
-    </div>
-  );
-}
-
 export function ArticleContent({
   content,
   summary,
@@ -100,7 +61,6 @@ export function ArticleContent({
     lineHeight: READER_LEADING[prefs.spacing],
   };
   const [sanitized, setSanitized] = React.useState<string | null>(null);
-  const videoId = isVideo ? youTubeVideoId(link) : null;
   // The same object on every render: React re-sets innerHTML when it gets a new one, which
   // would wipe the highlights drawn into it.
   const html = React.useMemo(() => ({ __html: sanitized ?? "" }), [sanitized]);
@@ -149,13 +109,14 @@ export function ArticleContent({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sanitized, highlightKey]);
 
-  if (videoId) return <VideoPlayer videoId={videoId} summary={summary} link={link} />;
-
   if (!content) {
     return (
       <div className="space-y-4">
         {summary && (
-          <p className="text-foreground/90" style={readerStyle}>
+          <p
+            className={cn("text-foreground/90", isVideo && "whitespace-pre-line")}
+            style={readerStyle}
+          >
             {summary}
           </p>
         )}
@@ -165,7 +126,8 @@ export function ArticleContent({
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"
         >
-          Read full article <ExternalLink className="h-3.5 w-3.5" />
+          {isVideo ? "Watch on YouTube" : "Read full article"}{" "}
+          <ExternalLink className="h-3.5 w-3.5" />
         </a>
       </div>
     );

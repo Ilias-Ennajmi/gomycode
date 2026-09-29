@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { sqlName } from "@/lib/db";
 import { mapWithConcurrency } from "@/lib/ingest";
 import { readSetting, writeSetting } from "@/lib/push";
+import { fillVideoPages, scanVideoChannels } from "@/lib/video-maintenance";
 import { DAY_MS, KEEP_PER_FEED, NEWS_RETENTION_DAYS, RETENTION_DAYS } from "@/lib/retention";
 
 // Housekeeping that runs after each refresh: pictures for articles whose feed has none,
@@ -219,7 +220,8 @@ interface CleanupState {
 
 /** Runs after a refresh. The cleanup itself runs at most once a day. */
 export async function runMaintenance(deadline: number) {
-  const result = { images: 0, deleted: 0, duplicates: 0, redated: 0 };
+  const result = { images: 0, deleted: 0, duplicates: 0, redated: 0, videos: 0, videoPages: 0 };
+  // Each part on its own: housekeeping must never fail a refresh, nor one part the others.
   try {
     result.redated = await fixFutureDates();
     result.duplicates = await removeDuplicateArticles();
@@ -229,10 +231,20 @@ export async function runMaintenance(deadline: number) {
       result.deleted = await cleanupArticles();
       await writeSetting("cleanup", { day: today });
     }
+  } catch (error) {
+    console.error("Maintenance failed", error);
+  }
+  // Videos first: a few quick page reads. Picture lookups use whatever time is left.
+  try {
+    result.videos = await scanVideoChannels(deadline);
+    result.videoPages = await fillVideoPages(deadline);
+  } catch (error) {
+    console.error("Video maintenance failed", error);
+  }
+  try {
     result.images = await fillMissingImages(deadline);
   } catch (error) {
-    // Housekeeping must never fail a refresh.
-    console.error("Maintenance failed", error);
+    console.error("Picture lookup failed", error);
   }
   return result;
 }

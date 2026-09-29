@@ -7,6 +7,8 @@ import type {
   ArticleSort,
   LaterTab,
   NewsletterKind,
+  VideoKind,
+  VideoLength,
   SearchScope,
   SearchSince,
 } from "@/lib/types";
@@ -69,6 +71,10 @@ interface ReaderStateValue {
   /** Newsletters sub-tab: all, web (Substack & co) or email. */
   newsletterKind: NewsletterKind | null;
   setNewsletterKind: (kind: NewsletterKind | null) => void;
+  videoKind: VideoKind;
+  setVideoKind: (kind: VideoKind) => void;
+  videoLength: VideoLength | null;
+  setVideoLength: (length: VideoLength | null) => void;
   mobilePane: MobilePane;
   setMobilePane: React.Dispatch<React.SetStateAction<MobilePane>>;
   /** Category chip per source tab: a category id, "none" for uncategorized, or null for all. */
@@ -126,6 +132,17 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
   const [newsletterKind, setNewsletterKindState] = React.useState<NewsletterKind | null>(null);
   const setNewsletterKind = React.useCallback((kind: NewsletterKind | null) => {
     setNewsletterKindState(kind);
+    setSelectedArticleId(null);
+  }, []);
+  // YouTube opens on regular videos; Shorts are one tap away.
+  const [videoKind, setVideoKindState] = React.useState<VideoKind>("long");
+  const [videoLength, setVideoLengthState] = React.useState<VideoLength | null>(null);
+  const setVideoKind = React.useCallback((kind: VideoKind) => {
+    setVideoKindState(kind);
+    setSelectedArticleId(null);
+  }, []);
+  const setVideoLength = React.useCallback((length: VideoLength | null) => {
+    setVideoLengthState(length);
     setSelectedArticleId(null);
   }, []);
   const [mobilePane, setMobilePane] = React.useState<MobilePane>("list");
@@ -202,7 +219,11 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     }
     if (view.type === "news") params.news = view.id ?? "all";
     if (view.type === "rss") params.source = "rss";
-    if (view.type === "youtube") params.source = "youtube";
+    if (view.type === "youtube") {
+      params.source = "youtube";
+      if (videoKind !== "all") params.video = videoKind;
+      if (videoLength && videoKind !== "short") params.length = videoLength;
+    }
     if (view.type === "newsletters") {
       params.source = "newsletter";
       if (newsletterKind) params.newsletter = newsletterKind;
@@ -220,7 +241,18 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     if (filterTab === "unread") params.unread = true;
     if (filterTab === "saved") params.saved = true;
     return params;
-  }, [view, filterTab, search, laterTab, tabCategory, searchScope, searchSince, newsletterKind]);
+  }, [
+    view,
+    filterTab,
+    search,
+    laterTab,
+    tabCategory,
+    searchScope,
+    searchSince,
+    newsletterKind,
+    videoKind,
+    videoLength,
+  ]);
 
   const value: ReaderStateValue = {
     view,
@@ -241,6 +273,10 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     setSearchSince,
     newsletterKind,
     setNewsletterKind,
+    videoKind,
+    setVideoKind,
+    videoLength,
+    setVideoLength,
     mobilePane,
     setMobilePane,
     tabCategory,
