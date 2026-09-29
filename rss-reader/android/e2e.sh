@@ -90,4 +90,22 @@ adb logcat -d | grep -iE "TrustedWebActivity|androidbrowserhelper|TwaLauncher|Di
   echo
   if [ -s "$OUT/crash.txt" ]; then echo "CRASHES:"; head -50 "$OUT/crash.txt"; else echo "No crashes."; fi
 } > "$OUT/summary.txt"
+
+# Fail the job on anything that would be wrong on a phone. The emulator isn't signed in, so
+# pages sit behind /login?next=<page>; after signing in the app goes on to <page>.
+problems=()
+grep -q "BROWSER BAR" "$OUT/summary.txt" && problems+=("a browser bar is showing")
+grep -q "rss-reader-jet.vercel.app: verified" "$OUT/app-links.txt" || problems+=("site links aren't verified")
+grep -qE "/share\?|%2Fshare%3F" "$OUT/2-share-url.txt" || problems+=("sharing didn't open /share")
+grep -qE "view=news|view%3Dnews" "$OUT/3-site-link-url.txt" || problems+=("the site link didn't open News")
+[ -s "$OUT/crash.txt" ] && problems+=("something crashed")
+if [ ${#problems[@]} -eq 0 ]; then
+  echo "RESULT: PASS" >> "$OUT/summary.txt"
+else
+  printf 'RESULT: FAIL - %s\n' "${problems[*]}" >> "$OUT/summary.txt"
+fi
 cat "$OUT/summary.txt"
+
+# GitHub refuses empty release assets (crash.txt is empty when nothing crashed).
+find "$OUT" -type f -empty -delete
+[ ${#problems[@]} -eq 0 ]
