@@ -50,6 +50,8 @@ export interface ArticleFeedRef {
   faviconUrl: string | null;
   categoryId: string | null;
   type?: FeedType;
+  /** Newsletters: "substack", "beehiiv", "ghost", "buttondown" or "email". */
+  platform?: string | null;
 }
 
 export interface ArticleSummary {
@@ -72,6 +74,11 @@ export interface ArticleSummary {
   readProgress?: number;
   aiSummary?: string | null;
   topicId?: string | null;
+  /** Hidden from lists until then; comes back to the top of Later. */
+  snoozedUntil?: string | null;
+  /** From the full article when it's been fetched, else the feed's text. */
+  readingMinutes?: number;
+  highlightCount?: number;
   /** Present in For You when other sources cover the same story. */
   topic?: {
     id: string;
@@ -90,7 +97,36 @@ export interface FilterRuleSummary {
   value: string;
 }
 
-export type LaterTab = "queue" | "archive";
+export type LaterTab = "queue" | "snoozed" | "archive" | "highlights";
+
+export type HighlightColor = "yellow" | "green" | "blue" | "pink";
+
+export interface HighlightSummary {
+  id: string;
+  articleId: string;
+  text: string;
+  note: string | null;
+  color: HighlightColor;
+  prefix: string;
+  suffix: string;
+  createdAt: string;
+  updatedAt: string;
+  /** Included in the Highlights list, not when loading one article's highlights. */
+  article?: {
+    id: string;
+    title: string;
+    link: string;
+    author: string | null;
+    feed: { id: string; title: string; faviconUrl: string | null };
+  };
+}
+
+/** Newsletters sub-tabs: web newsletters (Substack and similar) or ones received by email. */
+export type NewsletterKind = "web" | "email";
+
+/** Where a search looks. */
+export type SearchScope = "all" | "news" | "rss" | "youtube" | "newsletter" | "later";
+export type SearchSince = "any" | "day" | "week" | "month";
 export type ArticleFilter = "all" | "unread" | "saved";
 export type ArticleSort = "newest" | "oldest";
 
@@ -107,4 +143,8 @@ export interface ArticleListParams {
   unread?: boolean;
   search?: string;
   sort?: ArticleSort;
+  newsletter?: NewsletterKind;
+  since?: SearchSince;
+  /** Only articles with highlights. */
+  highlighted?: boolean;
 }

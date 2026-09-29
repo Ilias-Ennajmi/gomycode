@@ -2,7 +2,18 @@
 
 import type { DiscoverKind } from "@/lib/discover/catalog";
 import * as React from "react";
-import { CalendarDays, Inbox, Moon, Plus, Search, Sun, SunMoon, X } from "lucide-react";
+import {
+  CalendarDays,
+  CalendarRange,
+  Highlighter,
+  Inbox,
+  Moon,
+  Plus,
+  Search,
+  Sun,
+  SunMoon,
+  X,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -38,7 +49,8 @@ export function Sidebar({
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
 
-  const { view, setView, search, setSearch, setMobilePane } = useReaderState();
+  const { view, setView, search, setSearch, setMobilePane, laterTab, setLaterTab } =
+    useReaderState();
   const { feeds, isLoading: feedsLoading, mutate: mutateFeeds } = useFeeds();
   const { categories, isLoading: categoriesLoading, mutate: mutateCategories } = useCategories();
 
@@ -167,6 +179,21 @@ export function Sidebar({
             count={todayCount}
             active={view.type === "today"}
             onClick={() => setView({ type: "today", label: "Today" })}
+          />
+          <NavItem
+            icon={<CalendarRange className="h-4 w-4" />}
+            label="Weekly recap"
+            active={view.type === "recap"}
+            onClick={() => setView({ type: "recap", label: "Weekly recap" })}
+          />
+          <NavItem
+            icon={<Highlighter className="h-4 w-4" />}
+            label="Highlights"
+            active={view.type === "later" && laterTab === "highlights"}
+            onClick={() => {
+              setView({ type: "later", label: "Later" });
+              setLaterTab("highlights");
+            }}
           />
         </div>
 

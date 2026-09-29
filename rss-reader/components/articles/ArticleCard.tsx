@@ -2,11 +2,13 @@
 
 import * as React from "react";
 import {
+  AlarmClock,
   Archive,
   ArchiveRestore,
   Bookmark,
   Check,
   ChevronDown,
+  Highlighter,
   Layers,
   Play,
   TrendingUp,
@@ -16,6 +18,8 @@ import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { Highlight } from "@/components/shared/Highlight";
 import type { ArticleSummary } from "@/lib/types";
 import { haptic } from "@/lib/native";
+import { SnoozeMenu, isSnoozed } from "@/components/articles/SnoozeMenu";
+import { formatSnooze } from "@/lib/snooze";
 
 interface ArticleCardProps {
   article: ArticleSummary;
@@ -240,7 +244,11 @@ export function ArticleCard({
             )}
             <span aria-hidden>·</span>
             <span className="shrink-0">
-              {article.isVideo ? "Video" : readingTime(article.content || article.summary)}
+              {article.isVideo
+                ? "Video"
+                : article.readingMinutes
+                  ? `${article.readingMinutes} min`
+                  : readingTime(article.content || article.summary)}
             </span>
             <span aria-hidden className="sm:hidden">
               ·
@@ -249,6 +257,19 @@ export function ArticleCard({
             {article.boosted && (
               <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-primary/15 px-1.5 py-px text-[10.5px] font-semibold text-primary">
                 <TrendingUp className="h-3 w-3" /> Boosted
+              </span>
+            )}
+            {isSnoozed(article) && (
+              <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-amber-500/15 px-1.5 py-px text-[10.5px] font-semibold text-amber-600 dark:text-amber-400">
+                <AlarmClock className="h-3 w-3" /> {formatSnooze(article.snoozedUntil!)}
+              </span>
+            )}
+            {(article.highlightCount ?? 0) > 0 && (
+              <span
+                className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-medium"
+                title={`${article.highlightCount} highlight${article.highlightCount === 1 ? "" : "s"}`}
+              >
+                <Highlighter className="h-3 w-3" /> {article.highlightCount}
               </span>
             )}
             {article.isPromo && (
@@ -323,6 +344,19 @@ function CardActions({
       className={cn("flex shrink-0 items-center gap-0.5", className)}
       onClick={(e) => e.stopPropagation()}
     >
+      <SnoozeMenu article={article}>
+        <button
+          type="button"
+          className={cn(
+            "rounded-md p-1.5 hover:bg-accent",
+            isSnoozed(article) ? "text-amber-500" : "text-muted-foreground hover:text-foreground"
+          )}
+          aria-label="Snooze"
+          title="Snooze"
+        >
+          <AlarmClock className="h-4 w-4" />
+        </button>
+      </SnoozeMenu>
       {onArchive && (
         <button
           type="button"

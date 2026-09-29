@@ -1,12 +1,22 @@
 "use client";
 
-import { Archive, ArchiveRestore, Bookmark, Check, ExternalLink, Share2 } from "lucide-react";
+import {
+  AlarmClock,
+  Archive,
+  ArchiveRestore,
+  Bookmark,
+  Check,
+  ExternalLink,
+  Share2,
+} from "lucide-react";
 import { shareLink } from "@/lib/share";
 import { cn, readingTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { articleSource } from "@/components/articles/ArticleCard";
 import { useReaderState } from "@/lib/hooks/useReaderState";
+import { SnoozeMenu, isSnoozed } from "@/components/articles/SnoozeMenu";
+import { formatSnooze } from "@/lib/snooze";
 import type { ArticleSummary } from "@/lib/types";
 
 interface ArticleHeaderProps {
@@ -54,7 +64,13 @@ export function ArticleHeader({
         {article.author && <span aria-hidden>·</span>}
         <span>{publishedDate}</span>
         <span aria-hidden>·</span>
-        <span>{article.isVideo ? "Video" : readingTime(article.content || article.summary)}</span>
+        <span>
+          {article.isVideo
+            ? "Video"
+            : article.readingMinutes
+              ? `${article.readingMinutes} min read`
+              : readingTime(article.content || article.summary)}
+        </span>
       </div>
 
       <div className="hidden flex-wrap items-center gap-2 md:flex">
@@ -77,6 +93,12 @@ export function ArticleHeader({
             {article.archivedAt ? "Unarchive" : "Archive"}
           </Button>
         )}
+        <SnoozeMenu article={article} align="start">
+          <Button variant="outline" size="sm" className="gap-1.5">
+            <AlarmClock className="h-3.5 w-3.5" />
+            {isSnoozed(article) ? `Snoozed · ${formatSnooze(article.snoozedUntil!)}` : "Snooze"}
+          </Button>
+        </SnoozeMenu>
         <Button variant="outline" size="sm" className="gap-1.5" asChild>
           <a href={article.link} target="_blank" rel="noopener noreferrer">
             <ExternalLink className="h-3.5 w-3.5" /> Open original

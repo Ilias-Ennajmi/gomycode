@@ -10,11 +10,13 @@ export interface NotifyPrefs {
   briefing: boolean;
   /** A story suddenly covered by many news outlets. */
   breaking: boolean;
+  /** The weekly recap, Sunday evening. */
+  recap: boolean;
 }
 
 const PREFS_KEY = "notify-prefs";
 const SENT_KEY = "push-sent";
-const DEFAULT_PREFS: NotifyPrefs = { briefing: true, breaking: true };
+const DEFAULT_PREFS: NotifyPrefs = { briefing: true, breaking: true, recap: true };
 
 // Breaking: this many different news outlets on one story within the window.
 const BREAKING_MIN_SOURCES = 4;
@@ -40,7 +42,7 @@ function configure() {
   configured = true;
 }
 
-async function readSetting<T>(key: string, fallback: T): Promise<T> {
+export async function readSetting<T>(key: string, fallback: T): Promise<T> {
   const row = await prisma.setting.findUnique({ where: { key } });
   if (!row) return fallback;
   try {
@@ -50,7 +52,7 @@ async function readSetting<T>(key: string, fallback: T): Promise<T> {
   }
 }
 
-function writeSetting(key: string, value: unknown) {
+export function writeSetting(key: string, value: unknown) {
   const json = JSON.stringify(value);
   return prisma.setting.upsert({
     where: { key },
@@ -111,6 +113,8 @@ export async function sendToAll(message: PushMessage) {
 
 interface SentLog {
   briefingDate: string | null;
+  /** The week (its Monday) whose recap was announced. */
+  recapWeek?: string | null;
   /**
    * Articles already announced. Story groups are rebuilt on each refresh (new ids), so a
    * story counts as sent when it contains any of these.
@@ -120,6 +124,47 @@ interface SentLog {
 
 function todayKey() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: TIMEZONE }).format(new Date());
+}
+
+/** Weekday (0 = Sunday) and hour in the app's time zone. */
+function localClock(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIMEZONE,
+    weekday: "short",
+    hour: "numeric",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(
+    parts.find((p) => p.type === "weekday")?.value ?? ""
+  );
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+  return { weekday, hour };
+}
+
+/**
+ * Snoozed articles whose time has come: back to the top of Later, with a notification.
+ * Runs on every refresh (hourly), so a snooze wakes within the hour.
+ */
+export async function wakeSnoozedArticles() {
+  const due = await prisma.article.findMany({
+    where: { snoozedUntil: { lte: new Date() } },
+    select: { id: true, title: true, imageUrl: true },
+    orderBy: { snoozedUntil: "asc" },
+  });
+  if (due.length === 0) return 0;
+  await prisma.article.updateMany({
+    where: { id: { in: due.map((a) => a.id) } },
+    data: { snoozedUntil: null, savedAt: new Date(), isSaved: true, archivedAt: null },
+  });
+  const first = due[0];
+  await sendToAll({
+    title: due.length === 1 ? "Back from snooze" : `${due.length} snoozed articles are back`,
+    body: due.length === 1 ? first.title : `${first.title} and ${due.length - 1} more, in Later`,
+    url: due.length === 1 ? `/reader?view=later&article=${first.id}` : "/reader?view=later",
+    tag: "snooze",
+    image: first.imageUrl,
+  }).catch((error) => console.error("Snooze notification failed", error));
+  return due.length;
 }
 
 /**
@@ -149,6 +194,20 @@ export async function sendScheduledPushes({ morning }: { morning: boolean }) {
     }
   }
 
+  // The weekly recap: Sunday from 18:00, once.
+  const clock = localClock();
+  const week = weekKey();
+  if (prefs.recap && clock.weekday === 0 && clock.hour >= 18 && log.recapWeek !== week) {
+    await sendToAll({
+      title: "Your week in reading",
+      body: "The stories that mattered, what you read and highlighted",
+      url: "/reader?view=recap",
+      tag: "recap",
+    });
+    log.recapWeek = week;
+    changed = true;
+  }
+
   if (prefs.breaking) {
     const story = await findBreakingStory(new Set(log.articles));
     if (story) {
@@ -165,6 +224,13 @@ export async function sendScheduledPushes({ morning }: { morning: boolean }) {
   }
 
   if (changed) await writeSetting(SENT_KEY, log);
+}
+
+/** The Monday (local date) of the current week, e.g. "2026-09-28". */
+export function weekKey(date = new Date()) {
+  const { weekday } = localClock(date);
+  const monday = new Date(date.getTime() - ((weekday + 6) % 7) * 24 * 3600 * 1000);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: TIMEZONE }).format(monday);
 }
 
 interface BreakingStory {

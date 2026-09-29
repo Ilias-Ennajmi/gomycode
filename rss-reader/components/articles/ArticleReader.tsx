@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import {
+  AlarmClock,
   Loader2,
   Archive,
   ArchiveRestore,
@@ -38,6 +39,10 @@ import { READER_WIDTHS, useReaderPrefs } from "@/lib/hooks/useReaderPrefs";
 import { needsFullArticle, wordCount } from "@/lib/reader";
 import { ReaderSettings } from "@/components/articles/ReaderSettings";
 import { ListenBar, ListenButton, useSpeech } from "@/components/articles/ListenButton";
+import { useArticleHighlights } from "@/lib/hooks/useHighlights";
+import { ReaderHighlights } from "@/components/highlights/ReaderHighlights";
+import { ArticleHighlights } from "@/components/highlights/ArticleHighlights";
+import { SnoozeMenu, isSnoozed } from "@/components/articles/SnoozeMenu";
 import type { ArticleSummary } from "@/lib/types";
 
 export function ArticleReader() {
@@ -65,7 +70,8 @@ export function ArticleReader() {
 
   // Previous / next in the list the article was opened from (not on the News
   // front page or the briefing, whose order isn't a list).
-  const inList = view.type !== "briefing" && !(view.type === "news" && !view.id);
+  const inList =
+    view.type !== "briefing" && view.type !== "recap" && !(view.type === "news" && !view.id);
   const index = inList && article ? articles.findIndex((a) => a.id === article.id) : -1;
   const previous = index > 0 ? articles[index - 1] : null;
   const next = index >= 0 ? (articles[index + 1] ?? null) : null;
@@ -77,6 +83,11 @@ export function ArticleReader() {
   );
 
   const speech = useSpeech(article?.id);
+
+  const { highlights } = useArticleHighlights(article?.id);
+  const bodyRef = React.useRef<HTMLDivElement | null>(null);
+  const [missingHighlights, setMissingHighlights] = React.useState<string[]>([]);
+  React.useEffect(() => setMissingHighlights([]), [article?.id]);
 
   // Phones: swipe left for the next article, right for the previous one.
   const touch = React.useRef<{ x: number; y: number } | null>(null);
@@ -226,6 +237,16 @@ export function ArticleReader() {
           >
             <Bookmark className={cn("h-5 w-5", article.isSaved && "fill-current")} />
           </Button>
+          <SnoozeMenu article={article}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn("h-10 w-10", isSnoozed(article) && "text-amber-500")}
+              aria-label="Snooze"
+            >
+              <AlarmClock className="h-5 w-5" />
+            </Button>
+          </SnoozeMenu>
           {article.isSaved && (
             <Button
               variant="ghost"
@@ -277,6 +298,12 @@ export function ArticleReader() {
       />
       <ListenBar speech={speech} html={bodyHtml || article.summary || ""} />
       <MinutesLeft words={wordCount(bodyHtml || article.summary)} progress={progress} />
+      <ReaderHighlights
+        article={article}
+        bodyRef={bodyRef}
+        scrollRef={containerRef}
+        highlights={highlights}
+      />
 
       <div
         ref={containerRef}
@@ -325,8 +352,16 @@ export function ArticleReader() {
               summary={article.summary}
               link={article.link}
               isVideo={article.isVideo}
+              highlights={highlights}
+              onMissingHighlights={setMissingHighlights}
+              bodyRef={bodyRef}
             />
           </div>
+          <ArticleHighlights
+            highlights={highlights}
+            missing={missingHighlights}
+            bodyRef={bodyRef}
+          />
           {(previous || next) && <UpNext previous={previous} next={next} onGo={goTo} />}
         </div>
       </div>

@@ -5,6 +5,8 @@ import { PullIndicator, usePullToRefresh } from "@/lib/hooks/usePullToRefresh";
 import { toast } from "sonner";
 import {
   BookOpen,
+  CalendarRange,
+  ChevronRight,
   CheckCircle2,
   Loader2,
   Mail,
@@ -22,6 +24,7 @@ import { StoryImage } from "@/components/news/StoryParts";
 import { WeatherWidget } from "@/components/news/WeatherWidget";
 import { useBriefing, type BriefPick, type BriefStory } from "@/lib/hooks/useAi";
 import { useReaderState } from "@/lib/hooks/useReaderState";
+import { ResurfacedHighlights } from "@/components/highlights/ResurfacedHighlights";
 
 function greeting(date = new Date()) {
   const hour = date.getHours();
@@ -39,7 +42,7 @@ function time(iso: string) {
 export function TodayView() {
   const { bind: bindPull, pull, refreshing: pulling } = usePullToRefresh();
   const { briefing, isLoading, mutate } = useBriefing(true);
-  const { setSelectedArticleId, setMobilePane, selectedArticleId } = useReaderState();
+  const { setSelectedArticleId, setMobilePane, selectedArticleId, setView } = useReaderState();
   const [refreshing, setRefreshing] = React.useState(false);
   const [extra, setExtra] = React.useState<BriefStory[]>([]);
   const [loadingMore, setLoadingMore] = React.useState<"next" | "shuffle" | null>(null);
@@ -298,6 +301,11 @@ export function TodayView() {
               </div>
             )}
 
+            <ResurfacedHighlights
+              onOpen={open}
+              title={(children) => <SectionTitle>{children}</SectionTitle>}
+            />
+
             <section>
               <SectionTitle>More stories</SectionTitle>
               {extra.length > 0 && (
@@ -343,6 +351,21 @@ export function TodayView() {
                 </div>
               )}
             </section>
+
+            <button
+              type="button"
+              onClick={() => setView({ type: "recap", label: "Weekly recap" })}
+              className="flex w-full items-center gap-3 rounded-2xl border bg-card/60 p-4 text-left transition-colors hover:bg-accent/60"
+            >
+              <CalendarRange className="h-6 w-6 shrink-0 text-primary" />
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold">Your week</span>
+                <span className="block text-sm text-muted-foreground">
+                  The stories of the last seven days and what you read
+                </span>
+              </span>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </button>
 
             <footer className="flex flex-col items-center gap-2 border-t pt-8 text-center text-muted-foreground">
               <CheckCircle2 className="h-8 w-8 text-primary" />

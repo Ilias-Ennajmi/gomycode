@@ -14,6 +14,8 @@ interface ArticlesResponse {
   limit: number;
   hasMore: boolean;
   learnedFrom?: number;
+  /** The Later queue: minutes to read all of it. */
+  minutes?: number;
 }
 
 function toSearchParams(params: ArticleListParams) {
@@ -28,6 +30,9 @@ function toSearchParams(params: ArticleListParams) {
   if (params.today) search.set("today", "true");
   if (params.unread) search.set("unread", "true");
   if (params.search) search.set("search", params.search);
+  if (params.newsletter) search.set("newsletter", params.newsletter);
+  if (params.since && params.since !== "any") search.set("since", params.since);
+  if (params.highlighted) search.set("highlighted", "true");
   return search;
 }
 
@@ -53,6 +58,7 @@ export function useArticles(params: ArticleListParams, sort: ArticleSort = "newe
     articles,
     total: data?.[0]?.total ?? 0,
     learnedFrom: data?.[0]?.learnedFrom,
+    minutes: data?.[0]?.minutes,
     hasMore: data ? Boolean(data[data.length - 1]?.hasMore) : false,
     isLoading,
     isLoadingMore: isValidating && size > 0,
@@ -79,7 +85,13 @@ export function useArticleCount(params: ArticleListParams) {
 
 async function patchArticle(
   id: string,
-  data: { isRead?: boolean; isSaved?: boolean; isArchived?: boolean; readProgress?: number }
+  data: {
+    isRead?: boolean;
+    isSaved?: boolean;
+    isArchived?: boolean;
+    readProgress?: number;
+    snoozedUntil?: string | null;
+  }
 ) {
   const res = await fetch(`/api/articles/${id}`, {
     method: "PATCH",
@@ -102,6 +114,11 @@ export function toggleArticleSaved(id: string, isSaved: boolean) {
 /** Archive marks a Read Later item done; unarchiving puts it back in the queue. */
 export function toggleArticleArchived(id: string, isArchived: boolean) {
   return patchArticle(id, { isArchived });
+}
+
+/** Hides the article until `until`, when it comes back to Later; null wakes it now. */
+export function snoozeArticle(id: string, until: Date | null) {
+  return patchArticle(id, { snoozedUntil: until ? until.toISOString() : null });
 }
 
 export function saveReadingProgress(id: string, readProgress: number) {

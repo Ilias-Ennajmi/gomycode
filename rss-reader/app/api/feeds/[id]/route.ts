@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { keepSavedArticles } from "@/lib/saved-links";
 import { isDesk } from "@/lib/news/desks";
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
@@ -50,6 +51,8 @@ export async function DELETE(_request: NextRequest, { params }: { params: { id: 
       return NextResponse.json({ error: "Feed not found" }, { status: 404 });
     }
 
+    // Saved and highlighted articles outlive the source.
+    await keepSavedArticles(params.id);
     await prisma.feed.delete({ where: { id: params.id } });
 
     return NextResponse.json({ success: true });

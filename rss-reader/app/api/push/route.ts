@@ -50,8 +50,9 @@ export async function DELETE(request: NextRequest) {
 /** Which notifications to send. */
 export async function PATCH(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
-  const prefs: { briefing?: boolean; breaking?: boolean } = {};
+  const prefs: { briefing?: boolean; breaking?: boolean; recap?: boolean } = {};
   if (typeof body.briefing === "boolean") prefs.briefing = body.briefing;
   if (typeof body.breaking === "boolean") prefs.breaking = body.breaking;
+  if (typeof body.recap === "boolean") prefs.recap = body.recap;
   return NextResponse.json({ prefs: await setNotifyPrefs(prefs) });
 }

@@ -16,11 +16,13 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const body = await request.json();
-    const { isRead, isSaved, isArchived, readProgress } = body as {
+    const { isRead, isSaved, isArchived, readProgress, snoozedUntil } = body as {
       isRead?: boolean;
       isSaved?: boolean;
       isArchived?: boolean;
       readProgress?: number;
+      /** An ISO date to snooze until, or null to wake it now. */
+      snoozedUntil?: string | null;
     };
 
     const article = await prisma.article.findUnique({ where: { id: params.id } });
@@ -35,6 +37,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       savedAt?: Date | null;
       archivedAt?: Date | null;
       readProgress?: number;
+      snoozedUntil?: Date | null;
     } = {};
 
     if (typeof isRead === "boolean") {
@@ -57,6 +60,20 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (typeof readProgress === "number" && Number.isFinite(readProgress)) {
       // Progress only moves forward, so skimming back up doesn't erase it.
       data.readProgress = Math.max(article.readProgress, Math.min(100, Math.round(readProgress)));
+    }
+
+    if (snoozedUntil !== undefined) {
+      const until = snoozedUntil ? new Date(snoozedUntil) : null;
+      if (until && (Number.isNaN(until.getTime()) || until.getTime() < Date.now())) {
+        return NextResponse.json({ error: "Pick a time in the future" }, { status: 400 });
+      }
+      data.snoozedUntil = until;
+      // A snoozed article comes back in Later, so snoozing saves it.
+      if (until) {
+        data.isSaved = true;
+        data.savedAt = article.savedAt ?? new Date();
+        data.archivedAt = null;
+      }
     }
 
     const updated = await prisma.article.update({

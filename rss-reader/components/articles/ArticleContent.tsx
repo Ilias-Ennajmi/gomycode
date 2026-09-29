@@ -4,6 +4,7 @@ import * as React from "react";
 import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { youTubeEmbedUrl, youTubeVideoId } from "@/lib/youtube";
+import { consumeHighlightJump, drawHighlights, type Highlightable } from "@/lib/highlight-dom";
 import {
   READER_FONTS,
   READER_LEADING,
@@ -17,6 +18,12 @@ interface ArticleContentProps {
   summary?: string | null;
   link: string;
   isVideo?: boolean;
+  /** Passages to mark in the text. */
+  highlights?: Highlightable[];
+  /** Ids of highlights not found in this version of the text. */
+  onMissingHighlights?: (ids: string[]) => void;
+  /** The element holding the article text, for reading selections. */
+  bodyRef?: React.MutableRefObject<HTMLDivElement | null>;
 }
 
 type Purifier = typeof import("dompurify").default;
@@ -75,8 +82,16 @@ function VideoPlayer({
   );
 }
 
-export function ArticleContent({ content, summary, link, isVideo }: ArticleContentProps) {
-  const containerRef = React.useRef<HTMLDivElement>(null);
+export function ArticleContent({
+  content,
+  summary,
+  link,
+  isVideo,
+  highlights,
+  onMissingHighlights,
+  bodyRef,
+}: ArticleContentProps) {
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
   const { prefs } = useReaderPrefs();
   // prose sizes everything in em, so one font-size scales the whole article.
   const readerStyle: React.CSSProperties = {
@@ -86,6 +101,9 @@ export function ArticleContent({ content, summary, link, isVideo }: ArticleConte
   };
   const [sanitized, setSanitized] = React.useState<string | null>(null);
   const videoId = isVideo ? youTubeVideoId(link) : null;
+  // The same object on every render: React re-sets innerHTML when it gets a new one, which
+  // would wipe the highlights drawn into it.
+  const html = React.useMemo(() => ({ __html: sanitized ?? "" }), [sanitized]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -116,6 +134,20 @@ export function ArticleContent({ content, summary, link, isVideo }: ArticleConte
       });
     });
   }, [sanitized]);
+
+  // Redrawn when the text or the highlights change (a string key: the array is new each render).
+  const highlightKey = JSON.stringify(
+    (highlights ?? []).map((h) => [h.id, h.color, Boolean(h.note), h.text])
+  );
+  const missingRef = React.useRef(onMissingHighlights);
+  missingRef.current = onMissingHighlights;
+  React.useEffect(() => {
+    const container = containerRef.current;
+    if (!sanitized || !container) return;
+    missingRef.current?.(drawHighlights(container, highlights ?? []));
+    consumeHighlightJump(container);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sanitized, highlightKey]);
 
   if (videoId) return <VideoPlayer videoId={videoId} summary={summary} link={link} />;
 
@@ -151,7 +183,10 @@ export function ArticleContent({ content, summary, link, isVideo }: ArticleConte
 
   return (
     <div
-      ref={containerRef}
+      ref={(node) => {
+        containerRef.current = node;
+        if (bodyRef) bodyRef.current = node;
+      }}
       style={readerStyle}
       className={cn(
         "reader-content prose prose-neutral max-w-none dark:prose-invert",
@@ -164,7 +199,7 @@ export function ArticleContent({ content, summary, link, isVideo }: ArticleConte
         "prose-pre:rounded-lg prose-pre:bg-muted prose-code:before:content-none prose-code:after:content-none",
         "prose-table:block prose-table:overflow-x-auto prose-hr:border-border"
       )}
-      dangerouslySetInnerHTML={{ __html: sanitized }}
+      dangerouslySetInnerHTML={html}
     />
   );
 }

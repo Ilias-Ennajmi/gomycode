@@ -67,8 +67,8 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
   // A single feed belongs to the tab for its kind of source.
   function activeTab(): ViewType | null {
     if (mobilePane === "settings") return null;
-    // The briefing is reached from For You.
-    if (view.type === "briefing") return "foryou";
+    // The briefing and the recap are reached from For You.
+    if (view.type === "briefing" || view.type === "recap") return "foryou";
     if (view.type !== "feed") return TABS.some((t) => t.type === view.type) ? view.type : null;
     const feed = feeds.find((f) => f.id === view.id);
     if (feed?.newsDesk) return "news";
@@ -79,6 +79,14 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
         : "rss";
   }
   const active = activeTab();
+
+  // Opened from a link or shortcut (e.g. Highlights, inside Later): bring the tab into view.
+  const navRef = React.useRef<HTMLElement>(null);
+  React.useEffect(() => {
+    navRef.current
+      ?.querySelector('[aria-current="page"]')
+      ?.scrollIntoView({ inline: "nearest", block: "nearest" });
+  }, [active]);
 
   function select(tab: ViewState) {
     // From a section list inside News, the tab goes back to the front page.
@@ -130,6 +138,7 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
 
       <div className="flex items-center gap-2 pr-3 md:h-14 md:pr-5">
         <nav
+          ref={navRef}
           aria-label="Sections"
           className="flex min-w-0 flex-1 items-center overflow-x-auto px-2 scrollbar-none md:px-3"
         >

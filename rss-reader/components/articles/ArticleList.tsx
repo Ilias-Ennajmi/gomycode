@@ -6,6 +6,7 @@ import {
   Archive,
   ArrowLeft,
   Bookmark,
+  AlarmClock,
   CheckCheck,
   Inbox,
   ListTree,
@@ -33,8 +34,10 @@ import { ArticleCard } from "@/components/articles/ArticleCard";
 import { CategoryChips } from "@/components/articles/CategoryChips";
 import { ArticleSkeletonList } from "@/components/articles/ArticleSkeleton";
 import { DailyBriefing } from "@/components/articles/DailyBriefing";
+import { HighlightsList } from "@/components/highlights/HighlightsList";
 import { isSourceTab, useReaderState } from "@/lib/hooks/useReaderState";
 import {
+  useArticleCount,
   useArticles,
   toggleArticleArchived,
   toggleArticleRead,
@@ -75,8 +78,18 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   } = useReaderState();
   const sourceTab = isSourceTab(view.type) ? view.type : null;
 
-  const { articles, total, hasMore, isLoading, isLoadingMore, loadMore, mutate, learnedFrom } =
-    useArticles(listParams, sort);
+  const {
+    articles,
+    total,
+    hasMore,
+    isLoading,
+    isLoadingMore,
+    loadMore,
+    mutate,
+    learnedFrom,
+    minutes,
+  } = useArticles(listParams, sort);
+  const snoozedCount = useArticleCount({ later: "snoozed" });
   const { feeds } = useFeeds();
   const [refreshing, setRefreshing] = React.useState(false);
   const [markingAllRead, setMarkingAllRead] = React.useState(false);
@@ -212,6 +225,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
 
   const ranked = view.type === "foryou";
   const isLater = view.type === "later";
+  const showHighlights = isLater && laterTab === "highlights";
   const fromSourcesList = ["feed", "category", "all", "today"].includes(view.type);
   const newsSection = view.type === "news" && Boolean(view.id);
   let lastDateLabel = "";
@@ -243,13 +257,17 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
           )}
           <div className="min-w-0">
             <h2 className="truncate text-lg font-semibold leading-tight tracking-tight">
-              {isLater ? (laterTab === "archive" ? "Archive" : "Later") : view.label}
+              {isLater ? LATER_TITLES[laterTab] : view.label}
             </h2>
             <p className="text-xs text-muted-foreground">
               {isLater
                 ? laterTab === "archive"
                   ? `${total} finished`
-                  : `${total} to read`
+                  : laterTab === "snoozed"
+                    ? `${total} coming back later`
+                    : laterTab === "highlights"
+                      ? "Passages and notes from your reading"
+                      : `${total} to read${minutes ? ` · ${formatMinutes(minutes)}` : ""}`
                 : ranked
                   ? learnedFrom
                     ? `Learned from ${learnedFrom} articles · `
@@ -302,10 +320,18 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
 
       <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
         {isLater ? (
-          <Tabs value={laterTab} onValueChange={(v) => setLaterTab(v as LaterTab)}>
+          <Tabs
+            value={laterTab}
+            onValueChange={(v) => setLaterTab(v as LaterTab)}
+            className="min-w-0 overflow-x-auto scrollbar-none"
+          >
             <TabsList>
               <TabsTrigger value="queue">Later</TabsTrigger>
+              {(snoozedCount > 0 || laterTab === "snoozed") && (
+                <TabsTrigger value="snoozed">Snoozed</TabsTrigger>
+              )}
               <TabsTrigger value="archive">Archive</TabsTrigger>
+              <TabsTrigger value="highlights">Highlights</TabsTrigger>
             </TabsList>
           </Tabs>
         ) : (
@@ -319,7 +345,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
         )}
 
         <div className="flex items-center gap-1">
-          {!ranked && (
+          {!ranked && !(isLater && laterTab !== "queue" && laterTab !== "archive") && (
             <Select value={sort} onValueChange={(v) => setSort(v as "newest" | "oldest")}>
               <SelectTrigger className="h-8 w-[92px] text-xs sm:w-[110px]">
                 <SelectValue />
@@ -331,10 +357,17 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
             </Select>
           )}
           {isLater ? (
-            <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={onSaveLink}>
-              <Plus className="h-3.5 w-3.5" />
-              <span className="max-sm:sr-only">Save link</span>
-            </Button>
+            laterTab === "queue" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                onClick={onSaveLink}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span className="max-sm:sr-only">Save link</span>
+              </Button>
+            )
           ) : (
             <Button
               variant="ghost"
@@ -360,7 +393,9 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
       >
         <PullIndicator pull={pull} refreshing={pulling} />
         {ranked && !search && filterTab === "all" && <DailyBriefing />}
-        {isLoading ? (
+        {showHighlights ? (
+          <HighlightsList />
+        ) : isLoading ? (
           <ArticleSkeletonList />
         ) : articles.length === 0 ? (
           <EmptyState
@@ -420,6 +455,21 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   );
 }
 
+const LATER_TITLES: Record<LaterTab, string> = {
+  queue: "Later",
+  snoozed: "Snoozed",
+  archive: "Archive",
+  highlights: "Highlights",
+};
+
+/** "45 min", "2 h", "2 h 15 min" */
+function formatMinutes(minutes: number) {
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest ? `${hours} h ${rest} min` : `${hours} h`;
+}
+
 function EmptyState({
   search,
   view,
@@ -447,6 +497,15 @@ function EmptyState({
         text="Nothing to read later yet. Save any link, or tap the bookmark on an article."
         action="Save a link"
         onAction={onSaveLink}
+      />
+    );
+  }
+
+  if (view === "later-snoozed") {
+    return (
+      <EmptyMessage
+        icon={<AlarmClock className="h-10 w-10" />}
+        text="Nothing snoozed. Snooze an article to have it come back to Later when you have time."
       />
     );
   }

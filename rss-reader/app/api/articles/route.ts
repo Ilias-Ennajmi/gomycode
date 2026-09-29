@@ -7,10 +7,15 @@ import {
   ARTICLE_FEED_INCLUDE,
   categoryFilter,
   newsFilter,
+  newsletterFilter,
+  notSnoozed,
   parseSource,
   serializeArticle,
+  sinceDate,
   sourceFilter,
 } from "@/lib/articles";
+import { searchArticleIds } from "@/lib/search";
+import { sqlName } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +36,9 @@ export async function GET(request: NextRequest) {
     const later = searchParams.get("later");
     const search = searchParams.get("search")?.trim() || undefined;
     const news = searchParams.get("news") || undefined;
+    const newsletter = newsletterFilter(searchParams.get("newsletter"));
+    const since = sinceDate(searchParams.get("since"));
+    const highlighted = searchParams.get("highlighted") === "true";
     const sort = searchParams.get("sort") === "oldest" ? "asc" : "desc";
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20", 10) || 20));
@@ -43,21 +51,39 @@ export async function GET(request: NextRequest) {
     if (saved) where.isSaved = true;
     if (later === "queue") Object.assign(where, { isSaved: true, archivedAt: null });
     if (later === "archive") where.archivedAt = { not: null };
+    if (later === "snoozed") where.snoozedUntil = { gt: new Date() };
     if (unread) where.isRead = false;
     if (today) where.publishedAt = { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) };
     if (forYou && !search) where.publishedAt = { gte: new Date(Date.now() - FOR_YOU_WINDOW_MS) };
-    if (search) {
-      where.OR = [
-        { title: { contains: search, mode: "insensitive" } },
-        { summary: { contains: search, mode: "insensitive" } },
-      ];
-    }
+    if (since) where.publishedAt = { gte: since };
+    if (highlighted) where.highlights = { some: {} };
 
     const clauses: Prisma.ArticleWhereInput[] = hiddenArticleClauses(rules, feedId);
     const sourceClause = source && sourceFilter(source);
     if (sourceClause) clauses.push(sourceClause);
     if (news) clauses.push(newsFilter(news));
+    if (newsletter) clauses.push(newsletter);
+    if (later !== "snoozed") clauses.push(notSnoozed());
     if (clauses.length > 0) where.AND = clauses;
+
+    if (search) {
+      // Ranked by relevance: the matching ids come back best first, the filters narrow them.
+      const ranked = await searchArticleIds(search);
+      const matches = await prisma.article.findMany({
+        where: { ...where, id: { in: ranked } },
+        include: ARTICLE_FEED_INCLUDE,
+      });
+      const order = new Map(ranked.map((id, i) => [id, i]));
+      matches.sort((a, b) => order.get(a.id)! - order.get(b.id)!);
+      const start = (page - 1) * limit;
+      return NextResponse.json({
+        articles: matches.slice(start, start + limit).map(serializeArticle),
+        total: matches.length,
+        page,
+        limit,
+        hasMore: start + limit < matches.length,
+      });
+    }
 
     if (forYou) {
       // Ranked in memory: one user's last 72 hours is a few hundred rows.
@@ -124,22 +150,27 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const [total, articles] = await Promise.all([
+    const laterOrder =
+      later === "archive" ? "archivedAt" : later === "snoozed" ? "snoozedUntil" : "savedAt";
+    const [total, articles, minutes] = await Promise.all([
       prisma.article.count({ where }),
       prisma.article.findMany({
         where,
         orderBy: later
-          ? { [later === "archive" ? "archivedAt" : "savedAt"]: sort }
+          ? { [laterOrder]: later === "snoozed" ? "asc" : sort }
           : { publishedAt: sort },
         skip: (page - 1) * limit,
         take: limit,
         include: ARTICLE_FEED_INCLUDE,
       }),
+      // The Later queue shows how long it all takes to read.
+      later === "queue" && page === 1 ? laterQueueMinutes() : Promise.resolve(undefined),
     ]);
 
     return NextResponse.json({
       articles: articles.map(serializeArticle),
       total,
+      minutes,
       page,
       limit,
       hasMore: page * limit < total,
@@ -148,4 +179,14 @@ export async function GET(request: NextRequest) {
     console.error("GET /api/articles failed", error);
     return NextResponse.json({ error: "Failed to load articles" }, { status: 500 });
   }
+}
+
+/** Minutes to read everything in the Later queue (~220 words a minute, ~6 characters a word). */
+async function laterQueueMinutes() {
+  const rows = await prisma.$queryRaw<{ chars: bigint | null }[]>(Prisma.sql`
+    SELECT sum(length(regexp_replace(coalesce("fullContent", "content", "summary", ''), '<[^>]*>', ' ', 'g'))) AS chars
+    FROM ${sqlName("Article")}
+    WHERE "isSaved" AND "archivedAt" IS NULL AND ("snoozedUntil" IS NULL OR "snoozedUntil" <= now())
+  `);
+  return Math.round(Number(rows[0]?.chars ?? 0) / 6 / 220);
 }

@@ -17,6 +17,7 @@ import { SettingsPanel } from "@/components/layout/SettingsPanel";
 import { SourcesManager } from "@/components/sources/SourcesManager";
 import { NewsView } from "@/components/news/NewsView";
 import { TodayView } from "@/components/today/TodayView";
+import { RecapView } from "@/components/today/RecapView";
 import { NewsSourcesDialog } from "@/components/news/NewsSourcesDialog";
 import { X } from "lucide-react";
 import { ReaderStateProvider, useReaderState } from "@/lib/hooks/useReaderState";
@@ -45,9 +46,10 @@ function AppShellInner() {
     addRequested,
     clearAddRequest,
   } = useReaderState();
-  // Full-width pages with the reader as a panel on top: the News front page and the briefing.
+  // Full-width pages with the reader as a panel on top: the News front page, the briefing
+  // and the weekly recap.
   const newsFront = view.type === "news" && !view.id;
-  const fullPage = newsFront || view.type === "briefing";
+  const fullPage = newsFront || view.type === "briefing" || view.type === "recap";
   const [newsSources, setNewsSources] = React.useState<{ open: boolean; setup: boolean }>({
     open: false,
     setup: false,
@@ -203,6 +205,8 @@ function AppShellInner() {
                   <NewsView
                     onManageSources={(setup = false) => setNewsSources({ open: true, setup })}
                   />
+                ) : view.type === "recap" ? (
+                  <RecapView />
                 ) : (
                   <TodayView />
                 )}

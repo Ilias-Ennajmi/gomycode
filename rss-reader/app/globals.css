@@ -223,3 +223,31 @@ a,
 .reader-content pre code {
   white-space: pre;
 }
+
+/* Highlights drawn in the article (lib/highlight-dom.ts). */
+.reader-content mark.reader-highlight {
+  color: inherit;
+  border-radius: 2px;
+  padding: 0.05em 0;
+  cursor: pointer;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.reader-content mark[data-color="yellow"] { background: rgb(253 230 138 / 0.8); }
+.reader-content mark[data-color="green"] { background: rgb(187 247 208 / 0.85); }
+.reader-content mark[data-color="blue"] { background: rgb(191 219 254 / 0.85); }
+.reader-content mark[data-color="pink"] { background: rgb(251 207 232 / 0.85); }
+.dark .reader-content mark[data-color="yellow"] { background: rgb(250 204 21 / 0.3); }
+.dark .reader-content mark[data-color="green"] { background: rgb(74 222 128 / 0.28); }
+.dark .reader-content mark[data-color="blue"] { background: rgb(96 165 250 / 0.3); }
+.dark .reader-content mark[data-color="pink"] { background: rgb(244 114 182 / 0.3); }
+/* A highlight with a note gets a dotted underline. */
+.reader-content mark[data-note] {
+  text-decoration: underline dotted;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+.reader-content mark.reader-highlight-flash {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}

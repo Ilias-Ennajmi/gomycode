@@ -8,6 +8,7 @@ import { rememberAppLaunch } from "@/lib/native";
 export type ViewType =
   | "foryou"
   | "briefing"
+  | "recap"
   | "news"
   | "rss"
   | "youtube"
@@ -70,12 +71,18 @@ const LINKABLE_VIEWS: Record<string, ViewState> = {
   foryou: DEFAULT_VIEW,
   news: { type: "news", label: "News" },
   briefing: { type: "briefing", label: "Today's briefing" },
+  recap: { type: "recap", label: "Weekly recap" },
   rss: { type: "rss", label: "RSS" },
   youtube: { type: "youtube", label: "YouTube" },
   newsletters: { type: "newsletters", label: "Newsletters" },
   later: { type: "later", label: "Later" },
   today: { type: "today", label: "Today" },
   all: { type: "all", label: "All articles" },
+};
+// Later's sub-tabs that links can open, e.g. ?view=highlights (the Android shortcut).
+const LINKABLE_LATER_TABS: Record<string, LaterTab> = {
+  highlights: "highlights",
+  snoozed: "snoozed",
 };
 
 const ReaderStateContext = React.createContext<ReaderStateValue | null>(null);
@@ -110,6 +117,11 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     rememberAppLaunch(params);
     const linked = LINKABLE_VIEWS[params.get("view") ?? ""];
     if (linked) setViewState(linked);
+    const laterTab = LINKABLE_LATER_TABS[params.get("view") ?? ""];
+    if (laterTab) {
+      setViewState(LINKABLE_VIEWS.later);
+      setLaterTab(laterTab);
+    }
     const articleId = params.get("article");
     if (articleId) {
       setSelectedArticleId(articleId);
@@ -141,13 +153,17 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
 
   const listParams = React.useMemo<ArticleListParams>(() => {
     const params: ArticleListParams = {};
-    // The briefing opens stories from For You's pool.
-    if (view.type === "foryou" || view.type === "briefing") params.view = "foryou";
+    // The briefing and the recap open stories from For You's pool.
+    if (view.type === "foryou" || view.type === "briefing" || view.type === "recap") {
+      params.view = "foryou";
+    }
     if (view.type === "news") params.news = view.id ?? "all";
     if (view.type === "rss") params.source = "rss";
     if (view.type === "youtube") params.source = "youtube";
     if (view.type === "newsletters") params.source = "newsletter";
-    if (view.type === "later") params.later = laterTab;
+    // Highlights lists passages, but the reader moves between the articles they're from.
+    if (view.type === "later" && laterTab === "highlights") params.highlighted = true;
+    else if (view.type === "later") params.later = laterTab;
     if (view.type === "feed") params.feedId = view.id;
     if (view.type === "category") params.categoryId = view.id;
     if (view.type === "today") params.today = true;

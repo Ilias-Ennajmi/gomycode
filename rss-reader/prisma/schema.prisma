@@ -46,6 +46,10 @@ model Feed {
   newsDesk    String?
   /// Where a news source reports from: "ma" for Moroccan outlets, else null.
   region      String?
+  /// Newsletters: where it comes from, "substack", "beehiiv", "ghost", "buttondown" or "email".
+  platform    String?
+  /// Email newsletters: the address to subscribe with (a Kill the Newsletter inbox).
+  email       String?
   categoryId  String?
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   articles    Article[]
@@ -58,9 +62,9 @@ model Feed {
 }
 
 model Article {
-  id                String    @id @default(cuid())
+  id                String                   @id @default(cuid())
   feedId            String
-  feed              Feed      @relation(fields: [feedId], references: [id], onDelete: Cascade)
+  feed              Feed                     @relation(fields: [feedId], references: [id], onDelete: Cascade)
   title             String
   link              String
   summary           String?
@@ -68,14 +72,14 @@ model Article {
   imageUrl          String?
   author            String?
   publishedAt       DateTime
-  isRead            Boolean   @default(false)
-  isSaved           Boolean   @default(false)
-  isVideo           Boolean   @default(false)
+  isRead            Boolean                  @default(false)
+  isSaved           Boolean                  @default(false)
+  isVideo           Boolean                  @default(false)
   readAt            DateTime?
   savedAt           DateTime?
-  createdAt         DateTime  @default(now())
+  createdAt         DateTime                 @default(now())
   /// Gemini embedding of title + summary; empty until enriched.
-  embedding         Float[]   @default([])
+  embedding         Float[]                  @default([])
   aiSummary         String?
   /// Full page text fetched when the feed only sends an excerpt.
   fullContent       String?
@@ -84,10 +88,16 @@ model Article {
   /// Read Later: set when a saved item is marked done.
   archivedAt        DateTime?
   /// 0-100, how far the reader got; drives the progress bar in lists.
-  readProgress      Int       @default(0)
-  isPromo           Boolean   @default(false)
+  readProgress      Int                      @default(0)
+  isPromo           Boolean                  @default(false)
   topicId           String?
-  topic             Topic?    @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  topic             Topic?                   @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  /// Hidden until then, when it comes back to the top of Later (with a notification).
+  snoozedUntil      DateTime?
+  highlights        Highlight[]
+  /// Full-text search: a generated column (title, summaries, author, start of the text).
+  /// Defined in the v2_library migration; Prisma only knows it exists.
+  search            Unsupported("tsvector")?
 
   @@unique([feedId, link])
   @@index([feedId])
@@ -95,6 +105,27 @@ model Article {
   @@index([isSaved])
   @@index([publishedAt])
   @@index([topicId])
+  @@index([snoozedUntil])
+  @@index([search], type: Gin)
+}
+
+/// A passage the reader highlighted, with an optional note.
+model Highlight {
+  id        String   @id @default(cuid())
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  text      String
+  note      String?
+  /// yellow, green, blue or pink
+  color     String   @default("yellow")
+  /// Text just before and after, to find the passage again in the article.
+  prefix    String   @default("")
+  suffix    String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([articleId])
+  @@index([createdAt])
 }
 
 /// Articles from different sources covering the same story (last 48h).

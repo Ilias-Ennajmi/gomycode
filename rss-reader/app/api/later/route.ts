@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { savedLinksFeed } from "@/lib/saved-links";
 import { extractPage } from "@/lib/extract";
 import { normalizeInputUrl } from "@/lib/feed-source";
 import { isYouTubeUrl, youTubeThumbnailUrl, youTubeVideoId } from "@/lib/youtube";
 import { ARTICLE_FEED_INCLUDE, serializeArticle } from "@/lib/articles";
 
 export const maxDuration = 30;
-
-const SAVED_LINKS_URL = "manual://saved-links";
 
 /** The same page may be stored with the other scheme or a trailing slash. */
 function linkVariants(url: string) {
@@ -16,15 +15,6 @@ function linkVariants(url: string) {
     : `https://${url.replace(/^http:\/\//, "")}`;
   const toggleSlash = (u: string) => (u.endsWith("/") ? u.slice(0, -1) : `${u}/`);
   return [url, other, toggleSlash(url), toggleSlash(other)];
-}
-
-/** The hidden feed that holds links saved by hand. */
-async function savedLinksFeed() {
-  return prisma.feed.upsert({
-    where: { url: SAVED_LINKS_URL },
-    update: {},
-    create: { url: SAVED_LINKS_URL, title: "Saved links", type: "manual" },
-  });
 }
 
 /** Saves any web page to Read Later, extracting its readable text. */
