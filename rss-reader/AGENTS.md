@@ -63,8 +63,14 @@ android/                 the Android app: a Trusted Web Activity around the site
 ```
 
 **Android app.** `android/` is a thin shell that opens the site in Chrome full-screen, so
-web deploys update the app. It's built by `.github/workflows/android.yml` (repo root) and
-released on `android-v*` tags. The web side:
+web deploys update the app; a new APK is only needed when the shell changes. Releases
+(details in `android/README.md`): CI (`.github/workflows/android.yml`, repo root) builds an
+unsigned APK on branch pushes and publishes it as the `android-unsigned` prerelease;
+`android/sign.sh` signs it offline with the release key into `android/releases/`; pushing
+the tag `android-v<version>` checks and publishes that signed APK, then tests it on an
+emulator (screenshots and `summary.txt` in the `android-e2e` prerelease). The signing key
+is never committed or given to CI. Bump `appVersionCode`/`appVersionName` in
+`android/app/build.gradle` for every release. The web side:
 
 - `public/.well-known/assetlinks.json` must stay public (excluded in `middleware.ts`) and
   keep the signing key's SHA-256, or the app shows a browser bar.

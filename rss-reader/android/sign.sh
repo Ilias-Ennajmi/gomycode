@@ -25,8 +25,9 @@ fi
 APKSIG="$WORK/apksig.jar"
 curl -fsSL -o "$APKSIG" https://repo.maven.apache.org/maven2/com/android/tools/build/apksig/2.3.0/apksig-2.3.0.jar
 
-OUT="releases/Reader-$VERSION.apk"
-java -cp "$APKSIG" signer/SignApk.java "$UNSIGNED" "$OUT" "$KEYSTORE" "$PASSWORD" | tee "$WORK/sign.txt"
+OUT="$WORK/signed.apk"
+# apksig 2.3.0 (the newest on Maven Central) touches a JDK-internal class even with v1 off.
+java --add-exports java.base/sun.security.x509=ALL-UNNAMED -cp "$APKSIG" signer/SignApk.java "$UNSIGNED" "$OUT" "$KEYSTORE" "$PASSWORD" | tee "$WORK/sign.txt"
 
 # The certificate must be the one the website trusts (public/.well-known/assetlinks.json).
 actual=$(sed -n 's/^sha256 //p' "$WORK/sign.txt")
@@ -52,4 +53,6 @@ if bad:
 print("aligned: all stored entries on 4-byte boundaries")
 EOF
 
-echo "Signed $OUT"
+mkdir -p releases
+mv "$OUT" "releases/Reader-$VERSION.apk"
+echo "Signed releases/Reader-$VERSION.apk"

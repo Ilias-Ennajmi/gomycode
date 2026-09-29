@@ -34,7 +34,7 @@ The release key never goes to GitHub (no repository secrets). Instead:
    an unsigned release APK and publishes it as the `android-unsigned` prerelease.
 2. **Sign** – on a machine that has the key, run
    `./sign.sh reader-release.jks password.txt`. It downloads that unsigned APK, signs it with
-   Google's apksig library (`signer/SignApk.java`, v1 + v2 signatures), verifies it, checks the
+   Google's apksig library (`signer/SignApk.java`, APK Signature Scheme v2), verifies it, checks the
    certificate matches `assetlinks.json` and that the file is aligned, and writes
    `releases/Reader-<version>.apk`.
 3. **Release** – commit that APK, then push the tag `android-v<version>`. The workflow checks

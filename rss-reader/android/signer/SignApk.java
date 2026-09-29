@@ -10,7 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Signs an unsigned APK with the release key (APK Signature Scheme v1 + v2) and verifies it.
+ * Signs an unsigned APK with the release key (APK Signature Scheme v2) and verifies it. v1 (JAR)
+ * signatures only matter below Android 7 and the app needs Android 8; apksig 2.3.0 (the newest on
+ * Maven Central) can't make them on current JDKs anyway.
  * Used by ../sign.sh; needs Google's apksig library on the classpath.
  *
  * <p>Usage: java -cp apksig.jar SignApk.java in.apk out.apk keystore password
@@ -32,7 +34,7 @@ public class SignApk {
         .setInputApk(in)
         .setOutputApk(out)
         .setMinSdkVersion(26)
-        .setV1SigningEnabled(true)
+        .setV1SigningEnabled(false)
         .setV2SigningEnabled(true)
         .setCreatedBy("Reader sign.sh")
         .build()
