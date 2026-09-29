@@ -66,9 +66,9 @@ android/                 the Android app: a Trusted Web Activity around the site
 web deploys update the app; a new APK is only needed when the shell changes. Releases
 (details in `android/README.md`): CI (`.github/workflows/android.yml`, repo root) builds an
 unsigned APK on branch pushes and publishes it as the `android-unsigned` prerelease;
-`android/sign.sh` signs it offline with the release key into `android/releases/`; pushing
-the tag `android-v<version>` checks and publishes that signed APK, then tests it on an
-emulator (screenshots and `summary.txt` in the `android-e2e` prerelease). The signing key
+`android/sign.sh` signs it offline with the release key into `android/releases/`; the next
+push checks that signed APK, publishes it as the release `android-v<version>` (once per
+version) and tests it on an emulator (screenshots and `summary.txt` in the `android-e2e` prerelease). The signing key
 is never committed or given to CI. Bump `appVersionCode`/`appVersionName` in
 `android/app/build.gradle` for every release. The web side:
 

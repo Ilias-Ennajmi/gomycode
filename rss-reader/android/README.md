@@ -37,16 +37,17 @@ The release key never goes to GitHub (no repository secrets). Instead:
    Google's apksig library (`signer/SignApk.java`, APK Signature Scheme v2), verifies it, checks the
    certificate matches `assetlinks.json` and that the file is aligned, and writes
    `releases/Reader-<version>.apk`.
-3. **Release** – commit that APK, then push the tag `android-v<version>`. The workflow checks
-   the tag, version and signature again, publishes the GitHub Release (Obtainium and the in-app
-   banner pick it up), and runs the emulator test.
+3. **Release** – commit that APK and push. The workflow sees a signed APK for a version that
+   has no release yet, checks its version and signature again, publishes the GitHub Release
+   `android-v<version>` (Obtainium and the in-app banner pick it up), and runs the emulator
+   test. (Pushing that tag yourself does the same.)
 4. **Test** – the `e2e` job installs the APK on an Android 14 emulator with Chrome, opens it,
    shares a link to it and opens a site link, and publishes screenshots, UI dumps and
    `summary.txt` as the `android-e2e` prerelease. "full screen (verified)" means no browser bar.
    It can also be run by hand (Actions → Android app → Run workflow).
 
 For a new version, bump `appVersionCode` (+1) and `appVersionName` in `app/build.gradle`
-first, push, wait for the unsigned build, then sign and tag as above.
+first, push, wait for the unsigned build, then sign and commit as above.
 
 Building locally needs the Android SDK and JDK 17+: `./gradlew assembleRelease`.
 
