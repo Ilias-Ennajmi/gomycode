@@ -29,21 +29,26 @@ app/
   reader/page.tsx        the single-page app shell (AppShell)
   login/                 password gate page
   api/                   route handlers (all JSON, all behind the password middleware)
-    articles/            list (filters, paging), [id] update, [id]/full (extract), [id]/summary
+    articles/            list (filters, search, paging), [id] update (incl. snooze), [id]/full (extract), [id]/summary
+    highlights/          list/create, [id] note/colour/delete, export (Markdown), resurface
+    newsletters/email    create an email-only newsletter (Kill the Newsletter address + feed)
+    recap/               the weekly recap (stats, stories, highlights, AI summary)
     feeds/, categories/, filters/, later/, opml/
     discover/            catalog, search, suggest (AI), explore (live paging), follow, health
     news/                front page (hero + desks), insights (AI, cached hourly), prefs
     digest/              daily briefing v2 (GET current, POST more/shuffle/refresh)
-    refresh/             fetch all stale feeds (cron: Bearer CRON_SECRET)
+    refresh/             fetch all stale feeds (cron: Bearer CRON_SECRET); refresh/tick is the public hourly ping
     weather/             Open-Meteo forecast, location from Vercel IP headers or saved city
     ai/                  AI status
 middleware.ts            password gate (session cookie signed with APP_PASSWORD + AUTH_SECRET)
 components/
   layout/                AppShell (panes, dialogs), TopBar (tabs, unread counts, "+" menu), SettingsPanel
-  articles/              ArticleList, ArticleCard (swipe), ArticleReader (next/prev, listen), DailyBriefing banner
+  articles/              ArticleList, ArticleCard (swipe, list/cards layout), ArticleReader (next/prev, listen, resume), SnoozeMenu
+  highlights/            ReaderHighlights (selection toolbar + panel), HighlightsList (Later → Highlights), resurfacing
   news/                  NewsView, HeroSlider, StoryParts, WeatherWidget, NewsSourcesDialog
-  today/TodayView.tsx    the briefing page
-  discover/, sources/, sidebar/, dialogs/, ui/ (shadcn)
+  today/                 TodayView (the briefing page), RecapView (weekly recap)
+  dialogs/               CommandPalette (⌘K), EmailNewsletterDialog, SaveLink, shortcuts...
+  discover/, sources/, sidebar/, ui/ (shadcn)
 lib/
   prisma.ts              Prisma client singleton
   rss.ts                 fetch + parse feeds (rss-parser on XML fetched with fetch)
@@ -54,11 +59,16 @@ lib/
   ranking.ts             For You ranking from reading history
   articles.ts            article query building (tabs, news desks, filters)
   follow.ts              follow a source (site, feed, YouTube handle, topic) with readable errors
+  search.ts              full-text search (tsvector column + highlights), prefix queries, ranking
+  highlights.ts, highlight-dom.ts   highlight colours/export, and anchoring/drawing marks in the reader
+  newsletters.ts         platform detection, Kill the Newsletter inboxes, unsubscribe links, paywall previews
+  refresh.ts             refreshFeeds() shared by /api/refresh and /api/refresh/tick
+  recap.ts, snooze.ts, saved-links.ts, db.ts (sqlName for raw SQL)
   youtube.ts, extract.ts, reader.ts, clean-html.ts, favicon.ts, opml.ts, filters.ts
   discover/              catalog (curated sources), search providers (Feedly, YouTube), topics (Bing News RSS)
   news/                  news catalog, desks (+ MOROCCO_PATTERN), front-page builder, prefs
   hooks/                 SWR hooks (useArticles, useFeeds, useNews, useAi, useDiscover...) and useReaderState
-prisma/schema.prisma     Category, Feed, Article, Topic, DailyDigest, FilterRule, Setting
+prisma/schema.prisma     Category, Feed, Article, Highlight, Topic, DailyDigest, FilterRule, Setting
 android/                 the Android app: a Trusted Web Activity around the site (see android/README.md)
 ```
 
@@ -97,17 +107,42 @@ refresh). Sent articles are remembered in the `push-sent` Setting, because story
 get new ids on every refresh. `public/sw.js` shows them and opens the app on tap; in the
 Android app they appear as the app's own notifications.
 
+**Reader 2.0 features.**
+
+- _Highlights_: `Highlight` rows anchor to text W3C-style (the quote plus 64 characters
+  before and after), found again with whitespace-normalised matching and drawn as
+  `<mark data-hl>`. `ArticleContent` memoises its `__html` object: a new object each
+  render makes React reset innerHTML and wipes the marks.
+- _Search_: `Article.search` is a `tsvector` kept by the trigger `Article_search_update`
+  (migration `v2_library`; `reader_fold()` strips accents). Prisma sees it as
+  `Unsupported`, and search runs as raw SQL in `lib/search.ts`, which also matches
+  highlight text and notes.
+- _Newsletters_ split into "Substack & web" and "Email" (`Feed.platform`). Email-only ones
+  get an address from Kill the Newsletter (`POST /feeds` needs the `CSRF-Protection: true`
+  header); its Atom feed is then followed like any other.
+- _Snooze_: `Article.snoozedUntil` hides an article from lists until
+  `wakeSnoozedArticles()` (every refresh) brings it back to the top of Later with a push.
+- _Weekly recap_: rolling 7 days; each day's lead story comes from `DailyDigest`
+  (topics are rebuilt every refresh). The AI summary is cached per week in `Setting`, and a
+  Sunday-evening push goes out once per week.
+- _Hourly refresh_: Supabase `pg_cron` + `pg_net` call `GET /api/refresh/tick` every hour
+  (job `reader-hourly-refresh`). The endpoint is public but runs at most every 40 minutes
+  and returns only counts.
+
 **Data model in one paragraph.** A `Feed` has a `type` (rss, youtube, newsletter) and, when
 it's a news outlet, a `newsDesk` (morocco, world, europe, africa, economy, sports, tech) and
 `region` ("ma"). News feeds show only in the News tab, not in RSS. `Article` holds reading
 state (isRead, isSaved, archivedAt, readProgress), AI data (embedding, aiSummary, isPromo) and
-an optional `topicId` that groups articles about the same story. `DailyDigest` stores the
+an optional `topicId` that groups articles about the same story, plus `snoozedUntil` and
+its `Highlight`s. `DailyDigest` stores the
 briefing as JSON (`version: 2`). `Setting` is a key/value store (news prefs, cached news
 insights, weather city).
 
 **State on the client.** `useReaderState` holds the current view (`type`: foryou, briefing,
-news, rss, youtube, newsletters, later, all, today, saved, feed, category), the selected article and
-the mobile pane (sidebar, list, reader, settings). Data comes from SWR hooks in `lib/hooks`.
+recap, news, rss, youtube, newsletters, later, all, today, saved, feed, category), the Later
+sub-tab (queue, snoozed, archive, highlights), the newsletter kind, the search with its
+scope and time filter, the selected article and the mobile pane (sidebar, list, reader,
+settings). Data comes from SWR hooks in `lib/hooks`.
 
 ## Gotchas learned the hard way
 
@@ -121,12 +156,17 @@ the mobile pane (sidebar, list, reader, settings). Data comes from SWR hooks in 
 - **Gemini free tier is rate-limited.** Batch calls (JSON mode), cache results (insights
   hourly, briefing per day, refresh at most every 3h), and keep every AI feature optional:
   the app must work when `GEMINI_API_KEY` is empty or the quota is spent (`AiError`).
-- **Vercel Hobby cron runs once a day.** Freshness comes from refresh-on-open plus the
-  daily cron. An hourly external ping to `/api/refresh` with `Authorization: Bearer
-$CRON_SECRET` is the way to go further.
+- **Vercel Hobby cron runs once a day.** The hourly refresh comes from Supabase pg_cron
+  calling `/api/refresh/tick` (see Reader 2.0 features); refresh-on-open still helps.
+- **Never let a Prisma migration touch `Article.search`.** It's filled by a trigger; a
+  generated column made `prisma migrate diff` want to drop its default every time. Raw SQL
+  must name tables with `sqlName()` (schema from `DATABASE_URL`), and SQL functions use
+  `SET search_path FROM CURRENT`, because Supabase's pooler doesn't keep the search path.
 - **Bing News topic feeds** need `setlang` and `mkt` (e.g. `fr-FR`) or results come back in
   other languages; article links are wrapped and unwrapped via the `url` param.
-- **lucide-react has no YouTube icon** in this version; the code uses `Play`.
+- **lucide-react has no YouTube icon** in this version; the code uses `Play` or `MonitorPlay`.
+- **`aspect-ratio` boxes grow with their content.** Put the image in an `absolute inset-0`
+  frame (see ArticleCard's cards layout) or a tall picture stretches the 16:9 box.
 - The repo-root `.gitignore` ignores `lib/` (Python template); `rss-reader/.gitignore`
   re-includes it. Don't remove that line.
 - Toasts with Undo must stay clickable over Radix dialogs (see `components/ui/sonner.tsx`).
@@ -158,11 +198,13 @@ Built in this order (see `git log -- rss-reader`):
 6. News tab (hero, desks, insights, weather, curated FR/EN sources), Today briefing page.
 7. UX polish: mobile layout fits the screen, reader up next/listen/swipe, list swipe
    actions, one "+" menu, unread counts.
+8. Android app (TWA), offline mode, push notifications.
+9. Reader 2.0: highlights and notes, full-text search, newsletters split into Substack &
+   web / Email (email-only via Kill the Newsletter), snooze, weekly recap, reading time,
+   hourly refresh, card layout, resume reading, ⌘K command palette, skeletons.
 
 ## Open ideas (not built yet)
 
-- Skeleton loaders everywhere spinners remain.
-- Card layout option (big images) for News and YouTube lists; "mark read when scrolled past".
-- Email-only newsletters through an inbound email service (e.g. Postmark inbound webhook).
-- An hourly refresh (GitHub Actions schedule, which only runs from the default branch) so
-  breaking-news alerts arrive promptly; today they fire when a refresh happens.
+- "Mark read when scrolled past" in lists.
+- Highlights export to Readwise / Notion; tags on highlights.
+- Android shortcuts for Search, Highlights and Snoozed (needs a new APK).

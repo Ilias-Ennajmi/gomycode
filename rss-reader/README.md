@@ -20,6 +20,10 @@ Google Gemini's free tier.
 | Reader      | Full-article extraction, clutter removal, reading settings, up next / previous, swipe between articles, listen (browser text-to-speech)                            |
 | Lists       | Swipe right for Later, left to mark read, Undo toasts, unread counts per tab, story grouping ("also covered by")                                                   |
 | Sources     | Manager for every followed source: rename, move, unfollow, health                                                                                                  |
+| Highlights  | Select text to highlight in 4 colours and add notes; all highlights in Later → Highlights, Markdown export, old ones resurface on Today                            |
+| Search      | Full-text search over titles, text and your highlights, with where-to-look and time filters; ⌘K command palette                                                    |
+| Newsletters | "Substack & web" and "Email" sub-tabs; email-only newsletters get their own sign-up address (Kill the Newsletter)                                                  |
+| Later       | Reading queue with total reading time, snooze (back at a chosen time with a notification), archive, weekly recap                                                   |
 | Android app | Installable app (`android/`): share links to Later, icon shortcuts, back gesture, deep links                                                                       |
 
 ## Stack
@@ -70,7 +74,8 @@ use local values for development, and a separate Gemini key if you like.
 Vercel project `rss-reader` (root directory `rss-reader`, region `cdg1`). The build
 command is `npm run vercel-build` = `prisma migrate deploy && next build`, so new
 migrations are applied on every deploy. `vercel.json` has a daily cron hitting
-`/api/refresh`; the app also refreshes stale feeds when opened.
+`/api/refresh`, Supabase pg_cron pings `/api/refresh/tick` every hour, and the app also
+refreshes stale feeds when opened.
 
 - Pushes to `main` deploy to production once the PR is merged; pushes to other
   branches create preview deployments.
