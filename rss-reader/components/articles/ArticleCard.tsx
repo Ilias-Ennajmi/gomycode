@@ -258,7 +258,10 @@ export function ArticleCard({
 
           <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
             <FeedFavicon title={source.name} faviconUrl={source.faviconUrl} size={14} />
-            <span className="min-w-[3.5rem] truncate">{source.name}</span>
+            {/* Keeps a few letters of a long name visible; a short one keeps its own width. */}
+            <span className={cn("truncate", source.name.length > 6 && "min-w-[3.5rem]")}>
+              {source.name}
+            </span>
             {article.author && article.author !== source.name && (
               <>
                 <span aria-hidden className="hidden sm:inline">

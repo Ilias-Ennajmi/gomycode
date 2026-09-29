@@ -5,7 +5,7 @@ import { cn, formatRelativeTime } from "@/lib/utils";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import type { NewsStory } from "@/lib/hooks/useNews";
 
-/** A story picture that quietly disappears if the site refuses to serve it. */
+/** A story picture, or a tinted cover when there is none or the site refuses to serve it. */
 export function StoryImage({
   src,
   className,
@@ -17,8 +17,15 @@ export function StoryImage({
 }) {
   const [failed, setFailed] = React.useState(false);
   if (!src || failed) {
+    // No picture, or the site refused it: a tinted cover rather than an empty grey box.
     return (
-      <div className={cn("bg-gradient-to-br from-muted to-muted/40", className)} aria-hidden />
+      <div
+        className={cn(
+          "bg-muted bg-[radial-gradient(ellipse_at_top_right,hsl(var(--primary)/0.45),transparent_65%),radial-gradient(ellipse_at_bottom_left,hsl(var(--primary)/0.18),transparent_60%)]",
+          className
+        )}
+        aria-hidden
+      />
     );
   }
   return (

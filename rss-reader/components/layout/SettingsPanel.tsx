@@ -24,10 +24,12 @@ import { cn } from "@/lib/utils";
 import { useAiStatus } from "@/lib/hooks/useAi";
 import { androidAppVersion, RELEASES_PAGE } from "@/lib/native";
 import { NotificationSettings } from "@/components/layout/NotificationSettings";
+import { useFeeds } from "@/lib/hooks/useFeeds";
+import { needingAttention } from "@/lib/feed-health";
 
 interface SettingsPanelProps {
   onAddFeed: (kind?: DiscoverKind) => void;
-  onManageSources: () => void;
+  onManageSources: (attention?: boolean) => void;
   onManageCategories: () => void;
   onContentFilters: () => void;
   onImportOpml: () => void;
@@ -52,6 +54,8 @@ export function SettingsPanel({
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
+  const { feeds } = useFeeds();
+  const attention = needingAttention(feeds).length;
 
   return (
     <div className="flex h-full flex-col">
@@ -70,8 +74,13 @@ export function SettingsPanel({
           <Row
             icon={Library}
             label="Your sources"
-            hint="Rename, move, mute or unfollow; spot broken feeds"
-            onClick={onManageSources}
+            hint={
+              attention > 0
+                ? `${attention} ${attention === 1 ? "needs" : "need"} attention: not loading or no new posts`
+                : "Rename, move, mute or unfollow"
+            }
+            warn={attention > 0}
+            onClick={() => onManageSources(attention > 0)}
           />
           <Row icon={FolderCog} label="Categories" onClick={onManageCategories} />
           <Row
@@ -179,12 +188,14 @@ function Row({
   icon: Icon,
   label,
   hint,
+  warn,
   destructive,
   onClick,
 }: {
   icon: typeof Plus;
   label: string;
   hint?: string;
+  warn?: boolean;
   destructive?: boolean;
   onClick: () => void;
 }) {
@@ -200,7 +211,16 @@ function Row({
       <Icon className={cn("h-5 w-5 shrink-0", !destructive && "text-muted-foreground")} />
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-medium">{label}</span>
-        {hint && <span className="block truncate text-xs text-muted-foreground">{hint}</span>}
+        {hint && (
+          <span
+            className={cn(
+              "block truncate text-xs",
+              warn ? "font-medium text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+            )}
+          >
+            {hint}
+          </span>
+        )}
       </span>
       {!destructive && <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
     </button>
@@ -225,7 +245,8 @@ function AiStatusRow() {
             <p className="font-medium">On · Google Gemini (free tier)</p>
             <p className="text-xs text-muted-foreground">
               Learned from {status.learnedFrom} article{status.learnedFrom === 1 ? "" : "s"} you
-              read or saved · {status.analyzed} analyzed · {status.topics} stories grouped
+              read or saved · {status.analyzed} analyzed · {status.topics}{" "}
+              {status.topics === 1 ? "story" : "stories"} grouped
             </p>
           </>
         ) : (
