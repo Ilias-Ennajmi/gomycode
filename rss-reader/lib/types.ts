@@ -83,6 +83,12 @@ export interface ArticleSummary {
   /** From the full article when it's been fetched, else the feed's text. */
   readingMinutes?: number;
   highlightCount?: number;
+  /** Videos: length (null until the channel is scanned, and for Shorts). */
+  durationSeconds?: number | null;
+  isShort?: boolean;
+  liveStatus?: "live" | "upcoming" | null;
+  /** Videos: where playback stopped. */
+  watchedSeconds?: number | null;
   /** Present in For You when other sources cover the same story. */
   topic?: {
     id: string;
@@ -127,6 +133,27 @@ export interface HighlightSummary {
 
 /** Newsletters sub-tabs: web newsletters (Substack and similar) or ones received by email. */
 export type NewsletterKind = "web" | "email";
+/** YouTube tab: regular videos, Shorts, or both. */
+export type VideoKind = "long" | "short" | "all";
+/** Under 10 minutes, 10 to 30, over 30. */
+export type VideoLength = "short" | "medium" | "long";
+
+export interface Chapter {
+  t: number;
+  title: string;
+}
+export interface TimedText {
+  t: number;
+  text: string;
+}
+export interface VideoExtras {
+  chapters: Chapter[];
+  keyMoments: TimedText[];
+  transcript: TimedText[];
+  /** "pending" while Gemini hasn't made the summary and transcript yet. */
+  ai: "done" | "pending" | "unavailable";
+  upNext: ArticleSummary | null;
+}
 
 /** Where a search looks. */
 export type SearchScope =
@@ -158,4 +185,6 @@ export interface ArticleListParams {
   since?: SearchSince;
   /** Only articles with highlights. */
   highlighted?: boolean;
+  video?: Exclude<VideoKind, "all">;
+  length?: VideoLength;
 }

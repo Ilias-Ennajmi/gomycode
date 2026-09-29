@@ -16,10 +16,18 @@ import {
 } from "@/lib/articles";
 import { searchArticleIds } from "@/lib/search";
 import { sqlName } from "@/lib/db";
+import { getVideoPrefs } from "@/lib/video-prefs";
 
 export const dynamic = "force-dynamic";
 
 const FOR_YOU_WINDOW_MS = 72 * 60 * 60 * 1000;
+
+// Video lengths for the YouTube tab's filter: under 10 minutes, 10 to 30, over 30.
+const LENGTHS: Record<string, Prisma.IntNullableFilter> = {
+  short: { lt: 600 },
+  medium: { gte: 600, lte: 1800 },
+  long: { gt: 1800 },
+};
 const FOR_YOU_CANDIDATES = 400;
 
 export async function GET(request: NextRequest) {
@@ -39,11 +47,14 @@ export async function GET(request: NextRequest) {
     const newsletter = newsletterFilter(searchParams.get("newsletter"));
     const since = sinceDate(searchParams.get("since"));
     const highlighted = searchParams.get("highlighted") === "true";
+    // YouTube tab: "long" (regular videos) or "short" (Shorts), and a length range.
+    const videoKind = searchParams.get("video");
+    const length = searchParams.get("length");
     const sort = searchParams.get("sort") === "oldest" ? "asc" : "desc";
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20", 10) || 20));
 
-    const rules = await getFilterRules();
+    const [rules, videoPrefs] = await Promise.all([getFilterRules(), getVideoPrefs()]);
     const where: Prisma.ArticleWhereInput = {};
 
     if (feedId) where.feedId = feedId;
@@ -64,6 +75,10 @@ export async function GET(request: NextRequest) {
     if (news) clauses.push(newsFilter(news));
     if (newsletter) clauses.push(newsletter);
     if (later !== "snoozed") clauses.push(notSnoozed());
+    if (videoKind === "short") clauses.push({ isShort: true });
+    else if (videoKind === "long" || videoPrefs.hideShorts) clauses.push({ isShort: false });
+    const range = LENGTHS[length ?? ""];
+    if (range) clauses.push({ isShort: false, durationSeconds: range });
     if (clauses.length > 0) where.AND = clauses;
 
     if (search) {

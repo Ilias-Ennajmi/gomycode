@@ -30,33 +30,35 @@ enum FeedType {
 }
 
 model Feed {
-  id          String    @id @default(cuid())
-  type        FeedType  @default(rss)
-  title       String
-  url         String    @unique
-  siteUrl     String?
-  description String?
-  faviconUrl  String?
-  coverUrl    String?
+  id              String    @id @default(cuid())
+  type            FeedType  @default(rss)
+  title           String
+  url             String    @unique
+  siteUrl         String?
+  description     String?
+  faviconUrl      String?
+  coverUrl        String?
   // Two-letter language code, from the catalog or the feed's <language>.
-  language    String?
+  language        String?
   // What the user followed (a site, catalog link or @handle), when it differs from url.
-  sourceUrl   String?
+  sourceUrl       String?
   /// Set for sources shown in the News tab: morocco, world, europe, africa, economy, sports, tech.
-  newsDesk    String?
+  newsDesk        String?
   /// Where a news source reports from: "ma" for Moroccan outlets, else null.
-  region      String?
+  region          String?
   /// Newsletters: where it comes from, "substack", "beehiiv", "ghost", "buttondown" or "email".
-  platform    String?
+  platform        String?
   /// Email newsletters: the address to subscribe with (a Kill the Newsletter inbox).
-  email       String?
-  categoryId  String?
-  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  articles    Article[]
-  lastFetched DateTime?
-  errorCount  Int       @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  email           String?
+  categoryId      String?
+  category        Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  articles        Article[]
+  lastFetched     DateTime?
+  /// YouTube: when the channel's pages were last read for lengths, Shorts and live status.
+  videosScannedAt DateTime?
+  errorCount      Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([categoryId])
 }
@@ -97,6 +99,25 @@ model Article {
   /// Hidden until then, when it comes back to the top of Later (with a notification).
   snoozedUntil      DateTime?
   highlights        Highlight[]
+  // Videos (see lib/youtube-video.ts and lib/video-ai.ts).
+  /// Length from the channel page; null until scanned (and for Shorts, which have none there).
+  durationSeconds   Int?
+  isShort           Boolean                  @default(false)
+  /// "upcoming" (scheduled premiere or stream) or "live"; null otherwise.
+  liveStatus        String?
+  /// When the video page (full description, chapters) was read.
+  videoCheckedAt    DateTime?
+  /// [{ t: seconds, title }] from the creator's chapters.
+  chapters          Json?
+  /// [{ t: seconds, text }] from Gemini: what's said, in chunks of about half a minute.
+  transcript        Json?
+  /// [{ t: seconds, text }] from Gemini: the moments worth jumping to.
+  keyMoments        Json?
+  /// Gemini runs: when it last tried and how often, so failures are retried a few times only.
+  videoAiAt         DateTime?
+  videoAiAttempts   Int                      @default(0)
+  /// Where playback stopped, to resume there.
+  watchedSeconds    Int?
   /// Full-text search: a generated column (title, summaries, author, start of the text).
   /// Defined in the v2_library migration; Prisma only knows it exists.
   search            Unsupported("tsvector")?
@@ -108,6 +129,7 @@ model Article {
   @@index([publishedAt])
   @@index([topicId])
   @@index([snoozedUntil])
+  @@index([isShort])
   @@index([search], type: Gin)
 }
 

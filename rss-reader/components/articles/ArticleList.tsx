@@ -20,6 +20,7 @@ import {
   Rows3,
   Rss,
   SearchX,
+  Smartphone,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -59,7 +60,11 @@ import type {
   NewsletterKind,
   SearchScope,
   SearchSince,
+  VideoKind,
+  VideoLength,
 } from "@/lib/types";
+import { ShortsGrid } from "@/components/video/ShortsGrid";
+import { ChannelHeader } from "@/components/video/ChannelHeader";
 import type { DiscoverKind } from "@/lib/discover/catalog";
 
 const TAB_DISCOVER: Record<string, { kind: DiscoverKind; label: string }> = {
@@ -91,6 +96,10 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
     setSearchSince,
     newsletterKind,
     setNewsletterKind,
+    videoKind,
+    setVideoKind,
+    videoLength,
+    setVideoLength,
     listParams,
     setMobilePane,
     laterTab,
@@ -251,6 +260,12 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   const isLater = view.type === "later" && !searching;
   const showHighlights = isLater && laterTab === "highlights";
   const showNewsletterKinds = view.type === "newsletters" && !searching;
+  const showVideoKinds = view.type === "youtube" && !searching;
+  const shortsGrid = showVideoKinds && videoKind === "short";
+  const channelFeed =
+    view.type === "feed" && !searching
+      ? feeds.find((f) => f.id === view.id && f.type === "youtube")
+      : undefined;
   // An email newsletter's own list shows its sign-up address.
   const emailFeed =
     view.type === "feed" && !searching ? feeds.find((f) => f.id === view.id && f.email) : undefined;
@@ -416,6 +431,15 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
           {showNewsletterKinds && (
             <NewsletterKinds kind={newsletterKind} onChange={setNewsletterKind} />
           )}
+          {channelFeed && <ChannelHeader feed={channelFeed} videoCount={total} />}
+          {showVideoKinds && (
+            <VideoKinds
+              kind={videoKind}
+              onKind={setVideoKind}
+              length={videoLength}
+              onLength={setVideoLength}
+            />
+          )}
           {sourceTab && <CategoryChips tab={sourceTab} />}
 
           <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
@@ -535,6 +559,19 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
             onAddFeed={onAddFeed}
             onSaveLink={onSaveLink}
           />
+        ) : shortsGrid ? (
+          <>
+            <ShortsGrid
+              articles={articles}
+              selectedId={selectedArticleId}
+              onSelect={handleSelect}
+            />
+            {hasMore && (
+              <div ref={sentinelRef} className="flex justify-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            )}
+          </>
         ) : (
           <>
             {articles.map((article) => {
@@ -640,6 +677,70 @@ function SearchFilters({
           <SelectItem value="month">Past month</SelectItem>
         </SelectContent>
       </Select>
+    </div>
+  );
+}
+
+const VIDEO_KINDS: { id: VideoKind; label: string }[] = [
+  { id: "long", label: "Videos" },
+  { id: "short", label: "Shorts" },
+  { id: "all", label: "All" },
+];
+const VIDEO_LENGTHS: { id: VideoLength | null; label: string }[] = [
+  { id: null, label: "Any length" },
+  { id: "short", label: "Under 10 min" },
+  { id: "medium", label: "10–30 min" },
+  { id: "long", label: "30+ min" },
+];
+
+/** YouTube → Videos · Shorts · All, and for videos, how long. */
+function VideoKinds({
+  kind,
+  onKind,
+  length,
+  onLength,
+}: {
+  kind: VideoKind;
+  onKind: (kind: VideoKind) => void;
+  length: VideoLength | null;
+  onLength: (length: VideoLength | null) => void;
+}) {
+  return (
+    <div className="border-b">
+      <div role="toolbar" aria-label="Kind of video" className="flex gap-1.5 px-3 pt-2">
+        {VIDEO_KINDS.map((option) => (
+          <Chip key={option.id} active={kind === option.id} onClick={() => onKind(option.id)}>
+            {option.id === "short" && <Smartphone className="h-3.5 w-3.5" />}
+            {option.label}
+          </Chip>
+        ))}
+      </div>
+      {kind !== "short" ? (
+        <div
+          role="toolbar"
+          aria-label="Video length"
+          className="flex gap-1.5 overflow-x-auto px-3 pb-2 pt-1.5 scrollbar-none"
+        >
+          {VIDEO_LENGTHS.map((option) => (
+            <button
+              key={option.id ?? "any"}
+              type="button"
+              aria-pressed={length === option.id}
+              onClick={() => onLength(option.id)}
+              className={cn(
+                "shrink-0 rounded-md px-2 py-0.5 text-xs font-medium transition-colors",
+                length === option.id
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="pb-2" />
+      )}
     </div>
   );
 }

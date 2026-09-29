@@ -26,7 +26,12 @@ export async function refreshFeeds(feedId?: string): Promise<RefreshResult | nul
       const created = await insertNewArticles(feed.id, parsed.articles);
       await prisma.feed.update({
         where: { id: feed.id },
-        data: { lastFetched: new Date(), errorCount: 0 },
+        data: {
+          lastFetched: new Date(),
+          errorCount: 0,
+          // New videos: read the channel's pages again for their lengths.
+          ...(created.length && feed.type === "youtube" ? { videosScannedAt: null } : {}),
+        },
       });
       return created.length;
     } catch (error) {

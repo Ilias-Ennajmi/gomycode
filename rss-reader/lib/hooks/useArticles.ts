@@ -31,6 +31,8 @@ function toSearchParams(params: ArticleListParams) {
   if (params.unread) search.set("unread", "true");
   if (params.search) search.set("search", params.search);
   if (params.newsletter) search.set("newsletter", params.newsletter);
+  if (params.video) search.set("video", params.video);
+  if (params.length) search.set("length", params.length);
   if (params.since && params.since !== "any") search.set("since", params.since);
   if (params.highlighted) search.set("highlighted", "true");
   return search;

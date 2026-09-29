@@ -40,11 +40,16 @@ export function serializeArticle<
     content?: string | null;
     summary?: string | null;
     search?: unknown;
+    transcript?: unknown;
+    keyMoments?: unknown;
+    chapters?: unknown;
     _count?: { highlights: number };
   },
 >(article: T) {
+  // Video extras are loaded by the reader (/api/articles/[id]/video), not with every list.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { embedding, fullContent, search, _count, ...rest } = article;
+  const { embedding, fullContent, search, transcript, keyMoments, chapters, _count, ...rest } =
+    article;
   return {
     ...rest,
     readingMinutes: readingMinutes(article),

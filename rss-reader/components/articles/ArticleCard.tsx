@@ -20,6 +20,7 @@ import type { ArticleSummary } from "@/lib/types";
 import { haptic } from "@/lib/native";
 import { SnoozeMenu, isSnoozed } from "@/components/articles/SnoozeMenu";
 import { formatSnooze } from "@/lib/snooze";
+import { clock, durationLabel } from "@/lib/hooks/useVideo";
 
 interface ArticleCardProps {
   article: ArticleSummary;
@@ -218,6 +219,13 @@ export function ArticleCard({
                 </span>
               </span>
             )}
+            {article.isVideo && <VideoBadge article={article} big={big} />}
+            {article.isVideo && progress > 0 && (
+              // Watched so far, along the bottom of the picture like YouTube.
+              <span className="absolute inset-x-0 bottom-0 h-[3px] bg-white/30">
+                <span className="block h-full bg-red-600" style={{ width: `${progress}%` }} />
+              </span>
+            )}
           </div>
           {!article.isRead && (
             <span
@@ -273,7 +281,11 @@ export function ArticleCard({
             <span aria-hidden>·</span>
             <span className="shrink-0">
               {article.isVideo
-                ? "Video"
+                ? article.isShort
+                  ? "Short"
+                  : article.durationSeconds
+                    ? durationLabel(article.durationSeconds)
+                    : "Video"
                 : article.readingMinutes
                   ? `${article.readingMinutes} min`
                   : readingTime(article.content || article.summary)}
@@ -323,7 +335,7 @@ export function ArticleCard({
             />
           )}
 
-          {progress > 0 && (
+          {progress > 0 && !article.isVideo && (
             <div
               className="mt-3 h-[3px] overflow-hidden rounded-full bg-border"
               role="progressbar"
@@ -477,5 +489,33 @@ function RelatedCoverage({
         </ul>
       )}
     </div>
+  );
+}
+
+/** On a video's picture: its length, or Short / Live / Upcoming. */
+function VideoBadge({ article, big }: { article: ArticleSummary; big: boolean }) {
+  const label =
+    article.liveStatus === "live"
+      ? "Live"
+      : article.liveStatus === "upcoming"
+        ? "Upcoming"
+        : article.isShort
+          ? "Short"
+          : article.durationSeconds
+            ? clock(article.durationSeconds)
+            : null;
+  if (!label) return null;
+  return (
+    <span
+      className={cn(
+        "absolute rounded font-semibold tabular-nums text-white",
+        big
+          ? "bottom-2 right-2 px-1.5 py-0.5 text-xs"
+          : "bottom-1 right-1 px-1 text-[9.5px] leading-[14px]",
+        article.liveStatus === "live" ? "bg-red-600" : "bg-black/80"
+      )}
+    >
+      {label}
+    </span>
   );
 }

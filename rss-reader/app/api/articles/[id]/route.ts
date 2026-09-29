@@ -16,11 +16,13 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const body = await request.json();
-    const { isRead, isSaved, isArchived, readProgress, snoozedUntil } = body as {
+    const { isRead, isSaved, isArchived, readProgress, watchedSeconds, snoozedUntil } = body as {
       isRead?: boolean;
       isSaved?: boolean;
       isArchived?: boolean;
       readProgress?: number;
+      /** Videos: where playback stopped. */
+      watchedSeconds?: number;
       /** An ISO date to snooze until, or null to wake it now. */
       snoozedUntil?: string | null;
     };
@@ -37,6 +39,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       savedAt?: Date | null;
       archivedAt?: Date | null;
       readProgress?: number;
+      watchedSeconds?: number;
       snoozedUntil?: Date | null;
     } = {};
 
@@ -60,6 +63,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (typeof readProgress === "number" && Number.isFinite(readProgress)) {
       // Progress only moves forward, so skimming back up doesn't erase it.
       data.readProgress = Math.max(article.readProgress, Math.min(100, Math.round(readProgress)));
+    }
+    if (typeof watchedSeconds === "number" && Number.isFinite(watchedSeconds)) {
+      // The current position (rewinding moves it back), to resume there.
+      data.watchedSeconds = Math.max(0, Math.round(watchedSeconds));
     }
 
     if (snoozedUntil !== undefined) {
