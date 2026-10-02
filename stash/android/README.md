@@ -1,12 +1,12 @@
 # Stash for Android
 
 A [Trusted Web Activity](https://developer.chrome.com/docs/android/trusted-web-activity/):
-a small Android app that opens https://__SITE_HOST__/today full-screen in Chrome, without a
+a small Android app that opens https://stash-drab-kappa.vercel.app/today full-screen in Chrome, without a
 browser bar. All screens and features come from the website, so they update with every web
 deploy. The app itself only needs a new version when this folder changes.
 
-`__SITE_HOST__` is a placeholder for the Vercel host. Replace it everywhere
-(`grep -rn __SITE_HOST__ .`) before the first build: `app/build.gradle`, `e2e.sh`,
+`stash-drab-kappa.vercel.app` is a placeholder for the Vercel host. Replace it everywhere
+(`grep -rn stash-drab-kappa.vercel.app .`) before the first build: `app/build.gradle`, `e2e.sh`,
 `res/xml/shortcuts.xml` and this file.
 
 ## What the app adds

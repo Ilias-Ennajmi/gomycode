@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Long-press the app icon. Each opens a view of the web app.
-     __SITE_HOST__ is replaced with the real Vercel host (same as siteHost in app/build.gradle). -->
+     stash-drab-kappa.vercel.app is replaced with the real Vercel host (same as siteHost in app/build.gradle). -->
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <shortcut
         android:enabled="true"
@@ -10,7 +10,7 @@
         android:shortcutShortLabel="@string/shortcutPlay">
         <intent
             android:action="android.intent.action.VIEW"
-            android:data="https://__SITE_HOST__/play?queue=today"
+            android:data="https://stash-drab-kappa.vercel.app/play?queue=today"
             android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity"
             android:targetPackage="io.github.iliasennajmi.stash" />
     </shortcut>
@@ -22,7 +22,7 @@
         android:shortcutShortLabel="@string/shortcutSearch">
         <intent
             android:action="android.intent.action.VIEW"
-            android:data="https://__SITE_HOST__/library?search=1"
+            android:data="https://stash-drab-kappa.vercel.app/library?search=1"
             android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity"
             android:targetPackage="io.github.iliasennajmi.stash" />
     </shortcut>
@@ -34,7 +34,7 @@
         android:shortcutShortLabel="@string/shortcutInbox">
         <intent
             android:action="android.intent.action.VIEW"
-            android:data="https://__SITE_HOST__/library?space=inbox"
+            android:data="https://stash-drab-kappa.vercel.app/library?space=inbox"
             android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity"
             android:targetPackage="io.github.iliasennajmi.stash" />
     </shortcut>

@@ -12,7 +12,7 @@ Activity) that installs from GitHub Releases and keeps itself up to date through
 
 | Piece | Where |
 |---|---|
-| Website | Vercel project `stash`, `https://__SITE_HOST__` |
+| Website | Vercel project `stash`, `https://stash-drab-kappa.vercel.app` |
 | Database, sign-in | Supabase project `rvbllpkhwakjuahxyfff` (schema `stash`) |
 | Android app | GitHub Releases tagged `stash-android-v…`, titled "Stash for Android …" |
 
@@ -46,8 +46,8 @@ can get in.
    **Authentication → Sign In / Providers → Google**: turn it on, paste the Client ID and
    secret, save.
 5. Same project → **Authentication → URL Configuration**:
-   - **Site URL**: `https://__SITE_HOST__`
-   - **Redirect URLs**: add `https://__SITE_HOST__/auth/callback` (and
+   - **Site URL**: `https://stash-drab-kappa.vercel.app`
+   - **Redirect URLs**: add `https://stash-drab-kappa.vercel.app/auth/callback` (and
      `http://localhost:3000/auth/callback` for local development).
 6. Open the app and tap **Continue with Google**.
 

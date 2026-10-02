@@ -6,8 +6,8 @@ plugins {
 def appVersionCode = 1
 def appVersionName = "1.0.0"
 
-// __SITE_HOST__ is replaced with the real Vercel host before the first build.
-def siteHost = "__SITE_HOST__"
+// stash-drab-kappa.vercel.app is replaced with the real Vercel host before the first build.
+def siteHost = "stash-drab-kappa.vercel.app"
 def siteUrl = "https://" + siteHost
 
 // Optional local signing from env vars; releases are signed offline with sign.sh. The key is never in git.

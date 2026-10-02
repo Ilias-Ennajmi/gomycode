@@ -9,8 +9,8 @@ APK="$1"
 OUT="$2"
 PKG=io.github.iliasennajmi.stash
 LAUNCHER=com.google.androidbrowserhelper.trusted.LauncherActivity
-# __SITE_HOST__ is replaced with the real Vercel host (same as siteHost in app/build.gradle).
-SITE=https://__SITE_HOST__
+# The Vercel host (same as siteHost in app/build.gradle).
+SITE=https://stash-drab-kappa.vercel.app
 HOST=${SITE#https://}
 mkdir -p "$OUT"
 
