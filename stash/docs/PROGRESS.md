@@ -26,15 +26,15 @@ Estimated running cost at ~300 saves/month: ≈ $2.70 (Claude only). See the app
 ### Phase 0 tasks
 - [x] Docs copied into `stash/`, PROGRESS.md created
 - [x] Next.js 16 scaffold + deps
-- [ ] Tokens + theming (4 themes, accents, Space palette, pre-paint script)
+- [x] Tokens + theming (4 themes, accents, Space palette, pre-paint script)
 - [ ] Components + `/design`
-- [ ] Navigation shell + placeholder screens + Settings → Appearance
-- [ ] Manifest, icons, service worker, native.ts, proxy.ts
-- [ ] Supabase: restore, migrations 0001/0002, types, advisors
-- [ ] Google sign-in (code) + README steps
+- [x] Navigation shell + placeholder screens + Settings → Appearance
+- [x] Manifest, icons, service worker, native.ts, proxy.ts
+- [x] Supabase: restore, migrations 0001/0002, types, advisors
+- [x] Google sign-in (code) + README steps
 - [ ] Vercel project, env, production deploy
-- [ ] Android shell + workflow
-- [ ] Signing key generated and sent to owner; assetlinks.json live
+- [x] Android shell + workflow
+- [~] Signing key generated and sent to owner (SHA-256 6F:E2:EF:39:…:93:B1); assetlinks.json written, not yet live
 - [ ] Release `stash-android-v1.0.0` + e2e "full screen (verified)"
 - [ ] Reviewer pass, tsc/lint/test/build green
 
@@ -44,4 +44,7 @@ Estimated running cost at ~300 saves/month: ≈ $2.70 (Claude only). See the app
 - [ ] Owner installed it through Obtainium and has the key file and its password.
 
 ## Log
+- 2026-10-02 — Supabase: project already held another app's tables in `public` (planet-sport content studio) and the owner's auth user. Stash is isolated in schema `stash`; nothing in `public` was touched. Large migrations timed out through the MCP, so 0001 was applied in chunks (stash_0001a…j); the SQL files in `supabase/migrations/` are the canonical, re-runnable version. Security advisor: no findings for `stash` (pre-existing findings are on the other app's `public` tables). The Supabase type generator only covers `public` here, so `scripts/gen-types.py` writes `lib/supabase/types.ts`.
+- 2026-10-02 — Vercel env set: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY (publishable key), ALLOWED_EMAILS.
+- 2026-10-02 — Signing key generated (alias `stash`, RSA 4096, 100 years) and sent to the owner; never committed.
 - 2026-10-02 — Plan approved. Supabase project restore started. Vercel project `stash` created, Vercel Authentication disabled. Next 16.3.8 scaffolded.
