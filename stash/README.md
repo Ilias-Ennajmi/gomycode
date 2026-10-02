@@ -45,10 +45,10 @@ can get in.
 4. Open **supabase.com/dashboard** → project *Ilias-Ennajmi's Project* →
    **Authentication → Sign In / Providers → Google**: turn it on, paste the Client ID and
    secret, save.
-5. Same project → **Authentication → URL Configuration**:
-   - **Site URL**: `https://stash-drab-kappa.vercel.app`
-   - **Redirect URLs**: add `https://stash-drab-kappa.vercel.app/auth/callback` (and
-     `http://localhost:3000/auth/callback` for local development).
+5. Same project → **Authentication → URL Configuration** → **Redirect URLs**: add
+   `https://stash-drab-kappa.vercel.app/**` (and `http://localhost:3000/**` for local
+   development). Leave **Site URL** as it is: this Supabase project also hosts another app,
+   and Stash always sends its own redirect address.
 6. Open the app and tap **Continue with Google**.
 
 ## Run it locally (developers)

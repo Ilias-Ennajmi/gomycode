@@ -5,9 +5,8 @@ a small Android app that opens https://stash-drab-kappa.vercel.app/today full-sc
 browser bar. All screens and features come from the website, so they update with every web
 deploy. The app itself only needs a new version when this folder changes.
 
-`stash-drab-kappa.vercel.app` is a placeholder for the Vercel host. Replace it everywhere
-(`grep -rn stash-drab-kappa.vercel.app .`) before the first build: `app/build.gradle`, `e2e.sh`,
-`res/xml/shortcuts.xml` and this file.
+The site host is set in `app/build.gradle` (`siteHost`), `e2e.sh` and `res/xml/shortcuts.xml`.
+Changing it needs a new APK and a matching `public/.well-known/assetlinks.json` on the new host.
 
 ## What the app adds
 

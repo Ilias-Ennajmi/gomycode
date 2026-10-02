@@ -31,7 +31,7 @@ export function LoginCard() {
 
   return (
     <div className="flex w-full max-w-sm flex-col items-center gap-6 text-center">
-      <div aria-hidden className="flex h-16 w-16 items-center justify-center rounded-xl bg-accent text-on-accent">
+      <div aria-hidden className="flex h-16 w-16 items-center justify-center rounded-xl bg-fg text-background">
         <span className="font-display text-title">S</span>
       </div>
       <div className="flex flex-col gap-2">

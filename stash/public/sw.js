@@ -3,11 +3,15 @@
 // - Network-first with a cached fallback for page navigations and Supabase REST reads.
 // - Stale-while-revalidate for images, with a size cap.
 // Bump VERSION whenever these caching rules change.
-const VERSION = "v1";
+const VERSION = "v2";
 const SHELL = `stash-shell-${VERSION}`;
 const DATA = `stash-data-${VERSION}`;
 const IMAGES = `stash-img-${VERSION}`;
+const OPAQUE = `stash-img-opaque-${VERSION}`;
+const STATIC = `stash-static-${VERSION}`;
 const MAX_IMAGES = 300;
+const MAX_OPAQUE_IMAGES = 30; // opaque responses count ~7 MB each against quota
+const MAX_STATIC = 200;
 const MAX_DATA = 200;
 const PRECACHE = ["/today", "/offline.html", "/icons/icon-192.png", "/manifest.webmanifest"];
 
@@ -15,7 +19,18 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(SHELL)
-      .then((cache) => Promise.all(PRECACHE.map((url) => cache.add(new Request(url, { credentials: "include" })).catch(() => {}))))
+      .then((cache) =>
+        Promise.all(
+          PRECACHE.map(async (url) => {
+            try {
+              const response = await fetch(url, { credentials: "include", redirect: "manual" });
+              if (response.ok && !response.redirected) await cache.put(url, response);
+            } catch {
+              // Offline during install: cached on the next successful visit.
+            }
+          }),
+        ),
+      )
       .then(() => self.skipWaiting()),
   );
 });
@@ -24,7 +39,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith("stash-") && ![SHELL, DATA, IMAGES].includes(k)).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith("stash-") && ![SHELL, DATA, IMAGES, OPAQUE, STATIC].includes(k)).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
@@ -39,13 +54,14 @@ async function networkFirst(request, cacheName, fallbackUrl) {
   const cache = await caches.open(cacheName);
   try {
     const response = await fetch(request);
-    if (response.ok && response.type !== "opaqueredirect") {
+    if (response.ok && !response.redirected && response.type !== "opaqueredirect") {
       cache.put(request, response.clone());
       if (cacheName === DATA) trim(DATA, MAX_DATA);
     }
     return response;
   } catch {
-    const cached = await cache.match(request, { ignoreVary: true });
+    // ?source=android&v=… and shortcut params shouldn't miss the cache offline.
+    const cached = (await cache.match(request, { ignoreVary: true })) ?? (await cache.match(request, { ignoreVary: true, ignoreSearch: true }));
     if (cached) return cached;
     if (fallbackUrl) return (await caches.match(fallbackUrl)) ?? Response.error();
     return Response.error();
@@ -54,12 +70,15 @@ async function networkFirst(request, cacheName, fallbackUrl) {
 
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(IMAGES);
-  const cached = await cache.match(request);
+  const cached = (await cache.match(request)) ?? (await caches.open(OPAQUE).then((c) => c.match(request)));
   const network = fetch(request)
     .then((response) => {
-      if (response.ok || response.type === "opaque") {
+      if (response.ok) {
         cache.put(request, response.clone());
         trim(IMAGES, MAX_IMAGES);
+      } else if (response.type === "opaque") {
+        const copy = response.clone();
+        caches.open(OPAQUE).then((c) => c.put(request, copy).then(() => trim(OPAQUE, MAX_OPAQUE_IMAGES)));
       }
       return response;
     })
@@ -95,8 +114,10 @@ self.addEventListener("fetch", (event) => {
         (hit) =>
           hit ??
           fetch(request).then((response) => {
-            const copy = response.clone();
-            caches.open(SHELL).then((c) => c.put(request, copy));
+            if (response.ok) {
+              const copy = response.clone();
+              caches.open(STATIC).then((c) => c.put(request, copy).then(() => trim(STATIC, MAX_STATIC)));
+            }
             return response;
           }),
       ),

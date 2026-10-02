@@ -10,8 +10,17 @@ function isPublic(pathname: string) {
 }
 
 export async function proxy(request: NextRequest) {
-  // Without Supabase env (local dev before setup) the app runs ungated.
-  if (!isSupabaseConfigured) return NextResponse.next();
+  const { pathname, search } = request.nextUrl;
+  // Public pages (and assetlinks/PWA files, excluded by the matcher) never wait on auth.
+  if (isPublic(pathname)) return NextResponse.next();
+
+  if (!isSupabaseConfigured) {
+    // Local dev before setup runs ungated; production must never be open.
+    if (process.env.NODE_ENV === "production") {
+      return new NextResponse("Sign-in isn't configured on the server.", { status: 503 });
+    }
+    return NextResponse.next();
+  }
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -25,27 +34,31 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  // Refreshes the session cookie when needed; must run on every matched request.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Verifies the session JWT locally (no Auth round trip unless it needs refreshing)
+  // and refreshes the cookie when it's close to expiry.
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
 
-  const { pathname, search } = request.nextUrl;
-  if (isPublic(pathname)) return response;
+  // Redirects keep any cookies Supabase set (refreshed or cleared session).
+  const redirect = (url: URL) => {
+    const r = NextResponse.redirect(url);
+    response.cookies.getAll().forEach((c) => r.cookies.set(c));
+    return r;
+  };
 
-  if (!user) {
+  if (!claims) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = `?next=${encodeURIComponent(pathname + search)}`;
-    return NextResponse.redirect(url);
+    return redirect(url);
   }
 
-  if (!isAllowedEmail(user.email)) {
+  if (!isAllowedEmail(typeof claims.email === "string" ? claims.email : null)) {
     await supabase.auth.signOut();
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "?error=not_allowed";
-    return NextResponse.redirect(url);
+    return redirect(url);
   }
 
   return response;
