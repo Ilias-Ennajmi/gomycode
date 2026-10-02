@@ -1,6 +1,8 @@
 // Appearance preferences: the shape, defaults, and how they're applied to <html>.
 // Applying is synchronous and local (instant restyle, no reload); syncing to
 // Supabase happens afterwards in ThemeProvider.
+import { pickOnAccent } from "./contrast";
+import { BRAND } from "./brand";
 
 export const THEMES = ["system", "dark", "light", "black"] as const;
 export type ThemePref = (typeof THEMES)[number];
@@ -94,7 +96,11 @@ export function applyAppearance(a: Appearance, root: HTMLElement = document.docu
   root.style.setProperty("--text-scale", String(a.textScale));
   if (a.accent === "custom" && a.accentCustom) {
     root.style.setProperty("--accent-pick", a.accentCustom);
-    root.style.setProperty("--on-accent-pick", a.onAccentCustom ?? "var(--ink-dark)");
+    const style = getComputedStyle(root);
+    const ink =
+      a.onAccentCustom ??
+      pickOnAccent(a.accentCustom, style.getPropertyValue("--ink-dark").trim(), style.getPropertyValue("--ink-light").trim()).ink;
+    root.style.setProperty("--on-accent-pick", ink);
   } else {
     root.style.removeProperty("--accent-pick");
     root.style.removeProperty("--on-accent-pick");
@@ -113,4 +119,8 @@ export function applyAppearance(a: Appearance, root: HTMLElement = document.docu
  */
 export const PREPAINT_SCRIPT = `(function(){try{var d=document.documentElement,a=JSON.parse(localStorage.getItem(${JSON.stringify(
   STORAGE_KEY,
-)})||"{}")||{},t=a.theme||"system";if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";d.dataset.theme=t;d.dataset.themePref=a.theme||"system";d.dataset.accent=a.accent||"lime";d.dataset.density=String(a.density||2);d.dataset.reduceMotion=String(!!a.reduceMotion);if(a.textScale)d.style.setProperty("--text-scale",String(a.textScale));if(a.accent==="custom"&&a.accentCustom){d.style.setProperty("--accent-pick",a.accentCustom);if(a.onAccentCustom)d.style.setProperty("--on-accent-pick",a.onAccentCustom)}}catch(e){}})();`;
+)})||"{}")||{},T=["system","dark","light","black"],A=["lime","coral","sky","gold","mono","custom"],p=T.indexOf(a.theme)>=0?a.theme:"system",t=p;if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";d.dataset.theme=t;d.dataset.themePref=p;var c=A.indexOf(a.accent)>=0?a.accent:"lime",h=/^#[0-9a-f]{6}$/i;if(c==="custom"&&!h.test(a.accentCustom||""))c="lime";d.dataset.accent=c;d.dataset.density=a.density===3?"3":"2";d.dataset.reduceMotion=String(a.reduceMotion===true);var s=Number(a.textScale);if(s>0)d.style.setProperty("--text-scale",String(Math.min(1.3,Math.max(0.9,s))));if(c==="custom"){d.style.setProperty("--accent-pick",a.accentCustom);if(h.test(a.onAccentCustom||""))d.style.setProperty("--on-accent-pick",a.onAccentCustom)}var bg=${JSON.stringify({
+  light: BRAND.backgroundLight,
+  dark: BRAND.backgroundDark,
+  black: BRAND.backgroundBlack,
+})}[t];document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){m.setAttribute("content",bg)})}catch(e){}})();`;

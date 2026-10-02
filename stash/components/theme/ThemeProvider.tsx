@@ -36,10 +36,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     applyAppearance(local);
     let cancelled = false;
     pullSettings().then((remote) => {
-      if (cancelled || !remote || remote.updatedAt <= local.updatedAt) return;
-      setAppearance(remote);
-      writeStored(remote);
-      applyAppearance(remote);
+      if (cancelled || !remote) return;
+      setAppearance((prev) => {
+        // A device that has never changed its appearance (a new phone) adopts the
+        // saved row. Otherwise this device's choice wins and is pushed up, so a
+        // change made while the pull was in flight is never overwritten.
+        if (prev.updatedAt === 0) {
+          writeStored(remote);
+          applyAppearance(remote);
+          return remote;
+        }
+        void pushSettings(prev);
+        return prev;
+      });
     });
     return () => {
       cancelled = true;

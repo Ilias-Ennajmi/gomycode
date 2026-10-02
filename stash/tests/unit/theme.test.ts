@@ -42,6 +42,7 @@ describe("tokens", () => {
     expect(block('[data-theme="light"]').toLowerCase()).toContain(`--background: ${BRAND.backgroundLight}`);
     expect(block('[data-theme="dark"]').toLowerCase()).toContain(`--background: ${BRAND.backgroundDark}`);
     expect(tokens.toLowerCase()).toContain(`--accent-lime: ${BRAND.accent}`);
+    expect(block('[data-theme="black"]').toLowerCase()).toContain(`--background: ${BRAND.backgroundBlack}`);
   });
 
   it("every theme defines the same colour tokens", () => {

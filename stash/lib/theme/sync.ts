@@ -1,6 +1,7 @@
 // Mirrors Appearance to the stash.settings row so choices follow the owner to a
 // new phone. Network second: failures are silent, localStorage stays the truth.
 import { type Appearance, normalize } from "./appearance";
+import { pickOnAccent, readToken } from "./contrast";
 import { getBrowserClient } from "@/lib/supabase/client";
 
 export async function pullSettings(): Promise<Appearance | null> {
@@ -10,11 +11,11 @@ export async function pullSettings(): Promise<Appearance | null> {
   if (!auth.user) return null;
   const { data } = await supabase
     .from("settings")
-    .select("theme, accent, accent_custom, text_scale, density, reduce_motion, haptics, updated_at")
+    .select("theme, accent, accent_custom, text_scale, density, reduce_motion, haptics")
     .eq("user_id", auth.user.id)
     .maybeSingle();
   if (!data) return null;
-  return normalize({
+  const remote = normalize({
     theme: data.theme,
     accent: data.accent,
     accentCustom: data.accent_custom,
@@ -22,8 +23,14 @@ export async function pullSettings(): Promise<Appearance | null> {
     density: data.density,
     reduceMotion: data.reduce_motion,
     haptics: data.haptics,
-    updatedAt: Date.parse(data.updated_at),
+    // Remote rows are only adopted on a device with no local choice yet.
+    updatedAt: 1,
   });
+  // The ink for a custom accent isn't stored; recompute it for 4.5:1 contrast.
+  if (remote.accent === "custom" && remote.accentCustom) {
+    remote.onAccentCustom = pickOnAccent(remote.accentCustom, readToken("--ink-dark"), readToken("--ink-light")).ink;
+  }
+  return remote;
 }
 
 export async function pushSettings(a: Appearance): Promise<void> {

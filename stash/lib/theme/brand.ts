@@ -4,5 +4,6 @@
 export const BRAND = {
   backgroundLight: "#f6f4ef",
   backgroundDark: "#0e0e10",
+  backgroundBlack: "#000000",
   accent: "#c8f05a",
 } as const;
