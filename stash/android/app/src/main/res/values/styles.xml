@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Stash" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/splashBackground</item>
+        <item name="android:statusBarColor">@color/barColor</item>
+        <item name="android:navigationBarColor">@color/barColor</item>
+    </style>
+</resources>
