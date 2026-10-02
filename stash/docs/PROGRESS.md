@@ -2,7 +2,7 @@
 
 Read this at the start of every session. Updated after every task.
 
-## Current phase: 0 · Foundation (in progress)
+## Current phase: 0 · Foundation — built, waiting for the owner's phone test and go for Phase 1
 
 ### Decisions (agreed with the owner)
 | Topic | Decision | Why |
@@ -35,15 +35,27 @@ Estimated running cost at ~300 saves/month: ≈ $2.70 (Claude only). See the app
 - [x] Vercel project, env, production deploy — https://stash-drab-kappa.vercel.app
 - [x] Android shell + workflow
 - [x] Signing key generated and sent to owner (SHA-256 6F:E2:EF:39:…:93:B1); assetlinks.json live and public
-- [ ] Release `stash-android-v1.0.0` + e2e "full screen (verified)"
-- [ ] Reviewer pass, tsc/lint/test/build green
+- [x] Release `stash-android-v1.0.0` + e2e "full screen (verified)"
+- [x] Reviewer pass (3 FAILs + concerns fixed), tsc/lint/test/build green
 
 ### Acceptance checks (Phase 0)
-- [ ] `/design` shows every token and component; switching theme and accent restyles everything instantly.
-- [ ] Release `stash-android-v1.0.0` exists with the signed APK, and e2e reports "full screen (verified)".
-- [ ] Owner installed it through Obtainium and has the key file and its password.
+- [x] PASSED — `/design` shows every token and component; switching theme and accent restyles everything instantly (browser-tested: same document, no reload, persists across reload).
+- [x] PASSED — Release `stash-android-v1.0.0` exists with Stash-1.0.0.apk; e2e: launch, share and site link all "full screen (verified)", domain verified, RESULT: PASS.
+- [ ] PENDING (owner) — install through Obtainium; key file + password were sent, owner to confirm saved.
+
+## Open items for the owner
+- Create the Google OAuth client and enable Google in Supabase (README → "One-time setup"). Until then sign-in shows an error; /design works without signing in.
+- Reader's Obtainium entry needs the title filter `^Reader for Android`, because Stash releases now also become the repo's "latest".
+- Pre-existing Supabase advisor warnings belong to the other app in `public` (e.g. `public.rls_auto_enable()` callable by anon) — not touched by Stash.
+
+## Known limits carried into Phase 1
+- Placeholder screens have a teaching line but no action button yet (real actions arrive with the screens).
+- Navigating away from inside an open sheet leaves its history entry; one extra back press. Revisit with the save sheet.
+- `search_saves()` and the worker queue functions are Phase 1 migrations (0003, 0004).
 
 ## Log
+- 2026-10-02 — Reviewer subagent pass. Fixed: custom-accent ink lost after sync (FAIL), remote settings overwriting newer local choice (FAIL), android/README host text (FAIL); back-gesture stack, service-worker redirect/quota/query issues, proxy (public pages skip auth, getClaims, cookies on redirect, fail closed), min text sizes at 90%, /design coverage (shell, sizes, elevation, ink, easing, scrim), preset Space-clash warning, spacing on 4px steps, back chevrons use history, Supabase Site URL guidance.
+- 2026-10-02 — Release stash-android-v1.0.0 published by CI; e2e PASS with "full screen (verified)" on launch, share and site link.
 - 2026-10-02 — Production host is `stash-drab-kappa.vercel.app` (auto-assigned by Vercel; changing it later needs a new APK + assetlinks). Verified through Vercel: assetlinks.json → 200 application/json without login; /today → redirects to /login. Android shell host set, CI build green, unsigned APK from 3daa732 signed offline with sign.sh (v2, cert matches assetlinks, aligned) and committed as releases/Stash-1.0.0.apk.
 - 2026-10-02 — Local checks: tsc, eslint, 13 unit tests, next build all green. Playwright at 360px: /design, /today, /settings render in light/dark/black with no horizontal scroll and no console errors.
 - 2026-10-02 — Supabase: project already held another app's tables in `public` (planet-sport content studio) and the owner's auth user. Stash is isolated in schema `stash`; nothing in `public` was touched. Large migrations timed out through the MCP, so 0001 was applied in chunks (stash_0001a…j); the SQL files in `supabase/migrations/` are the canonical, re-runnable version. Security advisor: no findings for `stash` (pre-existing findings are on the other app's `public` tables). The Supabase type generator only covers `public` here, so `scripts/gen-types.py` writes `lib/supabase/types.ts`.
