@@ -6,7 +6,7 @@ plugins {
 def appVersionCode = 1
 def appVersionName = "1.0.0"
 
-// stash-drab-kappa.vercel.app is replaced with the real Vercel host before the first build.
+// The website this app opens. Changing it needs a new release and a matching assetlinks.json.
 def siteHost = "stash-drab-kappa.vercel.app"
 def siteUrl = "https://" + siteHost
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Long-press the app icon. Each opens a view of the web app.
-     stash-drab-kappa.vercel.app is replaced with the real Vercel host (same as siteHost in app/build.gradle). -->
+     Links point at the site host (same as siteHost in app/build.gradle). -->
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <shortcut
         android:enabled="true"
