@@ -21,6 +21,7 @@ export function Card({ spaceColor, size = "md", padded = true, className, childr
       )}
       {...rest}
     >
+      {/* 3px Space top edge (spec: "thumbnail top edge"); a hairline, not a spacing step. */}
       {spaceColor && <span aria-hidden className={cx("absolute inset-x-0 top-0 h-0.75", SPACE_BG[spaceColor])} />}
       {children}
     </div>

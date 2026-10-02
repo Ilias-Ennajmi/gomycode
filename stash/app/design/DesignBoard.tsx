@@ -23,7 +23,11 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { BottomBar } from "@/components/shell/BottomBar";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { Placeholder } from "@/components/shell/Placeholder";
 import { AccentPicker } from "@/components/theme/AccentPicker";
+import { AppearanceControls } from "@/components/theme/AppearanceControls";
 import { PreviewCard } from "@/components/theme/PreviewCard";
 import { ThemePicker } from "@/components/theme/ThemePicker";
 import { useAppearance } from "@/components/theme/ThemeProvider";
@@ -58,6 +62,7 @@ const SECTIONS = [
   ["type", "Typography"],
   ["spacing", "Spacing"],
   ["radii", "Radii"],
+  ["sizes", "Sizes & elevation"],
   ["motion", "Motion"],
   ["icons", "Icons"],
   ["components", "Components"],
@@ -142,7 +147,36 @@ const ICONS = [
   ["X", X],
 ] as const;
 
+const SIZE_TOKENS = [
+  { cssVar: "--tap-min", use: "every tap target" },
+  { cssVar: "--icon-size", use: "lucide icons" },
+  { cssVar: "--icon-stroke", use: "icon stroke" },
+  { cssVar: "--play-size", use: "Play button" },
+  { cssVar: "--play-raise", use: "Play raised above the bar" },
+  { cssVar: "--bar-height", use: "bottom bar, before safe area" },
+] as const;
+
+const ELEVATION = [
+  { cssVar: "--elev-raised", cls: "shadow-raised", use: "Play, toasts, floating search" },
+  { cssVar: "--elev-sheet", cls: "shadow-sheet", use: "bottom sheets" },
+] as const;
+
+const INKS = [
+  { cssVar: "--ink-dark", use: "onAccent on light accents" },
+  { cssVar: "--ink-light", use: "onAccent on dark accents, text over video" },
+] as const;
+
+const EASINGS = [
+  { cssVar: "--motion-ease-standard", use: "standard: most transitions" },
+  { cssVar: "--motion-ease-spring", use: "spring: overshoots slightly" },
+] as const;
+
 const LIVE_VARS = [
+  "--scrim",
+  ...SIZE_TOKENS.map((t) => t.cssVar),
+  ...ELEVATION.map((t) => t.cssVar),
+  ...INKS.map((t) => t.cssVar),
+  ...EASINGS.map((t) => t.cssVar),
   ...COLOUR_TOKENS.map((t) => t.cssVar),
   ...ACCENT_TOKENS.map((t) => t.cssVar),
   ...SPACE_COLORS.map(spaceVar),
@@ -152,7 +186,9 @@ const LIVE_VARS = [
 
 function Section({ id, title, intro, children }: { id: string; title: string; intro?: string; children: ReactNode }) {
   return (
-    <section id={id} aria-labelledby={`${id}-h`} className="scroll-mt-56 border-t border-line pt-8">
+    <section id={id} aria-labelledby={`${id}-h`} className="border-t border-line pt-8"
+      // Clears the sticky header when jumping to an anchor.
+      style={{ scrollMarginTop: "calc(var(--space-8) * 7)" }}>
       <h2 id={`${id}-h`} className="text-title">
         <a href={`#${id}`} className="hover:underline">
           {title}
@@ -296,6 +332,117 @@ function Radii() {
   );
 }
 
+
+function SizesElevation({ live }: { live: Record<string, string> }) {
+  const [moved, setMoved] = useState(false);
+  return (
+    <div className="flex flex-col gap-8">
+      <Sub title="Elevation">
+        <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          {ELEVATION.map((e) => (
+            <li key={e.cssVar} className="flex flex-col gap-3">
+              <span aria-hidden className={cx("block h-20 rounded-card border border-line bg-surface", e.cls)} />
+              <code className="break-all text-caption text-fg-muted">
+                {e.cssVar} · {e.cls} · {e.use}
+              </code>
+            </li>
+          ))}
+        </ul>
+      </Sub>
+
+      <Sub title="Sizes">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {SIZE_TOKENS.map((t) => (
+            <li key={t.cssVar} className="flex flex-col rounded-card border border-line bg-surface p-3">
+              <code className="text-label">
+                {t.cssVar} · {live[t.cssVar] || "…"}
+              </code>
+              <span className="text-caption text-fg-muted">{t.use}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="flex flex-wrap items-end gap-6">
+          <figure className="flex flex-col items-center gap-2">
+            <span
+              className="flex items-center justify-center rounded-sm border border-dashed border-fg-subtle"
+              style={{ width: "var(--tap-min)", height: "var(--tap-min)" }}
+            >
+              <Search size={24} strokeWidth={2} aria-hidden />
+            </span>
+            <figcaption className="text-caption text-fg-muted">48 tap · 24 icon · stroke 2</figcaption>
+          </figure>
+          <figure className="flex min-w-0 flex-1 flex-col gap-2">
+            <div className="relative mt-6 w-full max-w-sm rounded-card border border-line bg-surface" style={{ height: "var(--bar-height)" }}>
+              <span
+                aria-hidden
+                className="absolute left-1/2 flex -translate-x-1/2 items-center justify-center rounded-full bg-accent text-on-accent shadow-raised"
+                style={{ width: "var(--play-size)", height: "var(--play-size)", top: "calc(var(--play-raise) * -1)" }}
+              >
+                <Play size={24} strokeWidth={2} fill="currentColor" />
+              </span>
+            </div>
+            <figcaption className="text-caption text-fg-muted">
+              Bar 64 high · Play 56 wide, raised 18 above the bar
+            </figcaption>
+          </figure>
+        </div>
+      </Sub>
+
+      <Sub title="Inks and scrim">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {INKS.map((t) => (
+            <li key={t.cssVar} className="flex items-center gap-3 rounded-card border border-line bg-surface p-3">
+              <Swatch cssVar={t.cssVar} />
+              <span className="flex min-w-0 flex-col">
+                <code className="text-label">{t.cssVar}</code>
+                <code className="text-caption text-fg-muted">{live[t.cssVar] || "…"}</code>
+                <span className="text-caption text-fg-muted">{t.use}</span>
+              </span>
+            </li>
+          ))}
+          <li className="flex items-center gap-3 rounded-card border border-line bg-surface p-3">
+            <span aria-hidden className="relative block h-12 w-12 shrink-0 overflow-hidden rounded-sm border border-line bg-accent">
+              <span className="absolute inset-0 bg-scrim" />
+            </span>
+            <span className="flex min-w-0 flex-col">
+              <code className="text-label">--scrim · bg-scrim</code>
+              <code className="break-all text-caption text-fg-muted">{live["--scrim"] || "…"}</code>
+              <span className="text-caption text-fg-muted">shown over the accent</span>
+            </span>
+          </li>
+        </ul>
+      </Sub>
+
+      <Sub title="Easing">
+        <ul className="flex flex-col gap-3">
+          {EASINGS.map((e) => (
+            <li key={e.cssVar} className="flex flex-col gap-1">
+              <code className="break-all text-caption text-fg-muted">
+                {e.cssVar} · {live[e.cssVar] || "…"} · {e.use}
+              </code>
+              <div className="@container h-12 rounded-card bg-raised p-1">
+                <span
+                  aria-hidden
+                  className="block h-10 w-10 rounded-sm bg-fg"
+                  style={{
+                    transform: moved ? "translateX(calc(100cqw - 100%))" : "translateX(0)",
+                    transition: `transform calc(var(--dur-sheet) * 2) var(${e.cssVar})`,
+                  }}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+        <div>
+          <Button variant="secondary" icon={Play} onClick={() => setMoved((v) => !v)}>
+            Run easing demo
+          </Button>
+        </div>
+      </Sub>
+    </div>
+  );
+}
+
 function Motion() {
   const motionOK = useMotionOK();
   const [end, setEnd] = useState(false);
@@ -365,7 +512,7 @@ function Components() {
   const toggleChip = (c: string) => setChips((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-8">
       <Sub title="Button · variants">
         <div className="flex flex-wrap gap-3">
           <Button icon={Play}>Primary</Button>
@@ -589,6 +736,69 @@ function Components() {
         <Slider label="Text size" value={size} onChange={setSize} className="max-w-md" />
       </Sub>
 
+      <Sub title="Shell · BottomBar (hasDue off, on)">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {[false, true].map((due) => (
+            <figure key={String(due)} className="flex flex-col gap-2">
+              {/* BottomBar is position:fixed; the transform makes this box its containing block. */}
+              <div
+                className="relative overflow-hidden rounded-card border border-line bg-background"
+                style={{
+                  transform: "translateZ(0)",
+                  height: "calc(var(--bar-height) + var(--play-raise) + var(--space-4))",
+                }}
+              >
+                <BottomBar hasDue={due} playHref="/design#components" />
+              </div>
+              <figcaption className="text-caption text-fg-muted">{due ? "hasDue: soft accent ring" : "Nothing due"}</figcaption>
+            </figure>
+          ))}
+        </div>
+      </Sub>
+
+      <Sub title="Shell · PageHeader">
+        <div className="flex flex-col gap-3">
+          <Card padded={false}>
+            <PageHeader headingLevel={2} title="Library" trailing={<IconButton label="Search" icon={Search} />} />
+          </Card>
+          <Card padded={false}>
+            <PageHeader headingLevel={2} title="Marketing" eyebrow="Project · due 30 Oct" back="/design#components" />
+          </Card>
+        </div>
+      </Sub>
+
+      <Sub title="Shell · Placeholder">
+        <Card size="lg" padded={false} className="max-w-md">
+          <Placeholder
+            icon={Share2}
+            line="Share a reel to Stash to start."
+            action={{ label: "How sharing works", href: "/design#components" }}
+            phase="Phase 1"
+          />
+        </Card>
+      </Sub>
+
+      <Sub title="Shell · OfflineBanner (static copy: the real one renders only while offline)">
+        <Banner variant="offline" className="max-w-md">
+          Offline. Saves will sync when you&apos;re back.
+        </Banner>
+      </Sub>
+
+      <Sub title="Button · on-accent (on an accent surface)">
+        <div className="flex max-w-md flex-col gap-3 rounded-xl bg-accent p-4 text-on-accent">
+          <p className="font-display text-heading">Your 5 for today</p>
+          <Button variant="on-accent" icon={Play} fullWidth>
+            Start · 6 min
+          </Button>
+        </div>
+      </Sub>
+
+      <Sub title="AppearanceControls (Settings → Appearance)">
+        <Card size="lg" className="max-w-md">
+          <AppearanceControls />
+        </Card>
+      </Sub>
+
       <Sub title="Sheet and Toast">
         <div className="flex flex-wrap gap-3">
           <Button variant="secondary" onClick={() => setSheet(true)}>
@@ -718,7 +928,7 @@ export function DesignBoard() {
         </ul>
       </nav>
 
-      <main className="mx-auto flex max-w-6xl flex-col gap-10 px-4 pb-32 pt-2">
+      <main className="mx-auto flex max-w-6xl flex-col gap-8 px-4 pb-8 pt-2">
         <p className="max-w-2xl text-body text-fg-muted">
           Every colour, type style and shape below comes from styles/tokens.css. Switch theme or accent in the header: the
           whole page restyles instantly, and hex values update to the current theme.
@@ -740,6 +950,9 @@ export function DesignBoard() {
         </Section>
         <Section id="radii" title="Radii">
           <Radii />
+        </Section>
+        <Section id="sizes" title="Sizes & elevation" intro="Fixed sizes, shadows, inks, the resolved scrim and easing curves.">
+          <SizesElevation live={live} />
         </Section>
         <Section id="motion" title="Motion" intro="Durations drop to 0 when reduce motion is on, from the OS or the app.">
           <Motion />

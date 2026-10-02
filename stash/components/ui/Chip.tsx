@@ -23,7 +23,7 @@ export function Chip({ label, selected = false, count, dot, className, type = "b
     >
       <span
         className={cx(
-          "inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-label",
+          "inline-flex h-9 items-center gap-2 rounded-full border px-3 text-label",
           "transition-colors duration-[var(--dur-fast)] ease-standard",
           selected ? "border-fg bg-fg text-background" : "border-line text-fg group-hover:bg-raised",
         )}

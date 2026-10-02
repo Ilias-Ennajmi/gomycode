@@ -40,7 +40,7 @@ export function SpaceChip({
     >
       <span
         className={cx(
-          "inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-label text-fg",
+          "inline-flex h-9 items-center gap-2 rounded-full border px-3 text-label text-fg",
           SPACE_TINT[color],
           suggested ? SPACE_BORDER[color] : "border-transparent",
           selected && "ring-2 ring-fg",

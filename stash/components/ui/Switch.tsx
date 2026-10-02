@@ -46,14 +46,14 @@ export function Switch({ checked, onChange, label, description, hideLabel, disab
       <span
         aria-hidden
         className={cx(
-          "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border",
+          "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full ring-1 ring-inset",
           "transition-colors duration-[var(--dur-fast)] ease-standard",
-          checked ? "border-fg bg-fg" : "border-line bg-raised",
+          checked ? "bg-fg ring-fg" : "bg-raised ring-line",
         )}
       >
         <span
           className={cx(
-            "absolute left-0.5 h-5.5 w-5.5 rounded-full transition-transform duration-[var(--dur-fast)] ease-standard",
+            "absolute left-1 h-5 w-5 rounded-full transition-transform duration-[var(--dur-fast)] ease-standard",
             checked ? "translate-x-5 bg-background" : "translate-x-0 bg-fg-subtle",
           )}
         />

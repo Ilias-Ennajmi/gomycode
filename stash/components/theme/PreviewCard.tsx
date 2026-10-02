@@ -21,6 +21,7 @@ export function PreviewCard({ className }: { className?: string }) {
         <div className="mt-3 flex gap-2" aria-hidden>
           {QUEUE.map((c) => (
             <span key={c} className="relative aspect-9/16 flex-1 overflow-hidden rounded-sm bg-surface">
+              {/* 3px Space top edge, see Card. */}
               <span className={cx("absolute inset-x-0 top-0 h-0.75", SPACE_BG[c])} />
             </span>
           ))}

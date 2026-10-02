@@ -59,20 +59,21 @@ export function Thumbnail({
       ) : (
         loading && <span aria-hidden className="shimmer absolute inset-0" />
       )}
+      {/* 3px Space top edge (spec: "thumbnail top edge"); a hairline, not a spacing step. */}
       {spaceColor && <span aria-hidden className={cx("absolute inset-x-0 top-0 z-10 h-0.75", SPACE_BG[spaceColor])} />}
       {unwatched && (
-        <span className="absolute left-2 top-2.5 z-10 h-2.5 w-2.5 rounded-full" style={{ background: "var(--ink-light)" }}>
+        <span className="absolute left-2 top-3 z-10 h-3 w-3 rounded-full" style={{ background: "var(--ink-light)" }}>
           <span className="sr-only">Unwatched</span>
         </span>
       )}
       {duration !== undefined && (
-        <span className="absolute right-2 top-2.5 z-10 rounded-sm bg-scrim px-1.5 text-caption" style={INK_LIGHT}>
+        <span className="absolute right-2 top-2 z-10 rounded-sm bg-scrim px-2 text-caption" style={INK_LIGHT}>
           {formatDuration(duration)}
         </span>
       )}
-      <span className="absolute inset-x-0 bottom-0 z-10 flex min-h-1/2 flex-col justify-end p-2.5" style={BOTTOM_SCRIM}>
+      <span className="absolute inset-x-0 bottom-0 z-10 flex min-h-1/2 flex-col justify-end p-3" style={BOTTOM_SCRIM}>
         {loading ? (
-          <span aria-hidden className="flex flex-col gap-1.5">
+          <span aria-hidden className="flex flex-col gap-2">
             <span className="shimmer h-3 w-full rounded-sm opacity-60" />
             <span className="shimmer h-3 w-2/3 rounded-sm opacity-60" />
           </span>

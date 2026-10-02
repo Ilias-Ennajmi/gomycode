@@ -17,7 +17,7 @@ export function TextField({ label, hint, error, hideLabel, id, className, ...res
   const noteId = `${inputId}-note`;
   const note = error ?? hint;
   return (
-    <div className={cx("flex flex-col gap-1.5", className)}>
+    <div className={cx("flex flex-col gap-2", className)}>
       <label htmlFor={inputId} className={cx("text-label text-fg", hideLabel && "sr-only")}>
         {label}
       </label>
