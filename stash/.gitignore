@@ -46,3 +46,7 @@ next-env.d.ts
 *.keystore
 keystore.properties
 password.txt
+
+# The repo-root .gitignore is a Python template that ignores every `lib/`
+# directory; this app's source lives in lib/, so re-include it.
+!lib/

@@ -1,0 +1,229 @@
+/*
+ * Stash design tokens — the ONLY place raw colour values live.
+ * Components use these through Tailwind (see styles/globals.css) or var(--token).
+ *
+ * Themes are selected with data-theme on <html> (set before first paint by the
+ * inline script in app/layout.tsx). Any element can carry data-theme too, which
+ * is how /design previews all four themes side by side.
+ *
+ *   light  — default
+ *   dark
+ *   black  — AMOLED: dark values on a pure black background
+ *
+ * "System" is a preference, not a theme: the script resolves it to light/dark.
+ */
+
+/* ---------- Static values (theme independent) ---------- */
+:root {
+  /* Accent presets. onAccent for each preset is fixed below; custom accents
+     get theirs computed for 4.5:1 contrast (lib/theme/contrast.ts). */
+  --accent-lime: #c8f05a;
+  --accent-coral: #ff7a59;
+  --accent-sky: #6cc4ff;
+  --accent-gold: #f5c542;
+  --ink-dark: #0e0e10; /* onAccent on light accents */
+  --ink-light: #f6f4ef; /* onAccent on dark accents */
+
+  /* Default accent choice; overridden by [data-accent] or inline custom vars. */
+  --accent-pick: var(--accent-lime);
+  --on-accent-pick: var(--ink-dark);
+
+  /* Typography. Sizes in rem so the system font scale and the in-app text
+     size setting (html font-size, see globals.css) both apply. */
+  --type-family-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --type-family-body: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+
+  --type-display-size: 1.875rem; /* 30 */
+  --type-display-weight: 700;
+  --type-display-line: 1.15;
+  --type-title-size: 1.375rem; /* 22 */
+  --type-title-weight: 700;
+  --type-title-line: 1.2;
+  --type-heading-size: 1.125rem; /* 18 */
+  --type-heading-weight: 700;
+  --type-heading-line: 1.3;
+  --type-body-size: 0.9375rem; /* 15 */
+  --type-body-weight: 500;
+  --type-body-line: 1.5;
+  --type-label-size: 0.875rem; /* 14 */
+  --type-label-weight: 600;
+  --type-label-line: 1.3;
+  --type-caption-size: 0.8125rem; /* 13 */
+  --type-caption-weight: 500;
+  --type-caption-line: 1.35;
+  --type-tab-size: 0.75rem; /* 12 — tab labels only */
+  --type-tab-weight: 600;
+  --type-tab-line: 1.2;
+  --type-input-size: 1rem; /* 16 — inputs never trigger zoom */
+
+  /* Spacing steps (4px grid). */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Radii. */
+  --shape-sm: 10px;
+  --shape-md: 14px; /* buttons, cards */
+  --shape-lg: 20px; /* large cards */
+  --shape-xl: 24px; /* hero */
+  --shape-sheet: 28px; /* bottom sheets */
+  --shape-full: 9999px;
+
+  /* Sizes. */
+  --tap-min: 48px;
+  --icon-size: 24px;
+  --icon-stroke: 2px;
+  --play-size: 56px;
+  --play-raise: 18px;
+  --bar-height: 64px;
+
+  /* Motion. Zeroed when reduce motion is on (system or in-app). */
+  --dur-fast: 150ms;
+  --dur-screen: 250ms;
+  --dur-sheet: 350ms;
+  --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --motion-ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  /* Elevation. */
+  --elev-raised: 0 6px 20px -6px rgb(0 0 0 / 0.35);
+  --elev-sheet: 0 -12px 40px -12px rgb(0 0 0 / 0.45);
+}
+
+/* ---------- Light (default) ---------- */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --background: #f6f4ef;
+  --surface: #ffffff;
+  --surface-raised: #efece6;
+  --border: #e4e1da;
+  --text-primary: #141413;
+  --text-secondary: #5e5b55;
+  --text-tertiary: #6e6b65;
+  --insight: #b44a12;
+  --danger: #c62828;
+  --scrim-base: #0e0e10;
+
+  --space-violet: #6b4fd8;
+  --space-teal: #0f8a78;
+  --space-amber: #8a5a00;
+  --space-blue: #2f5fd0;
+  --space-rose: #c0365f;
+  --space-green: #3c7d2b;
+  --space-cyan: #0b7a90;
+  --space-sand: #7a6440;
+  --space-inbox: #5e5b55;
+}
+
+/* ---------- Dark ---------- */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0e0e10;
+  --surface: #17171b;
+  --surface-raised: #1f1f25;
+  --border: #2a2a31;
+  --text-primary: #f2f0eb;
+  --text-secondary: #b4b1aa;
+  --text-tertiary: #9b988f;
+  --insight: #ff9c66;
+  --danger: #ff6b6b;
+  --scrim-base: #0e0e10;
+
+  --space-violet: #b79cff;
+  --space-teal: #5fd4c0;
+  --space-amber: #f2b64b;
+  --space-blue: #7fa8ff;
+  --space-rose: #ff8fb1;
+  --space-green: #8ed47a;
+  --space-cyan: #6fd3e8;
+  --space-sand: #d9c3a0;
+  --space-inbox: #b4b1aa;
+}
+
+/* ---------- Black (AMOLED) ---------- */
+[data-theme="black"] {
+  color-scheme: dark;
+  --background: #000000;
+  --surface: #111114;
+  --surface-raised: #1a1a1f;
+  --border: #26262c;
+  --text-primary: #f2f0eb;
+  --text-secondary: #b4b1aa;
+  --text-tertiary: #9b988f;
+  --insight: #ff9c66;
+  --danger: #ff6b6b;
+  --scrim-base: #000000;
+
+  --space-violet: #b79cff;
+  --space-teal: #5fd4c0;
+  --space-amber: #f2b64b;
+  --space-blue: #7fa8ff;
+  --space-rose: #ff8fb1;
+  --space-green: #8ed47a;
+  --space-cyan: #6fd3e8;
+  --space-sand: #d9c3a0;
+  --space-inbox: #b4b1aa;
+}
+
+/* ---------- Accent presets ---------- */
+[data-accent="lime"] {
+  --accent-pick: var(--accent-lime);
+  --on-accent-pick: var(--ink-dark);
+}
+[data-accent="coral"] {
+  --accent-pick: var(--accent-coral);
+  --on-accent-pick: var(--ink-dark);
+}
+[data-accent="sky"] {
+  --accent-pick: var(--accent-sky);
+  --on-accent-pick: var(--ink-dark);
+}
+[data-accent="gold"] {
+  --accent-pick: var(--accent-gold);
+  --on-accent-pick: var(--ink-dark);
+}
+/* custom: --accent-pick / --on-accent-pick are set inline on <html>. */
+
+/* ---------- Derived (recomputed on every themed element) ---------- */
+:root,
+[data-theme] {
+  --accent: var(--accent-pick);
+  --on-accent: var(--on-accent-pick);
+  --scrim: color-mix(in srgb, var(--scrim-base) 80%, transparent);
+
+  /* Space tints: the Space colour at 15% over surface, for chip backgrounds. */
+  --space-violet-tint: color-mix(in srgb, var(--space-violet) 15%, var(--surface));
+  --space-teal-tint: color-mix(in srgb, var(--space-teal) 15%, var(--surface));
+  --space-amber-tint: color-mix(in srgb, var(--space-amber) 15%, var(--surface));
+  --space-blue-tint: color-mix(in srgb, var(--space-blue) 15%, var(--surface));
+  --space-rose-tint: color-mix(in srgb, var(--space-rose) 15%, var(--surface));
+  --space-green-tint: color-mix(in srgb, var(--space-green) 15%, var(--surface));
+  --space-cyan-tint: color-mix(in srgb, var(--space-cyan) 15%, var(--surface));
+  --space-sand-tint: color-mix(in srgb, var(--space-sand) 15%, var(--surface));
+  --space-inbox-tint: color-mix(in srgb, var(--space-inbox) 15%, var(--surface));
+}
+
+/* Mono accent = the primary text colour of whichever theme it sits in. */
+[data-accent="mono"],
+[data-accent="mono"] [data-theme] {
+  --accent: var(--text-primary);
+  --on-accent: var(--background);
+}
+
+/* ---------- Reduce motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-screen: 0ms;
+    --dur-sheet: 0ms;
+  }
+}
+[data-reduce-motion="true"] {
+  --dur-fast: 0ms;
+  --dur-screen: 0ms;
+  --dur-sheet: 0ms;
+}
