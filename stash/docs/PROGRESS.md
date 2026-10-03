@@ -44,7 +44,7 @@ Estimated running cost at ~300 saves/month: ≈ $2.70 (Claude only). See the app
 - [ ] PENDING (owner) — install through Obtainium; key file + password were sent, owner to confirm saved.
 
 ## Open items for the owner
-- If saving/settings sync doesn't work: Supabase → Authentication → Sign In / Providers → turn on **Allow anonymous sign-ins** (README → "No login").
+- **Required:** Supabase → Authentication → Sign In / Providers → turn on **Allow anonymous sign-ins** → Save. Confirmed off on 2026-10-03 (auth log: `anonymous_provider_disabled`). Until then the app opens fine but nothing syncs to Supabase.
 - Reader's Obtainium entry needs the title filter `^Reader for Android`, because Stash releases now also become the repo's "latest".
 - Pre-existing Supabase advisor warnings belong to the other app in `public` (e.g. `public.rls_auto_enable()` callable by anon) — not touched by Stash.
 
