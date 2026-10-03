@@ -18,9 +18,13 @@ function isPublic(pathname: string) {
 
 /** Only real page loads create an identity, so parallel prefetches can't create several. */
 function isDocumentRequest(request: NextRequest) {
+  const h = request.headers;
   return (
-    request.headers.get("sec-fetch-mode") === "navigate" ||
-    (request.headers.get("accept")?.includes("text/html") === true && !request.headers.has("rsc"))
+    request.method === "GET" &&
+    !h.has("rsc") &&
+    !h.has("next-router-prefetch") &&
+    h.get("purpose") !== "prefetch" &&
+    h.get("sec-purpose")?.includes("prefetch") !== true
   );
 }
 
