@@ -15,8 +15,8 @@ Read this at the start of every session. Updated after every task.
 | Transcription | Groq whisper-large-v3-turbo (free tier) | Free; EN/FR/AR, Darija best-effort |
 | Embeddings | Voyage `voyage-3.5-lite`, 1024 dims (free tokens) | Multilingual, free at this volume |
 | Claude | `CLAUDE_FAST_MODEL` / `CLAUDE_SMART_MODEL` env vars, set by owner | Spec |
-| Auth | Supabase Google sign-in, single allowed email (`ALLOWED_EMAILS`) | Personal app |
-| `/design` | Public (no data) | Owner can review without signing in |
+| Auth | **No login** (owner's request, 2026-10-03; spec said Google). Silent Supabase anonymous identity per device, created by proxy.ts on the first page load; RLS unchanged | Personal app, zero taps; data stays private because the URL is public |
+| `/design` | Never creates an identity (no data) | — |
 | RLS | Every table has `user_id` + one `owner_all` policy | Simple, uniform RLS |
 | Next.js | 16.x — `proxy.ts` replaces `middleware.ts` | Next 16 convention |
 | Vercel | Project `stash` (`prj_UsWUJ5MKv6TbjsY7HKAnvqcMscXJ`), root `stash/`, Vercel Authentication off | assetlinks.json must be public |
@@ -31,7 +31,7 @@ Estimated running cost at ~300 saves/month: ≈ $2.70 (Claude only). See the app
 - [x] Navigation shell + placeholder screens + Settings → Appearance
 - [x] Manifest, icons, service worker, native.ts, proxy.ts
 - [x] Supabase: restore, migrations 0001/0002, types, advisors
-- [x] Google sign-in (code) + README steps
+- [x] ~~Google sign-in~~ → replaced by silent anonymous identity (no login screen)
 - [x] Vercel project, env, production deploy — https://stash-drab-kappa.vercel.app
 - [x] Android shell + workflow
 - [x] Signing key generated and sent to owner (SHA-256 6F:E2:EF:39:…:93:B1); assetlinks.json live and public
@@ -44,16 +44,18 @@ Estimated running cost at ~300 saves/month: ≈ $2.70 (Claude only). See the app
 - [ ] PENDING (owner) — install through Obtainium; key file + password were sent, owner to confirm saved.
 
 ## Open items for the owner
-- Create the Google OAuth client and enable Google in Supabase (README → "One-time setup"). Until then sign-in shows an error; /design works without signing in.
+- If saving/settings sync doesn't work: Supabase → Authentication → Sign In / Providers → turn on **Allow anonymous sign-ins** (README → "No login").
 - Reader's Obtainium entry needs the title filter `^Reader for Android`, because Stash releases now also become the repo's "latest".
 - Pre-existing Supabase advisor warnings belong to the other app in `public` (e.g. `public.rls_auto_enable()` callable by anon) — not touched by Stash.
 
 ## Known limits carried into Phase 1
+- Anonymous identity is per device: clearing site data or a new phone starts empty. Phase 1 worker must only process jobs from the owner's identity (OWNER_USER_IDS env, filled once the phone's identity exists) so strangers can't spend the AI budget. Optional later: link Google for backup (`linkIdentity`).
 - Placeholder screens have a teaching line but no action button yet (real actions arrive with the screens).
 - Navigating away from inside an open sheet leaves its history entry; one extra back press. Revisit with the save sheet.
 - `search_saves()` and the worker queue functions are Phase 1 migrations (0003, 0004).
 
 ## Log
+- 2026-10-03 — Owner asked for no authentication. Removed /login, /auth/*, sign-out and the email allowlist; proxy.ts now creates an anonymous Supabase session on the first page load (document requests only, so prefetches can't create duplicates). Vercel var ALLOWED_EMAILS is now unused.
 - 2026-10-02 — Reviewer subagent pass. Fixed: custom-accent ink lost after sync (FAIL), remote settings overwriting newer local choice (FAIL), android/README host text (FAIL); back-gesture stack, service-worker redirect/quota/query issues, proxy (public pages skip auth, getClaims, cookies on redirect, fail closed), min text sizes at 90%, /design coverage (shell, sizes, elevation, ink, easing, scrim), preset Space-clash warning, spacing on 4px steps, back chevrons use history, Supabase Site URL guidance.
 - 2026-10-02 — Release stash-android-v1.0.0 published by CI; e2e PASS with "full screen (verified)" on launch, share and site link.
 - 2026-10-02 — Production host is `stash-drab-kappa.vercel.app` (auto-assigned by Vercel; changing it later needs a new APK + assetlinks). Verified through Vercel: assetlinks.json → 200 application/json without login; /today → redirects to /login. Android shell host set, CI build green, unsigned APK from 3daa732 signed offline with sign.sh (v2, cert matches assetlinks, aligned) and committed as releases/Stash-1.0.0.apk.

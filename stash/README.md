@@ -13,7 +13,7 @@ Activity) that installs from GitHub Releases and keeps itself up to date through
 | Piece | Where |
 |---|---|
 | Website | Vercel project `stash`, `https://stash-drab-kappa.vercel.app` |
-| Database, sign-in | Supabase project `rvbllpkhwakjuahxyfff` (schema `stash`) |
+| Database | Supabase project `rvbllpkhwakjuahxyfff` (schema `stash`) |
 | Android app | GitHub Releases tagged `stash-android-v…`, titled "Stash for Android …" |
 
 ## Install on your phone (Obtainium)
@@ -29,27 +29,19 @@ Activity) that installs from GitHub Releases and keeps itself up to date through
 Without Obtainium: open the latest "Stash for Android" release on your phone, download the
 APK and allow installing from the browser.
 
-## One-time setup: Google sign-in (about 5 minutes)
+## No login
 
-Stash signs you in with Google through Supabase. Only the email in `ALLOWED_EMAILS` (Vercel)
-can get in.
+Stash has no sign-in screen. The first time your phone opens it, the app silently creates a
+private, anonymous identity for that phone and keeps it in a cookie. Row-level security keeps
+every row private to that identity: someone else who opens the address gets their own empty
+space, never your saves.
 
-1. Open **console.cloud.google.com** and create a project (or reuse one).
-2. **APIs & Services → OAuth consent screen**: choose *External*, app name `Stash`, your
-   email as support and developer contact. Add your Gmail under **Test users**. Leaving it in
-   *Testing* is fine for a personal app.
-3. **APIs & Services → Credentials → Create credentials → OAuth client ID**:
-   - Application type: **Web application**, name `Stash`.
-   - **Authorized redirect URIs**: `https://rvbllpkhwakjuahxyfff.supabase.co/auth/v1/callback`
-   - Create, then copy the **Client ID** and **Client secret**.
-4. Open **supabase.com/dashboard** → project *Ilias-Ennajmi's Project* →
-   **Authentication → Sign In / Providers → Google**: turn it on, paste the Client ID and
-   secret, save.
-5. Same project → **Authentication → URL Configuration** → **Redirect URLs**: add
-   `https://stash-drab-kappa.vercel.app/**` (and `http://localhost:3000/**` for local
-   development). Leave **Site URL** as it is: this Supabase project also hosts another app,
-   and Stash always sends its own redirect address.
-6. Open the app and tap **Continue with Google**.
+Good to know: clearing Chrome's data for the site, or a new phone, starts a new empty identity.
+(An optional "link to Google for backup" can be added later if that ever matters.)
+
+**One-time switch (only if the app can't save):** Supabase dashboard → project
+*Ilias-Ennajmi's Project* → **Authentication → Sign In / Providers** → turn on
+**Allow anonymous sign-ins** → Save.
 
 ## Run it locally (developers)
 
@@ -57,7 +49,7 @@ Needs Node 22+.
 
 ```bash
 cd stash
-cp .env.example .env.local      # fill in the Supabase URL + publishable key and your email
+cp .env.example .env.local      # fill in the Supabase URL + publishable key
 npm install
 npm run dev                     # http://localhost:3000
 ```

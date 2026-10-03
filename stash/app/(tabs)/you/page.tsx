@@ -27,11 +27,6 @@ export default function YouPage() {
             </Link>
           </li>
         </ul>
-        <form action="/auth/signout" method="post" className="mt-4">
-          <button type="submit" className="tap w-full rounded-card px-4 text-label text-danger">
-            Sign out
-          </button>
-        </form>
       </nav>
       <Placeholder icon={Sparkles} line="Your month in saves — watched, learned, applied — appears here." phase="Phase 4" />
     </>
