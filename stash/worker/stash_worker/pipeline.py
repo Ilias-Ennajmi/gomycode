@@ -143,6 +143,9 @@ def _ingest(supa: Supa, cfg: Config, save: dict[str, Any], workdir: Path) -> str
             "creator_handle": fetched.creator or save.get("creator_handle"),
             "duration_s": fetched.duration or save.get("duration_s"),
         })
+        # Short links (vm.tiktok.com, …) become the canonical post URL, so the embed player works.
+        if fetched.webpage_url and fetched.webpage_url.startswith("https://") and fetched.webpage_url != save["source_url"]:
+            update["source_url"] = fetched.webpage_url
 
     # 2 · Video, thumbnail, audio -------------------------------------------------
     if fetched and fetched.video:

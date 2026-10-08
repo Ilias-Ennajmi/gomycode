@@ -34,6 +34,7 @@ class Fetched:
     creator: str | None
     duration: float | None
     thumb_url: str | None
+    webpage_url: str | None = None
 
 
 DEAD_HINTS = ("not available", "removed", "private", "404", "does not exist", "unavailable", "no longer")
@@ -95,6 +96,7 @@ def download(url: str, workdir: Path, max_seconds: int, cookies_b64: str = "") -
         creator=(info or {}).get("uploader_id") or (info or {}).get("uploader") or (info or {}).get("channel"),
         duration=(info or {}).get("duration"),
         thumb_url=(info or {}).get("thumbnail"),
+        webpage_url=(info or {}).get("webpage_url"),
     )
 
 

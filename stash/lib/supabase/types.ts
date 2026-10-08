@@ -66,6 +66,9 @@ export type Database = {
           voice_note_path: string | null;
           created_at: string;
           updated_at: string;
+          title: string | null;
+          error: string | null;
+          processed_at: string | null;
         };
         Insert: {
           id?: string;
@@ -85,6 +88,9 @@ export type Database = {
           voice_note_path?: string | null;
           created_at?: string;
           updated_at?: string;
+          title?: string | null;
+          error?: string | null;
+          processed_at?: string | null;
         };
         Update: {
           id?: string;
@@ -104,6 +110,9 @@ export type Database = {
           voice_note_path?: string | null;
           created_at?: string;
           updated_at?: string;
+          title?: string | null;
+          error?: string | null;
+          processed_at?: string | null;
         };
         Relationships: [];
       };
@@ -495,6 +504,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      usage: {
+        Row: {
+          id: string;
+          user_id: string;
+          save_id: string | null;
+          kind: string;
+          input_tokens: number;
+          output_tokens: number;
+          audio_seconds: number;
+          usd: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string;
+          save_id?: string | null;
+          kind: string;
+          input_tokens?: number;
+          output_tokens?: number;
+          audio_seconds?: number;
+          usd?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          save_id?: string | null;
+          kind?: string;
+          input_tokens?: number;
+          output_tokens?: number;
+          audio_seconds?: number;
+          usd?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       settings: {
         Row: {
           user_id: string;
@@ -548,7 +593,11 @@ export type Database = {
       };
     };
     Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
+    Functions: {
+      search_saves: { Args: { p_query: string; p_space_id?: string | null; p_embedding?: string | null; p_limit?: number }; Returns: { save_id: string; score: number; snippet: string | null; snippet_start: number | null }[] };
+      related_saves: { Args: { p_save_id: string; p_limit?: number }; Returns: { save_id: string; similarity: number }[] };
+      request_reprocess: { Args: { p_save_id: string }; Returns: undefined };
+    };
     Enums: {
       space_kind: "topic" | "project" | "inbox";
       platform: "instagram" | "tiktok" | "youtube" | "web" | "screenshot";

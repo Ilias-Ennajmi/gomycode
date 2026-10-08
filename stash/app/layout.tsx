@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Manrope } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { NativeBoot } from "@/components/shell/NativeBoot";
+import { ToastProvider } from "@/components/ui/Toast";
 import { PREPAINT_SCRIPT } from "@/lib/theme/appearance";
 import { BRAND } from "@/lib/theme/brand";
 import "@/styles/globals.css";
@@ -37,8 +38,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <ThemeProvider>
-          <NativeBoot />
-          {children}
+          <ToastProvider>
+            <NativeBoot />
+            {children}
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>

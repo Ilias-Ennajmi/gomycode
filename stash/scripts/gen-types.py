@@ -7,7 +7,7 @@ name:type[?=nullable][!=has default]. Re-run after a migration changes columns.
 """
 TABLES = {
  "spaces": "id:uuid! user_id:uuid! name:text kind:space_kind! color_token:text! icon:text? due_date:date? sort_order:int! archived:bool! description:text? created_at:ts!",
- "saves": "id:uuid! user_id:uuid! client_id:uuid? source_url:text platform:platform space_id:uuid? status:save_status! video_path:text? thumb_path:text? duration_s:num? creator_handle:text? caption:text? saved_at:ts! user_note:text? voice_note_path:text? created_at:ts! updated_at:ts!",
+ "saves": "id:uuid! user_id:uuid! client_id:uuid? source_url:text platform:platform space_id:uuid? status:save_status! video_path:text? thumb_path:text? duration_s:num? creator_handle:text? caption:text? saved_at:ts! user_note:text? voice_note_path:text? created_at:ts! updated_at:ts! title:text? error:text? processed_at:ts?",
  "insights": "save_id:uuid user_id:uuid! title:text? key_idea:text? takeaways:json! actions:json! intent:intent? tags:text[]! language:text? suggested_space_id:uuid? confidence:num? created_at:ts! updated_at:ts!",
  "transcripts": "save_id:uuid user_id:uuid! segments:json! full_text:text! tsv:unknown?! created_at:ts!",
  "embeddings": "save_id:uuid user_id:uuid! vector:text model:text created_at:ts!",
@@ -19,6 +19,7 @@ TABLES = {
  "reminders": "id:uuid! save_id:uuid user_id:uuid! kind:reminder_kind fire_at:ts? geofence:json? fired:bool! created_at:ts!",
  "jobs": "id:uuid! save_id:uuid? space_id:uuid? user_id:uuid! type:job_type state:job_state! attempts:int! error:text? locked_at:ts? run_after:ts! payload:json! created_at:ts! updated_at:ts!",
  "exports": "id:uuid! space_id:uuid user_id:uuid! kind:export_kind options:json! file_path:text? share_slug:text? created_at:ts!",
+ "usage": "id:uuid! user_id:uuid! save_id:uuid? kind:text input_tokens:int! output_tokens:int! audio_seconds:num! usd:num! created_at:ts!",
  "settings": "user_id:uuid! theme:theme_pref! accent:text! accent_custom:text? text_scale:num! density:int! reduce_motion:bool! haptics:bool! monthly_budget_usd:num! queue_time:text! queue_minutes:int! quiet_hours:json! created_at:ts! updated_at:ts!",
 }
 ENUMS = {
@@ -60,7 +61,12 @@ for table, spec in TABLES.items():
         out.append("        };")
     out.append("        Relationships: [];")
     out.append("      };")
-out += ["    };", "    Views: { [_ in never]: never };", "    Functions: { [_ in never]: never };", "    Enums: {"]
+FUNCTIONS = [
+  '      search_saves: { Args: { p_query: string; p_space_id?: string | null; p_embedding?: string | null; p_limit?: number }; Returns: { save_id: string; score: number; snippet: string | null; snippet_start: number | null }[] };',
+  '      related_saves: { Args: { p_save_id: string; p_limit?: number }; Returns: { save_id: string; similarity: number }[] };',
+  '      request_reprocess: { Args: { p_save_id: string }; Returns: undefined };',
+]
+out += ["    };", "    Views: { [_ in never]: never };", "    Functions: {", *FUNCTIONS, "    };", "    Enums: {"]
 for e, vals in ENUMS.items():
     out.append(f"      {e}: " + " | ".join(f'"{v}"' for v in vals) + ";")
 out += ["    };", "    CompositeTypes: { [_ in never]: never };", "  };", "};", "", 'export type Tables<T extends keyof Database["stash"]["Tables"]> = Database["stash"]["Tables"][T]["Row"];', 'export type Enums<T extends keyof Database["stash"]["Enums"]> = Database["stash"]["Enums"][T];', ""]
