@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getBrowserClient } from "@/lib/supabase/client";
 import { fetchSaves, fetchSpaces, type SaveItem, type Space } from "@/lib/data";
 import { flush, onOutboxChange, pending, type OutboxItem } from "@/lib/outbox";
 import { signedUrls } from "@/lib/media";
+import { isPendingDelete, onPendingDeleteChange } from "@/lib/undo";
 
 const CACHE = "stash.library";
 
@@ -33,6 +34,9 @@ export function useLibrary() {
   // Saves that finished processing while on screen: their key idea fades in.
   const [justReady, setJustReady] = useState<Set<string>>(new Set());
   const statuses = useRef(new Map<string, string>());
+  const [deletes, setDeletes] = useState(0);
+
+  useEffect(() => onPendingDeleteChange(() => setDeletes((n) => n + 1)), []);
 
   const loadThumbs = useCallback(async (items: SaveItem[]) => {
     const paths = items.map((s) => s.thumbPath).filter((p): p is string => Boolean(p));
@@ -115,5 +119,8 @@ export function useLibrary() {
     setSaves((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
-  return { saves, spaces, queued, thumbs, loading, error, justReady, refresh, patchSave, removeSave, setSpaces };
+  // Saves inside their Undo window are hidden everywhere.
+  const shown = useMemo(() => saves.filter((s) => !isPendingDelete(s.id)), [saves, deletes]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { saves: shown, spaces, queued, thumbs, loading, error, justReady, refresh, patchSave, removeSave, setSpaces };
 }

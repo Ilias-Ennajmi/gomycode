@@ -17,9 +17,15 @@ export function SpacePicker({
   suggestedId,
   onPick,
   onCreate,
+  counts,
+  onLongPress,
   className,
 }: {
   spaces: Space[];
+  /** Save count per Space id, shown on each chip (Library). */
+  counts?: Record<string, number>;
+  /** Hold a chip, e.g. to open that Space. */
+  onLongPress?: (spaceId: string) => void;
   selectedId: string | null;
   suggestedId?: string | null;
   onPick: (spaceId: string | null) => void;
@@ -52,6 +58,8 @@ export function SpacePicker({
             color={s.color}
             suggested={s.id === suggestedId && s.id !== selectedId}
             selected={s.id === selectedId}
+            count={counts?.[s.id]}
+            onLongPress={onLongPress ? () => onLongPress(s.id) : undefined}
             onClick={() => onPick(s.id === selectedId ? null : s.id)}
           />
         ))}
