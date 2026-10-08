@@ -82,7 +82,7 @@ export function PlayView() {
 
   // Freeze the queue once, so live updates never reshuffle what's playing.
   useEffect(() => {
-    if (order || lib.loading || (!lib.saves.length && lib.loading)) return;
+    if (order || !lib.synced) return;
     const q = buildQueue(
       lib.saves,
       { queue: params.get("queue"), space: params.get("space"), filter: params.get("filter"), ids: params.get("ids"), id: params.get("id") },
@@ -91,7 +91,7 @@ export function PlayView() {
     // Building the queue needs the loaded library, so it happens once data arrives.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOrder(q.map((s) => s.id));
-  }, [order, lib.loading, lib.saves, params, inboxId]);
+  }, [order, lib.synced, lib.saves, params, inboxId]);
 
   useEffect(() => {
     // Preferences live in localStorage, readable only after mount.

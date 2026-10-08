@@ -117,7 +117,7 @@ export function ItemView({ id }: { id: string }) {
     // A save that's still processing fills in live.
     const supabase = getBrowserClient();
     const channel = supabase
-      ?.channel(`stash-item-${id}`)
+      ?.channel(`stash-item-${id}-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "stash", table: "saves", filter: `id=eq.${id}` }, () => void load())
       .on("postgres_changes", { event: "*", schema: "stash", table: "insights", filter: `save_id=eq.${id}` }, () => void load())
       .subscribe();

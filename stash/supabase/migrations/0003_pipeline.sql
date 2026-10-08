@@ -26,6 +26,18 @@ comment on column stash.saves.title is 'Title or first caption line from the pla
 
 
 -- -----------------------------------------------------------------------------
+-- The phone writes only the columns it owns. Media paths, captions and status
+-- come from the worker (service_role), so a client can't point video_path at
+-- someone else's file. request_reprocess() needs status + error.
+-- -----------------------------------------------------------------------------
+revoke insert, update on stash.saves from authenticated;
+grant insert (client_id, source_url, platform, space_id, title, saved_at, user_note, voice_note_path)
+  on stash.saves to authenticated;
+grant update (space_id, user_note, voice_note_path, status, error)
+  on stash.saves to authenticated;
+
+
+-- -----------------------------------------------------------------------------
 -- usage: AI cost per save (cost guard, Settings → Processing)
 -- -----------------------------------------------------------------------------
 create table if not exists stash.usage (
@@ -102,7 +114,8 @@ begin
     headers              := jsonb_build_object(
                               'Content-Type', 'application/json',
                               'Authorization', 'Bearer ' || v_secret),
-    timeout_milliseconds := 2000
+    -- Held open for the whole run: Cloud Run only gives the worker CPU while a request is open.
+    timeout_milliseconds := 900000
   );
 exception when others then
   -- A failed wake-up must never block a save; the cron sweep retries.
@@ -179,14 +192,17 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  v_prefix text := old.user_id::text || '/';
 begin
-  if old.video_path is not null then
+  -- Only files inside the owner's own folder, so a tampered path can't delete someone else's file.
+  if old.video_path is not null and pg_catalog.starts_with(old.video_path, v_prefix) then
     insert into stash.media_trash (store, path) values ('r2', old.video_path);
   end if;
-  if old.thumb_path is not null then
+  if old.thumb_path is not null and pg_catalog.starts_with(old.thumb_path, v_prefix) then
     insert into stash.media_trash (store, bucket, path) values ('storage', 'stash-thumbs', old.thumb_path);
   end if;
-  if old.voice_note_path is not null then
+  if old.voice_note_path is not null and pg_catalog.starts_with(old.voice_note_path, v_prefix) then
     insert into stash.media_trash (store, bucket, path) values ('storage', 'stash-voice', old.voice_note_path);
   end if;
   return old;
@@ -258,7 +274,7 @@ grant  execute on function stash.claim_jobs(int) to service_role;
 
 
 -- -----------------------------------------------------------------------------
--- Sweep (pg_cron, every minute): free stuck jobs, then wake the worker if
+-- Sweep (pg_cron, every minute): free stuck jobs (20 min > Cloud Run's 15 min limit), then wake the worker if
 -- anything is waiting or there are files to clean up.
 -- -----------------------------------------------------------------------------
 create or replace function stash.sweep()
@@ -273,14 +289,14 @@ begin
          locked_at = null,
          run_after = pg_catalog.now()
    where state = 'running'::stash.job_state
-     and locked_at < pg_catalog.now() - interval '10 minutes'
+     and locked_at < pg_catalog.now() - interval '20 minutes'  -- longer than a worker request can live
      and attempts < 4;
 
   update stash.jobs
      set state = 'failed'::stash.job_state,
          error = coalesce(error, 'timed out')
    where state = 'running'::stash.job_state
-     and locked_at < pg_catalog.now() - interval '10 minutes'
+     and locked_at < pg_catalog.now() - interval '20 minutes'
      and attempts >= 4;
 
   if exists (select 1 from stash.jobs
@@ -430,6 +446,12 @@ create policy "stash_own_insert" on storage.objects
   for insert to authenticated
   with check (bucket_id = 'stash-voice'
               and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+drop policy if exists "stash_own_update" on storage.objects;
+create policy "stash_own_update" on storage.objects
+  for update to authenticated
+  using (bucket_id = 'stash-voice' and (storage.foldername(name))[1] = (select auth.uid())::text)
+  with check (bucket_id = 'stash-voice' and (storage.foldername(name))[1] = (select auth.uid())::text);
 
 create policy "stash_own_delete" on storage.objects
   for delete to authenticated

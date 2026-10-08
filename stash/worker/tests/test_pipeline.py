@@ -33,6 +33,8 @@ class FakeSupa:
                 return False
             if op == "in" and str(row.get(k)) not in val.strip("()").split(","):
                 return False
+            if op == "is" and val == "null" and row.get(k) is not None:
+                return False
         return True
 
     def select(self, table, params):
@@ -43,6 +45,8 @@ class FakeSupa:
         return rows[0] if rows else None
 
     def insert(self, table, rows, upsert_on=None):
+        if isinstance(rows, list) and len({tuple(sorted(r)) for r in rows}) > 1:
+            raise ValueError("All object keys must match")  # PostgREST's rule for bulk inserts
         for row in rows if isinstance(rows, list) else [rows]:
             if upsert_on:
                 self.tables[table] = [r for r in self.tables[table] if r.get(upsert_on) != row.get(upsert_on)]
@@ -162,7 +166,8 @@ def test_budget_reached_waits_for_next_month(db, monkeypatch, tmp_path):
     db.tables["usage"] = [{"user_id": OWNER, "usd": 6, "created_at": "9999-01-01T00:00:00+00:00"}]
     db.tables["jobs"] = [dict(JOB, state="running")]
     assert pipeline.process_job(db, cfg(), JOB) == "budget"
-    assert db.tables["jobs"][0]["state"] == "queued"
+    assert db.tables["jobs"][0]["state"] == "failed"
+    assert db.tables["saves"][0]["status"] == "failed"
     assert "budget" in db.tables["saves"][0]["error"].lower()
 
 
@@ -184,3 +189,16 @@ def test_unexpected_error_retries_then_fails(db, monkeypatch, tmp_path):
     assert db.tables["jobs"][0]["state"] == "queued"
     assert pipeline.process_job(db, cfg(), dict(JOB, attempts=3)) == "failed"
     assert db.tables["saves"][0]["status"] == "failed"
+
+
+def test_a_space_picked_during_processing_is_kept(db, monkeypatch, tmp_path):
+    stub_network(monkeypatch, tmp_path)
+    real_understand = ai.understand
+
+    def pick_then_understand(c, **kw):
+        db.tables["saves"][0]["space_id"] = "food"  # the owner taps a Space mid-job
+        return real_understand(c, **kw)
+
+    monkeypatch.setattr(ai, "understand", pick_then_understand)
+    assert pipeline.process_job(db, cfg(), JOB) == "ready"
+    assert db.tables["saves"][0]["space_id"] == "food"

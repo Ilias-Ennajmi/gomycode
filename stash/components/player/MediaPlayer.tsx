@@ -116,7 +116,7 @@ export const MediaPlayer = forwardRef<
         />
       )}
 
-      {mode === "embed" && embed && (active === undefined || active || preload) && (
+      {mode === "embed" && embed && (active === undefined || active) && (
         <iframe
           key={embed}
           src={embed}

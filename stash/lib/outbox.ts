@@ -118,6 +118,8 @@ export async function updateSaveByClientId(
   clientId: string,
   values: { space_id?: string | null; voice_note_path?: string | null; user_note?: string | null },
 ): Promise<void> {
+  // A send in progress has already read the queued copy; let it land, then edit the server row.
+  if (flushing) await flushing;
   if ("space_id" in values && (await patchPending(clientId, { spaceId: values.space_id ?? null }))) {
     const rest = { ...values };
     delete rest.space_id;

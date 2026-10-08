@@ -30,6 +30,8 @@ export function useLibrary() {
   const [queued, setQueued] = useState<OutboxItem[]>([]);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  // True once the first network refresh has answered (or failed offline): the cache may be stale before that.
+  const [synced, setSynced] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Saves that finished processing while on screen: their key idea fades in.
   const [justReady, setJustReady] = useState<Set<string>>(new Set());
@@ -69,6 +71,7 @@ export function useLibrary() {
       setError(navigator.onLine ? "Couldn't load your saves." : null);
     } finally {
       setLoading(false);
+      setSynced(true);
     }
   }, [loadThumbs]);
 
@@ -96,7 +99,7 @@ export function useLibrary() {
 
     const supabase = getBrowserClient();
     const channel = supabase
-      ?.channel("stash-library")
+      ?.channel(`stash-library-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "stash", table: "saves" }, soon)
       .on("postgres_changes", { event: "*", schema: "stash", table: "insights" }, soon)
       .on("postgres_changes", { event: "*", schema: "stash", table: "states" }, soon)
@@ -122,5 +125,5 @@ export function useLibrary() {
   // Saves inside their Undo window are hidden everywhere.
   const shown = useMemo(() => saves.filter((s) => !isPendingDelete(s.id)), [saves, deletes]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { saves: shown, spaces, queued, thumbs, loading, error, justReady, refresh, patchSave, removeSave, setSpaces };
+  return { saves: shown, spaces, queued, thumbs, loading, synced, error, justReady, refresh, patchSave, removeSave, setSpaces };
 }

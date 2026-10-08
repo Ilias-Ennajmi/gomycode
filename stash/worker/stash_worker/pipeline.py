@@ -27,11 +27,6 @@ def _month_start() -> datetime:
     return n.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
 
-def _next_month() -> datetime:
-    start = _month_start()
-    return (start + timedelta(days=32)).replace(day=1)
-
-
 def month_spend(supa: Supa, user_id: str) -> float:
     rows = supa.select("usage", {"select": "usd", "user_id": f"eq.{user_id}",
                                  "created_at": f"gte.{_month_start().isoformat()}"})
@@ -43,9 +38,13 @@ def _budget(supa: Supa, user_id: str) -> float:
     return float((row or {}).get("monthly_budget_usd") or 5)
 
 
+USAGE_DEFAULTS = {"save_id": None, "input_tokens": 0, "output_tokens": 0, "audio_seconds": 0, "usd": 0}
+
+
 def _log_usage(supa: Supa, rows: list[dict[str, Any]]) -> None:
+    # A bulk insert needs every row to carry the same keys (PostgREST rejects mixed shapes).
     if rows:
-        supa.insert("usage", rows)
+        supa.insert("usage", [{**USAGE_DEFAULTS, **r} for r in rows])
 
 
 def _spaces(supa: Supa, user_id: str) -> tuple[dict[str, str], str | None]:
@@ -81,8 +80,9 @@ def process_job(supa: Supa, cfg: Config, job: dict[str, Any]) -> str:
         return "not_owner"
 
     if month_spend(supa, user_id) >= _budget(supa, user_id):
-        _finish_job(supa, job, "queued", "budget", run_after=_next_month().isoformat())
-        supa.update("saves", {"id": f"eq.{save['id']}"}, {"error": "Monthly budget reached. Raise it in Settings."})
+        _finish_job(supa, job, "failed", "budget")
+        supa.update("saves", {"id": f"eq.{save['id']}"},
+                    {"status": "failed", "error": "Monthly AI budget reached. Raise it in Settings, then tap Retry."})
         return "budget"
 
     supa.update("saves", {"id": f"eq.{save['id']}"}, {"status": "processing", "error": None})
@@ -213,9 +213,11 @@ def _ingest(supa: Supa, cfg: Config, save: dict[str, Any], workdir: Path) -> str
                                         "language", "suggested_space_id", "confidence")},
         }, upsert_on="save_id")
 
-        space_id = choose_space(save.get("space_id"), insights["suggested_space_id"], insights["confidence"], inbox_id)
-        if space_id and space_id != save.get("space_id"):
-            supa.update("saves", {"id": f"eq.{save_id}"}, {"space_id": space_id})
+        # Only file saves nobody has filed: the owner may have picked a Space while this job ran.
+        if not save.get("space_id"):
+            space_id = choose_space(None, insights["suggested_space_id"], insights["confidence"], inbox_id)
+            if space_id:
+                supa.update("saves", {"id": f"eq.{save_id}", "space_id": "is.null"}, {"space_id": space_id})
 
         supa.delete("places", {"save_id": f"eq.{save_id}"})
         if insights["places"]:
@@ -247,6 +249,7 @@ def empty_trash(supa: Supa, cfg: Config) -> int:
     rows = supa.select("media_trash", {"select": "id,store,bucket,path", "order": "id", "limit": "200"})
     if not rows:
         return 0
+    # Without R2 configured the worker never stored a video there, so those rows have nothing to delete.
     r2_keys = [r["path"] for r in rows if r["store"] == "r2"]
     if r2_keys and cfg.has_r2:
         r2.delete(cfg, r2_keys)
@@ -256,7 +259,7 @@ def empty_trash(supa: Supa, cfg: Config) -> int:
             by_bucket.setdefault(r["bucket"], []).append(r["path"])
     for bucket, paths in by_bucket.items():
         supa.remove(bucket, paths)
-    done = [str(r["id"]) for r in rows if r["store"] != "r2" or cfg.has_r2]
+    done = [str(r["id"]) for r in rows]
     if done:
         supa.delete("media_trash", {"id": f"in.({','.join(done)})"})
     return len(done)

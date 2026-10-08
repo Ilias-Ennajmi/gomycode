@@ -121,6 +121,7 @@ def page_metadata(url: str) -> Fetched:
         creator=None,
         duration=None,
         thumb_url=tags.get("og:image"),
+        webpage_url=str(r.url),
     )
 
 
