@@ -1,24 +1,14 @@
 import type { Metadata } from "next";
-import { ChevronDown, Play } from "lucide-react";
-import { BackButton } from "@/components/shell/BackButton";
-import { Placeholder } from "@/components/shell/Placeholder";
+import { Suspense } from "react";
+import { PlayView } from "./PlayView";
 
 export const metadata: Metadata = { title: "Play" };
 
-/** Full-screen player: no tab bar. The real pager arrives in Phase 1. */
+/** Full-screen vertical player: no tab bar. ?queue=today | ?space=&filter= | ?ids= | ?id= */
 export default function PlayPage() {
   return (
-    <main className="flex min-h-dvh flex-col bg-background pt-safe pb-safe">
-      <div className="flex items-center px-2 pt-2">
-        <BackButton
-          fallback="/today"
-          label="Close player"
-          className="tap flex items-center justify-center rounded-full text-fg"
-        >
-          <ChevronDown size={24} strokeWidth={2} aria-hidden />
-        </BackButton>
-      </div>
-      <Placeholder icon={Play} line="Nothing to play yet. Share a reel to Stash and it plays here, full screen." phase="Phase 1" />
-    </main>
+    <Suspense>
+      <PlayView />
+    </Suspense>
   );
 }

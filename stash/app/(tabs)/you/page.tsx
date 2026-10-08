@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ChevronRight, Palette, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Placeholder } from "@/components/shell/Placeholder";
+import { DeviceCard } from "./DeviceCard";
 
 export const metadata: Metadata = { title: "You" };
 
@@ -28,6 +29,9 @@ export default function YouPage() {
           </li>
         </ul>
       </nav>
+      <div className="pt-4">
+        <DeviceCard />
+      </div>
       <Placeholder icon={Sparkles} line="Your month in saves — watched, learned, applied — appears here." phase="Phase 4" />
     </>
   );

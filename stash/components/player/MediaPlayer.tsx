@@ -129,7 +129,7 @@ export const MediaPlayer = forwardRef<
       )}
 
       {mode === "card" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 text-center" style={INK_LIGHT}>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 py-8 pl-6 pr-20 text-center" style={INK_LIGHT}>
           {poster && (
             // eslint-disable-next-line @next/next/no-img-element -- signed Storage URL
             <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
