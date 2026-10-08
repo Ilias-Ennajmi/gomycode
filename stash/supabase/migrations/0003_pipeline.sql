@@ -26,15 +26,49 @@ comment on column stash.saves.title is 'Title or first caption line from the pla
 
 
 -- -----------------------------------------------------------------------------
--- The phone writes only the columns it owns. Media paths, captions and status
--- come from the worker (service_role), so a client can't point video_path at
--- someone else's file. request_reprocess() needs status + error.
+-- The phone writes only the columns it owns. Media paths, captions and the
+-- processed state come from the worker (service_role), so a client can't point
+-- video_path at someone else's file. Enforced by a trigger (additive, no
+-- privilege changes). request_reprocess() may reset status and error.
 -- -----------------------------------------------------------------------------
-revoke insert, update on stash.saves from authenticated;
-grant insert (client_id, source_url, platform, space_id, title, saved_at, user_note, voice_note_path)
-  on stash.saves to authenticated;
-grant update (space_id, user_note, voice_note_path, status, error)
-  on stash.saves to authenticated;
+create or replace function stash.guard_save_columns()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  if coalesce(auth.role(), '') <> 'authenticated' then
+    return new;  -- worker, cron, triggers, dashboard
+  end if;
+  if tg_op = 'INSERT' then
+    new.video_path   := null;
+    new.thumb_path   := null;
+    new.processed_at := null;
+    new.error        := null;
+    new.status       := 'queued'::stash.save_status;
+  else
+    new.video_path     := old.video_path;
+    new.thumb_path     := old.thumb_path;
+    new.caption        := old.caption;
+    new.creator_handle := old.creator_handle;
+    new.duration_s     := old.duration_s;
+    new.processed_at   := old.processed_at;
+    new.source_url     := old.source_url;
+    new.platform       := old.platform;
+    new.client_id      := old.client_id;
+    new.title          := old.title;
+  end if;
+  return new;
+end;
+$$;
+
+comment on function stash.guard_save_columns() is
+  'BEFORE INSERT/UPDATE on saves: the phone may only set its own columns; media paths come from the worker.';
+
+create trigger guard_save_columns
+  before insert or update on stash.saves
+  for each row execute function stash.guard_save_columns();
 
 
 -- -----------------------------------------------------------------------------
@@ -57,15 +91,11 @@ comment on table stash.usage is 'Tokens, audio minutes and estimated USD per pro
 create index if not exists usage_user_created_idx on stash.usage (user_id, created_at desc);
 create index if not exists usage_save_id_idx      on stash.usage (save_id);
 
+-- RLS: the owner may read; there is no insert/update/delete policy, so only the worker writes.
 alter table stash.usage enable row level security;
-drop policy if exists "owner_read" on stash.usage;
 create policy "owner_read" on stash.usage
   for select to authenticated
   using ((select auth.uid()) = user_id);
-revoke all on stash.usage from anon;
-revoke insert, update, delete on stash.usage from authenticated;
-grant select on stash.usage to authenticated;
-grant all on stash.usage to service_role;
 
 
 -- -----------------------------------------------------------------------------
@@ -82,8 +112,6 @@ create table if not exists stash.media_trash (
 comment on table stash.media_trash is 'Paths of deleted saves'' files, removed by the worker sweep.';
 
 alter table stash.media_trash enable row level security;  -- no policies: service_role only
-revoke all on stash.media_trash from anon, authenticated;
-grant all on stash.media_trash to service_role;
 
 
 -- -----------------------------------------------------------------------------
@@ -99,6 +127,7 @@ declare
   v_url    text;
   v_secret text;
 begin
+  -- No caller check: a save from the phone reaches this through triggers. The worker's secret protects it.
   select decrypted_secret into v_url
     from vault.decrypted_secrets where name = 'stash_worker_url' limit 1;
   select decrypted_secret into v_secret
@@ -126,9 +155,6 @@ $$;
 comment on function stash.wake_worker() is
   'POSTs <worker>/run so Cloud Run starts processing. No-op until the Vault secrets exist.';
 
-revoke execute on function stash.wake_worker() from public, anon, authenticated;
-grant  execute on function stash.wake_worker() to service_role;
-
 
 -- -----------------------------------------------------------------------------
 -- New save → states row + ingest job
@@ -153,9 +179,7 @@ begin
 end;
 $$;
 
-revoke execute on function stash.on_save_created() from public, anon, authenticated;
 
-drop trigger if exists on_save_created on stash.saves;
 create trigger on_save_created
   after insert on stash.saves
   for each row execute function stash.on_save_created();
@@ -176,9 +200,7 @@ begin
 end;
 $$;
 
-revoke execute on function stash.on_jobs_queued() from public, anon, authenticated;
 
-drop trigger if exists on_jobs_queued on stash.jobs;
 create trigger on_jobs_queued
   after insert on stash.jobs
   referencing new table as new_jobs
@@ -209,9 +231,7 @@ begin
 end;
 $$;
 
-revoke execute on function stash.on_save_deleted() from public, anon, authenticated;
 
-drop trigger if exists on_save_deleted on stash.saves;
 create trigger on_save_deleted
   after delete on stash.saves
   for each row execute function stash.on_save_deleted();
@@ -241,8 +261,7 @@ begin
 end;
 $$;
 
-revoke execute on function stash.request_reprocess(uuid) from public, anon;
-grant  execute on function stash.request_reprocess(uuid) to authenticated;
+grant execute on function stash.request_reprocess(uuid) to authenticated;
 
 
 -- -----------------------------------------------------------------------------
@@ -250,10 +269,15 @@ grant  execute on function stash.request_reprocess(uuid) to authenticated;
 -- -----------------------------------------------------------------------------
 create or replace function stash.claim_jobs(p_limit int default 3)
 returns setof stash.jobs
-language sql
+language plpgsql
 security definer
 set search_path = ''
 as $$
+begin
+  if coalesce(auth.role(), '') <> 'service_role' and session_user not in ('postgres', 'supabase_admin') then
+    raise exception 'not allowed';
+  end if;
+  return query
   update stash.jobs j
      set state = 'running'::stash.job_state,
          locked_at = pg_catalog.now(),
@@ -267,10 +291,8 @@ as $$
       for update skip locked
    )
   returning j.*;
+end;
 $$;
-
-revoke execute on function stash.claim_jobs(int) from public, anon, authenticated;
-grant  execute on function stash.claim_jobs(int) to service_role;
 
 
 -- -----------------------------------------------------------------------------
@@ -284,6 +306,9 @@ security definer
 set search_path = ''
 as $$
 begin
+  if coalesce(auth.role(), '') <> 'service_role' and session_user not in ('postgres', 'supabase_admin') then
+    raise exception 'not allowed';
+  end if;
   update stash.jobs
      set state = 'queued'::stash.job_state,
          locked_at = null,
@@ -307,17 +332,9 @@ begin
 end;
 $$;
 
-revoke execute on function stash.sweep() from public, anon, authenticated;
-grant  execute on function stash.sweep() to service_role;
 
-do $$
-begin
-  if exists (select 1 from cron.job where jobname = 'stash-sweep') then
-    perform cron.unschedule('stash-sweep');
-  end if;
-  perform cron.schedule('stash-sweep', '* * * * *', 'select stash.sweep();');
-end
-$$;
+-- cron.schedule() updates the job when the name already exists.
+select cron.schedule('stash-sweep', '* * * * *', 'select stash.sweep();');
 
 
 -- -----------------------------------------------------------------------------
@@ -396,8 +413,7 @@ as $$
    limit greatest(1, least(p_limit, 100));
 $$;
 
-revoke execute on function stash.search_saves(text, uuid, extensions.vector, int) from public, anon;
-grant  execute on function stash.search_saves(text, uuid, extensions.vector, int) to authenticated, service_role;
+grant execute on function stash.search_saves(text, uuid, extensions.vector, int) to authenticated, service_role;
 
 
 -- -----------------------------------------------------------------------------
@@ -419,8 +435,7 @@ as $$
    limit greatest(1, least(p_limit, 20));
 $$;
 
-revoke execute on function stash.related_saves(uuid, int) from public, anon;
-grant  execute on function stash.related_saves(uuid, int) to authenticated, service_role;
+grant execute on function stash.related_saves(uuid, int) to authenticated, service_role;
 
 
 -- -----------------------------------------------------------------------------
@@ -432,9 +447,6 @@ values
   ('stash-voice',  'stash-voice',  false, 5242880,  array['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg'])
 on conflict (id) do nothing;
 
-drop policy if exists "stash_own_read"   on storage.objects;
-drop policy if exists "stash_own_insert" on storage.objects;
-drop policy if exists "stash_own_delete" on storage.objects;
 
 create policy "stash_own_read" on storage.objects
   for select to authenticated
@@ -447,7 +459,6 @@ create policy "stash_own_insert" on storage.objects
   with check (bucket_id = 'stash-voice'
               and (storage.foldername(name))[1] = (select auth.uid())::text);
 
-drop policy if exists "stash_own_update" on storage.objects;
 create policy "stash_own_update" on storage.objects
   for update to authenticated
   using (bucket_id = 'stash-voice' and (storage.foldername(name))[1] = (select auth.uid())::text)
