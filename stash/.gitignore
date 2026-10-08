@@ -50,3 +50,9 @@ password.txt
 # The repo-root .gitignore is a Python template that ignores every `lib/`
 # directory; this app's source lives in lib/, so re-include it.
 !lib/
+
+# Worker
+worker/env.yaml
+worker/.env
+__pycache__/
+.pytest_cache/

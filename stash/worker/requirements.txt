@@ -1,0 +1,7 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+httpx>=0.27
+boto3>=1.34
+anthropic>=0.40
+# Instagram and TikTok change often: rebuild the image every few weeks to pick up fixes.
+yt-dlp>=2025.1.1
