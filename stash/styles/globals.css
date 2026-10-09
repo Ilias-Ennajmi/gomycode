@@ -1,0 +1,180 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/*
+ * Tailwind is mapped onto the tokens and nothing else: the default palette,
+ * font sizes and radii are reset so a raw Tailwind colour (bg-red-500) or
+ * arbitrary size can't sneak in. Use bg-surface, text-fg, rounded-card, etc.
+ */
+@theme inline {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-raised: var(--surface-raised);
+  --color-line: var(--border);
+  --color-fg: var(--text-primary);
+  --color-fg-muted: var(--text-secondary);
+  --color-fg-subtle: var(--text-tertiary);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-insight: var(--insight);
+  --color-danger: var(--danger);
+  --color-scrim: var(--scrim);
+
+  --color-space-violet: var(--space-violet);
+  --color-space-teal: var(--space-teal);
+  --color-space-amber: var(--space-amber);
+  --color-space-blue: var(--space-blue);
+  --color-space-rose: var(--space-rose);
+  --color-space-green: var(--space-green);
+  --color-space-cyan: var(--space-cyan);
+  --color-space-sand: var(--space-sand);
+  --color-space-inbox: var(--space-inbox);
+  --color-space-violet-tint: var(--space-violet-tint);
+  --color-space-teal-tint: var(--space-teal-tint);
+  --color-space-amber-tint: var(--space-amber-tint);
+  --color-space-blue-tint: var(--space-blue-tint);
+  --color-space-rose-tint: var(--space-rose-tint);
+  --color-space-green-tint: var(--space-green-tint);
+  --color-space-cyan-tint: var(--space-cyan-tint);
+  --color-space-sand-tint: var(--space-sand-tint);
+  --color-space-inbox-tint: var(--space-inbox-tint);
+
+  --font-*: initial;
+  --font-display: var(--type-family-display);
+  --font-body: var(--type-family-body);
+
+  --text-*: initial;
+  --text-display: var(--type-display-size);
+  --text-display--line-height: var(--type-display-line);
+  --text-display--font-weight: var(--type-display-weight);
+  --text-title: var(--type-title-size);
+  --text-title--line-height: var(--type-title-line);
+  --text-title--font-weight: var(--type-title-weight);
+  --text-heading: var(--type-heading-size);
+  --text-heading--line-height: var(--type-heading-line);
+  --text-heading--font-weight: var(--type-heading-weight);
+  --text-body: var(--type-body-size);
+  --text-body--line-height: var(--type-body-line);
+  --text-body--font-weight: var(--type-body-weight);
+  --text-label: var(--type-label-size);
+  --text-label--line-height: var(--type-label-line);
+  --text-label--font-weight: var(--type-label-weight);
+  --text-caption: var(--type-caption-size);
+  --text-caption--line-height: var(--type-caption-line);
+  --text-caption--font-weight: var(--type-caption-weight);
+  --text-tab: var(--type-tab-size);
+  --text-tab--line-height: var(--type-tab-line);
+  --text-tab--font-weight: var(--type-tab-weight);
+  --text-input: var(--type-input-size);
+
+  --radius-*: initial;
+  --radius-sm: var(--shape-sm);
+  --radius-card: var(--shape-md);
+  --radius-lg: var(--shape-lg);
+  --radius-xl: var(--shape-xl);
+  --radius-sheet: var(--shape-sheet);
+  --radius-full: var(--shape-full);
+
+  /* 4px spacing grid in px, so text size changes don't stretch layout. */
+  --spacing: 4px;
+
+  --shadow-*: initial;
+  --shadow-raised: var(--elev-raised);
+  --shadow-sheet: var(--elev-sheet);
+
+  --ease-standard: var(--motion-ease-standard);
+  --ease-spring: var(--motion-ease-spring);
+}
+
+@layer base {
+  html {
+    /* In-app text size (90–130%) multiplies the system font scale. */
+    font-size: calc(100% * var(--text-scale, 1));
+    -webkit-text-size-adjust: 100%;
+    background: var(--background);
+  }
+  body {
+    background: var(--background);
+    color: var(--text-primary);
+    font-family: var(--type-family-body);
+    font-size: var(--type-body-size);
+    font-weight: var(--type-body-weight);
+    line-height: var(--type-body-line);
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+    min-height: 100dvh;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--type-family-display);
+  }
+  input,
+  textarea,
+  select {
+    font-size: var(--type-input-size);
+  }
+  :focus-visible {
+    outline: 2px solid var(--text-primary);
+    outline-offset: 2px;
+  }
+  /* Theme switches are instant; only explicit transitions animate. */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@utility scroll-area {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+@utility tap {
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+@utility shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--surface-raised) 0%,
+    color-mix(in srgb, var(--surface-raised) 60%, var(--text-tertiary)) 50%,
+    var(--surface-raised) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+  [data-reduce-motion="true"] & {
+    animation: none;
+  }
+}

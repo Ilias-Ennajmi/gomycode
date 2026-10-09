@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Stash mark shown on the dark splash background while the site loads. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="144dp"
+    android:height="144dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#C8F05A"
+        android:fillAlpha="0.55"
+        android:pathData="M42,32.5h24a4,4 0,0 1,4,4v3a4,4 0,0 1,-4,4h-24a4,4 0,0 1,-4,-4v-3a4,4 0,0 1,4,-4z" />
+    <path
+        android:fillColor="#C8F05A"
+        android:fillAlpha="0.8"
+        android:pathData="M39,48.5h30a4,4 0,0 1,4,4v3a4,4 0,0 1,-4,4h-30a4,4 0,0 1,-4,-4v-3a4,4 0,0 1,4,-4z" />
+    <path
+        android:fillColor="#C8F05A"
+        android:pathData="M34,64.5h40a4,4 0,0 1,4,4v3a4,4 0,0 1,-4,4h-40a4,4 0,0 1,-4,-4v-3a4,4 0,0 1,4,-4z" />
+</vector>
