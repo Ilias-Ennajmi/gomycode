@@ -22,3 +22,4 @@ writeFileSync(join(ROOT, "public/js/firebase-config.js"),
   "/* Généré par scripts/gen-config.mjs depuis SETUP.env. Config web Firebase : publique par conception. */\n" +
   "window.PS_CONFIG=" + JSON.stringify(cfg, null, 2) + ";\n");
 console.log(missing.length ? "firebase-config.js written, placeholders for: " + missing.join(", ") : "firebase-config.js written");
+writeFileSync(join(ROOT, ".firebaserc"), JSON.stringify({ projects: { default: cfg.firebase.projectId } }, null, 2) + "\n");
