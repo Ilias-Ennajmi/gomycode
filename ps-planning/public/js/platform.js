@@ -141,5 +141,104 @@ onReady(function(){
   });
 });
 
-/*@@SERVICES@@*/
+/* ── assets : images réduites en WebP, stockées en data URL dans assets/{id} ── */
+var TYPES=["image/png","image/jpeg","image/webp","image/gif"], assetCache={}, assetFetching={};
+function loadImg(file){
+  return new Promise(function(res,rej){
+    var u=URL.createObjectURL(file), im=new Image();
+    im.onload=function(){ URL.revokeObjectURL(u); res(im); };
+    im.onerror=function(){ URL.revokeObjectURL(u); rej({code:"unsupported_type"}); };
+    im.src=u;
+  });
+}
+function encodeAt(im,edge,q){
+  var w=im.naturalWidth, h=im.naturalHeight, k=Math.min(1,edge/Math.max(w,h));
+  var c=document.createElement("canvas"); c.width=Math.max(1,Math.round(w*k)); c.height=Math.max(1,Math.round(h*k));
+  c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+  var d=c.toDataURL("image/webp",q);
+  if(d.indexOf("data:image/webp")!==0) d=c.toDataURL("image/jpeg",q); /* Safari n'encode pas le WebP */
+  return d;
+}
+/* seuils appliqués à la data URL elle-même : c'est elle qui doit tenir sous la limite de 1 Mo d'un doc Firestore */
+var assets={
+  upload:function(file){
+    if(!file||TYPES.indexOf(file.type)<0) return Promise.reject({code:"unsupported_type"});
+    return loadImg(file).then(function(im){
+      var d=encodeAt(im,1600,.82);
+      if(d.length>700*1024) d=encodeAt(im,1200,.65);
+      if(d.length>900*1024) throw {code:"too_large"};
+      var id="a"+rid(), mime=d.slice(5,d.indexOf(";")), bytes=Math.round((d.length-d.indexOf(",")-1)*3/4);
+      assetCache[id]=d;
+      track(fs.doc("assets/"+id).set({dataUrl:d,type:mime,sizeBytes:bytes,createdAt:firebase.firestore.FieldValue.serverTimestamp()}))
+        .catch(function(e){ console.warn(e); toast("Visuel non enregistré"); });
+      return {id:id,sizeBytes:bytes};
+    });
+  }
+};
+PS.assetSrc=function(id){
+  if(!id||typeof id!=="string"||id.indexOf("/")>=0) return "";
+  if(Object.prototype.hasOwnProperty.call(assetCache,id)) return assetCache[id];
+  if(!assetFetching[id]&&fs){
+    assetFetching[id]=true;
+    authReady.then(function(){ return fs.doc("assets/"+id).get(); }).then(function(s){
+      var v=s.exists?s.data():null;
+      assetCache[id]=(v&&typeof v.dataUrl==="string")?v.dataUrl:"";
+      if(assetCache[id]) window.dispatchEvent(new CustomEvent("ps:asset",{detail:{id:id}}));
+    }).catch(function(){ assetCache[id]=""; });
+  }
+  return "";
+};
+
+/* ── downloads : Blob + lien temporaire ── */
+var downloads={
+  save:function(o){
+    try{
+      var isStr=typeof o.data==="string", blob;
+      if(isStr){
+        var csv=/\.csv$/i.test(o.filename||"");
+        var txt=(csv&&o.data.charAt(0)!=="﻿")?"﻿"+o.data:o.data;
+        blob=new Blob([txt],{type:csv?"text/csv;charset=utf-8":/\.json$/i.test(o.filename||"")?"application/json":"text/plain;charset=utf-8"});
+      } else {
+        blob=new Blob([o.data],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+      }
+      var u=URL.createObjectURL(blob), a=document.createElement("a");
+      a.href=u; a.download=o.filename||"export"; a.style.display="none";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(u); },4000);
+      return Promise.resolve();
+    }catch(e){ return Promise.reject({code:"download_failed"}); }
+  }
+};
+
+/* ── sample + IA : POST /api/ai avec le jeton Firebase ── */
+function aiCall(body,signal){
+  return authReady.then(function(u){ return u.getIdToken(); }).then(function(tok){
+    return fetch("/api/ai",{method:"POST",signal:signal,
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok},body:JSON.stringify(body)});
+  }).then(function(r){
+    if(r.status===429) throw {code:"rate_limited"};
+    return r.text().then(function(t){
+      var j; try{ j=JSON.parse(t); }catch(e){ throw {code:r.ok?"invalid_json":"ai_error"}; }
+      if(!r.ok) throw {code:(j&&j.code)||"ai_error"};
+      return j;
+    });
+  }).catch(function(e){
+    if(e&&e.name==="AbortError") throw {code:"cancelled"};
+    if(e&&e.code) throw e;
+    throw {code:"ai_error"};
+  });
+}
+var sample={ json:function(prompt,opts){ return aiCall({mode:"json",prompt:String(prompt||"")},opts&&opts.signal); } };
+PS.ai=function(mode,payload,signal){ var b={mode:mode}; Object.keys(payload||{}).forEach(function(k){ b[k]=payload[k]; }); return aiCall(b,signal); };
+PS.aiError=function(e){
+  var c=e&&e.code;
+  return c==="cancelled"?"Arrêté.":c==="rate_limited"?"Trop de demandes d'affilée. Réessaie dans un moment.":
+    c==="invalid_json"?"Réponse illisible. Réessaie.":"L'IA n'a pas répondu. Réessaie.";
+};
+
+SERVICES.assets=function(){ return assets; };
+SERVICES.downloads=function(){ return downloads; };
+SERVICES.sample=function(){ return sample; };
+
+/*@@FEATURES@@*/
 })();
