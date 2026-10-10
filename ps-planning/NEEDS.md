@@ -27,19 +27,13 @@ Une fois `SETUP.env` rempli (copie de `SETUP.env.example`) : `node scripts/gen-c
    ```
 3. Données : `node scripts/seed.mjs` (idempotent, ne remplace jamais un doc existant ; affiche les compteurs).
 
-## Vercel (bloqué : CLI non connectée dans l'environnement de build)
-Depuis `ps-planning/`, une fois SETUP.env rempli :
-```
-npx vercel login
-npx vercel link --yes --project ps-planning
-npx vercel env add GEMINI_API_KEY production     # coller la clé
-npx vercel env add GEMINI_MODEL production       # résultat de node scripts/pick-model.mjs
-npx vercel env add FIREBASE_API_KEY production
-npx vercel env add OWNER_UID production
-npx vercel --prod --yes
-node scripts/smoke.mjs https://<url-de-prod>
-```
-Puis dans Firebase > Authentication > Settings > Authorized domains : ajouter le domaine `*.vercel.app` de prod.
+## Vercel (fait le 2026-10-10, via le connecteur Vercel)
+- Projet `ps-planning` créé dans « ilias-ennajmi's projects », relié au repo GitHub `Ilias-Ennajmi/gomycode`, dossier racine `ps-planning`.
+- En prod sur https://ps-planning.vercel.app depuis la branche `claude/new-session-xgdz8d`.
+- Le projet a « Vercel Authentication » activé (réglage par défaut) : il faut être connecté à Vercel pour ouvrir l'URL. Pour un accès direct sur le téléphone : Vercel > ps-planning > Settings > Deployment Protection > désactiver (la page de connexion de l'app protège déjà les données).
+- La branche de prod Vercel est `main`, qui ne contient pas encore `ps-planning/` : fusionner la branche avant tout push sur `main`, sinon le build de prod échoue.
+- Reste à ajouter dans Vercel > Settings > Environment Variables (Production) : GEMINI_API_KEY, GEMINI_MODEL, FIREBASE_API_KEY, OWNER_UID, puis redéployer.
+- Firebase > Authentication > Settings > Authorized domains : ajouter `ps-planning.vercel.app`.
 
 ## Vérification faite pendant le build
 Smoke en local (`node scripts/local-server.mjs 3123`, puis `node scripts/smoke.mjs http://localhost:3123`) : 1 à 3 PASS, 4 à 7 FAIL faute de SETUP.env.
