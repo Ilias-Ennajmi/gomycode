@@ -26,3 +26,17 @@ Une fois `SETUP.env` rempli (copie de `SETUP.env.example`) : `node scripts/gen-c
    }
    ```
 3. Données : `node scripts/seed.mjs` (idempotent, ne remplace jamais un doc existant ; affiche les compteurs).
+
+## Vercel (bloqué : CLI non connectée dans l'environnement de build)
+Depuis `ps-planning/`, une fois SETUP.env rempli :
+```
+npx vercel login
+npx vercel link --yes --project ps-planning
+npx vercel env add GEMINI_API_KEY production     # coller la clé
+npx vercel env add GEMINI_MODEL production       # résultat de node scripts/pick-model.mjs
+npx vercel env add FIREBASE_API_KEY production
+npx vercel env add OWNER_UID production
+npx vercel --prod --yes
+node scripts/smoke.mjs https://<url-de-prod>
+```
+Puis dans Firebase > Authentication > Settings > Authorized domains : ajouter le domaine `*.vercel.app` de prod.

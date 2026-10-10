@@ -1,0 +1,13 @@
+SETUP.env
+SETUP.env.example
+.env*
+seed
+reference
+docs
+scripts
+NEEDS.md
+KICKOFF.txt
+CLAUDE.md
+firestore.rules
+firebase.json
+.firebaserc

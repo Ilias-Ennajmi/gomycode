@@ -4,3 +4,4 @@ SETUP.env
 node_modules/
 seed/
 reference/
+.firebase/
