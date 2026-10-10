@@ -40,3 +40,7 @@ npx vercel --prod --yes
 node scripts/smoke.mjs https://<url-de-prod>
 ```
 Puis dans Firebase > Authentication > Settings > Authorized domains : ajouter le domaine `*.vercel.app` de prod.
+
+## Vérification faite pendant le build
+Smoke en local (`node scripts/local-server.mjs 3123`, puis `node scripts/smoke.mjs http://localhost:3123`) : 1 à 3 PASS, 4 à 7 FAIL faute de SETUP.env.
+Parcours testé en navigateur headless avec un faux Firebase : connexion, synchro, Enregistrer + Ctrl+S, légendes, analyse de la semaine, sauvegarde, sans erreur JS.
