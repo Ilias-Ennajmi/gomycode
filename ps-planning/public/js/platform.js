@@ -240,5 +240,160 @@ SERVICES.assets=function(){ return assets; };
 SERVICES.downloads=function(){ return downloads; };
 SERVICES.sample=function(){ return sample; };
 
-/*@@FEATURES@@*/
+/* ══════════ FONCTIONS IA ET SAUVEGARDE (accrochées par app.js) ══════════ */
+
+/* A. Légende + 3 propositions dans la fiche contenu */
+PS.captionField=function(it,ctx){
+  var A=PS.app, f=mk("div","f");
+  f.appendChild(mk("label",null,"Légende"));
+  var ta=mk("textarea"); ta.id="fi-caption"; ta.value=it.caption||""; ta.placeholder="Texte publié avec le contenu…";
+  ta.oninput=function(){ it.caption=ta.value; };
+  f.appendChild(ta);
+  var row=mk("div","psai-row"), b=mk("button","btn sm","3 propositions"), st=mk("span","hint");
+  b.type="button"; row.appendChild(b); row.appendChild(st); f.appendChild(row);
+  var opts=mk("div","pscaps"); opts.hidden=true; f.appendChild(opts);
+  var ctl=null;
+  b.onclick=function(){
+    if(ctl){ ctl.abort(); return; }
+    var c=ctx(), br=A.brand(it.brand), cp=A.camp(it.campaign), ct=A.ccat(it.category), itn=A.cintent(it.intent), ty=A.ctype(it.type);
+    var item={marque:br?br.name:"", categorie:ct?ct.name:"", type:ty?ty.name:"", format:it.format||"",
+      slot:c.kind==="story"?"Story":"Post", titre:it.title||"", notes:it.notes||"", campagne:cp?cp.name:"", intention:itn?itn.name:""};
+    if(!item.titre&&!item.notes&&!item.marque){ st.textContent="Remplis au moins la marque ou l'angle."; return; }
+    ctl=new AbortController(); b.textContent="Arrêter"; st.textContent="Rédaction…";
+    PS.ai("captions",{item:item},ctl.signal).then(function(r){
+      opts.innerHTML="";
+      (r.options||[]).forEach(function(o){
+        var cd=mk("button","pscap",o); cd.type="button";
+        cd.onclick=function(){ ta.value=o; it.caption=o; ta.focus(); };
+        opts.appendChild(cd);
+      });
+      opts.hidden=false; st.textContent="";
+    }).catch(function(e){ st.textContent=PS.aiError(e); })
+      .then(function(){ ctl=null; b.textContent="3 propositions"; });
+  };
+  return f;
+};
+
+/* B. Analyser la semaine affichée */
+PS.reviewButton=function(){
+  var b=mk("button","btn sm","Analyser la semaine"); b.id="reviewweek"; b.type="button";
+  b.title="Repérer les déséquilibres de la semaine et proposer des échanges";
+  b.onclick=function(){ reviewWeek(b); };
+  return b;
+};
+function dayLabel(d){ var A=PS.app; return /^\d{4}-\d{2}-\d{2}$/.test(d)?A.DOWS[A.dw(A.pISO(d))]+" "+A.pISO(d).getDate():""; }
+function reviewWeek(btn){
+  var A=PS.app, S=A.S, ws=S.wk, we=A.addDays(ws,6);
+  var list=A.allItems(ws,we);
+  if(!list.length){ A.toast("Semaine vide : rien à analyser"); return; }
+  var payload={
+    semaine:{du:ws,au:we},
+    contenus:list.map(function(r){
+      var b=A.brand(r.it.brand), t=A.ctype(r.it.type), ct=A.ccat(r.it.category);
+      return {date:r.date, jour:dayLabel(r.date), slot:r.kind, marque:b?b.name:"", type:t?t.name:"",
+        categorie:ct?ct.name:"", format:r.it.format||"", quantite:A.qtyOf(r.it), titre:r.it.title||""};
+    }),
+    marques:S.cfg.brands.map(function(b){ return {nom:b.name,objectif_pct:b.target}; }),
+    types:S.cfg.types.map(function(t){ return {nom:t.name,objectif_pct:t.target}; }),
+    tolerance_points:S.cfg.tolerance, stories_min_par_jour:S.cfg.storiesPerDay
+  };
+  btn.disabled=true; btn.textContent="Analyse…";
+  PS.ai("review",payload).then(function(r){ showReview(r.suggestions||[]); })
+    .catch(function(e){ A.toast(PS.aiError(e)); })
+    .then(function(){ btn.disabled=false; btn.textContent="Analyser la semaine"; });
+}
+function showReview(list){
+  var A=PS.app, h=$("dlgHost"); h.innerHTML="";
+  var sc=mk("div","scrim dlg"), bx=mk("div","dlgbox wide"); bx.setAttribute("role","dialog");
+  bx.appendChild(mk("h3",null,"Analyse de la semaine"));
+  if(!list.length) bx.appendChild(mk("p",null,"Rien à corriger : la semaine tient ses objectifs."));
+  list.forEach(function(s){
+    var row=mk("div","psrev");
+    var d=dayLabel(s.date); if(d) row.appendChild(mk("div","psrev-d",d));
+    row.appendChild(mk("div","psrev-i",s.issue));
+    row.appendChild(mk("div","psrev-f",s.fix));
+    bx.appendChild(row);
+  });
+  var ft=mk("div","dfoot"), ok=mk("button","btn sm solid","Fermer"); ok.type="button"; ok.onclick=A.closeDlg;
+  ft.appendChild(ok); bx.appendChild(ft);
+  sc.onclick=function(e){ if(e.target===sc) A.closeDlg(); };
+  sc.appendChild(bx); h.appendChild(sc);
+}
+
+/* Sauvegarde JSON (même forme que seed.json) */
+var COLLS=["days","campaigns","ideas","groups"];
+function backupPaths(data){
+  var out=[];
+  COLLS.forEach(function(c){ var m=data[c]; if(m&&typeof m==="object") Object.keys(m).forEach(function(id){ if(id&&id.indexOf("/")<0) out.push([c+"/"+id,m[id]]); }); });
+  var cf=data.config||{};
+  ["settings","storyRules"].forEach(function(k){ if(cf[k]&&typeof cf[k]==="object") out.push(["config/"+k,cf[k]]); });
+  return out;
+}
+function exportBackup(){
+  var out={exportedAt:new Date().toISOString().slice(0,10),days:{},campaigns:{},ideas:{},groups:{},config:{}}, n=0;
+  return Promise.all(COLLS.concat(["config"]).map(function(c){
+    return fs.collection(c).get().then(function(sn){
+      sn.docs.forEach(function(d){ var v=dec(d.data()); if(v===undefined) return; out[c][d.id]=v; n++; });
+    });
+  })).then(function(){
+    var stamp=new Date().toISOString().slice(0,16).replace(/[-:T]/g,"");
+    return downloads.save({filename:"planning-ps-sauvegarde-"+stamp+".json",data:JSON.stringify(out,null,1)}).then(function(){ return n; });
+  });
+}
+function importBackup(data,replace){
+  var paths=backupPaths(data), done=0, skipped=0;
+  return Promise.all(paths.map(function(p){
+    var r=fs.doc(p[0]);
+    return (replace?Promise.resolve(false):r.get().then(function(s){ return s.exists; })).then(function(ex){
+      if(ex){ skipped++; return; }
+      return db.doc(p[0]).set(p[1]).then(function(){ done++; });
+    });
+  })).then(function(){ return {done:done,skipped:skipped}; });
+}
+function confirmImport(data,st){
+  var A=PS.app, paths=backupPaths(data);
+  if(!paths.length){ st.textContent="Aucune donnée reconnue dans ce fichier."; return; }
+  var h=$("dlgHost"); h.innerHTML="";
+  var sc=mk("div","scrim dlg"), bx=mk("div","dlgbox"); bx.setAttribute("role","alertdialog");
+  bx.appendChild(mk("h3",null,"Importer cette sauvegarde ?"));
+  bx.appendChild(mk("p",null,paths.length+" documents. Ceux qui existent déjà sont gardés tels quels."));
+  var lb=mk("label","psck"), ck=mk("input"); ck.type="checkbox";
+  lb.appendChild(ck); lb.appendChild(document.createTextNode(" remplacer les documents existants")); bx.appendChild(lb);
+  var ft=mk("div","dfoot"), no=mk("button","btn sm","Annuler"), ok=mk("button","btn sm solid","Importer");
+  no.type="button"; ok.type="button"; no.onclick=A.closeDlg;
+  ok.onclick=function(){
+    var rep=ck.checked; A.closeDlg(); st.textContent="Import…";
+    importBackup(data,rep).then(function(r){
+      st.textContent=r.done+" importé(s), "+r.skipped+" déjà présent(s).";
+      A.toast("Sauvegarde importée");
+    }).catch(function(e){ console.warn(e); st.textContent="Import interrompu."; });
+  };
+  ft.appendChild(no); ft.appendChild(ok); bx.appendChild(ft);
+  sc.onclick=function(e){ if(e.target===sc) A.closeDlg(); };
+  sc.appendChild(bx); h.appendChild(sc);
+}
+PS.backupSection=function(){
+  var sec=mk("div"); sec.style.marginTop="22px";
+  sec.appendChild(mk("div","secttl","Sauvegarde"));
+  var row=mk("div"); row.style.cssText="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap";
+  var ex=mk("button","btn sm","Exporter une sauvegarde (JSON)"), im=mk("button","btn sm","Importer une sauvegarde");
+  ex.type="button"; im.type="button";
+  var fi=mk("input"); fi.type="file"; fi.accept="application/json,.json"; fi.hidden=true;
+  var st=mk("div","hint"); st.style.marginTop="6px";
+  row.appendChild(ex); row.appendChild(im); row.appendChild(fi); sec.appendChild(row); sec.appendChild(st);
+  ex.onclick=function(){
+    if(!fs){ st.textContent="Pas de connexion à la base."; return; }
+    st.textContent="Préparation…";
+    exportBackup().then(function(n){ st.textContent=n+" documents exportés."; })
+      .catch(function(e){ console.warn(e); st.textContent="Export impossible."; });
+  };
+  im.onclick=function(){ fi.click(); };
+  fi.onchange=function(){
+    var f=fi.files&&fi.files[0]; fi.value=""; if(!f) return;
+    f.text().then(function(t){ return JSON.parse(t); })
+      .then(function(d){ if(!d||typeof d!=="object") throw 0; confirmImport(d,st); })
+      .catch(function(){ st.textContent="Fichier illisible."; });
+  };
+  return sec;
+};
 })();

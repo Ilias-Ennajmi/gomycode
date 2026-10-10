@@ -792,3 +792,12 @@ nav.tabs button{font-weight:600}
 .psgate-box input[type=password]{width:100%; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm); padding:11px 12px; font-size:16px}
 .psgate-box .btn{padding:10px 13px; font-size:14px}
 .psgate-err{min-height:18px; font-size:12.5px; color:var(--alert)}
+.psai-row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+.pscaps{display:flex; flex-direction:column; gap:8px}
+.pscap{text-align:left; background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-sm); padding:10px 12px; font-size:13.5px; line-height:1.5; white-space:pre-line; color:var(--ink); cursor:pointer; transition:border-color .12s, background .12s}
+.pscap:hover{border-color:var(--line-2); background:var(--surface-3)}
+.psrev{border-top:1px solid var(--line); padding-top:10px; display:flex; flex-direction:column; gap:3px}
+.psrev-d{font-family:var(--display); font-size:13px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3)}
+.psrev-i{font-size:13.5px; color:var(--ink-2); line-height:1.5}
+.psrev-f{font-size:13.5px; color:var(--ink); font-weight:500; line-height:1.5}
+.psck{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink-2)}

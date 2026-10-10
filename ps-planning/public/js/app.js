@@ -98,7 +98,7 @@ function dayCount(day){ var n=0; (day.stories||[]).forEach(function(x){ if(fille
 function weekPar(ws){ return Math.abs(Math.floor(pISO(ws).getTime()/86400000/7))%2; }
 function pairLabel(bid,par){ var p=(S.rules.pairs||{})[bid]; return p?p[par%p.length]:null; }
 function brandLabel(bid,par){ var pl=pairLabel(bid,par); if(pl) return pl; var b=brand(bid); return b?b.name:""; }
-function blobUrl(id){return id?("/_blob/"+id):"";}
+function blobUrl(id){ return id?window.claude.assetSrc(id):""; }
 /* Les boîtes natives confirm()/prompt() sont bloquées dans l'artefact : dialogues maison */
 function closeDlg(){ var h=$("dlgHost"); if(h) h.innerHTML=""; }
 function askConfirm(title,text,okLabel,cb,danger){
@@ -2228,6 +2228,7 @@ function openItem(ref,seed){
   inN.placeholder="Lieu, casting, produit, message clé, CTA, contraintes magasin…";
   inN.oninput=function(){ it.notes=inN.value; };
   fn.appendChild(inN); colR.appendChild(fn);
+  if(window.PS&&PS.captionField) colR.appendChild(PS.captionField(it,function(){ return {kind:kind,date:date}; }));
   cols.appendChild(colL); cols.appendChild(colR); body.appendChild(cols);
   sheet.appendChild(body);
 
@@ -2645,7 +2646,7 @@ function openGenerator(){
 }
 
 /* ══════════ EXPORT ══════════ */
-var EXCOLS=["Date","Jour","Slot","Catégorie","Qté","Intention","Marque","Type de contenu","Format","Statut","Campagne","Angle / accroche","Brief","Lien"];
+var EXCOLS=["Date","Jour","Slot","Catégorie","Qté","Intention","Marque","Type de contenu","Format","Statut","Campagne","Angle / accroche","Brief","Lien","Légende"];
 function exRange(scope){
   if(scope==="week") return [S.wk,addDays(S.wk,6)];
   if(scope==="month"){var y=S.ym.y,m=S.ym.m; return [iso(y,m,1),iso(y,m,dim(y,m))];}
@@ -2661,7 +2662,7 @@ function exRow(r){
   var ct=ccat(r.it.category), itn=cintent(r.it.intent);
   return [r.date, DOWS[dw(d)], r.kind==="post"?"Post":"Story", ct?ct.name:"", qtyOf(r.it), itn?itn.name:"",
           b?b.name:"", t?t.name:"", r.it.format||"", st?st.name:"", cp?cp.name:"",
-          r.it.title||"", (r.it.notes||"").replace(/\s+/g," "), r.it.link||""];
+          r.it.title||"", (r.it.notes||"").replace(/\s+/g," "), r.it.link||"", (r.it.caption||"").replace(/\s+/g," ")];
 }
 function exLabel(scope,list){
   if(scope==="week") return shortDate(S.wk)+" – "+shortDate(addDays(S.wk,6))+" "+pISO(S.wk).getFullYear();
@@ -2827,7 +2828,7 @@ function openExport(){
       run=loadXLSX().then(function(X){
         var aoa=[EXCOLS].concat(list.map(exRow));
         var ws=X.utils.aoa_to_sheet(aoa);
-        ws["!cols"]=[{wch:11},{wch:10},{wch:7},{wch:16},{wch:5},{wch:13},{wch:15},{wch:15},{wch:13},{wch:12},{wch:18},{wch:50},{wch:40},{wch:30}];
+        ws["!cols"]=[{wch:11},{wch:10},{wch:7},{wch:16},{wch:5},{wch:13},{wch:15},{wch:15},{wch:13},{wch:12},{wch:18},{wch:50},{wch:40},{wch:30},{wch:60}];
         ws["!freeze"]={xSplit:"0",ySplit:"1"};
         var wb=X.utils.book_new(); X.utils.book_append_sheet(wb,ws,"Planning");
         return S.dl.save({filename:fn+".xlsx",data:X.write(wb,{bookType:"xlsx",type:"array"})});
@@ -2931,6 +2932,7 @@ function openSettings(){
   i2.oninput=function(){var v=parseFloat(i2.value.replace(",",".")); S.cfg.tolerance=isNaN(v)?5:Math.max(1,Math.min(50,v));};
   f2.appendChild(i2); r.appendChild(f2);
   body.appendChild(r);
+  if(window.PS&&PS.backupSection) body.appendChild(PS.backupSection());
   sheet.appendChild(body);
 
   var foot=el("div","sf");
@@ -3014,6 +3016,7 @@ function renderSub(){
     var cwb=el("button","btn sm","Copier la semaine"); cwb.id="copyweek"; cwb.title="Dupliquer cette semaine vers une autre"; cwb.onclick=openCopyWeek; b.appendChild(cwb);
     var smb=el("button","btn sm"+(S.selMode?" solid":""),S.selMode?"Sélection active":"Sélectionner"); smb.id="selmode"; smb.title="Choisir plusieurs contenus puis agir en lot";
     smb.onclick=function(){ setSelMode(!S.selMode); }; b.appendChild(smb);
+    if(window.PS&&PS.reviewButton) b.appendChild(PS.reviewButton());
   }
   if(S.tab==="dash"){
     b.appendChild(el("div","vr"));
@@ -3199,6 +3202,8 @@ function boot(){
   try{ new MutationObserver(themeChanged).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]}); }catch(e){}
 
   renderTabs(); renderSub(); render();
+  if(window.PS){ PS.app={S:S,toast:toast,render:render,renderSub:renderSub,el:el,closeDlg:closeDlg,askConfirm:askConfirm,brand:brand,ctype:ctype,camp:camp,ccat:ccat,cintent:cintent,cstatus:cstatus,addDays:addDays,qtyOf:qtyOf,allItems:allItems,DOWS:DOWS,pISO:pISO,dw:dw};
+    window.addEventListener("ps:asset",PS.debounce(render,100)); }
   setSync("","Connexion");
   if(!window.claude||!window.claude.use){ setSync("off","Hors ligne"); return; }
 
