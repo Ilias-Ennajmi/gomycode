@@ -1,0 +1,1 @@
+Read CLAUDE.md, then docs/BUILD.md once. Execute phases 1 to 8 in order. The plan is final: don't re-plan and don't ask me anything during the run. My values are in SETUP.env; if one is missing, use a placeholder, log it in NEEDS.md and keep going. Commit after each phase. Finish with the French report described in phase 8.

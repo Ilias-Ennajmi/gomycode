@@ -1,0 +1,6 @@
+SETUP.env
+.env*
+.vercel/
+node_modules/
+seed/
+reference/
