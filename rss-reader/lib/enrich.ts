@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { cosine, embedTexts, findPromotions, isAiEnabled } from "@/lib/ai";
+import { cosine, embedTexts, findPromotions, isAiEnabled, isQuotaError } from "@/lib/ai";
 import { stripHtml } from "@/lib/utils";
 
 const BATCH_SIZE = 50; // Keeps each refresh well inside Gemini's free-tier rate limits.
@@ -46,7 +46,9 @@ export async function runAiPipeline() {
   try {
     enriched = await enrichArticles();
   } catch (error) {
-    console.error("AI enrichment skipped", error);
+    // Out of quota is expected on the free tier: the next runs pick up where this stopped.
+    if (isQuotaError(error)) console.warn(`AI enrichment paused: ${(error as Error).message}`);
+    else console.error("AI enrichment skipped", error);
   }
   const topics = await clusterRecentArticles().catch((error) => {
     console.error("Story clustering skipped", error);
@@ -74,7 +76,7 @@ async function enrichArticles() {
       .filter((a) => !a.isVideo)
       .map((a) => ({ id: a.id, title: a.title, summary: stripHtml(a.summary || a.content) }))
   ).catch((error) => {
-    console.error("Promotion screening skipped", error);
+    if (!isQuotaError(error)) console.error("Promotion screening skipped", error);
     return new Set<string>();
   });
 

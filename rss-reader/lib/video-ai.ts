@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AiError, generateFromVideo, isAiEnabled } from "@/lib/ai";
+import type { AiPriority } from "@/lib/ai-budget";
 import { formatClock, parseClock } from "@/lib/youtube-video";
 import { youTubeVideoId } from "@/lib/youtube";
 
@@ -80,7 +81,8 @@ export interface VideoAnalysis {
 export async function analyzeVideo(
   videoId: string,
   durationSeconds: number | null,
-  timeoutMs: number
+  timeoutMs: number,
+  priority: AiPriority
 ): Promise<VideoAnalysis> {
   const withTranscript = !durationSeconds || durationSeconds <= TRANSCRIPT_MAX_SECONDS;
   const length = durationSeconds ? ` The video is ${formatClock(durationSeconds)} long.` : "";
@@ -98,6 +100,7 @@ export async function analyzeVideo(
   const raw = await generateFromVideo(`https://www.youtube.com/watch?v=${videoId}`, prompt, {
     timeoutMs,
     maxTokens: withTranscript ? 32_000 : 2_000,
+    priority,
   });
   let data: { summary?: unknown; keyMoments?: unknown; transcript?: unknown };
   try {
@@ -134,7 +137,11 @@ export const VIDEO_AI_CANDIDATE: Prisma.ArticleWhereInput = {
 export type VideoAiResult = "done" | "busy" | "failed" | "skipped";
 
 /** Runs Gemini on one video and stores the result. "busy" means try again later. */
-export async function runVideoAi(articleId: string, timeoutMs: number): Promise<VideoAiResult> {
+export async function runVideoAi(
+  articleId: string,
+  timeoutMs: number,
+  priority: AiPriority = "user"
+): Promise<VideoAiResult> {
   if (!isAiEnabled()) return "skipped";
   const article = await prisma.article.findFirst({
     where: { id: articleId, ...VIDEO_AI_CANDIDATE },
@@ -149,7 +156,7 @@ export async function runVideoAi(articleId: string, timeoutMs: number): Promise<
     data: { videoAiAt: new Date(), videoAiAttempts: { increment: 1 } },
   });
   try {
-    const analysis = await analyzeVideo(videoId, article.durationSeconds, timeoutMs);
+    const analysis = await analyzeVideo(videoId, article.durationSeconds, timeoutMs, priority);
     await prisma.article.update({
       where: { id: article.id },
       data: {
@@ -163,7 +170,8 @@ export async function runVideoAi(articleId: string, timeoutMs: number): Promise<
   } catch (error) {
     const status = error instanceof AiError ? error.status : undefined;
     const busy = status === 503 || status === 429 || (error as Error)?.name === "TimeoutError";
-    console.error(`Video AI ${busy ? "postponed" : "failed"} for ${articleId}`, error);
+    if (busy) console.warn(`Video AI postponed for ${articleId}: ${(error as Error).message}`);
+    else console.error(`Video AI failed for ${articleId}`, error);
     // Google being overloaded isn't the video's fault: it doesn't use up a try (the wait
     // before the next run still applies, and background runs only look back two weeks).
     if (busy) {
@@ -195,7 +203,7 @@ export async function runVideoAiBatch(deadline: number, limit = 3) {
   for (const { id } of candidates) {
     const left = deadline - Date.now();
     if (left < 30_000) break;
-    const result = await runVideoAi(id, left - 5_000);
+    const result = await runVideoAi(id, left - 5_000, "background");
     results.push(result);
     // Overloaded: the next one would fail the same way.
     if (result === "busy") break;

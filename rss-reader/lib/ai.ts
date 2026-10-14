@@ -4,6 +4,8 @@
  * (rate limit, outage) degrades to "no AI" instead of breaking a request.
  */
 
+import { noteQuotaError, reserveAi, type AiBucket, type AiPriority } from "@/lib/ai-budget";
+
 const BASE_URL = process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com";
 // Measured on real headlines: gemini-embedding-2 separates "same story" from
 // "similar topic" far better than gemini-embedding-001, which scores both ~0.93.
@@ -33,7 +35,29 @@ export function isAiEnabled() {
   return Boolean(process.env.GEMINI_API_KEY);
 }
 
-async function callGemini(model: string, method: string, body: unknown, timeoutMs = 25_000) {
+/** Out of quota (Google's or today's budget): callers treat it as "try later". */
+export function isQuotaError(error: unknown) {
+  return error instanceof AiError && error.status === 429;
+}
+
+interface Meter {
+  bucket: AiBucket;
+  /** Requests this call counts as (an embedding batch: one per text). */
+  units?: number;
+  priority: AiPriority;
+}
+
+async function callGemini(
+  model: string,
+  method: string,
+  body: unknown,
+  meter: Meter,
+  timeoutMs = 25_000
+) {
+  // Within today's budget (lib/ai-budget.ts), or not sent at all.
+  if (!(await reserveAi(meter.bucket, model, meter.units ?? 1, meter.priority))) {
+    throw new AiError(`Gemini ${model}: today's ${meter.bucket} budget is used up`, 429);
+  }
   const res = await fetch(`${BASE_URL}/v1beta/models/${model}:${method}`, {
     method: "POST",
     headers: {
@@ -45,6 +69,7 @@ async function callGemini(model: string, method: string, body: unknown, timeoutM
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
+    if (res.status === 429) await noteQuotaError(model, detail).catch(() => {});
     throw new AiError(
       `Gemini ${method} failed (${res.status}): ${detail.slice(0, 200)}`,
       res.status
@@ -68,14 +93,19 @@ export function cosine(a: number[], b: number[]) {
 /** Unit-length embeddings, one per input, for spotting the same story across sources. */
 export async function embedTexts(texts: string[]): Promise<number[][]> {
   if (texts.length === 0) return [];
-  const data = await callGemini(EMBED_MODEL, "batchEmbedContents", {
-    requests: texts.map((text) => ({
-      model: `models/${EMBED_MODEL}`,
-      content: { parts: [{ text: text.slice(0, 2000) }] },
-      taskType: "SEMANTIC_SIMILARITY",
-      outputDimensionality: EMBED_DIMENSIONS,
-    })),
-  });
+  const data = await callGemini(
+    EMBED_MODEL,
+    "batchEmbedContents",
+    {
+      requests: texts.map((text) => ({
+        model: `models/${EMBED_MODEL}`,
+        content: { parts: [{ text: text.slice(0, 2000) }] },
+        taskType: "SEMANTIC_SIMILARITY",
+        outputDimensionality: EMBED_DIMENSIONS,
+      })),
+    },
+    { bucket: "embed", units: texts.length, priority: "background" }
+  );
   const embeddings = (data.embeddings ?? []) as { values: number[] }[];
   if (embeddings.length !== texts.length) throw new AiError("Gemini returned too few embeddings");
   return embeddings.map((e) => normalize(e.values));
@@ -85,23 +115,33 @@ interface GenerateOptions {
   system?: string;
   json?: boolean;
   maxTokens?: number;
+  /** "background" for work nobody is waiting for: it stops earlier in the day. */
+  priority?: AiPriority;
 }
 
 export async function generateText(prompt: string, options: GenerateOptions = {}) {
-  const models = workingTextModel ? [workingTextModel] : TEXT_MODELS;
+  // The model that worked last time first, then the others.
+  const models = workingTextModel
+    ? [workingTextModel, ...TEXT_MODELS.filter((m) => m !== workingTextModel)]
+    : TEXT_MODELS;
   let lastError: unknown;
 
   for (const model of models) {
     try {
-      const data = await callGemini(model, "generateContent", {
-        ...(options.system && { systemInstruction: { parts: [{ text: options.system }] } }),
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: options.maxTokens ?? 400,
-          ...(options.json && { responseMimeType: "application/json" }),
+      const data = await callGemini(
+        model,
+        "generateContent",
+        {
+          ...(options.system && { systemInstruction: { parts: [{ text: options.system }] } }),
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: options.maxTokens ?? 400,
+            ...(options.json && { responseMimeType: "application/json" }),
+          },
         },
-      });
+        { bucket: "text", priority: options.priority ?? "user" }
+      );
       workingTextModel = model;
       const parts = data.candidates?.[0]?.content?.parts as { text?: string }[] | undefined;
       const text = parts
@@ -112,8 +152,10 @@ export async function generateText(prompt: string, options: GenerateOptions = {}
       return text;
     } catch (error) {
       lastError = error;
-      // Only a missing model is worth retrying with the next name.
-      if (!(error instanceof AiError && error.status === 404)) throw error;
+      // A missing model, or one out of quota (Google counts per model): try the next.
+      if (!(error instanceof AiError && (error.status === 404 || error.status === 429))) {
+        throw error;
+      }
     }
   }
   throw lastError;
@@ -135,7 +177,7 @@ const VIDEO_MODELS = [
 export async function generateFromVideo(
   videoUrl: string,
   prompt: string,
-  options: { timeoutMs: number; maxTokens: number }
+  options: { timeoutMs: number; maxTokens: number; priority: AiPriority }
 ) {
   let lastError: unknown;
   for (const model of VIDEO_MODELS) {
@@ -160,6 +202,7 @@ export async function generateFromVideo(
             mediaResolution: "MEDIA_RESOLUTION_LOW",
           },
         },
+        { bucket: "video", priority: options.priority },
         options.timeoutMs
       );
       const parts = data.candidates?.[0]?.content?.parts as { text?: string }[] | undefined;
@@ -200,6 +243,7 @@ export async function findPromotions(items: { id: string; title: string; summary
       'Reply with JSON: {"promotional": [list of item numbers]}.',
     json: true,
     maxTokens: 200,
+    priority: "background",
   });
   const numbers = (JSON.parse(raw).promotional ?? []) as unknown[];
   return new Set(
