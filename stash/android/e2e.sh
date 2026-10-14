@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# Emulator test for the Android app, run by .github/workflows/stash-android.yml (job "e2e").
+# Usage: e2e.sh <signed apk> <output dir>
+# Installs the APK, opens it, shares a link to it, opens a site link from outside, and saves
+# screenshots, UI trees and logs. summary.txt says whether the app ran as a verified
+# Trusted Web Activity (full screen, no browser bar) and whether anything crashed.
+set -u
+APK="$1"
+OUT="$2"
+PKG=io.github.iliasennajmi.stash
+LAUNCHER=com.google.androidbrowserhelper.trusted.LauncherActivity
+# The Vercel host (same as siteHost in app/build.gradle).
+SITE=https://stash-drab-kappa.vercel.app
+HOST=${SITE#https://}
+mkdir -p "$OUT"
+
+# The page Chrome shows, from its DevTools socket (the app has no URL bar to read).
+page_url() {
+  adb forward tcp:9222 localabstract:chrome_devtools_remote > /dev/null 2>&1
+  curl -s http://127.0.0.1:9222/json | python3 -c '
+import json, sys
+pages = [t["url"] for t in json.load(sys.stdin) if t.get("type") == "page"]
+print(" + ".join(pages) or "none")' 2> /dev/null || echo "?"
+}
+
+shot() {
+  page_url > "$OUT/$1-url.txt"
+  adb exec-out screencap -p > "$OUT/$1.png"
+  adb shell uiautomator dump /sdcard/ui.xml > /dev/null 2>&1 && adb pull /sdcard/ui.xml "$OUT/$1.xml" > /dev/null 2>&1
+  adb shell dumpsys activity activities | grep -m3 -E "topResumedActivity|mResumedActivity" > "$OUT/$1-activity.txt"
+}
+
+adb wait-for-device
+until [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1" ]; do sleep 2; done
+
+adb shell pm list packages | grep -iE "chrome|webview|browser" > "$OUT/browsers.txt"
+adb shell dumpsys package com.android.chrome | grep -m1 versionName >> "$OUT/browsers.txt"
+
+# Chrome without its first-run screens, as on a phone that has used Chrome before.
+adb root > /dev/null 2>&1; sleep 2
+adb shell 'echo "_ --disable-fre --no-default-browser-check --no-first-run" > /data/local/tmp/chrome-command-line'
+adb shell am set-debug-app --persistent com.android.chrome
+
+adb install -r "$APK" > "$OUT/install.txt" 2>&1
+adb shell dumpsys package "$PKG" | grep -E "versionName|versionCode|targetSdk" >> "$OUT/install.txt"
+
+# Link verification for $SITE (the app handles site links).
+adb shell pm verify-app-links --re-verify "$PKG"
+sleep 20
+adb shell pm get-app-links "$PKG" > "$OUT/app-links.txt"
+
+adb logcat -c
+adb shell am start -W -n "$PKG/$LAUNCHER" > "$OUT/launch.txt"
+sleep 30
+shot 1-launch
+
+# adb shell joins its arguments into one command line, so the text needs its own quotes.
+adb shell am start -W -a android.intent.action.SEND -t text/plain \
+  --es android.intent.extra.TEXT "'Worth reading https://www.bbc.com/news'" \
+  -n "$PKG/$LAUNCHER" > "$OUT/share.txt" 2>&1
+sleep 20
+shot 2-share
+
+adb shell am start -W -a android.intent.action.VIEW -c android.intent.category.BROWSABLE \
+  -d "$SITE/today?from=link" > "$OUT/site-link.txt" 2>&1
+sleep 20
+shot 3-site-link
+
+adb logcat -d -b crash > "$OUT/crash.txt"
+adb logcat -d | grep -iE "TrustedWebActivity|androidbrowserhelper|TwaLauncher|DigitalAssetLinks|OriginVerifier|$PKG" | tail -300 > "$OUT/logcat.txt"
+
+{
+  echo "APK: $APK"
+  cat "$OUT/install.txt"
+  echo
+  echo "Browsers:"; cat "$OUT/browsers.txt"
+  echo
+  echo "App links:"; cat "$OUT/app-links.txt"
+  echo
+  for step in 1-launch 2-share 3-site-link; do
+    # A verified TWA has no Custom Tab toolbar; an unverified one shows the URL bar.
+    if grep -qE 'com.android.chrome:id/(url_bar|title_bar|toolbar|custom_tabs_toolbar)' "$OUT/$step.xml" 2>/dev/null; then
+      bar="BROWSER BAR VISIBLE (not verified)"
+    else
+      bar="full screen (verified)"
+    fi
+    echo "$step: $bar | page $(cat "$OUT/$step-url.txt") |$(tr -s ' ' < "$OUT/$step-activity.txt" | head -1)"
+  done
+  echo
+  echo "Share intent:"; cat "$OUT/share.txt"
+  echo "Site link intent:"; cat "$OUT/site-link.txt"
+  echo
+  if [ -s "$OUT/crash.txt" ]; then echo "CRASHES:"; head -50 "$OUT/crash.txt"; else echo "No crashes."; fi
+} > "$OUT/summary.txt"
+
+# Fail the job on anything that would be wrong on a phone. The emulator isn't signed in, so
+# pages sit behind /login?next=<page>; after signing in the app goes on to <page>.
+problems=()
+grep -q "BROWSER BAR" "$OUT/summary.txt" && problems+=("a browser bar is showing")
+grep -qF "$HOST: verified" "$OUT/app-links.txt" || problems+=("site links aren't verified")
+grep -qE "/share\?|%2Fshare%3F" "$OUT/2-share-url.txt" || problems+=("sharing didn't open /share")
+grep -qE "/today\?from=link|%2Ftoday%3Ffrom%3Dlink" "$OUT/3-site-link-url.txt" || problems+=("the site link didn't open Today")
+[ -s "$OUT/crash.txt" ] && problems+=("something crashed")
+if [ ${#problems[@]} -eq 0 ]; then
+  echo "RESULT: PASS" >> "$OUT/summary.txt"
+else
+  printf 'RESULT: FAIL - %s\n' "${problems[*]}" >> "$OUT/summary.txt"
+fi
+cat "$OUT/summary.txt"
+
+# GitHub refuses empty release assets (crash.txt is empty when nothing crashed).
+find "$OUT" -type f -empty -delete
+[ ${#problems[@]} -eq 0 ]

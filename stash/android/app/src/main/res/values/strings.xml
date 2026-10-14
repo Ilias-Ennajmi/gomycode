@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="appName">Stash</string>
+    <string name="shortcutPlay">Play my 5</string>
+    <string name="shortcutPlayLong">Play today\'s five</string>
+    <string name="shortcutSearch">Search</string>
+    <string name="shortcutSearchLong">Search your library</string>
+    <string name="shortcutInbox">Inbox</string>
+    <string name="shortcutInboxLong">Open your inbox</string>
+</resources>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press the app icon. Each opens a view of the web app.
+     Links point at the site host (same as siteHost in app/build.gradle). -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_play"
+        android:shortcutId="play"
+        android:shortcutLongLabel="@string/shortcutPlayLong"
+        android:shortcutShortLabel="@string/shortcutPlay">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="https://stash-drab-kappa.vercel.app/play?queue=today"
+            android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity"
+            android:targetPackage="io.github.iliasennajmi.stash" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_search"
+        android:shortcutId="search"
+        android:shortcutLongLabel="@string/shortcutSearchLong"
+        android:shortcutShortLabel="@string/shortcutSearch">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="https://stash-drab-kappa.vercel.app/library?search=1"
+            android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity"
+            android:targetPackage="io.github.iliasennajmi.stash" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_inbox"
+        android:shortcutId="inbox"
+        android:shortcutLongLabel="@string/shortcutInboxLong"
+        android:shortcutShortLabel="@string/shortcutInbox">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="https://stash-drab-kappa.vercel.app/library?space=inbox"
+            android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity"
+            android:targetPackage="io.github.iliasennajmi.stash" />
+    </shortcut>
+</shortcuts>

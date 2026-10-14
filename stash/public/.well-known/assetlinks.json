@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.iliasennajmi.stash",
+      "sha256_cert_fingerprints": ["6F:E2:EF:39:01:11:65:DA:96:B4:70:0D:91:84:C0:1E:2D:1A:58:5D:12:C7:F1:34:C5:95:70:55:CC:44:93:B1"]
+    }
+  }
+]
