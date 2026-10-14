@@ -89,6 +89,8 @@ export interface ArticleSummary {
   liveStatus?: "live" | "upcoming" | null;
   /** Videos and episodes: where playback stopped. */
   watchedSeconds?: number | null;
+  /** When an alert rule matched it. */
+  alertedAt?: string | null;
   /** Podcast episodes: the audio file. */
   audioUrl?: string | null;
   audioType?: string | null;
@@ -105,7 +107,7 @@ export interface ArticleSummary {
 
 export interface FilterRuleSummary {
   id: string;
-  action: "hide" | "boost";
+  action: "hide" | "boost" | "alert" | "save";
   match: "keyword" | "feed";
   value: string;
 }
@@ -195,4 +197,6 @@ export interface ArticleListParams {
   length?: VideoLength;
   /** Only episodes started and not finished. */
   inProgress?: boolean;
+  /** Only articles an alert rule matched. */
+  alerts?: boolean;
 }

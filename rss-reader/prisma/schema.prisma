@@ -119,6 +119,8 @@ model Article {
   videoAiAttempts   Int                      @default(0)
   /// Where playback stopped (videos and podcast episodes), to resume there.
   watchedSeconds    Int?
+  /// When an alert rule matched it as it arrived; listed in Alerts.
+  alertedAt         DateTime?
   /// Podcast episodes: the audio file (enclosure) and its type, e.g. audio/mpeg.
   audioUrl          String?
   audioType         String?
@@ -134,6 +136,7 @@ model Article {
   @@index([topicId])
   @@index([snoozedUntil])
   @@index([isShort])
+  @@index([alertedAt])
   @@index([search], type: Gin)
 }
 
@@ -174,6 +177,10 @@ model DailyDigest {
 enum FilterAction {
   hide
   boost
+  /// A notification when a new article matches (and it's listed in Alerts).
+  alert
+  /// New matching articles go straight to Later.
+  save
 }
 
 enum FilterMatch {

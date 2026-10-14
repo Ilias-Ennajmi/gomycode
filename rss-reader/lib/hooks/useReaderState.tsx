@@ -25,6 +25,7 @@ export type ViewType =
   | "youtube"
   | "newsletters"
   | "podcasts"
+  | "alerts"
   | "later"
   | "all"
   | "today"
@@ -103,6 +104,7 @@ const LINKABLE_VIEWS: Record<string, ViewState> = {
   youtube: { type: "youtube", label: "YouTube" },
   newsletters: { type: "newsletters", label: "Newsletters" },
   podcasts: { type: "podcasts", label: "Podcasts" },
+  alerts: { type: "alerts", label: "Alerts" },
   later: { type: "later", label: "Later" },
   today: { type: "today", label: "Today" },
   all: { type: "all", label: "All articles" },
@@ -251,6 +253,7 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     if (view.type === "feed") params.feedId = view.id;
     if (view.type === "category") params.categoryId = view.id;
     if (view.type === "today") params.today = true;
+    if (view.type === "alerts") params.alerts = true;
     if (view.type === "saved") params.saved = true;
     if (isSourceTab(view.type) && tabCategory[view.type]) {
       params.categoryId = tabCategory[view.type] ?? undefined;

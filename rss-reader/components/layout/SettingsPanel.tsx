@@ -86,7 +86,7 @@ export function SettingsPanel({
           <Row
             icon={SlidersHorizontal}
             label="Content filters"
-            hint="Hide or boost topics and sources"
+            hint="Hide, boost, alerts and auto-save"
             onClick={onContentFilters}
           />
         </Section>

@@ -82,6 +82,7 @@ function AppShellInner() {
     setDiscoverOpen(false);
     setEmailNewsletterOpen(true);
   });
+  useAppEvent("content-filters", () => setFiltersOpen(true));
 
   // Android back (and browser back) closes the open dialog first.
   useBackToClose(discoverOpen, () => setDiscoverOpen(false));

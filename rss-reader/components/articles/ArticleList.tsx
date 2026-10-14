@@ -5,6 +5,7 @@ import { useInView } from "react-intersection-observer";
 import {
   Archive,
   ArrowLeft,
+  Bell,
   Bookmark,
   AlarmClock,
   AtSign,
@@ -354,7 +355,17 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
           </Button>
         ) : (
           <div className="flex shrink-0 items-center gap-1">
-            {!isLater && !newsSection && (
+            {view.type === "alerts" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1 rounded-full px-3 text-xs"
+                onClick={() => requestAppEvent("content-filters")}
+              >
+                <Bell className="h-3.5 w-3.5" /> Alert rules
+              </Button>
+            )}
+            {!isLater && !newsSection && view.type !== "alerts" && (
               <Button
                 size="sm"
                 className="h-8 gap-1 rounded-full px-3 text-xs"
@@ -901,6 +912,17 @@ function EmptyState({
         text="No videos yet. Follow a YouTube channel and its new uploads land here."
         action="Find YouTube channels"
         onAction={() => onAddFeed("youtube")}
+      />
+    );
+  }
+
+  if (view === "alerts") {
+    return (
+      <EmptyMessage
+        icon={<Bell className="h-10 w-10" />}
+        text="No alerts yet. Add words or sources to watch, and anything new that matches lands here with a notification."
+        action="Add an alert"
+        onAction={() => requestAppEvent("content-filters")}
       />
     );
   }

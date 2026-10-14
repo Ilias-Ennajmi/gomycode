@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchAndParseFeed } from "@/lib/rss";
 import { insertNewArticles, mapWithConcurrency } from "@/lib/ingest";
 import { runAiPipeline } from "@/lib/enrich";
+import { applyArrivalRules } from "@/lib/rules";
 
 const MAX_ERROR_COUNT = 5;
 const CONCURRENCY = 6;
@@ -20,10 +21,12 @@ export async function refreshFeeds(feedId?: string): Promise<RefreshResult | nul
   if (feedId && feeds.length === 0) return null;
 
   const errors: string[] = [];
+  const arrived: string[] = [];
   const results = await mapWithConcurrency(feeds, CONCURRENCY, async (feed) => {
     try {
       const parsed = await fetchAndParseFeed(feed.url);
       const created = await insertNewArticles(feed.id, parsed.articles);
+      arrived.push(...created.map((article) => article.id));
       await prisma.feed.update({
         where: { id: feed.id },
         data: {
@@ -48,6 +51,8 @@ export async function refreshFeeds(feedId?: string): Promise<RefreshResult | nul
     }
   });
 
+  // Alerts and auto-save, before the AI work so a slow Gemini can't delay them.
+  await applyArrivalRules(arrived).catch((error) => console.error("Rules failed", error));
   await runAiPipeline();
   return {
     updated: feeds.length - errors.length,

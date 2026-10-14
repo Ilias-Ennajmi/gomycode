@@ -4,6 +4,8 @@ import * as React from "react";
 import { toast } from "sonner";
 import {
   AlertTriangle,
+  Bell,
+  BellOff,
   Check,
   Eye,
   EyeOff,
@@ -356,6 +358,23 @@ function SourceItem({
     }
   }
 
+  const alertRule = rules.find(
+    (r) => r.action === "alert" && r.match === "feed" && r.value === feed.id
+  );
+  async function toggleAlert() {
+    try {
+      if (alertRule) {
+        await removeRule(alertRule.id);
+        toast.success(`No more alerts from ${feed.title}`);
+      } else {
+        await addRule({ action: "alert", match: "feed", value: feed.id });
+        toast.success(`You'll get a notification for each new item from ${feed.title}`);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update");
+    }
+  }
+
   async function unfollow() {
     await deleteFeed(feed.id);
     toast.success(`Unfollowed ${feed.title}`);
@@ -479,6 +498,10 @@ function SourceItem({
           <DropdownMenuItem onSelect={toggleMute} className="gap-2">
             {feed.muted ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
             {feed.muted ? "Unmute" : "Mute"}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={toggleAlert} className="gap-2">
+            {alertRule ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+            {alertRule ? "Stop alerts" : "Alert me about new items"}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem

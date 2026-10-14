@@ -3,6 +3,7 @@
 import type { DiscoverKind } from "@/lib/discover/catalog";
 import * as React from "react";
 import {
+  Bell,
   CalendarDays,
   CalendarRange,
   Highlighter,
@@ -70,6 +71,7 @@ export function Sidebar({
     .filter((feed) => !feed.muted)
     .reduce((sum, feed) => sum + feed.unreadCount, 0);
   const todayCount = useArticleCount({ today: true });
+  const alertCount = useArticleCount({ alerts: true, unread: true });
 
   function refetchAll() {
     mutateFeeds();
@@ -191,6 +193,13 @@ export function Sidebar({
             label="Weekly recap"
             active={view.type === "recap"}
             onClick={() => setView({ type: "recap", label: "Weekly recap" })}
+          />
+          <NavItem
+            icon={<Bell className="h-4 w-4" />}
+            label="Alerts"
+            count={alertCount}
+            active={view.type === "alerts"}
+            onClick={() => setView({ type: "alerts", label: "Alerts" })}
           />
           <NavItem
             icon={<Highlighter className="h-4 w-4" />}
