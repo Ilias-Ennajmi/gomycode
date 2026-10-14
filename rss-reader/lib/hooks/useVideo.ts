@@ -57,12 +57,15 @@ export function durationLabel(seconds: number) {
  * The transcript as part of the article body, so it can be highlighted like text. Each
  * part starts with its time, a link that jumps the player there (data-t).
  */
-export function transcriptHtml(videoId: string, transcript: TimedText[]) {
+export function transcriptHtml(videoId: string | null, transcript: TimedText[]) {
   if (transcript.length === 0) return "";
+  // Episodes have no page to link a time to; the reader turns the click into a seek.
+  const href = (t: number) =>
+    videoId ? `https://www.youtube.com/watch?v=${videoId}&amp;t=${t}s` : `#t=${t}`;
   const parts = transcript
     .map(
       (part) =>
-        `<p><a href="https://www.youtube.com/watch?v=${videoId}&amp;t=${part.t}s" data-t="${part.t}" class="video-time">${clock(part.t)}</a> ${escapeHtml(part.text)}</p>`
+        `<p><a href="${href(part.t)}" data-t="${part.t}" class="video-time">${clock(part.t)}</a> ${escapeHtml(part.text)}</p>`
     )
     .join("");
   return `<h2>Transcript</h2>${parts}`;

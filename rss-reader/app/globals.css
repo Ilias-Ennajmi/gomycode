@@ -233,14 +233,30 @@ a,
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
-.reader-content mark[data-color="yellow"] { background: rgb(253 230 138 / 0.8); }
-.reader-content mark[data-color="green"] { background: rgb(187 247 208 / 0.85); }
-.reader-content mark[data-color="blue"] { background: rgb(191 219 254 / 0.85); }
-.reader-content mark[data-color="pink"] { background: rgb(251 207 232 / 0.85); }
-.dark .reader-content mark[data-color="yellow"] { background: rgb(250 204 21 / 0.3); }
-.dark .reader-content mark[data-color="green"] { background: rgb(74 222 128 / 0.28); }
-.dark .reader-content mark[data-color="blue"] { background: rgb(96 165 250 / 0.3); }
-.dark .reader-content mark[data-color="pink"] { background: rgb(244 114 182 / 0.3); }
+.reader-content mark[data-color="yellow"] {
+  background: rgb(253 230 138 / 0.8);
+}
+.reader-content mark[data-color="green"] {
+  background: rgb(187 247 208 / 0.85);
+}
+.reader-content mark[data-color="blue"] {
+  background: rgb(191 219 254 / 0.85);
+}
+.reader-content mark[data-color="pink"] {
+  background: rgb(251 207 232 / 0.85);
+}
+.dark .reader-content mark[data-color="yellow"] {
+  background: rgb(250 204 21 / 0.3);
+}
+.dark .reader-content mark[data-color="green"] {
+  background: rgb(74 222 128 / 0.28);
+}
+.dark .reader-content mark[data-color="blue"] {
+  background: rgb(96 165 250 / 0.3);
+}
+.dark .reader-content mark[data-color="pink"] {
+  background: rgb(244 114 182 / 0.3);
+}
 /* A highlight with a note gets a dotted underline. */
 .reader-content mark[data-note] {
   text-decoration: underline dotted;
@@ -266,4 +282,54 @@ a,
 }
 .reader-content a.video-time {
   margin-right: 0.4em;
+}
+
+/* The podcast player's seek bar: a thin track that fills as the episode plays. */
+.audio-scrubber {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 1.25rem;
+  background: transparent;
+  cursor: pointer;
+  touch-action: none;
+}
+.audio-scrubber::-webkit-slider-runnable-track {
+  height: 0.3rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    hsl(var(--primary)) var(--progress, 0%),
+    hsl(var(--muted)) var(--progress, 0%)
+  );
+}
+.audio-scrubber::-moz-range-track {
+  height: 0.3rem;
+  border-radius: 999px;
+  background: hsl(var(--muted));
+}
+.audio-scrubber::-moz-range-progress {
+  height: 0.3rem;
+  border-radius: 999px;
+  background: hsl(var(--primary));
+}
+.audio-scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  margin-top: -0.35rem;
+  height: 1rem;
+  width: 1rem;
+  border-radius: 999px;
+  background: hsl(var(--foreground));
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+}
+.audio-scrubber::-moz-range-thumb {
+  height: 1rem;
+  width: 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: hsl(var(--foreground));
+}
+.audio-scrubber:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: 999px;
 }

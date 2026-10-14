@@ -1,10 +1,13 @@
 "use client";
 
 import * as React from "react";
+import useSWR from "swr";
 import { toast } from "sonner";
 import {
   AtSign,
   Compass,
+  Headphones,
+  TrendingUp,
   Layers,
   Loader2,
   Mail,
@@ -49,11 +52,12 @@ interface DiscoverDialogProps {
 }
 
 const LANGUAGE_LABELS: Record<Language, string> = { en: "English", fr: "Français" };
-const KIND_ORDER: SourceKind[] = ["rss", "youtube", "newsletter"];
+const KIND_ORDER: SourceKind[] = ["rss", "youtube", "newsletter", "podcast"];
 const KIND_HEADINGS: Record<SourceKind, string> = {
   rss: "Sites & blogs",
   youtube: "YouTube channels",
   newsletter: "Newsletters",
+  podcast: "Podcasts",
 };
 
 /** Mid-sentence names: "Explore more YouTube channels in Gaming". */
@@ -61,6 +65,7 @@ const KIND_NOUNS: Record<SourceKind, string> = {
   rss: "sites & blogs",
   youtube: "YouTube channels",
   newsletter: "newsletters",
+  podcast: "podcasts",
 };
 
 const CHANNELS: { id: DiscoverKind; label: string; icon: React.ElementType }[] = [
@@ -68,6 +73,7 @@ const CHANNELS: { id: DiscoverKind; label: string; icon: React.ElementType }[] =
   { id: "rss", label: "Sites", icon: Rss },
   { id: "youtube", label: "YouTube", icon: Play },
   { id: "newsletter", label: "Newsletters", icon: Mail },
+  { id: "podcast", label: "Podcasts", icon: Headphones },
 ];
 
 const TITLES: Record<DiscoverKind, string> = {
@@ -75,6 +81,7 @@ const TITLES: Record<DiscoverKind, string> = {
   rss: "Find sites & blogs",
   youtube: "Find YouTube channels",
   newsletter: "Find newsletters",
+  podcast: "Find podcasts",
 };
 
 const PLACEHOLDERS: Record<DiscoverKind, string> = {
@@ -82,6 +89,7 @@ const PLACEHOLDERS: Record<DiscoverKind, string> = {
   rss: "Search sites or paste a link",
   youtube: "Search channels or paste a link",
   newsletter: "Search newsletters or paste a link",
+  podcast: "Search podcasts or paste an Apple Podcasts link",
 };
 
 const FOR_YOU = "for-you";
@@ -323,7 +331,7 @@ export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: Disc
             <div
               role="tablist"
               aria-label="Channel"
-              className="mt-3 grid grid-cols-4 gap-1 rounded-xl bg-muted/60 p-1"
+              className="mt-3 grid grid-cols-5 gap-1 rounded-xl bg-muted/60 p-1"
             >
               {CHANNELS.map((channel) => {
                 const Icon = channel.icon;
@@ -621,10 +629,11 @@ function GroupedResults({
 }
 
 const SEARCHING_LABELS: Record<DiscoverKind, string> = {
-  all: "Searching sites, YouTube and newsletters…",
+  all: "Searching sites, YouTube, newsletters and podcasts…",
   rss: "Searching sites and blogs…",
   youtube: "Searching YouTube…",
   newsletter: "Searching newsletters…",
+  podcast: "Searching podcasts…",
 };
 
 function SearchResults({
@@ -727,9 +736,29 @@ function ForYou({
         rowProps={rowProps}
         isFollowing={isFollowing}
       />
+      {kind === "podcast" && <TopPodcasts langs={langs} rowProps={rowProps} />}
       <DescribeInterests kind={kind} langs={langs} rowProps={rowProps} />
       {(kind === "all" || kind === "rss") && <FollowTopic langs={langs} onFollow={onFollow} />}
     </div>
+  );
+}
+
+/** Apple's charts, per language picked: something to start from before searching. */
+function TopPodcasts({ langs, rowProps }: { langs: Language[]; rowProps: RowProps }) {
+  const { data, isLoading } = useSWR<{ results: DiscoverResult[] }>(
+    `/api/discover/podcasts?langs=${langs.join(",")}`,
+    { revalidateOnFocus: false }
+  );
+  const results = data?.results ?? [];
+  if (!isLoading && results.length === 0) return null;
+  return (
+    <Section title="Top podcasts" icon={<TrendingUp className="h-4 w-4 text-primary" />}>
+      {isLoading ? (
+        <LoadingRows label="Loading the charts…" />
+      ) : (
+        <ResultList results={results} rowProps={rowProps} />
+      )}
+    </Section>
   );
 }
 
@@ -799,6 +828,7 @@ const DESCRIBE_PLACEHOLDERS: Record<DiscoverKind, string> = {
   rss: "e.g. indie design blogs, Moroccan business news…",
   youtube: "e.g. calm cooking channels, deep-dive tech documentaries…",
   newsletter: "e.g. weekly AI roundup, personal finance for beginners…",
+  podcast: "e.g. long interviews with founders, French history podcasts…",
 };
 
 function DescribeInterests({

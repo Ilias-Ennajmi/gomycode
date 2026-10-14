@@ -20,8 +20,8 @@ export interface FollowInput {
   /** Shows the source in the News tab, in this section. */
   newsDesk?: string | null;
   region?: string | null;
-  /** A hint from Discover; only ever upgrades an RSS feed to a newsletter. */
-  kind?: "rss" | "youtube" | "newsletter";
+  /** A hint from Discover; only ever upgrades an RSS feed to a newsletter or podcast. */
+  kind?: "rss" | "youtube" | "newsletter" | "podcast";
 }
 
 /** "no-feed": the site has no feed we can read; it can still be followed through news search. */
@@ -76,6 +76,11 @@ function feedType(source: ResolvedSource, parsed: ParsedFeed, input: FollowInput
   const allVideos = parsed.articles.length > 0 && parsed.articles.every((a) => a.isVideo);
   if (source.type === "rss" && allVideos) return "youtube";
   if (source.type !== "rss") return source.type;
+  // Mostly audio episodes: a podcast.
+  const episodes = parsed.articles.filter((a) => a.audioUrl).length;
+  if (input.kind === "podcast" || (episodes > 0 && episodes >= parsed.articles.length / 2)) {
+    return "podcast";
+  }
   const newsletter =
     input.kind === "newsletter" || Boolean(detectPlatform(source.feedUrl, parsed.meta.generator));
   return newsletter ? "newsletter" : "rss";

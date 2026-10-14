@@ -1,3 +1,4 @@
+import { searchApplePodcasts } from "@/lib/podcast";
 import { prisma } from "@/lib/prisma";
 import { generateText, isAiEnabled } from "@/lib/ai";
 import { mapWithConcurrency } from "@/lib/ingest";
@@ -52,7 +53,9 @@ async function resolveIdea(idea: Idea, hidden: Set<string>): Promise<DiscoverRes
     const candidates =
       idea.kind === "youtube"
         ? await searchYouTubeChannels(idea.name)
-        : await searchFeedly(idea.name);
+        : idea.kind === "podcast"
+          ? await searchApplePodcasts(idea.name)
+          : await searchFeedly(idea.name);
     const match = candidates
       .filter((c) => sameName(c.name, idea.name))
       .sort((a, b) => (b.followers ?? 0) - (a.followers ?? 0))[0];
@@ -69,6 +72,7 @@ const KIND_PROMPTS: Record<SourceKind, string> = {
   rss: "websites or blogs with an RSS feed (not newsletters or YouTube)",
   youtube: "YouTube channels only",
   newsletter: "email newsletters only (Substack, Beehiiv, Ghost…)",
+  podcast: "podcasts (audio shows) only",
 };
 
 async function askForIdeas(
@@ -81,15 +85,15 @@ async function askForIdeas(
   const languages = langs.map((l) => LANGUAGE_NAMES[l]).join(" or ");
   const scope =
     kind === "all"
-      ? `websites or blogs with an RSS feed, YouTube channels, and email newsletters (Substack, Beehiiv, Ghost…). ` +
-        `Mix the three kinds when it fits.`
+      ? `websites or blogs with an RSS feed, YouTube channels, email newsletters (Substack, Beehiiv, Ghost…) ` +
+        `and podcasts. Mix the kinds when it fits.`
       : `${KIND_PROMPTS[kind]}.`;
   const text = await generateText(instruction, {
     system:
       `You recommend real, currently active sources a reader can follow: ${scope} ` +
       `Only suggest sources in ${languages}. ` +
       `Prefer well-known, well-regarded sources. Never invent a source. ` +
-      `Reply with JSON: {"sources":[{"name":"exact public name","kind":"rss"|"youtube"|"newsletter",` +
+      `Reply with JSON: {"sources":[{"name":"exact public name","kind":"rss"|"youtube"|"newsletter"|"podcast",` +
       `"why":"one short reason, written in ${reasonLanguage}"}]} with ${count} items.`,
     json: true,
     maxTokens: 1200,
@@ -98,7 +102,10 @@ async function askForIdeas(
   return (parsed.sources ?? []).filter(
     (idea): idea is Idea =>
       typeof idea.name === "string" &&
-      (idea.kind === "rss" || idea.kind === "youtube" || idea.kind === "newsletter") &&
+      (idea.kind === "rss" ||
+        idea.kind === "youtube" ||
+        idea.kind === "newsletter" ||
+        idea.kind === "podcast") &&
       inScope(kind, idea.kind)
   );
 }

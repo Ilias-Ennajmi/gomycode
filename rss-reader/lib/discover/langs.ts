@@ -8,7 +8,7 @@ export function parseLangs(value: string | null | undefined): Language[] {
   return langs.length > 0 ? langs : ALL;
 }
 
-const KINDS: DiscoverKind[] = ["all", "rss", "youtube", "newsletter"];
+const KINDS: DiscoverKind[] = ["all", "rss", "youtube", "newsletter", "podcast"];
 
 /** Parses ?kind=youtube; anything else means every kind. */
 export function parseKind(value: string | null | undefined): DiscoverKind {

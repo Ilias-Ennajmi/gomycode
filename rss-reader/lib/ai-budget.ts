@@ -77,6 +77,13 @@ export async function reserveAi(
   return true;
 }
 
+/** Whether there's budget left for one call of this kind, without taking it. */
+export async function hasAiBudget(bucket: AiBucket, priority: AiPriority) {
+  const state = await load();
+  const cap = DAILY_LIMITS[bucket] * (priority === "background" ? BACKGROUND_SHARE : 1);
+  return (state.used[bucket] ?? 0) + 1 <= cap;
+}
+
 /**
  * After Google answers 429 for a model: a daily quota pauses it until midnight Pacific; a
  * per-minute limit pauses it for the delay Google asks (at least a minute).

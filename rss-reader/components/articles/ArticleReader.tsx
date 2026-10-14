@@ -40,6 +40,8 @@ import { READER_WIDTHS, useReaderPrefs } from "@/lib/hooks/useReaderPrefs";
 import { needsFullArticle, wordCount } from "@/lib/reader";
 import { youTubeVideoId } from "@/lib/youtube";
 import { VideoPlayer, type VideoControls } from "@/components/video/VideoPlayer";
+import { episodeOf, useAudio } from "@/components/audio/AudioProvider";
+import { EpisodePlayer } from "@/components/audio/EpisodePlayer";
 import {
   createTimeStore,
   LiveVideoGuide,
@@ -100,7 +102,20 @@ export function ArticleReader() {
 
   // Videos: the player, its extras (chapters, key moments, transcript, up next) and progress.
   const videoId = article?.isVideo ? youTubeVideoId(article.link) : null;
-  const { extras, mutate: mutateExtras } = useVideoExtras(videoId ? (article?.id ?? null) : null);
+  // Podcast episodes play in the app-wide audio player; they share the video extras.
+  const episode = article?.audioUrl && !videoId ? article : null;
+  const media = Boolean(videoId || episode);
+  const audio = useAudio();
+  const { extras, mutate: mutateExtras } = useVideoExtras(media ? (article?.id ?? null) : null);
+  const idleTime = React.useMemo(() => createTimeStore(), []);
+  const episodeTime = episode && audio.episode?.id === episode.id ? audio.time : idleTime;
+  const seekEpisode = React.useCallback(
+    (seconds: number) => {
+      const playable = episode ? episodeOf(episode) : null;
+      if (playable) audio.play(playable, seconds);
+    },
+    [audio, episode]
+  );
   const videoControls = React.useRef<VideoControls | null>(null);
   // A fresh position for each video.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -176,16 +191,17 @@ export function ArticleReader() {
   React.useEffect(() => setShowFeedVersion(false), [article?.id]);
   const hasFull = full?.status === "full" && Boolean(full.content);
   const articleHtml = hasFull && !showFeedVersion ? full!.content : (article?.content ?? null);
-  // A video's body: its description, then the transcript (so both can be highlighted).
-  const bodyHtml = videoId
+  // A video's or episode's body: its description or show notes, then the transcript (so
+  // both can be highlighted).
+  const bodyHtml = media
     ? (article?.content ?? "") + transcriptHtml(videoId, extras?.transcript ?? []) || null
     : articleHtml;
 
   const { containerRef, progress } = useReadingProgress<HTMLDivElement>({
     resetKey: article?.id,
     onThresholdReached: () => {
-      // Videos count as watched from the player (90%), not from scrolling.
-      if (article && !article.isRead && !article.isVideo) {
+      // Videos and episodes count as done from the player, not from scrolling.
+      if (article && !article.isRead && !article.isVideo && !article.audioUrl) {
         toggleArticleRead(article.id, true)
           .then(() => mutate())
           .catch(() => undefined);
@@ -196,7 +212,7 @@ export function ArticleReader() {
   // Persist how far the reader got, in 10% steps, so lists can show progress bars.
   const savedProgress = React.useRef({ id: "", value: 0 });
   React.useEffect(() => {
-    if (!article || article.isVideo) return;
+    if (!article || article.isVideo || article.audioUrl) return;
     if (savedProgress.current.id !== article.id) {
       savedProgress.current = { id: article.id, value: article.readProgress ?? 0 };
     }
@@ -252,7 +268,10 @@ export function ArticleReader() {
 
   // Skip the hero when the body already opens with the same picture.
   const showHero = Boolean(
-    article?.imageUrl && !article.isVideo && !article.content?.includes(article.imageUrl)
+    article?.imageUrl &&
+    !article.isVideo &&
+    !article.audioUrl &&
+    !article.content?.includes(article.imageUrl)
   );
 
   if (!article) {
@@ -346,7 +365,7 @@ export function ArticleReader() {
           >
             <Share className="h-5 w-5" />
           </Button>
-          {!videoId && (
+          {!media && (
             <ListenButton
               speech={speech}
               html={bodyHtml || article.summary || ""}
@@ -358,7 +377,7 @@ export function ArticleReader() {
       </div>
 
       <ReaderSettings className="absolute right-4 top-3 z-10 hidden md:inline-flex" />
-      {!videoId && (
+      {!media && (
         <ListenButton
           speech={speech}
           html={bodyHtml || article.summary || ""}
@@ -366,7 +385,7 @@ export function ArticleReader() {
         />
       )}
       <ListenBar speech={speech} html={bodyHtml || article.summary || ""} />
-      {!videoId && (
+      {!media && (
         <>
           <MinutesLeft words={wordCount(bodyHtml || article.summary)} progress={progress} />
           <ResumeReading
@@ -435,16 +454,18 @@ export function ArticleReader() {
               {resumeAt > 0 && <ResumedNote seconds={resumeAt} onRestart={() => seekVideo(0)} />}
             </div>
           )}
+          {episode && <EpisodePlayer article={episode} />}
           <ArticleHeader
             article={article}
             onToggleSave={handleToggleSave}
             onToggleRead={handleToggleRead}
             onToggleArchive={handleToggleArchive}
           />
-          {videoId && extras?.ai === "pending" ? (
+          {media && extras?.ai === "pending" ? (
             <VideoAiPending
               key={article.id}
               articleId={article.id}
+              audio={Boolean(episode)}
               onDone={() => {
                 mutateExtras();
                 mutate();
@@ -456,7 +477,7 @@ export function ArticleReader() {
               cached={article.aiSummary}
               // Videos wait for Gemini's summary from the video itself; only without one
               // (Shorts, or Gemini gave up) is the description summarized instead.
-              ready={videoId ? extras?.ai === "unavailable" : !wantsFull || !fullLoading}
+              ready={media ? extras?.ai === "unavailable" : !wantsFull || !fullLoading}
             />
           )}
           {videoId && extras && (
@@ -465,6 +486,14 @@ export function ArticleReader() {
               keyMoments={extras.keyMoments}
               chapters={extras.chapters}
               onSeek={seekVideo}
+            />
+          )}
+          {episode && extras && (
+            <LiveVideoGuide
+              store={episodeTime}
+              keyMoments={extras.keyMoments}
+              chapters={extras.chapters}
+              onSeek={seekEpisode}
             />
           )}
           {paidPreview && (
@@ -494,7 +523,13 @@ export function ArticleReader() {
             onClick={(event) => {
               // Times in a description or transcript jump the player there.
               const time = (event.target as HTMLElement).closest<HTMLElement>("[data-t]");
-              if (!time || !videoControls.current) return;
+              if (!time) return;
+              if (episode) {
+                event.preventDefault();
+                seekEpisode(Number(time.dataset.t));
+                return;
+              }
+              if (!videoControls.current) return;
               event.preventDefault();
               seekVideo(Number(time.dataset.t));
             }}

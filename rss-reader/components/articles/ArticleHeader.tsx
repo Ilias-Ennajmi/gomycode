@@ -76,9 +76,13 @@ export function ArticleHeader({
                   : article.durationSeconds
                     ? `${durationLabel(article.durationSeconds)} video`
                     : "Video"
-            : article.readingMinutes
-              ? `${article.readingMinutes} min read`
-              : readingTime(article.content || article.summary)}
+            : article.audioUrl
+              ? article.durationSeconds
+                ? `${durationLabel(article.durationSeconds)} episode`
+                : "Episode"
+              : article.readingMinutes
+                ? `${article.readingMinutes} min read`
+                : readingTime(article.content || article.summary)}
         </span>
       </div>
 

@@ -28,6 +28,8 @@ import { useBackToClose } from "@/lib/hooks/useHistorySync";
 import { AppUpdateBanner } from "@/components/layout/AppUpdateBanner";
 import { NotificationPrompt } from "@/components/layout/NotificationPrompt";
 import { OfflineSupport } from "@/components/layout/OfflineSupport";
+import { AudioProvider } from "@/components/audio/AudioProvider";
+import { NowPlayingBar } from "@/components/audio/NowPlayingBar";
 import { refreshFeeds, refreshToastMessage, useAutoRefresh, useFeeds } from "@/lib/hooks/useFeeds";
 import { useSWRConfig } from "swr";
 import type { DiscoverKind } from "@/lib/discover/catalog";
@@ -35,7 +37,9 @@ import type { DiscoverKind } from "@/lib/discover/catalog";
 export function AppShell() {
   return (
     <ReaderStateProvider>
-      <AppShellInner />
+      <AudioProvider>
+        <AppShellInner />
+      </AudioProvider>
     </ReaderStateProvider>
   );
 }
@@ -307,6 +311,7 @@ function AppShellInner() {
           </div>
         )}
       </div>
+      <NowPlayingBar />
 
       <SaveLinkDialog open={saveLinkOpen} onOpenChange={setSaveLinkOpen} />
       <EmailNewsletterDialog open={emailNewsletterOpen} onOpenChange={setEmailNewsletterOpen} />

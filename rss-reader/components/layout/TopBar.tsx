@@ -24,12 +24,14 @@ const TAB_KIND: Partial<Record<ViewType, DiscoverKind>> = {
   rss: "rss",
   youtube: "youtube",
   newsletters: "newsletter",
+  podcasts: "podcast",
 };
 const KIND_LABEL: Record<DiscoverKind, string> = {
   all: "Add sources",
   rss: "Add sites & blogs",
   youtube: "Add YouTube channels",
   newsletter: "Add newsletters",
+  podcast: "Add podcasts",
 };
 
 function short(n: number) {
@@ -42,6 +44,7 @@ const TABS: ViewState[] = [
   { type: "rss", label: "RSS" },
   { type: "youtube", label: "YouTube" },
   { type: "newsletters", label: "Newsletters" },
+  { type: "podcasts", label: "Podcasts" },
   { type: "later", label: "Later" },
 ];
 
@@ -63,6 +66,7 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
     rss: useArticleCount({ source: "rss", unread: true }),
     youtube: useArticleCount({ source: "youtube", unread: true }),
     newsletters: useArticleCount({ source: "newsletter", unread: true }),
+    podcasts: useArticleCount({ source: "podcast", unread: true }),
   };
 
   // A single feed belongs to the tab for its kind of source.
@@ -77,7 +81,9 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
       ? "youtube"
       : feed?.type === "newsletter"
         ? "newsletters"
-        : "rss";
+        : feed?.type === "podcast"
+          ? "podcasts"
+          : "rss";
   }
   const active = activeTab();
 
@@ -88,7 +94,15 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
       ?.querySelector('[aria-current="page"]')
       ?.scrollIntoView({ inline: "nearest", block: "nearest" });
     // Again when the counts arrive and widen the tabs.
-  }, [active, laterCount, unread.news, unread.rss, unread.youtube, unread.newsletters]);
+  }, [
+    active,
+    laterCount,
+    unread.news,
+    unread.rss,
+    unread.youtube,
+    unread.newsletters,
+    unread.podcasts,
+  ]);
 
   function select(tab: ViewState) {
     // From a section list inside News, the tab goes back to the front page.

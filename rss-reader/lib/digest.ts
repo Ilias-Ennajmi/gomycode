@@ -240,9 +240,9 @@ async function buildBriefing(date: string): Promise<Briefing | null> {
   const recent = await loadRecent(rules, 2 * DAY_MS);
   const lastDay = recent.filter((r) => Date.now() - r.publishedAt.getTime() < DAY_MS);
 
-  // Top stories come from articles, not videos or newsletters.
+  // Top stories come from articles, not videos, newsletters or podcasts.
   const stories = rankStories(
-    lastDay.filter((r) => !r.isVideo && r.feed.type !== "newsletter"),
+    lastDay.filter((r) => !r.isVideo && r.feed.type !== "newsletter" && r.feed.type !== "podcast"),
     rules,
     profile
   ).slice(0, POOL_SIZE);
@@ -405,7 +405,7 @@ export async function moreStories(exclude: string[], mode: "next" | "shuffle") {
   const [rules, profile] = await Promise.all([getFilterRules(), buildReadingProfile()]);
   const recent = await loadRecent(rules, DAY_MS);
   const stories = rankStories(
-    recent.filter((r) => !r.isVideo && r.feed.type !== "newsletter"),
+    recent.filter((r) => !r.isVideo && r.feed.type !== "newsletter" && r.feed.type !== "podcast"),
     rules,
     profile
   ).filter((s) => briefing.pool.includes(s.key) && !s.members.some((m) => skip.has(m.id)));

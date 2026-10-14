@@ -25,6 +25,7 @@ enum FeedType {
   rss
   youtube
   newsletter
+  podcast
   /// Links saved to Read Later by hand; never refreshed.
   manual
 }
@@ -113,11 +114,14 @@ model Article {
   transcript        Json?
   /// [{ t: seconds, text }] from Gemini: the moments worth jumping to.
   keyMoments        Json?
-  /// Gemini runs: when it last tried and how often, so failures are retried a few times only.
+  /// Gemini runs (videos and episodes): when it last tried and how often, so failures are retried a few times only.
   videoAiAt         DateTime?
   videoAiAttempts   Int                      @default(0)
-  /// Where playback stopped, to resume there.
+  /// Where playback stopped (videos and podcast episodes), to resume there.
   watchedSeconds    Int?
+  /// Podcast episodes: the audio file (enclosure) and its type, e.g. audio/mpeg.
+  audioUrl          String?
+  audioType         String?
   /// Full-text search: a generated column (title, summaries, author, start of the text).
   /// Defined in the v2_library migration; Prisma only knows it exists.
   search            Unsupported("tsvector")?

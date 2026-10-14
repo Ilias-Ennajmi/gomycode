@@ -4,15 +4,18 @@ import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useTheme } from "next-themes";
 import {
+  AlarmClock,
   BookmarkPlus,
   CalendarDays,
   CalendarRange,
   Clock,
   Compass,
+  Headphones,
   Highlighter,
   Inbox,
   Keyboard,
   Mail,
+  MonitorPlay,
   Moon,
   Newspaper,
   Plus,
@@ -22,8 +25,6 @@ import {
   Settings2,
   Sparkles,
   Sun,
-  MonitorPlay,
-  AlarmClock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFeeds, useCategories } from "@/lib/hooks/useFeeds";
@@ -133,6 +134,13 @@ export function CommandPalette({
         icon: <Mail className={ICON} />,
         run: go({ type: "newsletters", label: "Newsletters" }),
         keywords: "substack email",
+      },
+      {
+        id: "podcasts",
+        label: "Podcasts",
+        icon: <Headphones className={ICON} />,
+        run: go({ type: "podcasts", label: "Podcasts" }),
+        keywords: "audio episodes listen",
       },
       {
         id: "later",
@@ -248,6 +256,8 @@ export function CommandPalette({
           <MonitorPlay className={ICON} />
         ) : feed.type === "newsletter" ? (
           <Mail className={ICON} />
+        ) : feed.type === "podcast" ? (
+          <Headphones className={ICON} />
         ) : (
           <Rss className={ICON} />
         ),

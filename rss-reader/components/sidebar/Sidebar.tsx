@@ -82,6 +82,7 @@ export function Sidebar({
   const newsFeeds = feeds.filter((feed) => !feed.categoryId && feed.newsDesk);
   const youTubeChannels = feeds.filter((feed) => !feed.categoryId && feed.type === "youtube");
   const newsletterSenders = feeds.filter((feed) => !feed.categoryId && feed.type === "newsletter");
+  const podcastShows = feeds.filter((feed) => !feed.categoryId && feed.type === "podcast");
 
   function selectCategory(category: CategorySummary) {
     setView({ type: "category", id: category.id, label: category.name });
@@ -248,6 +249,17 @@ export function Sidebar({
                   className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground"
                 >
                   <Plus className="h-4 w-4" /> Add a newsletter
+                </button>
+              )}
+              {renderFeedGroup(
+                "Podcasts",
+                podcastShows,
+                <button
+                  type="button"
+                  onClick={() => onAddFeed("podcast")}
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                >
+                  <Plus className="h-4 w-4" /> Add a podcast
                 </button>
               )}
             </div>

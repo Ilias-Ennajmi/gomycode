@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { AiError, generateFromVideo, isAiEnabled } from "@/lib/ai";
+import { AiError, generateFromAudio, generateFromVideo, isAiEnabled } from "@/lib/ai";
 import type { AiPriority } from "@/lib/ai-budget";
 import { formatClock, parseClock } from "@/lib/youtube-video";
 import { youTubeVideoId } from "@/lib/youtube";
@@ -20,6 +20,10 @@ export const MAX_ATTEMPTS = 4;
 const TRANSCRIPT_MAX_SECONDS = 45 * 60;
 // Long videos are too many tokens for the free tier's per-minute limit.
 const MAX_SECONDS = 2 * 60 * 60;
+// Audio is 32 tokens a second: about 2 h 15 fits the free tier's per-minute limit.
+const AUDIO_MAX_SECONDS = 135 * 60;
+// Episodes: a transcript up to an hour (talk is dense; longer ones take too long to write).
+const AUDIO_TRANSCRIPT_MAX_SECONDS = 60 * 60;
 
 function clockOf(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return Math.max(0, Math.round(value));
@@ -78,18 +82,26 @@ export interface VideoAnalysis {
   transcript: TimedText[];
 }
 
+type Media =
+  | { kind: "video"; videoId: string }
+  | { kind: "audio"; url: string; type: string | null };
+
 export async function analyzeVideo(
-  videoId: string,
+  media: Media,
   durationSeconds: number | null,
   timeoutMs: number,
   priority: AiPriority
 ): Promise<VideoAnalysis> {
-  const withTranscript = !durationSeconds || durationSeconds <= TRANSCRIPT_MAX_SECONDS;
-  const length = durationSeconds ? ` The video is ${formatClock(durationSeconds)} long.` : "";
+  const audio = media.kind === "audio";
+  const noun = audio ? "episode" : "video";
+  const transcriptMax = audio ? AUDIO_TRANSCRIPT_MAX_SECONDS : TRANSCRIPT_MAX_SECONDS;
+  const withTranscript = !durationSeconds || durationSeconds <= transcriptMax;
+  const length = durationSeconds ? ` The ${noun} is ${formatClock(durationSeconds)} long.` : "";
   const prompt =
-    `Watch this video and answer with JSON only.${length} Timestamps are "M:SS" (or "H:MM:SS") ` +
-    "from the start of the video. Write in the video's own language.\n" +
-    '{"summary": "3-4 plain sentences: what the video covers and its main takeaway", ' +
+    `${audio ? "Listen to this podcast episode" : "Watch this video"} and answer with JSON only.` +
+    `${length} Timestamps are "M:SS" (or "H:MM:SS") from the start of the ${noun}. ` +
+    `Write in the ${noun}'s own language.\n` +
+    `{"summary": "3-4 plain sentences: what the ${noun} covers and its main takeaway", ` +
     '"keyMoments": [{"t": "M:SS", "text": "under 12 words"}] (5-8, in order, where each part starts)' +
     (withTranscript
       ? ', "transcript": [{"t": "M:SS", "text": "what is said, word for word"}] (everything ' +
@@ -97,11 +109,15 @@ export async function analyzeVideo(
       : "") +
     "}";
 
-  const raw = await generateFromVideo(`https://www.youtube.com/watch?v=${videoId}`, prompt, {
-    timeoutMs,
-    maxTokens: withTranscript ? 32_000 : 2_000,
-    priority,
-  });
+  const options = { timeoutMs, maxTokens: withTranscript ? 32_000 : 2_000, priority };
+  const raw =
+    media.kind === "audio"
+      ? await generateFromAudio({ url: media.url, type: media.type }, prompt, options)
+      : await generateFromVideo(
+          `https://www.youtube.com/watch?v=${media.videoId}`,
+          prompt,
+          options
+        );
   let data: { summary?: unknown; keyMoments?: unknown; transcript?: unknown };
   try {
     data = JSON.parse(raw);
@@ -124,14 +140,26 @@ export async function analyzeVideo(
   };
 }
 
-/** Videos worth a Gemini run: not Shorts, not upcoming, not too long, not given up on. */
+/**
+ * Videos and podcast episodes worth a Gemini run: not Shorts, not upcoming, not too long,
+ * not given up on.
+ */
 export const VIDEO_AI_CANDIDATE: Prisma.ArticleWhereInput = {
-  isVideo: true,
-  isShort: false,
-  liveStatus: null,
   transcript: { equals: Prisma.DbNull },
   videoAiAttempts: { lt: MAX_ATTEMPTS },
-  OR: [{ durationSeconds: null }, { durationSeconds: { lte: MAX_SECONDS } }],
+  OR: [
+    {
+      isVideo: true,
+      isShort: false,
+      liveStatus: null,
+      OR: [{ durationSeconds: null }, { durationSeconds: { lte: MAX_SECONDS } }],
+    },
+    {
+      isVideo: false,
+      audioUrl: { not: null },
+      OR: [{ durationSeconds: null }, { durationSeconds: { lte: AUDIO_MAX_SECONDS } }],
+    },
+  ],
 };
 
 export type VideoAiResult = "done" | "busy" | "failed" | "skipped";
@@ -145,10 +173,24 @@ export async function runVideoAi(
   if (!isAiEnabled()) return "skipped";
   const article = await prisma.article.findFirst({
     where: { id: articleId, ...VIDEO_AI_CANDIDATE },
-    select: { id: true, link: true, durationSeconds: true, aiSummary: true },
+    select: {
+      id: true,
+      link: true,
+      durationSeconds: true,
+      aiSummary: true,
+      isVideo: true,
+      audioUrl: true,
+      audioType: true,
+    },
   });
-  const videoId = article && youTubeVideoId(article.link);
-  if (!article || !videoId) return "skipped";
+  if (!article) return "skipped";
+  const videoId = article.isVideo ? youTubeVideoId(article.link) : null;
+  const media: Media | null = videoId
+    ? { kind: "video", videoId }
+    : article.audioUrl
+      ? { kind: "audio", url: article.audioUrl, type: article.audioType }
+      : null;
+  if (!media) return "skipped";
 
   // Counted first, so a run that times out still counts.
   await prisma.article.update({
@@ -156,7 +198,7 @@ export async function runVideoAi(
     data: { videoAiAt: new Date(), videoAiAttempts: { increment: 1 } },
   });
   try {
-    const analysis = await analyzeVideo(videoId, article.durationSeconds, timeoutMs, priority);
+    const analysis = await analyzeVideo(media, article.durationSeconds, timeoutMs, priority);
     await prisma.article.update({
       where: { id: article.id },
       data: {

@@ -13,6 +13,7 @@ import {
 import { hiddenCatalogIds } from "@/lib/discover/health";
 import { searchFeedly, searchYouTubeChannels, type DiscoverResult } from "@/lib/discover/providers";
 import { siteTopic, topicResult } from "@/lib/discover/topics";
+import { searchApplePodcasts } from "@/lib/podcast";
 
 export function catalogResult(entry: CatalogEntry): DiscoverResult {
   return {
@@ -142,11 +143,15 @@ export async function searchSources(
   const hidden = await hiddenCatalogIds();
   const unavailable: string[] = [];
   const locale = langs.length === 1 ? langs[0] : undefined;
-  const wantsFeeds = kind !== "youtube";
+  const wantsFeeds = kind !== "youtube" && kind !== "podcast";
   const wantsYouTube = kind === "all" || kind === "youtube";
-  const [feedly, youtube] = await Promise.all([
+  const wantsPodcasts = kind === "all" || kind === "podcast";
+  const [feedly, youtube, podcasts] = await Promise.all([
     wantsFeeds ? settle(searchFeedly(trimmed, locale), "Feedly", unavailable) : [],
     wantsYouTube ? settle(searchYouTubeChannels(trimmed), "YouTube", unavailable) : [],
+    wantsPodcasts
+      ? settle(searchApplePodcasts(trimmed, locale), "Apple Podcasts", unavailable)
+      : [],
   ]);
 
   const catalog = searchCatalog(trimmed, langs, hidden, kind).map(catalogResult);
@@ -156,7 +161,12 @@ export async function searchSources(
     .filter((r) => inScope(kind, r.kind))
     .sort((a, b) => (b.followers ?? 0) - (a.followers ?? 0));
 
-  const results = dedupe([...catalog, ...feeds, ...youtube.slice(0, kind === "youtube" ? 16 : 8)]);
+  const results = dedupe([
+    ...catalog,
+    ...feeds,
+    ...youtube.slice(0, kind === "youtube" ? 16 : 8),
+    ...podcasts.slice(0, kind === "podcast" ? 20 : 6),
+  ]);
   const topic =
     kind === "all" || kind === "rss"
       ? markFollowing([topicResult(trimmed, langs[0])], followed)[0]

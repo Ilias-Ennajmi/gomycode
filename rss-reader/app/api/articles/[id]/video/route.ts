@@ -3,20 +3,26 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ARTICLE_FEED_INCLUDE, notSnoozed, serializeArticle } from "@/lib/articles";
 import { isAiEnabled } from "@/lib/ai";
-import { MAX_ATTEMPTS, runVideoAi, VIDEO_AI_CANDIDATE } from "@/lib/video-ai";
+import { runVideoAi, VIDEO_AI_CANDIDATE } from "@/lib/video-ai";
 
 export const maxDuration = 300;
 
-const UP_NEXT_WHERE: Prisma.ArticleWhereInput = {
+const UP_NEXT_VIDEO: Prisma.ArticleWhereInput = {
   isVideo: true,
   isShort: false,
   isRead: false,
   liveStatus: null,
 };
+const UP_NEXT_EPISODE: Prisma.ArticleWhereInput = {
+  isVideo: false,
+  audioUrl: { not: null },
+  isRead: false,
+};
 
 /**
- * A video's extras for the reader: chapters, key moments, transcript, whether Gemini is
- * still working on them, and what to watch next (the Later queue first, then the channel).
+ * A video's or podcast episode's extras for the reader: chapters, key moments, transcript,
+ * whether Gemini is still working on them, and what's next (the Later queue first, then the
+ * same channel or show).
  */
 export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
   const article = await prisma.article.findUnique({
@@ -25,22 +31,22 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
       id: true,
       feedId: true,
       isVideo: true,
-      isShort: true,
+      audioUrl: true,
       chapters: true,
       keyMoments: true,
       transcript: true,
-      videoAiAttempts: true,
-      liveStatus: true,
     },
   });
-  if (!article?.isVideo) return NextResponse.json({ error: "Not a video" }, { status: 404 });
+  if (!article || (!article.isVideo && !article.audioUrl)) {
+    return NextResponse.json({ error: "Not a video or episode" }, { status: 404 });
+  }
+  const UP_NEXT_WHERE = article.isVideo ? UP_NEXT_VIDEO : UP_NEXT_EPISODE;
 
+  // Still to come when Gemini will (still) try it: the same rule the runs use.
   const pendingAi =
     isAiEnabled() &&
     article.transcript === null &&
-    !article.isShort &&
-    !article.liveStatus &&
-    article.videoAiAttempts < MAX_ATTEMPTS;
+    (await prisma.article.count({ where: { id: article.id, ...VIDEO_AI_CANDIDATE } })) > 0;
 
   const notThis = { id: { not: article.id } };
   const upNext =
@@ -70,7 +76,7 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
   });
 }
 
-/** Opened a video that has no summary yet: ask Gemini now instead of waiting for the tick. */
+/** Opened a video or episode without a summary yet: ask Gemini now, not at the next tick. */
 export async function POST(_request: NextRequest, { params }: { params: { id: string } }) {
   const candidate = await prisma.article.findFirst({
     where: { id: params.id, ...VIDEO_AI_CANDIDATE },

@@ -1,7 +1,12 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { ParsedArticle } from "@/lib/rss";
 import { cleanHtml } from "@/lib/clean-html";
 import { DAY_MS, retentionDays } from "@/lib/retention";
+import { chaptersFromNotes, showNotesHtml } from "@/lib/podcast";
+
+// A new podcast can list hundreds of episodes; the newest are the ones worth having.
+const FIRST_EPISODES = 20;
 
 // Some feeds put a time zone on local times, which dates articles in the future and pins
 // them to the top of every list.
@@ -24,15 +29,20 @@ export async function insertNewArticles(feedId: string, articles: ParsedArticle[
       where: { link: { in: articles.map((article) => article.link) } },
       select: { link: true },
     }),
-    prisma.feed.findUnique({ where: { id: feedId }, select: { newsDesk: true } }),
+    prisma.feed.findUnique({ where: { id: feedId }, select: { newsDesk: true, type: true } }),
     prisma.article.findFirst({ where: { feedId }, select: { id: true } }),
   ]);
   const known = new Set(existing.map((row) => row.link));
   const cutoff = Date.now() - retentionDays(feed?.newsDesk ?? null) * DAY_MS;
-  const fresh = articles.filter(
+  let fresh = articles.filter(
     (article) =>
       !known.has(article.link) && !(hasArticles && article.publishedAt.getTime() < cutoff)
   );
+  if (feed?.type === "podcast" && !hasArticles) {
+    fresh = fresh
+      .sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime())
+      .slice(0, FIRST_EPISODES);
+  }
   if (fresh.length === 0) return [];
 
   return prisma.article.createManyAndReturn({
@@ -41,13 +51,24 @@ export async function insertNewArticles(feedId: string, articles: ParsedArticle[
       title: article.title,
       link: article.link,
       summary: article.summary,
-      content: cleanHtml(article.content),
+      // Episodes: show notes with times that jump the player, and chapters from them.
+      content: article.audioUrl
+        ? cleanHtml(showNotesHtml(article.content))
+        : cleanHtml(article.content),
       imageUrl: article.imageUrl,
       // Email newsletters send "Name <address>": keep the name.
       author: article.author?.replace(/\s*<[^>]*@[^>]*>\s*$/, "").trim() || article.author,
       publishedAt: notInFuture(article.publishedAt),
       isVideo: article.isVideo ?? false,
       isShort: /youtube\.com\/shorts\//.test(article.link),
+      ...(article.audioUrl
+        ? {
+            audioUrl: article.audioUrl,
+            audioType: article.audioType,
+            durationSeconds: article.durationSeconds,
+            chapters: chaptersFromNotes(article.content) as unknown as Prisma.InputJsonValue,
+          }
+        : {}),
     })),
     skipDuplicates: true,
     select: { id: true },

@@ -1,3 +1,4 @@
+import { searchApplePodcasts } from "@/lib/podcast";
 import {
   inScope,
   type CatalogCategoryId,
@@ -175,6 +176,7 @@ export async function exploreCategory(
     searches.push(searchYouTubeChannels(lang === "fr" ? `${word} français` : word));
   }
   if (kind === "rss" || kind === "all") searches.push(searchFeedly(word, lang));
+  if (kind === "podcast" || kind === "all") searches.push(searchApplePodcasts(word, lang));
   if (kind === "newsletter" || kind === "all") {
     // Feedly only knows a feed is a newsletter from its host (substack.com…).
     searches.push(searchFeedly(`substack ${word}`, lang));
@@ -188,7 +190,7 @@ export async function exploreCategory(
       .filter((r) => inScope(kind, r.kind))
       .filter((r) => !r.lang || langs.includes(r.lang as Language))
       // Tiny feeds are mostly abandoned; YouTube results have no reader count.
-      .filter((r) => r.provider === "youtube" || (r.followers ?? 0) >= 20)
+      .filter((r) => r.provider === "youtube" || r.provider === "apple" || (r.followers ?? 0) >= 20)
       .sort((a, b) => (b.followers ?? 0) - (a.followers ?? 0))
   ).map((r) => ({ ...r, lang: r.lang ?? lang }));
 
