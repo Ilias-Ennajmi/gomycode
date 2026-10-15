@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import useSWR from "swr";
 import { useInView } from "react-intersection-observer";
 import { Copy, Download, Highlighter, Loader2, Search, Share2, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -12,6 +13,7 @@ import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { HIGHLIGHT_SWATCH, shareQuote } from "@/components/highlights/ReaderHighlights";
 import { deleteHighlight, useHighlightList } from "@/lib/hooks/useHighlights";
 import { requestHighlightJump } from "@/lib/highlight-dom";
+import { TagEditor } from "@/components/highlights/TagEditor";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import type { HighlightColor, HighlightSummary } from "@/lib/types";
 
@@ -22,19 +24,24 @@ export function HighlightsList() {
   const [draft, setDraft] = React.useState("");
   const [search, setSearch] = React.useState("");
   const [color, setColor] = React.useState<HighlightColor | null>(null);
+  const [tag, setTag] = React.useState<string | null>(null);
+  const { data: tagData } = useSWR<{ tags: { tag: string; count: number }[] }>(
+    "/api/highlights/tags"
+  );
+  const tags = tagData?.tags ?? [];
   React.useEffect(() => {
     const timeout = setTimeout(() => setSearch(draft), 250);
     return () => clearTimeout(timeout);
   }, [draft]);
 
-  const { highlights, total, hasMore, isLoading, loadMore } = useHighlightList(search, color);
+  const { highlights, total, hasMore, isLoading, loadMore } = useHighlightList(search, color, tag);
   const { ref: sentinel, inView } = useInView({ rootMargin: "200px" });
   React.useEffect(() => {
     if (inView && hasMore) loadMore();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inView, hasMore]);
 
-  const filtered = Boolean(search || color);
+  const filtered = Boolean(search || color || tag);
 
   return (
     <div>
@@ -62,7 +69,14 @@ export function HighlightsList() {
             )}
           </div>
           <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" asChild>
-            <a href="/api/highlights/export" download>
+            <a
+              href={
+                tag
+                  ? `/api/highlights/export?tag=${encodeURIComponent(tag)}`
+                  : "/api/highlights/export"
+              }
+              download
+            >
               <Download className="h-3.5 w-3.5" /> Export
             </a>
           </Button>
@@ -86,6 +100,31 @@ export function HighlightsList() {
             {isLoading ? "" : `${total} highlight${total === 1 ? "" : "s"}`}
           </span>
         </div>
+        {tags.length > 0 && (
+          <div
+            className="-mx-3 flex gap-1.5 overflow-x-auto px-3 scrollbar-none"
+            role="toolbar"
+            aria-label="Filter by tag"
+          >
+            {tags.map(({ tag: name, count }) => (
+              <button
+                key={name}
+                type="button"
+                onClick={() => setTag(tag === name ? null : name)}
+                aria-pressed={tag === name}
+                className={cn(
+                  "inline-flex h-6 shrink-0 items-center gap-1 rounded-full border px-2.5 text-xs font-medium transition-colors",
+                  tag === name
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent"
+                )}
+              >
+                #{name}
+                <span className="opacity-70">{count}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {isLoading ? (
@@ -178,6 +217,9 @@ function HighlightRow({ highlight }: { highlight: HighlightSummary }) {
               </span>
             )}
           </button>
+          <div className="mt-2">
+            <TagEditor highlight={highlight} />
+          </div>
         </div>
         <div className="flex shrink-0 flex-col gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100">
           <IconButton

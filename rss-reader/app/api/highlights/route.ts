@@ -22,11 +22,13 @@ export async function GET(request: NextRequest) {
 
   const search = searchParams.get("search")?.trim();
   const color = parseColor(searchParams.get("color"));
+  const tag = searchParams.get("tag")?.trim().toLowerCase();
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "30", 10) || 30));
 
   const where: Prisma.HighlightWhereInput = {};
   if (color) where.color = color;
+  if (tag) where.tags = { has: tag };
   if (search) {
     where.OR = [
       { text: { contains: search, mode: "insensitive" } },

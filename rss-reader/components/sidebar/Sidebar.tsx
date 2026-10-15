@@ -4,6 +4,7 @@ import type { DiscoverKind } from "@/lib/discover/catalog";
 import * as React from "react";
 import {
   Bell,
+  BookOpenCheck,
   CalendarDays,
   CalendarRange,
   Highlighter,
@@ -20,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NavItem } from "@/components/sidebar/NavItem";
+import { useReviewStatus } from "@/components/review/ReviewView";
 import { Logo } from "@/components/shared/Logo";
 import { CategoryGroup } from "@/components/sidebar/CategoryGroup";
 import { FeedItem } from "@/components/sidebar/FeedItem";
@@ -72,6 +74,7 @@ export function Sidebar({
     .reduce((sum, feed) => sum + feed.unreadCount, 0);
   const todayCount = useArticleCount({ today: true });
   const alertCount = useArticleCount({ alerts: true, unread: true });
+  const { data: review } = useReviewStatus();
 
   function refetchAll() {
     mutateFeeds();
@@ -200,6 +203,13 @@ export function Sidebar({
             count={alertCount}
             active={view.type === "alerts"}
             onClick={() => setView({ type: "alerts", label: "Alerts" })}
+          />
+          <NavItem
+            icon={<BookOpenCheck className="h-4 w-4" />}
+            label="Daily review"
+            count={review?.highlights.length ?? 0}
+            active={view.type === "review"}
+            onClick={() => setView({ type: "review", label: "Daily review" })}
           />
           <NavItem
             icon={<Highlighter className="h-4 w-4" />}

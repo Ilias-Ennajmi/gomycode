@@ -20,13 +20,18 @@ interface HighlightPage {
 }
 
 /** Every highlight, newest first, for the Highlights tab. */
-export function useHighlightList(search: string, color: HighlightColor | null) {
+export function useHighlightList(
+  search: string,
+  color: HighlightColor | null,
+  tag: string | null = null
+) {
   const { data, isLoading, size, setSize, mutate } = useSWRInfinite<HighlightPage>(
     (index, previous) => {
       if (previous && !previous.hasMore) return null;
       const params = new URLSearchParams({ page: String(index + 1) });
       if (search.trim()) params.set("search", search.trim());
       if (color) params.set("color", color);
+      if (tag) params.set("tag", tag);
       return `/api/highlights?${params}`;
     }
   );
@@ -80,7 +85,7 @@ export async function createHighlight(input: {
 
 export async function updateHighlight(
   id: string,
-  changes: { note?: string | null; color?: HighlightColor }
+  changes: { note?: string | null; color?: HighlightColor; tags?: string[] }
 ) {
   const { highlight } = await send<{ highlight: HighlightSummary }>(
     `/api/highlights/${id}`,

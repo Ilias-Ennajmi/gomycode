@@ -124,6 +124,8 @@ export interface HighlightSummary {
   color: HighlightColor;
   prefix: string;
   suffix: string;
+  /** Lowercase labels. */
+  tags?: string[];
   createdAt: string;
   updatedAt: string;
   /** Included in the Highlights list, not when loading one article's highlights. */
