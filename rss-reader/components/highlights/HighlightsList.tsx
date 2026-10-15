@@ -3,7 +3,17 @@
 import * as React from "react";
 import useSWR from "swr";
 import { useInView } from "react-intersection-observer";
-import { Copy, Download, Highlighter, Loader2, Search, Share2, Trash2, X } from "lucide-react";
+import {
+  Copy,
+  Download,
+  Highlighter,
+  Image as ImageIcon,
+  Loader2,
+  Search,
+  Share2,
+  Trash2,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -13,6 +23,7 @@ import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { HIGHLIGHT_SWATCH, shareQuote } from "@/components/highlights/ReaderHighlights";
 import { deleteHighlight, useHighlightList } from "@/lib/hooks/useHighlights";
 import { requestHighlightJump } from "@/lib/highlight-dom";
+import { shareQuoteImage } from "@/lib/quote-card";
 import { TagEditor } from "@/components/highlights/TagEditor";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import type { HighlightColor, HighlightSummary } from "@/lib/types";
@@ -235,6 +246,21 @@ function HighlightRow({ highlight }: { highlight: HighlightSummary }) {
               <Share2 className="h-3.5 w-3.5" />
             </IconButton>
           )}
+          <IconButton
+            label="Share as a picture"
+            onClick={() =>
+              shareQuoteImage({
+                text: highlight.text,
+                color: highlight.color,
+                title: article?.title,
+                source: article?.feed.title,
+              }).catch((error) =>
+                toast.error(error instanceof Error ? error.message : "Could not make the picture")
+              )
+            }
+          >
+            <ImageIcon className="h-3.5 w-3.5" />
+          </IconButton>
           <IconButton label="Remove highlight" onClick={remove}>
             <Trash2 className="h-3.5 w-3.5" />
           </IconButton>

@@ -154,8 +154,11 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
 
   function select(tab: ViewState) {
     // From a section list inside News, the tab goes back to the front page.
-    if (view.type === tab.type && !(tab.type === "news" && view.id)) setMobilePane("list");
-    else setView(tab);
+    if (view.type === tab.type && !(tab.type === "news" && view.id)) {
+      // Tapping the tab you're on goes back to the top, like a native app.
+      setMobilePane("list");
+      requestAppEvent("scroll-top");
+    } else setView(tab);
   }
 
   function openSearch() {

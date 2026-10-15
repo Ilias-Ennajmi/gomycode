@@ -88,13 +88,40 @@ export function PlayPauseButton({
   );
 }
 
+/** Tap to skip; hold to keep skipping (a step every ~0.2 s after half a second). */
 export function SkipButton({ seconds, className }: { seconds: number; className?: string }) {
   const { skip } = useAudio();
   const Icon = seconds < 0 ? RotateCcw : RotateCw;
+  const hold = React.useRef<{
+    start?: ReturnType<typeof setTimeout>;
+    repeat?: ReturnType<typeof setInterval>;
+    held: boolean;
+  }>({
+    held: false,
+  });
+  const stop = React.useCallback(() => {
+    clearTimeout(hold.current.start);
+    clearInterval(hold.current.repeat);
+  }, []);
+  React.useEffect(() => stop, [stop]);
   return (
     <button
       type="button"
-      onClick={() => skip(seconds)}
+      onPointerDown={() => {
+        hold.current.held = false;
+        hold.current.start = setTimeout(() => {
+          hold.current.held = true;
+          hold.current.repeat = setInterval(() => skip(seconds), 200);
+        }, 500);
+      }}
+      onPointerUp={stop}
+      onPointerLeave={stop}
+      onPointerCancel={stop}
+      onClick={() => {
+        // A hold already skipped: its release isn't another tap.
+        if (hold.current.held) hold.current.held = false;
+        else skip(seconds);
+      }}
       aria-label={seconds < 0 ? `Back ${-seconds} seconds` : `Forward ${seconds} seconds`}
       className={cn(
         "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-accent",

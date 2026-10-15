@@ -7,6 +7,7 @@ import {
   BookOpenCheck,
   CalendarDays,
   CalendarRange,
+  Flame,
   Highlighter,
   Inbox,
   Moon,
@@ -208,6 +209,16 @@ export function Sidebar({
             icon={<BookOpenCheck className="h-4 w-4" />}
             label="Daily review"
             count={review?.highlights.length ?? 0}
+            trailing={
+              review && review.streak > 0 ? (
+                <span
+                  className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-orange-500"
+                  title={`${review.streak}-day streak`}
+                >
+                  <Flame className="h-3 w-3" /> {review.streak}
+                </span>
+              ) : null
+            }
             active={view.type === "review"}
             onClick={() => setView({ type: "review", label: "Daily review" })}
           />

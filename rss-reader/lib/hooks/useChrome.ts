@@ -38,12 +38,20 @@ export function showChrome() {
 const MIN_SCROLL = 96; // never hide near the top
 const STEP = 10; // ignore tiny moves and jitter
 
+// Where the list was at the last move; shared, so a jump we make ourselves (restoring a
+// remembered position) can set the baseline instead of counting as the user scrolling.
+let lastTop = 0;
+
+/** The list was moved by the app, not the user: don't treat the jump as a scroll. */
+export function syncChromeScroll(top: number) {
+  lastTop = top;
+}
+
 /**
  * Attach to a scrolling element's onScroll: down hides the bars, up shows them. Does
  * nothing where the bars aren't in the way (desktop), so call only for phones.
  */
 export function useHideOnScroll() {
-  const last = React.useRef(0);
   const ticking = React.useRef(false);
   return React.useCallback((event: React.UIEvent<HTMLElement>) => {
     const node = event.currentTarget;
@@ -52,17 +60,17 @@ export function useHideOnScroll() {
     requestAnimationFrame(() => {
       ticking.current = false;
       const top = node.scrollTop;
-      const delta = top - last.current;
+      const delta = top - lastTop;
       // Content shorter than the screen can't scroll: keep the bars.
       const scrollable = node.scrollHeight - node.clientHeight > MIN_SCROLL * 2;
       if (top < MIN_SCROLL || !scrollable) {
         set(false);
-        last.current = top;
+        lastTop = top;
         return;
       }
       if (delta > STEP) set(true);
       else if (delta < -STEP) set(false);
-      if (Math.abs(delta) > STEP) last.current = top;
+      if (Math.abs(delta) > STEP) lastTop = top;
     });
   }, []);
 }

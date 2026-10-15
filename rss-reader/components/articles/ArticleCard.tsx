@@ -8,9 +8,12 @@ import {
   Bookmark,
   Check,
   ChevronDown,
+  EyeOff,
+  ExternalLink,
   Highlighter,
   Layers,
   Play,
+  Share,
   TrendingUp,
 } from "lucide-react";
 import { cn, formatRelativeTime, readingTime, stripHtml } from "@/lib/utils";
@@ -22,6 +25,14 @@ import { SnoozeMenu, isSnoozed } from "@/components/articles/SnoozeMenu";
 import { formatSnooze } from "@/lib/snooze";
 import { clock, durationLabel } from "@/lib/hooks/useVideo";
 import { PlayEpisodeButton } from "@/components/audio/EpisodePlayer";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import { shareLink } from "@/lib/share";
 
 interface ArticleCardProps {
   article: ArticleSummary;
@@ -34,6 +45,8 @@ interface ArticleCardProps {
   onArchive?: () => void;
   /** Swipe left on phones. */
   onToggleRead?: () => void;
+  /** Long-press menu: hide everything from this source. */
+  onMuteSource?: () => void;
   /** "cards": a big picture on top (News, YouTube); "list": a thumbnail on the side. */
   layout?: "list" | "cards";
 }
@@ -62,6 +75,7 @@ export function ArticleCard({
   onSelectRelated,
   onArchive,
   onToggleRead,
+  onMuteSource,
   layout = "list",
 }: ArticleCardProps) {
   const [showRelated, setShowRelated] = React.useState(false);
@@ -125,255 +139,331 @@ export function ArticleCard({
   }
 
   return (
-    <div
-      ref={cardRef}
-      className="relative overflow-hidden"
-      style={{ touchAction: "pan-y" }}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-    >
-      {dx !== 0 && (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
         <div
-          className={cn(
-            "absolute inset-0 flex items-center px-6 text-sm font-semibold text-white",
-            dx > 0 ? "justify-start bg-primary" : "justify-end bg-emerald-600"
-          )}
-          aria-hidden
+          ref={cardRef}
+          className="relative overflow-hidden"
+          style={{ touchAction: "pan-y" }}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
         >
-          {dx > 0 ? (
-            <span className="flex items-center gap-2">
-              <Bookmark
-                className={cn("h-5 w-5", Math.abs(dx) >= SWIPE_TRIGGER && "fill-current")}
-              />
-              {article.isSaved ? "Remove from Later" : "Read later"}
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              {article.isRead ? "Mark unread" : "Mark read"}
-              <Check className="h-5 w-5" />
-            </span>
+          {dx !== 0 && (
+            <div
+              className={cn(
+                "absolute inset-0 flex items-center px-6 text-sm font-semibold text-white",
+                dx > 0 ? "justify-start bg-primary" : "justify-end bg-emerald-600"
+              )}
+              aria-hidden
+            >
+              {dx > 0 ? (
+                <span className="flex items-center gap-2">
+                  <Bookmark
+                    className={cn("h-5 w-5", Math.abs(dx) >= SWIPE_TRIGGER && "fill-current")}
+                  />
+                  {article.isSaved ? "Remove from Later" : "Read later"}
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  {article.isRead ? "Mark unread" : "Mark read"}
+                  <Check className="h-5 w-5" />
+                </span>
+              )}
+            </div>
           )}
-        </div>
-      )}
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => {
-          // A swipe ends with a click on some browsers; it shouldn't open the article.
-          if (swiped.current) {
-            swiped.current = false;
-            return;
-          }
-          onClick();
-        }}
-        style={dx ? { transform: `translateX(${dx}px)` } : undefined}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onClick();
-          }
-        }}
-        className={cn(
-          "group relative flex w-full cursor-pointer border-b border-border/60 bg-background px-4 py-4 text-left md:px-5",
-          big ? "flex-col gap-3" : "gap-4",
-          !dx && "transition-transform duration-200",
-          active ? "bg-accent" : "hover:bg-accent/60"
-        )}
-      >
-        {active && <span className="absolute inset-y-0 left-0 w-[3px] bg-primary" aria-hidden />}
-
-        <div
-          className={cn(
-            "relative shrink-0",
-            big ? "aspect-video w-full" : "mt-0.5 h-14 w-14 md:h-16 md:w-16"
-          )}
-        >
           <div
+            role="button"
+            tabIndex={0}
+            onClick={() => {
+              // A swipe ends with a click on some browsers; it shouldn't open the article.
+              if (swiped.current) {
+                swiped.current = false;
+                return;
+              }
+              onClick();
+            }}
+            style={dx ? { transform: `translateX(${dx}px)` } : undefined}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick();
+              }
+            }}
             className={cn(
-              "flex items-center justify-center overflow-hidden bg-muted ring-1 ring-border/60",
-              // Pinned to the 16:9 box, or the picture's own height would stretch it.
-              big ? "absolute inset-0 rounded-xl" : "h-full w-full rounded-lg"
+              "group relative flex w-full cursor-pointer border-b border-border/60 bg-background px-4 py-4 text-left md:px-5",
+              big ? "flex-col gap-3" : "gap-4",
+              !dx && "transition-transform duration-200",
+              active ? "bg-accent" : "hover:bg-accent/60"
             )}
           >
-            {showImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={article.imageUrl!}
-                alt=""
-                loading="lazy"
-                className={cn("h-full w-full object-cover", article.isRead && "opacity-60")}
-                onError={() => setImageFailed(true)}
-              />
-            ) : (
-              <FeedFavicon title={source.name} faviconUrl={source.faviconUrl} size={26} />
+            {active && (
+              <span className="absolute inset-y-0 left-0 w-[3px] bg-primary" aria-hidden />
             )}
-            {article.isVideo && (
-              <span className="absolute inset-0 flex items-center justify-center">
+
+            <div
+              className={cn(
+                "relative shrink-0",
+                big
+                  ? "aspect-video w-full"
+                  : article.audioUrl && !article.isVideo
+                    ? "mt-0.5 h-[72px] w-[72px] md:h-20 md:w-20"
+                    : "mt-0.5 h-14 w-14 md:h-16 md:w-16"
+              )}
+            >
+              <div
+                className={cn(
+                  "flex items-center justify-center overflow-hidden bg-muted ring-1 ring-border/60",
+                  // Pinned to the 16:9 box, or the picture's own height would stretch it.
+                  big ? "absolute inset-0 rounded-xl" : "h-full w-full rounded-lg"
+                )}
+              >
+                {showImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={article.imageUrl!}
+                    alt=""
+                    loading="lazy"
+                    className={cn(
+                      "dim-dark h-full w-full object-cover",
+                      article.isRead && "opacity-60"
+                    )}
+                    onError={() => setImageFailed(true)}
+                  />
+                ) : (
+                  <FeedFavicon title={source.name} faviconUrl={source.faviconUrl} size={26} />
+                )}
+                {article.isVideo && (
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <span
+                      className={cn(
+                        "flex items-center justify-center rounded-full bg-black/65 text-white",
+                        big ? "h-12 w-12" : "h-7 w-7"
+                      )}
+                    >
+                      <Play
+                        className={cn("ml-0.5 fill-current", big ? "h-5 w-5" : "h-3.5 w-3.5")}
+                      />
+                    </span>
+                  </span>
+                )}
+                {article.isVideo && <VideoBadge article={article} big={big} />}
+                {article.audioUrl && !article.isVideo && progress > 0 && (
+                  // Listened so far, along the bottom of the artwork.
+                  <span className="absolute inset-x-0 bottom-0 h-[3px] bg-white/30">
+                    <span className="block h-full bg-primary" style={{ width: `${progress}%` }} />
+                  </span>
+                )}
+                {article.isVideo && progress > 0 && (
+                  // Watched so far, along the bottom of the picture like YouTube.
+                  <span className="absolute inset-x-0 bottom-0 h-[3px] bg-white/30">
+                    <span className="block h-full bg-red-600" style={{ width: `${progress}%` }} />
+                  </span>
+                )}
+              </div>
+              {!article.isRead && (
                 <span
                   className={cn(
-                    "flex items-center justify-center rounded-full bg-black/65 text-white",
-                    big ? "h-12 w-12" : "h-7 w-7"
+                    "absolute h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background",
+                    big ? "left-2.5 top-2.5" : "-left-1 -top-1"
+                  )}
+                  aria-label="Unread"
+                />
+              )}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start gap-3">
+                <h3
+                  className={cn(
+                    "line-clamp-2 flex-1 text-[15px] leading-snug tracking-tight",
+                    article.isRead
+                      ? "font-medium text-muted-foreground"
+                      : "font-semibold text-foreground"
                   )}
                 >
-                  <Play className={cn("ml-0.5 fill-current", big ? "h-5 w-5" : "h-3.5 w-3.5")} />
+                  <Highlight text={article.title} query={searchQuery} />
+                </h3>
+                <time
+                  dateTime={article.publishedAt}
+                  className="hidden shrink-0 pt-0.5 text-xs text-muted-foreground sm:block"
+                >
+                  {formatRelativeTime(article.publishedAt)}
+                </time>
+              </div>
+
+              {summary && (
+                <p className="mt-1 line-clamp-1 text-[13px] text-muted-foreground">
+                  <Highlight text={summary} query={searchQuery} />
+                </p>
+              )}
+
+              <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                <FeedFavicon title={source.name} faviconUrl={source.faviconUrl} size={14} />
+                {/* Keeps a few letters of a long name visible; a short one keeps its own width. */}
+                <span className={cn("truncate", source.name.length > 6 && "min-w-[3.5rem]")}>
+                  {source.name}
                 </span>
-              </span>
-            )}
-            {article.isVideo && <VideoBadge article={article} big={big} />}
-            {article.isVideo && progress > 0 && (
-              // Watched so far, along the bottom of the picture like YouTube.
-              <span className="absolute inset-x-0 bottom-0 h-[3px] bg-white/30">
-                <span className="block h-full bg-red-600" style={{ width: `${progress}%` }} />
-              </span>
-            )}
-          </div>
-          {!article.isRead && (
-            <span
-              className={cn(
-                "absolute h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background",
-                big ? "left-2.5 top-2.5" : "-left-1 -top-1"
-              )}
-              aria-label="Unread"
-            />
-          )}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start gap-3">
-            <h3
-              className={cn(
-                "line-clamp-2 flex-1 text-[15px] leading-snug tracking-tight",
-                article.isRead
-                  ? "font-medium text-muted-foreground"
-                  : "font-semibold text-foreground"
-              )}
-            >
-              <Highlight text={article.title} query={searchQuery} />
-            </h3>
-            <time
-              dateTime={article.publishedAt}
-              className="hidden shrink-0 pt-0.5 text-xs text-muted-foreground sm:block"
-            >
-              {formatRelativeTime(article.publishedAt)}
-            </time>
-          </div>
-
-          {summary && (
-            <p className="mt-1 line-clamp-1 text-[13px] text-muted-foreground">
-              <Highlight text={summary} query={searchQuery} />
-            </p>
-          )}
-
-          <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-            <FeedFavicon title={source.name} faviconUrl={source.faviconUrl} size={14} />
-            {/* Keeps a few letters of a long name visible; a short one keeps its own width. */}
-            <span className={cn("truncate", source.name.length > 6 && "min-w-[3.5rem]")}>
-              {source.name}
-            </span>
-            {article.author && article.author !== source.name && (
-              <>
-                <span aria-hidden className="hidden sm:inline">
+                {article.author && article.author !== source.name && (
+                  <>
+                    <span aria-hidden className="hidden sm:inline">
+                      ·
+                    </span>
+                    <span className="hidden truncate sm:inline">{article.author}</span>
+                  </>
+                )}
+                <span aria-hidden>·</span>
+                <span className="shrink-0">
+                  {article.isVideo
+                    ? article.isShort
+                      ? "Short"
+                      : article.durationSeconds
+                        ? durationLabel(article.durationSeconds)
+                        : "Video"
+                    : article.audioUrl
+                      ? article.durationSeconds
+                        ? durationLabel(article.durationSeconds)
+                        : "Episode"
+                      : article.readingMinutes
+                        ? `${article.readingMinutes} min`
+                        : readingTime(article.content || article.summary)}
+                </span>
+                <span aria-hidden className="sm:hidden">
                   ·
                 </span>
-                <span className="hidden truncate sm:inline">{article.author}</span>
-              </>
-            )}
-            <span aria-hidden>·</span>
-            <span className="shrink-0">
-              {article.isVideo
-                ? article.isShort
-                  ? "Short"
-                  : article.durationSeconds
-                    ? durationLabel(article.durationSeconds)
-                    : "Video"
-                : article.audioUrl
-                  ? article.durationSeconds
-                    ? durationLabel(article.durationSeconds)
-                    : "Episode"
-                  : article.readingMinutes
-                    ? `${article.readingMinutes} min`
-                    : readingTime(article.content || article.summary)}
-            </span>
-            <span aria-hidden className="sm:hidden">
-              ·
-            </span>
-            <span className="shrink-0 sm:hidden">{formatRelativeTime(article.publishedAt)}</span>
-            {article.boosted && (
-              <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-primary/15 px-1.5 py-px text-[10.5px] font-semibold text-primary">
-                <TrendingUp className="h-3 w-3" /> Boosted
-              </span>
-            )}
-            {isSnoozed(article) && (
-              <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-amber-500/15 px-1.5 py-px text-[10.5px] font-semibold text-amber-600 dark:text-amber-400">
-                <AlarmClock className="h-3 w-3" /> {formatSnooze(article.snoozedUntil!)}
-              </span>
-            )}
-            {(article.highlightCount ?? 0) > 0 && (
-              <span
-                className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-medium"
-                title={`${article.highlightCount} highlight${article.highlightCount === 1 ? "" : "s"}`}
-              >
-                <Highlighter className="h-3 w-3" /> {article.highlightCount}
-              </span>
-            )}
-            {article.isPromo && (
-              <span className="shrink-0 rounded bg-muted px-1.5 py-px text-[10.5px] font-semibold">
-                Sponsored
-              </span>
-            )}
-            {/* Touch screens: actions sit inline, since there's no hover. */}
+                <span className="shrink-0 sm:hidden">
+                  {formatRelativeTime(article.publishedAt)}
+                </span>
+                {article.boosted && (
+                  <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-primary/15 px-1.5 py-px text-[10.5px] font-semibold text-primary">
+                    <TrendingUp className="h-3 w-3" /> Boosted
+                  </span>
+                )}
+                {isSnoozed(article) && (
+                  <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-amber-500/15 px-1.5 py-px text-[10.5px] font-semibold text-amber-600 dark:text-amber-400">
+                    <AlarmClock className="h-3 w-3" /> {formatSnooze(article.snoozedUntil!)}
+                  </span>
+                )}
+                {(article.highlightCount ?? 0) > 0 && (
+                  <span
+                    className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-medium"
+                    title={`${article.highlightCount} highlight${article.highlightCount === 1 ? "" : "s"}`}
+                  >
+                    <Highlighter className="h-3 w-3" /> {article.highlightCount}
+                  </span>
+                )}
+                {article.isPromo && (
+                  <span className="shrink-0 rounded bg-muted px-1.5 py-px text-[10.5px] font-semibold">
+                    Sponsored
+                  </span>
+                )}
+                {/* Touch screens: actions sit inline, since there's no hover. */}
+                <CardActions
+                  article={article}
+                  onToggleSave={onToggleSave}
+                  onArchive={onArchive}
+                  className="-my-1.5 ml-auto [@media(hover:hover)]:hidden"
+                />
+              </div>
+
+              {article.audioUrl && !article.isVideo && (
+                <PlayEpisodeButton article={article} className="mt-2" />
+              )}
+
+              {article.topic && article.topic.related.length > 0 && (
+                <RelatedCoverage
+                  article={article}
+                  expanded={showRelated}
+                  onToggle={() => setShowRelated((v) => !v)}
+                  onSelect={onSelectRelated}
+                />
+              )}
+
+              {progress > 0 && !article.isVideo && (
+                <div
+                  className="mt-3 h-[3px] overflow-hidden rounded-full bg-border"
+                  role="progressbar"
+                  aria-label="Reading progress"
+                  aria-valuenow={progress}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                >
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Mouse: actions appear over the date on hover, like Readwise. */}
             <CardActions
               article={article}
               onToggleSave={onToggleSave}
               onArchive={onArchive}
-              className="-my-1.5 ml-auto [@media(hover:hover)]:hidden"
+              className={cn(
+                "absolute right-3 top-3 hidden rounded-lg border bg-popover p-0.5 shadow-sm md:right-4",
+                "opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100",
+                "[@media(hover:hover)]:flex"
+              )}
             />
           </div>
-
-          {article.audioUrl && !article.isVideo && (
-            <PlayEpisodeButton article={article} className="mt-2" />
-          )}
-
-          {article.topic && article.topic.related.length > 0 && (
-            <RelatedCoverage
-              article={article}
-              expanded={showRelated}
-              onToggle={() => setShowRelated((v) => !v)}
-              onSelect={onSelectRelated}
-            />
-          )}
-
-          {progress > 0 && !article.isVideo && (
-            <div
-              className="mt-3 h-[3px] overflow-hidden rounded-full bg-border"
-              role="progressbar"
-              aria-label="Reading progress"
-              aria-valuenow={progress}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            >
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          )}
         </div>
-
-        {/* Mouse: actions appear over the date on hover, like Readwise. */}
-        <CardActions
-          article={article}
-          onToggleSave={onToggleSave}
-          onArchive={onArchive}
-          className={cn(
-            "absolute right-3 top-3 hidden rounded-lg border bg-popover p-0.5 shadow-sm md:right-4",
-            "opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100",
-            "[@media(hover:hover)]:flex"
-          )}
-        />
-      </div>
-    </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-56">
+        <ContextMenuItem
+          onSelect={() => {
+            haptic();
+            onToggleSave();
+          }}
+          className="gap-2"
+        >
+          <Bookmark className="h-4 w-4" />
+          {article.isSaved ? "Remove from Later" : "Read later"}
+        </ContextMenuItem>
+        {onToggleRead && (
+          <ContextMenuItem
+            onSelect={() => {
+              haptic();
+              onToggleRead();
+            }}
+            className="gap-2"
+          >
+            <Check className="h-4 w-4" />
+            {article.audioUrl && !article.isVideo
+              ? article.isRead
+                ? "Mark as unplayed"
+                : "Mark as played"
+              : article.isRead
+                ? "Mark as unread"
+                : "Mark as read"}
+          </ContextMenuItem>
+        )}
+        <ContextMenuItem
+          onSelect={() => void shareLink(article.title, article.link)}
+          className="gap-2"
+        >
+          <Share className="h-4 w-4" /> Share
+        </ContextMenuItem>
+        <ContextMenuItem
+          onSelect={() => window.open(article.link, "_blank", "noopener,noreferrer")}
+          className="gap-2"
+        >
+          <ExternalLink className="h-4 w-4" /> Open original
+        </ContextMenuItem>
+        {onMuteSource && article.feed.type !== "manual" && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              onSelect={onMuteSource}
+              className="gap-2 text-destructive focus:text-destructive"
+            >
+              <EyeOff className="h-4 w-4" /> Mute {article.feed.title}
+            </ContextMenuItem>
+          </>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
 
@@ -429,9 +519,13 @@ function CardActions({
           article.isSaved ? "text-primary" : "text-muted-foreground hover:text-foreground"
         )}
         aria-label={article.isSaved ? "Remove from Later" : "Read later"}
-        title={article.isSaved ? "Remove from Later" : "Read later"}
+        title={article.isSaved ? "Remove from Later (S)" : "Read later (S)"}
       >
-        <Bookmark className={cn("h-4 w-4", article.isSaved && "fill-current")} />
+        <Bookmark
+          // A new key on each change replays the little pop when it becomes saved.
+          key={String(article.isSaved)}
+          className={cn("h-4 w-4", article.isSaved && "animate-pop fill-current")}
+        />
       </button>
     </div>
   );

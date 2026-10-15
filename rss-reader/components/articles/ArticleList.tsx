@@ -5,6 +5,7 @@ import { useInView } from "react-intersection-observer";
 import {
   Archive,
   ArrowLeft,
+  ArrowUp,
   Bell,
   Bookmark,
   AlarmClock,
@@ -35,8 +36,9 @@ import { ListToolbar } from "@/components/articles/ListToolbar";
 import { Chip } from "@/components/ui/chip";
 import { ArticleSkeletonList } from "@/components/articles/ArticleSkeleton";
 import { DailyBriefing } from "@/components/articles/DailyBriefing";
+import { ForYouGreeting } from "@/components/articles/ForYouGreeting";
 import { HighlightsList } from "@/components/highlights/HighlightsList";
-import { requestAppEvent } from "@/lib/app-events";
+import { requestAppEvent, useAppEvent } from "@/lib/app-events";
 import { useListLayout } from "@/lib/hooks/useListLayout";
 import { copySignupAddress, openUnsubscribe } from "@/lib/hooks/useNewsletter";
 import { useReaderState } from "@/lib/hooks/useReaderState";
@@ -49,7 +51,10 @@ import {
 } from "@/lib/hooks/useArticles";
 import { markAllRead, refreshFeeds, refreshToastMessage, useFeeds } from "@/lib/hooks/useFeeds";
 import { PullIndicator, usePullToRefresh } from "@/lib/hooks/usePullToRefresh";
-import { showChrome, useHideOnScroll } from "@/lib/hooks/useChrome";
+import { showChrome, syncChromeScroll, useHideOnScroll } from "@/lib/hooks/useChrome";
+import { useLastVisit } from "@/lib/hooks/useLastVisit";
+import { useFilters } from "@/lib/hooks/useFilters";
+import { haptic } from "@/lib/native";
 import { ChromeCollapse } from "@/components/layout/ChromeCollapse";
 import type { ArticleSummary, LaterTab, SearchScope, SearchSince } from "@/lib/types";
 import { ShortsGrid } from "@/components/video/ShortsGrid";
@@ -78,9 +83,11 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
     newsletterKind,
     videoKind,
     podcastKind,
+    setPodcastKind,
     listParams,
     setMobilePane,
     laterTab,
+    setLaterTab,
     setView,
   } = useReaderState();
 
@@ -98,6 +105,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   const snoozedCount = useArticleCount({ later: "snoozed" });
   const { layout, setLayout } = useListLayout(search.trim() ? "search" : view.type);
   const { feeds } = useFeeds();
+  const { addRule, removeRule } = useFilters();
   const [refreshing, setRefreshing] = React.useState(false);
   const [markingAllRead, setMarkingAllRead] = React.useState(false);
 
@@ -106,11 +114,59 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   // Each view starts at the top instead of inheriting the previous scroll offset.
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const { bind: bindPull, pull, refreshing: pulling } = usePullToRefresh();
-  const onScrollList = useHideOnScroll();
+  const hideOnScroll = useHideOnScroll();
+
+  // Each list remembers where you were: switching News → Podcasts → News comes back to the
+  // same spot, and a list you haven't seen starts at the top.
+  const listKey = JSON.stringify([listParams, sort, search, searchScope, searchSince]);
+  const positions = React.useRef(new Map<string, number>());
+  const restoreFor = React.useRef<string | null>(null);
   React.useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 0 });
+    restoreFor.current = listKey;
     showChrome();
-  }, [view, filterTab, search, listParams.categoryId, searchScope, searchSince, newsletterKind]);
+  }, [listKey]);
+  React.useEffect(() => {
+    if (restoreFor.current !== listKey || isLoading) return;
+    restoreFor.current = null;
+    const saved = positions.current.get(listKey) ?? 0;
+    syncChromeScroll(saved);
+    showChrome();
+    scrollRef.current?.scrollTo({ top: saved });
+  }, [listKey, isLoading, articles.length]);
+  const onScrollList = (event: React.UIEvent<HTMLElement>) => {
+    positions.current.set(listKey, event.currentTarget.scrollTop);
+    hideOnScroll(event);
+    setScrolledDown(event.currentTarget.scrollTop > 240);
+  };
+  const [scrolledDown, setScrolledDown] = React.useState(false);
+
+  // Tapping the tab you're on, or the "new" pill, goes to the top.
+  const scrollToTop = React.useCallback(() => {
+    scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    showChrome();
+  }, []);
+  useAppEvent("scroll-top", scrollToTop);
+
+  // New articles arriving while you're further down (the hourly refresh, a pull): say so,
+  // with a way up, instead of moving the list under your thumb.
+  const newestId = React.useRef<{ key: string; id: string | undefined } | null>(null);
+  const [freshCount, setFreshCount] = React.useState(0);
+  React.useEffect(() => {
+    const first = articles[0]?.id;
+    const previous = newestId.current;
+    newestId.current = { key: listKey, id: first };
+    if (!previous || previous.key !== listKey || !previous.id || !first || previous.id === first) {
+      return;
+    }
+    const at = articles.findIndex((a) => a.id === previous.id);
+    if (at > 0 && scrollRef.current && scrollRef.current.scrollTop > 240) {
+      setFreshCount((n) => n + at);
+    }
+  }, [articles, listKey]);
+  React.useEffect(() => {
+    if (!scrolledDown) setFreshCount(0);
+  }, [scrolledDown]);
+  React.useEffect(() => setFreshCount(0), [listKey]);
 
   React.useEffect(() => {
     if (inView && hasMore && !isLoading && !isLoadingMore) {
@@ -156,7 +212,32 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
     }
   }
 
+  async function handleMute(article: ArticleSummary) {
+    try {
+      await addRule({ action: "hide", match: "feed", value: article.feedId });
+      toast.success(`Muted ${article.feed.title}`, {
+        description: "It stays followed but leaves your lists. Unmute it in Sources.",
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            const res = await fetch("/api/filters");
+            const { rules } = (await res.json()) as {
+              rules: { id: string; action: string; match: string; value: string }[];
+            };
+            const rule = rules.find(
+              (r) => r.action === "hide" && r.match === "feed" && r.value === article.feedId
+            );
+            if (rule) await removeRule(rule.id);
+          },
+        },
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not mute this source");
+    }
+  }
+
   async function handleToggleSave(article: ArticleSummary) {
+    haptic();
     try {
       await toggleArticleSaved(article.id, !article.isSaved);
       mutate();
@@ -166,6 +247,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   }
 
   async function handleToggleRead(article: ArticleSummary) {
+    haptic();
     try {
       await toggleArticleRead(article.id, !article.isRead);
       mutate();
@@ -224,6 +306,8 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
         window.open(articles[currentIndex].link, "_blank", "noopener,noreferrer");
       } else if ((key === "s" || key === "b") && currentIndex >= 0) {
         handleToggleSave(articles[currentIndex]);
+      } else if (key === "m" && currentIndex >= 0) {
+        handleToggleRead(articles[currentIndex]);
       }
     }
 
@@ -236,6 +320,15 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   // Search results are ranked by relevance, like For You by interest: no date separators.
   const ranked = view.type === "foryou" || searching;
   const isLater = view.type === "later" && !searching;
+
+  // "New since your last visit": where the articles you've already seen start.
+  const visitKey = `${view.type}:${view.id ?? ""}`;
+  const lastVisit = useLastVisit(visitKey);
+  const datedList = !ranked && !isLater && !searching && sort === "newest" && filterTab === "all";
+  const newSinceVisit =
+    datedList && lastVisit
+      ? articles.findIndex((a) => new Date(a.createdAt).getTime() <= lastVisit)
+      : -1;
   const showHighlights = isLater && laterTab === "highlights";
   const showVideoKinds = view.type === "youtube" && !searching;
   const shortsGrid = showVideoKinds && videoKind === "short";
@@ -251,7 +344,17 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   let lastDateLabel = "";
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
+      {freshCount > 0 && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 animate-rise-in items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-lg"
+        >
+          <ArrowUp className="h-3.5 w-3.5" />
+          {freshCount} new
+        </button>
+      )}
       <ChromeCollapse>
         {/* Phones show a title row only where there's somewhere to go back to; the tabs above
           already say where you are. */}
@@ -401,7 +504,12 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
         className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin"
       >
         <PullIndicator pull={pull} refreshing={pulling} />
-        {view.type === "foryou" && !searching && filterTab === "all" && <DailyBriefing />}
+        {view.type === "foryou" && !searching && filterTab === "all" && (
+          <>
+            <ForYouGreeting />
+            <DailyBriefing />
+          </>
+        )}
         {showHighlights ? (
           <HighlightsList />
         ) : isLoading ? (
@@ -420,6 +528,9 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
             }
             onAddFeed={onAddFeed}
             onSaveLink={onSaveLink}
+            onGoLater={() => setLaterTab("queue")}
+            onShowLatest={() => setPodcastKind("latest")}
+            onRefresh={handleRefresh}
           />
         ) : shortsGrid ? (
           <>
@@ -436,13 +547,23 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
           </>
         ) : (
           <>
-            {articles.map((article) => {
+            {articles.map((article, index) => {
               const dateLabel = formatDateSeparator(article.publishedAt);
               const showSeparator = !ranked && !isLater && dateLabel !== lastDateLabel;
               lastDateLabel = dateLabel;
 
               return (
                 <React.Fragment key={article.id}>
+                  {index === newSinceVisit && index > 0 && (
+                    <div
+                      className="flex items-center gap-3 px-4 py-2 text-xs font-semibold text-primary"
+                      role="separator"
+                    >
+                      <span className="h-px flex-1 bg-primary/30" />
+                      {index} new since your last visit
+                      <span className="h-px flex-1 bg-primary/30" />
+                    </div>
+                  )}
                   {showSeparator && (
                     <div className="sticky top-0 z-10 border-b bg-background/90 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">
                       {dateLabel}
@@ -455,6 +576,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
                     onClick={() => handleSelect(article)}
                     onToggleSave={() => handleToggleSave(article)}
                     onToggleRead={() => handleToggleRead(article)}
+                    onMuteSource={() => handleMute(article)}
                     onSelectRelated={handleSelect}
                     layout={layout}
                     onArchive={
@@ -564,11 +686,17 @@ function EmptyState({
   view,
   onAddFeed,
   onSaveLink,
+  onGoLater,
+  onShowLatest,
+  onRefresh,
 }: {
   search: string;
   view: string;
   onAddFeed: (kind?: DiscoverKind) => void;
   onSaveLink: () => void;
+  onGoLater: () => void;
+  onShowLatest: () => void;
+  onRefresh: () => void;
 }) {
   if (search) {
     return (
@@ -595,6 +723,8 @@ function EmptyState({
       <EmptyMessage
         icon={<AlarmClock className="h-10 w-10" />}
         text="Nothing snoozed. Snooze an article to have it come back to Later when you have time."
+        action="Back to Later"
+        onAction={onGoLater}
       />
     );
   }
@@ -604,6 +734,8 @@ function EmptyState({
       <EmptyMessage
         icon={<Archive className="h-10 w-10" />}
         text="Your archive is empty. Items you finish in Later end up here."
+        action="Back to Later"
+        onAction={onGoLater}
       />
     );
   }
@@ -646,6 +778,8 @@ function EmptyState({
       <EmptyMessage
         icon={<Hourglass className="h-10 w-10" />}
         text="Nothing in progress. Episodes you start and don't finish wait here."
+        action="See the latest episodes"
+        onAction={onShowLatest}
       />
     );
   }
@@ -688,6 +822,9 @@ function EmptyState({
       <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center text-muted-foreground">
         <Inbox className="h-8 w-8" />
         <p className="text-sm">No articles yet. Try refreshing.</p>
+        <Button size="sm" variant="outline" onClick={onRefresh}>
+          Refresh now
+        </Button>
       </div>
     );
   }

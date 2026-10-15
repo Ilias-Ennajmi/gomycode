@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import { useAudio } from "@/components/audio/AudioProvider";
 import { PlayPauseButton, SkipButton, usePlayerTime } from "@/components/audio/PlayerControls";
+import { useVideoExtras } from "@/lib/hooks/useVideo";
 
 /** A thin line across the top of the bar: how far into the episode. */
 function BarProgress() {
@@ -17,6 +18,17 @@ function BarProgress() {
       <span className="block h-full bg-primary" style={{ width: `${percent}%` }} />
     </span>
   );
+}
+
+/** The chapter playing now, when the episode has chapters. */
+function CurrentChapter({ episodeId, fallback }: { episodeId: string; fallback: string }) {
+  const { extras } = useVideoExtras(episodeId);
+  const current = usePlayerTime();
+  let title: string | null = null;
+  for (const chapter of extras?.chapters ?? []) {
+    if (chapter.t <= current + 0.5) title = chapter.title;
+  }
+  return <>{title ?? fallback}</>;
 }
 
 /**
@@ -73,7 +85,7 @@ export function NowPlayingBar() {
             </span>
             <span className="block truncate text-xs text-muted-foreground">
               {playing ? "Playing · " : "Paused · "}
-              {episode.feedTitle}
+              <CurrentChapter episodeId={episode.id} fallback={episode.feedTitle} />
             </span>
           </span>
         </button>
