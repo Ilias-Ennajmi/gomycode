@@ -7,6 +7,7 @@ import {
   BookOpenCheck,
   CalendarDays,
   CalendarRange,
+  Flame,
   Highlighter,
   Inbox,
   Moon,
@@ -21,13 +22,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NavItem } from "@/components/sidebar/NavItem";
-import { useReviewStatus } from "@/components/review/ReviewView";
+import { useReviewStatus } from "@/lib/hooks/useReview";
 import { Logo } from "@/components/shared/Logo";
 import { CategoryGroup } from "@/components/sidebar/CategoryGroup";
 import { FeedItem } from "@/components/sidebar/FeedItem";
 import { SidebarFooter } from "@/components/sidebar/SidebarFooter";
 import { useCategories, useFeeds } from "@/lib/hooks/useFeeds";
-import { useArticleCount } from "@/lib/hooks/useArticles";
+import { useCounts } from "@/lib/hooks/useArticles";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import type { CategorySummary, FeedSummary } from "@/lib/types";
 
@@ -72,8 +73,9 @@ export function Sidebar({
   const totalUnread = feeds
     .filter((feed) => !feed.muted)
     .reduce((sum, feed) => sum + feed.unreadCount, 0);
-  const todayCount = useArticleCount({ today: true });
-  const alertCount = useArticleCount({ alerts: true, unread: true });
+  const counts = useCounts();
+  const todayCount = counts.today;
+  const alertCount = counts.alerts;
   const { data: review } = useReviewStatus();
 
   function refetchAll() {
@@ -208,6 +210,16 @@ export function Sidebar({
             icon={<BookOpenCheck className="h-4 w-4" />}
             label="Daily review"
             count={review?.highlights.length ?? 0}
+            trailing={
+              review && review.streak > 0 ? (
+                <span
+                  className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-orange-500"
+                  title={`${review.streak}-day streak`}
+                >
+                  <Flame className="h-3 w-3" /> {review.streak}
+                </span>
+              ) : null
+            }
             active={view.type === "review"}
             onClick={() => setView({ type: "review", label: "Daily review" })}
           />

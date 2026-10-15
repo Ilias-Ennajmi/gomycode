@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { shareLink } from "@/lib/share";
+import { haptic } from "@/lib/native";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -99,6 +100,7 @@ export function ArticleReader() {
   );
 
   const speech = useSpeech(article?.id);
+  const [savePop, setSavePop] = React.useState(false);
 
   // Videos: the player, its extras (chapters, key moments, transcript, up next) and progress.
   const videoId = article?.isVideo ? youTubeVideoId(article.link) : null;
@@ -246,6 +248,7 @@ export function ArticleReader() {
 
   async function handleToggleSave() {
     if (!article) return;
+    haptic();
     try {
       await toggleArticleSaved(article.id, !article.isSaved);
       refreshAllLists();
@@ -258,6 +261,7 @@ export function ArticleReader() {
 
   async function handleToggleRead() {
     if (!article) return;
+    haptic();
     try {
       await toggleArticleRead(article.id, !article.isRead);
       mutate();
@@ -309,6 +313,7 @@ export function ArticleReader() {
             className={cn("h-10 w-10", article.isRead && "text-primary")}
             onClick={handleToggleRead}
             aria-label={article.isRead ? "Mark unread" : "Mark read"}
+            title={article.isRead ? "Mark unread (M)" : "Mark read (M)"}
           >
             <Check className="h-5 w-5" />
           </Button>
@@ -318,6 +323,7 @@ export function ArticleReader() {
             className={cn("h-10 w-10", article.isSaved && "text-primary")}
             onClick={handleToggleSave}
             aria-label={article.isSaved ? "Remove from Later" : "Read later"}
+            title={article.isSaved ? "Remove from Later (S)" : "Read later (S)"}
           >
             <Bookmark className={cn("h-5 w-5", article.isSaved && "fill-current")} />
           </Button>
@@ -352,6 +358,7 @@ export function ArticleReader() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Open original"
+              title="Open original (V)"
             >
               <ExternalLink className="h-5 w-5" />
             </a>
@@ -410,19 +417,36 @@ export function ArticleReader() {
         className="flex-1 overflow-y-auto scrollbar-thin"
       >
         <div
-          className="mx-auto px-5 py-6 md:px-8 md:py-10"
+          // A new key per article: the page eases in instead of snapping.
+          key={article.id}
+          className="mx-auto animate-fade-in px-5 py-6 md:px-8 md:py-10"
           style={{ maxWidth: READER_WIDTHS[prefs.width] + 64 }}
         >
           {showHero && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={article.imageUrl!}
-              alt=""
-              className="mb-6 aspect-[16/9] w-full rounded-2xl object-cover shadow-sm"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = "none";
-              }}
-            />
+            <div className="relative mb-6">
+              {/* Double-tap the picture to save, like a like. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={article.imageUrl!}
+                alt=""
+                className="dim-dark aspect-[16/9] w-full select-none rounded-2xl object-cover shadow-sm"
+                onDoubleClick={() => {
+                  if (!article.isSaved) setSavePop(true);
+                  void handleToggleSave();
+                }}
+                onError={(e) => {
+                  (e.currentTarget.parentElement as HTMLElement).style.display = "none";
+                }}
+              />
+              {savePop && (
+                <span
+                  className="pointer-events-none absolute inset-0 flex items-center justify-center"
+                  onAnimationEnd={() => setSavePop(false)}
+                >
+                  <Bookmark className="h-20 w-20 animate-pop fill-white text-white drop-shadow-lg" />
+                </span>
+              )}
+            </div>
           )}
           {videoId && (
             <div className="mb-6">
@@ -726,7 +750,11 @@ function MinutesLeft({ words, progress }: { words: number; progress: number }) {
   if (words < 300 || progress < 3 || progress > 97 || minutes < 1) return null;
   return (
     <span className="pointer-events-none absolute bottom-4 right-4 z-10 rounded-full border bg-popover/90 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur">
-      {minutes} min left
+      {minutes} min left · done by{" "}
+      {new Date(Date.now() + minutes * 60_000).toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      })}
     </span>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import useSWR from "swr";
 import { toast } from "sonner";
 import {
   ArrowUpRight,
@@ -10,6 +9,7 @@ import {
   EyeOff,
   Flame,
   Highlighter,
+  Image as ImageIcon,
   Loader2,
   RotateCcw,
 } from "lucide-react";
@@ -20,25 +20,12 @@ import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { HIGHLIGHT_SWATCH } from "@/components/highlights/ReaderHighlights";
 import { TagEditor } from "@/components/highlights/TagEditor";
 import { requestHighlightJump } from "@/lib/highlight-dom";
+import { shareQuoteImage } from "@/lib/quote-card";
+import { haptic } from "@/lib/native";
 import { useReaderState } from "@/lib/hooks/useReaderState";
-import type { HighlightSummary } from "@/lib/types";
+import { useReviewStatus, type ReviewItem } from "@/lib/hooks/useReview";
 
 type Grade = "again" | "good" | "easy" | "never";
-type ReviewItem = HighlightSummary & { next: { again: number; good: number; easy: number } };
-
-interface ReviewData {
-  highlights: ReviewItem[];
-  reviewedToday: number;
-  dailyCount: number;
-  moreDue: number;
-  total: number;
-  streak: number;
-}
-
-export function useReviewStatus() {
-  return useSWR<ReviewData>("/api/review", { revalidateOnFocus: false });
-}
-
 function inDays(days: number) {
   if (days <= 1) return "tomorrow";
   if (days < 14) return `in ${days} days`;
@@ -76,6 +63,7 @@ export function ReviewView() {
         body: JSON.stringify({ grade: value }),
       });
       if (!res.ok) throw new Error("Could not save your answer");
+      haptic();
       setQueue((q) => (q ? q.slice(1) : q));
       setDone((n) => n + 1);
       if (value === "never") toast("It won't come back in reviews");
@@ -168,7 +156,12 @@ export function ReviewView() {
               <Skeleton className="h-5 w-2/3" />
             </div>
           ) : current ? (
-            <ReviewCard key={current.id} item={current} onOpen={() => open(current)} />
+            <SwipeableCard
+              key={current.id}
+              item={current}
+              onOpen={() => open(current)}
+              onGrade={(value) => void grade(value)}
+            />
           ) : (
             <Finished
               total={data?.total ?? 0}
@@ -266,10 +259,79 @@ function GradeButton({
   );
 }
 
+const SWIPE_AT = 90;
+
+/** The card, which also answers to a swipe: right for Good, left for Again. */
+function SwipeableCard({
+  item,
+  onOpen,
+  onGrade,
+}: {
+  item: ReviewItem;
+  onOpen: () => void;
+  onGrade: (grade: Grade) => void;
+}) {
+  const [dx, setDx] = React.useState(0);
+  const drag = React.useRef<{ x: number; y: number; horizontal: boolean | null } | null>(null);
+  const armed = Math.abs(dx) >= SWIPE_AT;
+  return (
+    <div
+      className="relative"
+      style={{ touchAction: "pan-y" }}
+      onTouchStart={(event) => {
+        // Not while typing a tag or tapping a control.
+        if ((event.target as HTMLElement).closest("button, input, a")) return;
+        const t = event.touches[0];
+        drag.current = { x: t.clientX, y: t.clientY, horizontal: null };
+      }}
+      onTouchMove={(event) => {
+        const d = drag.current;
+        if (!d) return;
+        const t = event.touches[0];
+        const mx = t.clientX - d.x;
+        const my = t.clientY - d.y;
+        if (d.horizontal === null && (Math.abs(mx) > 10 || Math.abs(my) > 10)) {
+          d.horizontal = Math.abs(mx) > Math.abs(my) * 1.3;
+        }
+        if (!d.horizontal) return;
+        const next = Math.max(-140, Math.min(140, mx));
+        if (Math.abs(next) >= SWIPE_AT !== Math.abs(dx) >= SWIPE_AT) haptic();
+        setDx(next);
+      }}
+      onTouchEnd={() => {
+        const moved = dx;
+        drag.current = null;
+        setDx(0);
+        if (moved >= SWIPE_AT) onGrade("good");
+        else if (moved <= -SWIPE_AT) onGrade("again");
+      }}
+    >
+      {dx !== 0 && (
+        <div
+          className={cn(
+            "absolute inset-0 flex items-center rounded-2xl px-6 text-sm font-semibold text-white",
+            dx > 0 ? "justify-start bg-primary" : "justify-end bg-amber-600",
+            !armed && "opacity-70"
+          )}
+          aria-hidden
+        >
+          {dx > 0 ? "Good" : "Again"}
+        </div>
+      )}
+      <div
+        style={dx ? { transform: `translateX(${dx}px)` } : undefined}
+        className={cn(!dx && "transition-transform duration-200")}
+      >
+        <ReviewCard item={item} onOpen={onOpen} />
+      </div>
+    </div>
+  );
+}
+
 function ReviewCard({ item, onOpen }: { item: ReviewItem; onOpen: () => void }) {
   const article = item.article;
   return (
-    <article className="animate-fade-in rounded-2xl border bg-card/60 p-5 shadow-sm md:p-7">
+    <article className="animate-rise-in rounded-2xl border bg-card p-5 shadow-sm md:p-7">
       <div className="flex gap-4">
         <span
           className={cn("w-1 shrink-0 rounded-full", HIGHLIGHT_SWATCH[item.color])}
@@ -301,10 +363,61 @@ function ReviewCard({ item, onOpen }: { item: ReviewItem; onOpen: () => void }) 
           <ArrowUpRight className="h-4 w-4 shrink-0" />
         </button>
       )}
-      <div className="mt-4">
+      <div className="mt-4 flex items-center justify-between gap-2">
         <TagEditor highlight={item} />
+        <button
+          type="button"
+          onClick={() =>
+            shareQuoteImage({
+              text: item.text,
+              color: item.color,
+              title: article?.title,
+              source: article?.feed.title,
+            }).catch((error) =>
+              toast.error(error instanceof Error ? error.message : "Could not make the picture")
+            )
+          }
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+          aria-label="Share as a picture"
+          title="Share as a picture"
+        >
+          <ImageIcon className="h-4 w-4" />
+        </button>
       </div>
     </article>
+  );
+}
+
+const CONFETTI = ["#f5c542", "#4ade80", "#60a5fa", "#f472b6", "#a78bfa", "#fb923c"];
+
+/** A small burst of dots when the day's review is done. Pure CSS, gone in a second. */
+function Confetti() {
+  const [done, setDone] = React.useState(false);
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDone(true), 1400);
+    return () => clearTimeout(timer);
+  }, []);
+  if (done) return null;
+  return (
+    <span className="pointer-events-none absolute inset-0 motion-reduce:hidden" aria-hidden>
+      {Array.from({ length: 14 }, (_, i) => {
+        const angle = (i / 14) * Math.PI * 2;
+        const distance = 54 + (i % 3) * 14;
+        return (
+          <span
+            key={i}
+            className="confetti-dot absolute left-1/2 top-1/2 h-1.5 w-1.5 rounded-full"
+            style={
+              {
+                backgroundColor: CONFETTI[i % CONFETTI.length],
+                "--x": `${Math.cos(angle) * distance}px`,
+                "--y": `${Math.sin(angle) * distance}px`,
+              } as React.CSSProperties
+            }
+          />
+        );
+      })}
+    </span>
   );
 }
 
@@ -337,9 +450,12 @@ function Finished({
   }
   return (
     <div className="flex flex-col items-center gap-3 rounded-2xl border bg-card/60 px-6 py-12 text-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 text-primary">
-        <Check className="h-7 w-7" />
-      </span>
+      <div className="relative">
+        <Confetti />
+        <span className="relative flex h-14 w-14 animate-pop items-center justify-center rounded-full bg-primary/15 text-primary">
+          <Check className="h-7 w-7" />
+        </span>
+      </div>
       <h2 className="text-lg font-semibold">Done for today</h2>
       <p className="max-w-xs text-sm text-muted-foreground">
         {reviewed > 0

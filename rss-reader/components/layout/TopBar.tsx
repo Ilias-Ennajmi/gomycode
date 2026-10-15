@@ -5,9 +5,8 @@ import { AtSign, Compass, Link2, Newspaper, Plus, Search, Settings } from "lucid
 import { requestAppEvent } from "@/lib/app-events";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Logo } from "@/components/shared/Logo";
 import { useFeeds } from "@/lib/hooks/useFeeds";
-import { useArticleCount } from "@/lib/hooks/useArticles";
+import { useCounts } from "@/lib/hooks/useArticles";
 import { useReaderState, type ViewState, type ViewType } from "@/lib/hooks/useReaderState";
 import {
   DropdownMenu,
@@ -34,6 +33,52 @@ const KIND_LABEL: Record<DiscoverKind, string> = {
   podcast: "Add podcasts",
 };
 
+const SEEN_KEY = "reader-tab-seen";
+
+/** For each tab: is there more unread than when it was last open? Remembered on this device. */
+function useNewSinceLastLook(unread: Partial<Record<ViewType, number>>, active: ViewType | null) {
+  const [seen, setSeen] = React.useState<Record<string, number>>({});
+  React.useEffect(() => {
+    try {
+      setSeen(JSON.parse(localStorage.getItem(SEEN_KEY) ?? "{}"));
+    } catch {
+      // Not remembered: no dots until this visit has looked at each tab.
+    }
+  }, []);
+
+  // The key of the unread counts, so effects run when they change, not on every render.
+  const signature = Object.entries(unread)
+    .map(([tab, count]) => `${tab}:${count ?? 0}`)
+    .join(",");
+  React.useEffect(() => {
+    setSeen((previous) => {
+      const next = { ...previous };
+      let changed = false;
+      for (const [tab, count] of Object.entries(unread)) {
+        const current = count ?? 0;
+        // Open now, or first time seen, or fewer than before (read some): that's the new baseline.
+        if (tab === active || next[tab] === undefined || current < next[tab]) {
+          if (next[tab] !== current) {
+            next[tab] = current;
+            changed = true;
+          }
+        }
+      }
+      if (!changed) return previous;
+      try {
+        localStorage.setItem(SEEN_KEY, JSON.stringify(next));
+      } catch {
+        // Fine: dots just reset next time.
+      }
+      return next;
+    });
+    // `signature` stands for `unread`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature, active]);
+
+  return (tab: ViewType) => (unread[tab] ?? 0) > (seen[tab] ?? Number.POSITIVE_INFINITY);
+}
+
 function short(n: number) {
   return n > 99 ? "99+" : String(n);
 }
@@ -59,14 +104,15 @@ interface TopBarProps {
 export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBarProps) {
   const { view, setView, mobilePane, setMobilePane } = useReaderState();
   const { feeds } = useFeeds();
-  const laterCount = useArticleCount({ later: "queue" });
+  const counts = useCounts();
+  const laterCount = counts.later;
   // Unread per tab, so it's clear where something new is waiting.
   const unread: Partial<Record<ViewType, number>> = {
-    news: useArticleCount({ news: "all", unread: true }),
-    rss: useArticleCount({ source: "rss", unread: true }),
-    youtube: useArticleCount({ source: "youtube", unread: true }),
-    newsletters: useArticleCount({ source: "newsletter", unread: true }),
-    podcasts: useArticleCount({ source: "podcast", unread: true }),
+    news: counts.news,
+    rss: counts.rss,
+    youtube: counts.youtube,
+    newsletters: counts.newsletters,
+    podcasts: counts.podcasts,
   };
 
   // A single feed belongs to the tab for its kind of source.
@@ -86,6 +132,9 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
           : "rss";
   }
   const active = activeTab();
+  // A dot on a tab says "something new since you last looked", not a count that never goes
+  // away: each tab remembers how many unread it had when it was last open.
+  const hasNew = useNewSinceLastLook(unread, active);
 
   // Opened from a link or shortcut (e.g. Highlights, inside Later): bring the tab into view.
   const navRef = React.useRef<HTMLElement>(null);
@@ -106,8 +155,11 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
 
   function select(tab: ViewState) {
     // From a section list inside News, the tab goes back to the front page.
-    if (view.type === tab.type && !(tab.type === "news" && view.id)) setMobilePane("list");
-    else setView(tab);
+    if (view.type === tab.type && !(tab.type === "news" && view.id)) {
+      // Tapping the tab you're on goes back to the top, like a native app.
+      setMobilePane("list");
+      requestAppEvent("scroll-top");
+    } else setView(tab);
   }
 
   function openSearch() {
@@ -117,10 +169,48 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
 
   return (
     <header className={cn("shrink-0 border-b bg-background/95 pt-safe backdrop-blur", className)}>
-      <div className="flex h-12 items-center gap-2 px-4 md:hidden">
-        <Logo className="h-6 w-6" />
-        <span className="text-[15px] font-semibold tracking-tight">Reader</span>
-        <div className="ml-auto flex items-center">
+      <div className="flex items-center gap-1 pr-1.5 md:h-14 md:gap-2 md:pr-5">
+        <nav
+          ref={navRef}
+          aria-label="Sections"
+          className="flex min-w-0 flex-1 items-center overflow-x-auto px-2 scrollbar-none md:px-3"
+        >
+          {TABS.map((tab) => {
+            const isActive = active === tab.type;
+            return (
+              <button
+                key={tab.type}
+                type="button"
+                onClick={(event) => {
+                  event.currentTarget.scrollIntoView({ inline: "nearest", block: "nearest" });
+                  select(tab);
+                }}
+                aria-current={isActive ? "page" : undefined}
+                className={cn(
+                  "relative flex h-11 shrink-0 items-center gap-1.5 px-2 text-[11.5px] font-semibold uppercase tracking-[0.05em] transition-colors md:h-14 md:px-3 md:text-[12.5px] md:tracking-[0.08em]",
+                  isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {tab.label}
+                {tab.type === "later" && laterCount > 0 && (
+                  <span className="rounded-full bg-primary/15 px-1.5 py-px text-[10.5px] font-semibold tracking-normal text-primary">
+                    {short(laterCount)}
+                  </span>
+                )}
+                {!isActive && hasNew(tab.type) && (
+                  <span
+                    className="h-1.5 w-1.5 rounded-full bg-primary"
+                    aria-label="New since you last looked"
+                  />
+                )}
+                {isActive && (
+                  <span className="absolute inset-x-2 bottom-0 h-[2px] rounded-full bg-primary md:inset-x-3" />
+                )}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="flex shrink-0 items-center md:hidden">
           <Button
             variant="ghost"
             size="icon"
@@ -150,51 +240,6 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
             <Settings className="h-[18px] w-[18px]" />
           </Button>
         </div>
-      </div>
-
-      <div className="flex items-center gap-2 pr-3 md:h-14 md:pr-5">
-        <nav
-          ref={navRef}
-          aria-label="Sections"
-          className="flex min-w-0 flex-1 items-center overflow-x-auto px-2 scrollbar-none md:px-3"
-        >
-          {TABS.map((tab) => {
-            const isActive = active === tab.type;
-            return (
-              <button
-                key={tab.type}
-                type="button"
-                onClick={(event) => {
-                  event.currentTarget.scrollIntoView({ inline: "nearest", block: "nearest" });
-                  select(tab);
-                }}
-                aria-current={isActive ? "page" : undefined}
-                className={cn(
-                  "relative flex h-11 shrink-0 items-center gap-1.5 px-2 text-[11.5px] font-semibold uppercase tracking-[0.05em] transition-colors md:h-14 md:px-3 md:text-[12.5px] md:tracking-[0.08em]",
-                  isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {tab.label}
-                {tab.type === "later" && laterCount > 0 && (
-                  <span className="rounded-full bg-primary/15 px-1.5 py-px text-[10.5px] font-semibold tracking-normal text-primary">
-                    {short(laterCount)}
-                  </span>
-                )}
-                {(unread[tab.type] ?? 0) > 0 && (
-                  <span
-                    className="text-[10.5px] font-medium tabular-nums tracking-normal text-muted-foreground/80"
-                    aria-label={`${unread[tab.type]} unread`}
-                  >
-                    {short(unread[tab.type]!)}
-                  </span>
-                )}
-                {isActive && (
-                  <span className="absolute inset-x-2 bottom-0 h-[2px] rounded-full bg-primary md:inset-x-3" />
-                )}
-              </button>
-            );
-          })}
-        </nav>
         <AddMenu
           kind={TAB_KIND[view.type] ?? "all"}
           onAddFeed={onAddFeed}

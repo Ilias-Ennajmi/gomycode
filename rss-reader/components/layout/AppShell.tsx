@@ -1,39 +1,88 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { ArticleList } from "@/components/articles/ArticleList";
 import { ArticleReader } from "@/components/articles/ArticleReader";
-import { DiscoverDialog } from "@/components/discover/DiscoverDialog";
-import { ManageCategoriesDialog } from "@/components/dialogs/ManageCategoriesDialog";
-import { KeyboardShortcutsDialog } from "@/components/dialogs/KeyboardShortcutsDialog";
-import { ImportOpmlDialog } from "@/components/dialogs/ImportOPMLDialog";
-import { ContentFiltersDialog } from "@/components/dialogs/ContentFiltersDialog";
 import { TopBar } from "@/components/layout/TopBar";
-import { SaveLinkDialog } from "@/components/dialogs/SaveLinkDialog";
-import { EmailNewsletterDialog } from "@/components/dialogs/EmailNewsletterDialog";
-import { CommandPalette } from "@/components/dialogs/CommandPalette";
 import { useAppEvent } from "@/lib/app-events";
-import { SettingsPanel } from "@/components/layout/SettingsPanel";
-import { SourcesManager } from "@/components/sources/SourcesManager";
-import { NewsView } from "@/components/news/NewsView";
-import { TodayView } from "@/components/today/TodayView";
-import { RecapView } from "@/components/today/RecapView";
-import { ReviewView } from "@/components/review/ReviewView";
-import { NewsSourcesDialog } from "@/components/news/NewsSourcesDialog";
 import { X } from "lucide-react";
 import { ReaderStateProvider, useReaderState } from "@/lib/hooks/useReaderState";
 import { useBackToClose } from "@/lib/hooks/useHistorySync";
 import { AppUpdateBanner } from "@/components/layout/AppUpdateBanner";
 import { NotificationPrompt } from "@/components/layout/NotificationPrompt";
 import { OfflineSupport } from "@/components/layout/OfflineSupport";
+import { ChromeCollapse } from "@/components/layout/ChromeCollapse";
+import { showChrome } from "@/lib/hooks/useChrome";
 import { AudioProvider } from "@/components/audio/AudioProvider";
 import { NowPlayingBar } from "@/components/audio/NowPlayingBar";
 import { refreshFeeds, refreshToastMessage, useAutoRefresh, useFeeds } from "@/lib/hooks/useFeeds";
 import { useSWRConfig } from "swr";
 import type { DiscoverKind } from "@/lib/discover/catalog";
+
+// Dialogs and the less-used screens load right after the first paint instead of with the
+// page, so the list shows up sooner.
+const DiscoverDialog = dynamic(
+  () => import("@/components/discover/DiscoverDialog").then((m) => m.DiscoverDialog),
+  { ssr: false }
+);
+const ManageCategoriesDialog = dynamic(
+  () => import("@/components/dialogs/ManageCategoriesDialog").then((m) => m.ManageCategoriesDialog),
+  { ssr: false }
+);
+const KeyboardShortcutsDialog = dynamic(
+  () =>
+    import("@/components/dialogs/KeyboardShortcutsDialog").then((m) => m.KeyboardShortcutsDialog),
+  { ssr: false }
+);
+const ImportOpmlDialog = dynamic(
+  () => import("@/components/dialogs/ImportOPMLDialog").then((m) => m.ImportOpmlDialog),
+  { ssr: false }
+);
+const ContentFiltersDialog = dynamic(
+  () => import("@/components/dialogs/ContentFiltersDialog").then((m) => m.ContentFiltersDialog),
+  { ssr: false }
+);
+const SaveLinkDialog = dynamic(
+  () => import("@/components/dialogs/SaveLinkDialog").then((m) => m.SaveLinkDialog),
+  { ssr: false }
+);
+const EmailNewsletterDialog = dynamic(
+  () => import("@/components/dialogs/EmailNewsletterDialog").then((m) => m.EmailNewsletterDialog),
+  { ssr: false }
+);
+const CommandPalette = dynamic(
+  () => import("@/components/dialogs/CommandPalette").then((m) => m.CommandPalette),
+  { ssr: false }
+);
+const SettingsPanel = dynamic(
+  () => import("@/components/layout/SettingsPanel").then((m) => m.SettingsPanel),
+  { ssr: false }
+);
+const SourcesManager = dynamic(
+  () => import("@/components/sources/SourcesManager").then((m) => m.SourcesManager),
+  { ssr: false }
+);
+const NewsView = dynamic(() => import("@/components/news/NewsView").then((m) => m.NewsView), {
+  ssr: false,
+});
+const TodayView = dynamic(() => import("@/components/today/TodayView").then((m) => m.TodayView), {
+  ssr: false,
+});
+const RecapView = dynamic(() => import("@/components/today/RecapView").then((m) => m.RecapView), {
+  ssr: false,
+});
+const ReviewView = dynamic(
+  () => import("@/components/review/ReviewView").then((m) => m.ReviewView),
+  { ssr: false }
+);
+const NewsSourcesDialog = dynamic(
+  () => import("@/components/news/NewsSourcesDialog").then((m) => m.NewsSourcesDialog),
+  { ssr: false }
+);
 
 export function AppShell() {
   return (
@@ -207,17 +256,20 @@ function AppShellInner() {
   const openShortcuts = React.useCallback(() => setShortcutsOpen(true), []);
 
   const hideTopBarOnPhone = mobilePane === "reader";
+  // Coming back to a list (or another pane), the bars are there.
+  React.useEffect(() => showChrome(), [mobilePane, view]);
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-hidden bg-background">
       <AppUpdateBanner />
       <OfflineSupport />
-      <TopBar
-        className={cn("md:hidden", hideTopBarOnPhone && "hidden")}
-        onSaveLink={() => setSaveLinkOpen(true)}
-        onAddFeed={dialogActions.onAddFeed}
-        onManageNews={() => setNewsSources({ open: true, setup: false })}
-      />
+      <ChromeCollapse className={cn("md:hidden", hideTopBarOnPhone && "hidden")}>
+        <TopBar
+          onSaveLink={() => setSaveLinkOpen(true)}
+          onAddFeed={dialogActions.onAddFeed}
+          onManageNews={() => setNewsSources({ open: true, setup: false })}
+        />
+      </ChromeCollapse>
       <div className="flex min-h-0 flex-1">
         <div
           className={cn(

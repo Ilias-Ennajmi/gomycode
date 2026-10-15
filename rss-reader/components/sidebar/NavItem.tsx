@@ -8,12 +8,22 @@ interface NavItemProps {
   icon: React.ReactNode;
   label: string;
   count?: number;
+  /** Something small before the count, e.g. a streak. */
+  trailing?: React.ReactNode;
   active?: boolean;
   className?: string;
   onClick: () => void;
 }
 
-export function NavItem({ icon, label, count, active, className, onClick }: NavItemProps) {
+export function NavItem({
+  icon,
+  label,
+  count,
+  trailing,
+  active,
+  className,
+  onClick,
+}: NavItemProps) {
   return (
     <button
       type="button"
@@ -30,6 +40,7 @@ export function NavItem({ icon, label, count, active, className, onClick }: NavI
         {icon}
       </span>
       <span className="flex-1 truncate text-left">{label}</span>
+      {trailing}
       {!!count && (
         <Badge
           variant="secondary"

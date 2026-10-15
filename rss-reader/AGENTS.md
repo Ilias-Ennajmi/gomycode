@@ -193,6 +193,26 @@ then ×3.5 (max a year); "never" sets `reviewDisabled`. The streak comes from th
 `review-log` Setting. Highlights have lowercase `tags` (filter chips, `?tag=` on the list and
 the Markdown export).
 
+**Screen space** (phones). Two thin rows on top: `TopBar` (tabs, with search, add and settings
+on the right) and `components/articles/ListToolbar.tsx` (every filter as a chip in one
+sideways-scrolling row, plus a single "⋯" menu for add, refresh, layout, sort, mark all
+read). A title row appears only where there's a back button (feed, category, Today, All,
+Alerts, a News section, search). Both rows live in `ChromeCollapse` and slide away while the
+list scrolls down (`lib/hooks/useChrome.ts`; a restored scroll position calls
+`syncChromeScroll` so it doesn't count as scrolling). Chips use `components/ui/chip.tsx`;
+category chips come from `useCategoryOptions`. Tab badges are dots, "new since this tab was
+last open" (`useNewSinceLastLook` in TopBar). Every number on tabs and in the sidebar comes
+from one request, `/api/articles/counts` (`lib/counts.ts`, `useCounts()`); its key starts with
+`/api/articles`, so refreshing the lists refreshes it. Don't add a request per badge.
+
+**List behaviour.** Each list remembers its scroll position (`ArticleList`, keyed by its
+params); a line marks where articles you haven't seen start (`useLastVisit`, dated lists
+only); a "N new" pill shows when the list gains articles while you're scrolled down; tapping
+the current tab scrolls to the top (`scroll-top` app event); cards have a long-press menu, a
+bouncing bookmark and `content-visibility: auto` so long lists stay light; pressing a card
+prefetches the full page of an excerpt-only article. Dialogs and secondary screens are
+loaded with `next/dynamic` in `AppShell` (keep heavy components out of its static imports).
+
 **Housekeeping** (`lib/maintenance.ts`, run after the hourly tick and the daily cron):
 articles dated in the future move to when they arrived; an article stored by two feeds
 (same link) keeps one copy; recent articles without a picture get their page's share
@@ -283,7 +303,9 @@ Built in this order (see `git log -- rss-reader`):
    hourly refresh, card layout, resume reading, ⌘K command palette, skeletons.
 10. Data health (retention, duplicates, pictures, dates, dead feeds), notification prompt.
 11. YouTube upgrade: Shorts, lengths, progress, player, chapters, AI transcripts.
-12. v3: AI quota budget, Podcasts (app-wide player, Apple search, AI on episodes),
+12. UX pass: two-row phone header that hides on scroll, one counts request, long-press menu,
+    scroll memory, greeting, review swipe, picture cards.
+13. v3: AI quota budget, Podcasts (app-wide player, Apple search, AI on episodes),
     Alerts and auto-save rules, Daily review with tags.
 
 ## Open ideas (not built yet)

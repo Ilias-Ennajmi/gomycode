@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { clock, durationLabel } from "@/lib/hooks/useVideo";
 import type { ArticleSummary } from "@/lib/types";
 import { episodeOf, resumePoint, useAudio } from "@/components/audio/AudioProvider";
+import { usePlayerTime } from "@/components/audio/PlayerControls";
 import {
   PlayPauseButton,
   Scrubber,
@@ -62,6 +63,7 @@ export function EpisodePlayer({ article }: { article: ArticleSummary }) {
       {current && (
         <div className="mt-4">
           <Scrubber />
+          <EndsAt />
           <div className="mt-2 flex items-center justify-between gap-2">
             <SpeedButton />
             <div className="flex items-center gap-2">
@@ -74,6 +76,19 @@ export function EpisodePlayer({ article }: { article: ArticleSummary }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** "Ends at 9:42": when the episode finishes at this speed, if it keeps playing. */
+function EndsAt() {
+  const { duration, rate, playing } = useAudio();
+  const current = usePlayerTime();
+  if (!duration || !playing) return null;
+  const end = new Date(Date.now() + ((duration - current) / rate) * 1000);
+  return (
+    <p className="mt-1 text-center text-[11px] text-muted-foreground">
+      Ends at {end.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+    </p>
   );
 }
 
