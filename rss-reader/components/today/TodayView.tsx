@@ -25,6 +25,7 @@ import { WeatherWidget } from "@/components/news/WeatherWidget";
 import { useBriefing, type BriefPick, type BriefStory } from "@/lib/hooks/useAi";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import { ResurfacedHighlights } from "@/components/highlights/ResurfacedHighlights";
+import { ReviewPrompt } from "@/components/review/ReviewView";
 
 function greeting(date = new Date()) {
   const hour = date.getHours();
@@ -301,6 +302,7 @@ export function TodayView() {
               </div>
             )}
 
+            <ReviewPrompt />
             <ResurfacedHighlights
               onOpen={open}
               title={(children) => <SectionTitle>{children}</SectionTitle>}

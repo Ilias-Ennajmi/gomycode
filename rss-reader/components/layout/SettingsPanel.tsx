@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
-import { useAiStatus } from "@/lib/hooks/useAi";
+import { useAiStatus, type AiStatus } from "@/lib/hooks/useAi";
 import { androidAppVersion, RELEASES_PAGE } from "@/lib/native";
 import { NotificationSettings } from "@/components/layout/NotificationSettings";
 import { useFeeds } from "@/lib/hooks/useFeeds";
@@ -86,7 +86,7 @@ export function SettingsPanel({
           <Row
             icon={SlidersHorizontal}
             label="Content filters"
-            hint="Hide or boost topics and sources"
+            hint="Hide, boost, alerts and auto-save"
             onClick={onContentFilters}
           />
         </Section>
@@ -227,6 +227,42 @@ function Row({
   );
 }
 
+const USAGE_LABELS = { embed: "Analysis", text: "Summaries", video: "Video & audio" } as const;
+
+/** Today's share of the free daily quota, so "summaries later" has a visible reason. */
+function AiUsage({ usage, paused }: { usage: NonNullable<AiStatus["usage"]>; paused: string[] }) {
+  return (
+    <div className="mt-2.5 space-y-1.5">
+      {usage.map(({ bucket, used, limit }) => {
+        const percent = Math.min(100, Math.round((used / limit) * 100));
+        return (
+          <div key={bucket} className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="w-24 shrink-0">{USAGE_LABELS[bucket]}</span>
+            <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+              <span
+                className={cn(
+                  "block h-full rounded-full",
+                  percent >= 90 ? "bg-amber-500" : "bg-primary/70"
+                )}
+                style={{ width: `${percent}%` }}
+              />
+            </span>
+            <span className="w-16 shrink-0 text-right tabular-nums">
+              {used}/{limit}
+            </span>
+          </div>
+        );
+      })}
+      <p className="text-[11px] text-muted-foreground">
+        Today&apos;s free quota (resets around 8–9 am Morocco time).{" "}
+        {paused.length > 0
+          ? "Google asked for a pause; things you open still get priority once it lifts."
+          : "Background work stops at 75%, keeping the rest for what you open."}
+      </p>
+    </div>
+  );
+}
+
 function AiStatusRow() {
   const status = useAiStatus();
   if (!status) return <div className="h-[68px]" />;
@@ -248,6 +284,7 @@ function AiStatusRow() {
               read or saved · {status.analyzed} analyzed · {status.topics}{" "}
               {status.topics === 1 ? "story" : "stories"} grouped
             </p>
+            {status.usage && <AiUsage usage={status.usage} paused={status.paused ?? []} />}
           </>
         ) : (
           <>

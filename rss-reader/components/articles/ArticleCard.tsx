@@ -21,6 +21,7 @@ import { haptic } from "@/lib/native";
 import { SnoozeMenu, isSnoozed } from "@/components/articles/SnoozeMenu";
 import { formatSnooze } from "@/lib/snooze";
 import { clock, durationLabel } from "@/lib/hooks/useVideo";
+import { PlayEpisodeButton } from "@/components/audio/EpisodePlayer";
 
 interface ArticleCardProps {
   article: ArticleSummary;
@@ -286,9 +287,13 @@ export function ArticleCard({
                   : article.durationSeconds
                     ? durationLabel(article.durationSeconds)
                     : "Video"
-                : article.readingMinutes
-                  ? `${article.readingMinutes} min`
-                  : readingTime(article.content || article.summary)}
+                : article.audioUrl
+                  ? article.durationSeconds
+                    ? durationLabel(article.durationSeconds)
+                    : "Episode"
+                  : article.readingMinutes
+                    ? `${article.readingMinutes} min`
+                    : readingTime(article.content || article.summary)}
             </span>
             <span aria-hidden className="sm:hidden">
               ·
@@ -325,6 +330,10 @@ export function ArticleCard({
               className="-my-1.5 ml-auto [@media(hover:hover)]:hidden"
             />
           </div>
+
+          {article.audioUrl && !article.isVideo && (
+            <PlayEpisodeButton article={article} className="mt-2" />
+          )}
 
           {article.topic && article.topic.related.length > 0 && (
             <RelatedCoverage

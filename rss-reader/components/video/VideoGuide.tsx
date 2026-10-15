@@ -12,7 +12,16 @@ import type { ArticleSummary, Chapter, TimedText } from "@/lib/types";
  * While Gemini hasn't summarized the video yet: asks for it once when the video is opened,
  * and says what's happening. Gemini's free tier is often busy; the hourly run retries.
  */
-export function VideoAiPending({ articleId, onDone }: { articleId: string; onDone: () => void }) {
+export function VideoAiPending({
+  articleId,
+  onDone,
+  audio = false,
+}: {
+  articleId: string;
+  onDone: () => void;
+  /** A podcast episode: Gemini listens rather than watches. */
+  audio?: boolean;
+}) {
   const [state, setState] = React.useState<VideoAiResult | "working">("working");
   const onDoneRef = React.useRef(onDone);
   onDoneRef.current = onDone;
@@ -44,7 +53,9 @@ export function VideoAiPending({ articleId, onDone }: { articleId: string; onDon
         <>
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            Watching the video for a summary, key moments and a transcript… (up to a minute)
+            {audio
+              ? "Listening to the episode for a summary, key moments and a transcript… (a minute or two)"
+              : "Watching the video for a summary, key moments and a transcript… (up to a minute)"}
           </p>
           <div className="mt-3 space-y-2">
             <Skeleton className="h-3.5 w-full" />

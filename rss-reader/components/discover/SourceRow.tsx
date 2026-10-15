@@ -3,6 +3,7 @@
 import {
   Check,
   ChevronDown,
+  Headphones,
   Loader2,
   Mail,
   Newspaper,
@@ -27,6 +28,7 @@ export const KIND_META = {
   rss: { label: "Site", icon: Rss },
   youtube: { label: "YouTube", icon: Play },
   newsletter: { label: "Newsletter", icon: Mail },
+  podcast: { label: "Podcast", icon: Headphones },
 } as const;
 
 function sourceImage(result: DiscoverResult) {
@@ -103,7 +105,11 @@ export function SourceRow({
           <span
             className={cn(
               "absolute -bottom-1 -right-1 flex h-[18px] w-[18px] items-center justify-center rounded-full ring-2 ring-background",
-              result.kind === "youtube" ? "bg-red-600 text-white" : "bg-muted text-muted-foreground"
+              result.kind === "youtube"
+                ? "bg-red-600 text-white"
+                : result.kind === "podcast"
+                  ? "bg-violet-600 text-white"
+                  : "bg-muted text-muted-foreground"
             )}
             aria-hidden
           >

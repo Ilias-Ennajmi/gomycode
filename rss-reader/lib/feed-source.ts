@@ -1,6 +1,7 @@
 import type { FeedType } from "@prisma/client";
 import { discoverFeedUrl } from "@/lib/rss";
 import { isYouTubeFeedUrl, isYouTubeUrl, resolveYouTubeChannel } from "@/lib/youtube";
+import { applePodcastId, resolveApplePodcast } from "@/lib/podcast";
 
 export interface ResolvedSource {
   feedUrl: string;
@@ -38,6 +39,12 @@ export async function resolveSource(input: string): Promise<ResolvedSource> {
   if (isYouTubeUrl(url)) {
     const { feedUrl, avatarUrl } = await resolveYouTubeChannel(url);
     return { feedUrl, type: "youtube", faviconUrl: avatarUrl };
+  }
+
+  // An Apple Podcasts link: Apple's directory knows the show's RSS feed.
+  if (applePodcastId(url)) {
+    const show = await resolveApplePodcast(url);
+    if (show) return { feedUrl: show.feedUrl, type: "podcast", faviconUrl: show.artworkUrl };
   }
 
   const feedUrl = await discoverFeedUrl(url);

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getFilterRules } from "@/lib/filters";
 
-const ACTIONS = ["hide", "boost"] as const;
+const ACTIONS = ["hide", "boost", "alert", "save"] as const;
 const MATCHES = ["keyword", "feed"] as const;
 
 export async function GET() {
@@ -20,7 +20,10 @@ export async function POST(request: NextRequest) {
     const { action, match, value } = body as { action?: string; match?: string; value?: string };
 
     if (!ACTIONS.includes(action as (typeof ACTIONS)[number])) {
-      return NextResponse.json({ error: "action must be hide or boost" }, { status: 400 });
+      return NextResponse.json(
+        { error: "action must be hide, boost, alert or save" },
+        { status: 400 }
+      );
     }
     if (!MATCHES.includes(match as (typeof MATCHES)[number])) {
       return NextResponse.json({ error: "match must be keyword or feed" }, { status: 400 });
@@ -32,7 +35,14 @@ export async function POST(request: NextRequest) {
     // Keywords may be entered comma-separated: "crypto, NFT".
     const values =
       match === "keyword"
-        ? Array.from(new Set(value.split(",").map((v) => v.trim()).filter(Boolean)))
+        ? Array.from(
+            new Set(
+              value
+                .split(",")
+                .map((v) => v.trim())
+                .filter(Boolean)
+            )
+          )
         : [value.trim()];
 
     if (match === "feed") {

@@ -57,7 +57,7 @@ export function serializeArticle<
   };
 }
 
-export const SOURCE_TYPES = ["rss", "youtube", "newsletter"] as const;
+export const SOURCE_TYPES = ["rss", "youtube", "newsletter", "podcast"] as const;
 
 export function parseSource(value: unknown): FeedType | undefined {
   return SOURCE_TYPES.includes(value as (typeof SOURCE_TYPES)[number])

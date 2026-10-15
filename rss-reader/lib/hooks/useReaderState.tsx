@@ -7,6 +7,7 @@ import type {
   ArticleSort,
   LaterTab,
   NewsletterKind,
+  PodcastKind,
   VideoKind,
   VideoLength,
   SearchScope,
@@ -23,6 +24,9 @@ export type ViewType =
   | "rss"
   | "youtube"
   | "newsletters"
+  | "podcasts"
+  | "alerts"
+  | "review"
   | "later"
   | "all"
   | "today"
@@ -39,15 +43,16 @@ export interface ViewState {
 export type MobilePane = "sidebar" | "list" | "reader" | "settings";
 
 /** The tabs that list one kind of source, and can be narrowed to a category. */
-export type SourceTab = "rss" | "youtube" | "newsletters";
+export type SourceTab = "rss" | "youtube" | "newsletters" | "podcasts";
 export const SOURCE_TAB_FEED_TYPE = {
   rss: "rss",
   youtube: "youtube",
   newsletters: "newsletter",
+  podcasts: "podcast",
 } as const;
 
 export function isSourceTab(type: ViewType): type is SourceTab {
-  return type === "rss" || type === "youtube" || type === "newsletters";
+  return type === "rss" || type === "youtube" || type === "newsletters" || type === "podcasts";
 }
 
 interface ReaderStateValue {
@@ -75,6 +80,8 @@ interface ReaderStateValue {
   setVideoKind: (kind: VideoKind) => void;
   videoLength: VideoLength | null;
   setVideoLength: (length: VideoLength | null) => void;
+  podcastKind: PodcastKind;
+  setPodcastKind: (kind: PodcastKind) => void;
   mobilePane: MobilePane;
   setMobilePane: React.Dispatch<React.SetStateAction<MobilePane>>;
   /** Category chip per source tab: a category id, "none" for uncategorized, or null for all. */
@@ -97,6 +104,9 @@ const LINKABLE_VIEWS: Record<string, ViewState> = {
   rss: { type: "rss", label: "RSS" },
   youtube: { type: "youtube", label: "YouTube" },
   newsletters: { type: "newsletters", label: "Newsletters" },
+  podcasts: { type: "podcasts", label: "Podcasts" },
+  alerts: { type: "alerts", label: "Alerts" },
+  review: { type: "review", label: "Daily review" },
   later: { type: "later", label: "Later" },
   today: { type: "today", label: "Today" },
   all: { type: "all", label: "All articles" },
@@ -113,6 +123,7 @@ const SCOPE_PARAMS: Record<SearchScope, ArticleListParams> = {
   rss: { source: "rss" },
   youtube: { source: "youtube" },
   newsletter: { source: "newsletter" },
+  podcast: { source: "podcast" },
   // Everything saved, in the queue or archived.
   later: { saved: true },
   highlights: { highlighted: true },
@@ -145,12 +156,18 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     setVideoLengthState(length);
     setSelectedArticleId(null);
   }, []);
+  const [podcastKind, setPodcastKindState] = React.useState<PodcastKind>("latest");
+  const setPodcastKind = React.useCallback((kind: PodcastKind) => {
+    setPodcastKindState(kind);
+    setSelectedArticleId(null);
+  }, []);
   const [mobilePane, setMobilePane] = React.useState<MobilePane>("list");
   // Kept across tab switches, so each tab reopens on the chip it was left on.
   const [tabCategory, setTabCategories] = React.useState<Record<SourceTab, string | null>>({
     rss: null,
     youtube: null,
     newsletters: null,
+    podcasts: null,
   });
   const setTabCategory = React.useCallback((tab: SourceTab, categoryId: string | null) => {
     setTabCategories((prev) => ({ ...prev, [tab]: categoryId }));
@@ -228,12 +245,17 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
       params.source = "newsletter";
       if (newsletterKind) params.newsletter = newsletterKind;
     }
+    if (view.type === "podcasts") {
+      params.source = "podcast";
+      if (podcastKind === "progress") params.inProgress = true;
+    }
     // Highlights lists passages, but the reader moves between the articles they're from.
     if (view.type === "later" && laterTab === "highlights") params.highlighted = true;
     else if (view.type === "later") params.later = laterTab;
     if (view.type === "feed") params.feedId = view.id;
     if (view.type === "category") params.categoryId = view.id;
     if (view.type === "today") params.today = true;
+    if (view.type === "alerts") params.alerts = true;
     if (view.type === "saved") params.saved = true;
     if (isSourceTab(view.type) && tabCategory[view.type]) {
       params.categoryId = tabCategory[view.type] ?? undefined;
@@ -252,6 +274,7 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     newsletterKind,
     videoKind,
     videoLength,
+    podcastKind,
   ]);
 
   const value: ReaderStateValue = {
@@ -277,6 +300,8 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     setVideoKind,
     videoLength,
     setVideoLength,
+    podcastKind,
+    setPodcastKind,
     mobilePane,
     setMobilePane,
     tabCategory,

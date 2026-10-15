@@ -3,6 +3,8 @@
 import type { DiscoverKind } from "@/lib/discover/catalog";
 import * as React from "react";
 import {
+  Bell,
+  BookOpenCheck,
   CalendarDays,
   CalendarRange,
   Highlighter,
@@ -19,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NavItem } from "@/components/sidebar/NavItem";
+import { useReviewStatus } from "@/components/review/ReviewView";
 import { Logo } from "@/components/shared/Logo";
 import { CategoryGroup } from "@/components/sidebar/CategoryGroup";
 import { FeedItem } from "@/components/sidebar/FeedItem";
@@ -70,6 +73,8 @@ export function Sidebar({
     .filter((feed) => !feed.muted)
     .reduce((sum, feed) => sum + feed.unreadCount, 0);
   const todayCount = useArticleCount({ today: true });
+  const alertCount = useArticleCount({ alerts: true, unread: true });
+  const { data: review } = useReviewStatus();
 
   function refetchAll() {
     mutateFeeds();
@@ -82,6 +87,7 @@ export function Sidebar({
   const newsFeeds = feeds.filter((feed) => !feed.categoryId && feed.newsDesk);
   const youTubeChannels = feeds.filter((feed) => !feed.categoryId && feed.type === "youtube");
   const newsletterSenders = feeds.filter((feed) => !feed.categoryId && feed.type === "newsletter");
+  const podcastShows = feeds.filter((feed) => !feed.categoryId && feed.type === "podcast");
 
   function selectCategory(category: CategorySummary) {
     setView({ type: "category", id: category.id, label: category.name });
@@ -192,6 +198,20 @@ export function Sidebar({
             onClick={() => setView({ type: "recap", label: "Weekly recap" })}
           />
           <NavItem
+            icon={<Bell className="h-4 w-4" />}
+            label="Alerts"
+            count={alertCount}
+            active={view.type === "alerts"}
+            onClick={() => setView({ type: "alerts", label: "Alerts" })}
+          />
+          <NavItem
+            icon={<BookOpenCheck className="h-4 w-4" />}
+            label="Daily review"
+            count={review?.highlights.length ?? 0}
+            active={view.type === "review"}
+            onClick={() => setView({ type: "review", label: "Daily review" })}
+          />
+          <NavItem
             icon={<Highlighter className="h-4 w-4" />}
             label="Highlights"
             active={view.type === "later" && laterTab === "highlights"}
@@ -248,6 +268,17 @@ export function Sidebar({
                   className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground"
                 >
                   <Plus className="h-4 w-4" /> Add a newsletter
+                </button>
+              )}
+              {renderFeedGroup(
+                "Podcasts",
+                podcastShows,
+                <button
+                  type="button"
+                  onClick={() => onAddFeed("podcast")}
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                >
+                  <Plus className="h-4 w-4" /> Add a podcast
                 </button>
               )}
             </div>

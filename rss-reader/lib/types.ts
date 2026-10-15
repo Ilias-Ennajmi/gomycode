@@ -1,4 +1,4 @@
-export type FeedType = "rss" | "youtube" | "newsletter" | "manual";
+export type FeedType = "rss" | "youtube" | "newsletter" | "podcast" | "manual";
 
 export interface FeedSummary {
   id: string;
@@ -87,8 +87,13 @@ export interface ArticleSummary {
   durationSeconds?: number | null;
   isShort?: boolean;
   liveStatus?: "live" | "upcoming" | null;
-  /** Videos: where playback stopped. */
+  /** Videos and episodes: where playback stopped. */
   watchedSeconds?: number | null;
+  /** When an alert rule matched it. */
+  alertedAt?: string | null;
+  /** Podcast episodes: the audio file. */
+  audioUrl?: string | null;
+  audioType?: string | null;
   /** Present in For You when other sources cover the same story. */
   topic?: {
     id: string;
@@ -102,7 +107,7 @@ export interface ArticleSummary {
 
 export interface FilterRuleSummary {
   id: string;
-  action: "hide" | "boost";
+  action: "hide" | "boost" | "alert" | "save";
   match: "keyword" | "feed";
   value: string;
 }
@@ -119,6 +124,8 @@ export interface HighlightSummary {
   color: HighlightColor;
   prefix: string;
   suffix: string;
+  /** Lowercase labels. */
+  tags?: string[];
   createdAt: string;
   updatedAt: string;
   /** Included in the Highlights list, not when loading one article's highlights. */
@@ -137,6 +144,8 @@ export type NewsletterKind = "web" | "email";
 export type VideoKind = "long" | "short" | "all";
 /** Under 10 minutes, 10 to 30, over 30. */
 export type VideoLength = "short" | "medium" | "long";
+/** Podcasts tab: every new episode, or the ones started and not finished. */
+export type PodcastKind = "latest" | "progress";
 
 export interface Chapter {
   t: number;
@@ -162,6 +171,7 @@ export type SearchScope =
   | "rss"
   | "youtube"
   | "newsletter"
+  | "podcast"
   | "later"
   | "highlights";
 export type SearchSince = "any" | "day" | "week" | "month";
@@ -187,4 +197,8 @@ export interface ArticleListParams {
   highlighted?: boolean;
   video?: Exclude<VideoKind, "all">;
   length?: VideoLength;
+  /** Only episodes started and not finished. */
+  inProgress?: boolean;
+  /** Only articles an alert rule matched. */
+  alerts?: boolean;
 }

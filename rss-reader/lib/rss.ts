@@ -11,6 +11,7 @@ import { unwrapBingLink } from "@/lib/discover/topics";
 // an array of strings, or an object ({ _: text } / { url } / { $: { href } }).
 type CustomFeed = {
   image?: unknown;
+  "itunes:image"?: unknown;
   language?: unknown;
   generator?: unknown;
 };
@@ -22,7 +23,11 @@ type CustomItem = {
   "media:group"?: { "media:description"?: unknown };
   "media:content"?: MediaNode | MediaNode[];
   "media:thumbnail"?: { $?: { url?: string } };
-  enclosure?: { url?: string; type?: string };
+  enclosure?: { url?: string; type?: string; length?: string };
+  // Podcasts (read whether or not the feed declares the itunes namespace).
+  itunesDuration?: unknown;
+  itunesImage?: unknown;
+  itunesSummary?: unknown;
   author?: unknown;
   "dc:creator"?: unknown;
   // Bing News search feeds (topic follows).
@@ -32,7 +37,7 @@ type CustomItem = {
 
 const parser = new Parser<CustomFeed, CustomItem>({
   customFields: {
-    feed: ["image", "language", "generator"],
+    feed: ["image", "language", "generator", "itunes:image"],
     item: [
       ["content:encoded", "content:encoded"],
       ["media:content", "media:content"],
@@ -41,6 +46,9 @@ const parser = new Parser<CustomFeed, CustomItem>({
       ["dc:creator", "dc:creator"],
       ["News:Image", "News:Image"],
       ["News:Source", "News:Source"],
+      ["itunes:duration", "itunesDuration"],
+      ["itunes:image", "itunesImage"],
+      ["itunes:summary", "itunesSummary"],
     ],
   },
 });
@@ -75,6 +83,10 @@ export interface ParsedArticle {
   author?: string;
   publishedAt: Date;
   isVideo?: boolean;
+  /** Podcast episodes: the audio file, its type and length. */
+  audioUrl?: string;
+  audioType?: string;
+  durationSeconds?: number;
 }
 
 export interface ParsedFeed {
@@ -157,41 +169,85 @@ function extractImageUrl(item: Parser.Item & CustomItem): string | undefined {
   return firstImageFromHtml(item["content:encoded"] || item.content);
 }
 
+/** An episode's audio file: an audio enclosure (or an .mp3/.m4a link when the type is missing). */
+function audioEnclosure(item: CustomItem) {
+  const url = item.enclosure?.url?.trim();
+  if (!url) return null;
+  const type = item.enclosure?.type?.toLowerCase() ?? "";
+  if (type.startsWith("audio/")) return { url, type };
+  if (!type && /\.(mp3|m4a|aac|ogg|opus|wav)(\?|$)/i.test(url)) return { url, type: "audio/mpeg" };
+  return null;
+}
+
+/** <itunes:duration>: "1:02:03", "62:03", or seconds. */
+export function parseDuration(value: unknown): number | undefined {
+  const text = firstText(value);
+  if (!text) return undefined;
+  if (/^\d+(\.\d+)?$/.test(text)) return Math.round(Number(text)) || undefined;
+  const parts = text.split(":").map(Number);
+  if (parts.some((n) => !Number.isFinite(n)) || parts.length > 3) return undefined;
+  return parts.reduce((total, n) => total * 60 + n, 0) || undefined;
+}
+
+/** An itunes:image node: <itunes:image href="…"/>. */
+function itunesImageUrl(value: unknown): string | undefined {
+  const node = Array.isArray(value) ? value[0] : value;
+  if (node && typeof node === "object") {
+    const href = (node as { $?: { href?: unknown } }).$?.href;
+    if (typeof href === "string" && href.trim()) return href.trim();
+  }
+  return firstText(value);
+}
+
 async function parseFeedXml(xml: string, url: string): Promise<ParsedFeed> {
   const feed = await parser.parseString(xml);
   const image = feed.image as unknown;
 
+  // Podcasts: the show's square artwork is the best picture of it.
+  const artwork = itunesImageUrl(feed["itunes:image"]);
   const meta: ParsedFeedMeta = {
     title: plainTitle(feed.title) || url,
     description: firstText(feed.description),
     siteUrl: firstText(feed.link),
-    coverUrl: firstText(
-      image && typeof image === "object" && !Array.isArray(image)
-        ? (image as { url?: unknown }).url
-        : image
-    ),
+    coverUrl:
+      artwork ||
+      firstText(
+        image && typeof image === "object" && !Array.isArray(image)
+          ? (image as { url?: unknown }).url
+          : image
+      ),
     language: firstText(feed.language)?.slice(0, 2).toLowerCase(),
     generator: firstText(feed.generator),
   };
 
   const articles: ParsedArticle[] = (feed.items || [])
-    .filter((item) => firstText(item.link))
+    .filter((item) => firstText(item.link) || audioEnclosure(item))
     .map((item) => {
-      const link = unwrapBingLink(firstText(item.link) as string);
+      const audio = audioEnclosure(item);
+      // Episodes without a page of their own are known by their audio file.
+      const link = unwrapBingLink((firstText(item.link) || audio?.url) as string);
       const rawDate = item.isoDate || item.pubDate;
       const publishedAt = rawDate ? new Date(rawDate) : new Date();
       const videoId = youTubeVideoId(link);
-      const content = videoId ? undefined : item["content:encoded"] || item.content || undefined;
+      const content = videoId
+        ? undefined
+        : item["content:encoded"] || item.content || firstText(item.itunesSummary) || undefined;
       const summary = videoId
         ? firstText(item["media:group"]?.["media:description"])
-        : firstText(item.contentSnippet) || firstText(item.summary);
+        : firstText(item.contentSnippet) ||
+          firstText(item.summary) ||
+          firstText(item.itunesSummary)?.replace(/<[^>]+>/g, " ");
 
       return {
         title: plainTitle(item.title) || "Untitled",
         link,
         summary: summary ? summary.slice(0, 500) : undefined,
         content,
-        imageUrl: videoId ? youTubeThumbnailUrl(videoId) : extractImageUrl(item),
+        imageUrl: videoId
+          ? youTubeThumbnailUrl(videoId)
+          : audio
+            ? itunesImageUrl(item.itunesImage) || extractImageUrl(item) || artwork
+            : extractImageUrl(item),
         author:
           firstText(item.author) ||
           firstText(item["dc:creator"]) ||
@@ -199,6 +255,13 @@ async function parseFeedXml(xml: string, url: string): Promise<ParsedFeed> {
           firstText(item["News:Source"]),
         publishedAt: isNaN(publishedAt.getTime()) ? new Date() : publishedAt,
         isVideo: Boolean(videoId),
+        ...(audio && !videoId
+          ? {
+              audioUrl: audio.url,
+              audioType: audio.type,
+              durationSeconds: parseDuration(item.itunesDuration),
+            }
+          : {}),
       };
     });
 

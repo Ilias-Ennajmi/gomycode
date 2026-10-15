@@ -8,6 +8,10 @@ export interface AiStatus {
   learnedFrom: number;
   analyzed: number;
   topics: number;
+  /** Today's Gemini use against the daily budget (lib/ai-budget.ts). */
+  usage?: { bucket: "embed" | "text" | "video"; used: number; limit: number }[];
+  /** Models Google has paused (quota reached) until it resets. */
+  paused?: string[];
 }
 
 export type { Briefing, BriefStory, BriefPick } from "@/lib/digest";

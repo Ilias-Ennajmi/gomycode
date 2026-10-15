@@ -75,6 +75,12 @@ export async function GET(request: NextRequest) {
     if (news) clauses.push(newsFilter(news));
     if (newsletter) clauses.push(newsletter);
     if (later !== "snoozed") clauses.push(notSnoozed());
+    // Alerts: what alert rules matched as it arrived.
+    if (searchParams.get("alerts") === "1") clauses.push({ alertedAt: { not: null } });
+    // Podcasts tab: episodes started and not finished.
+    if (searchParams.get("progress") === "1") {
+      clauses.push({ watchedSeconds: { gt: 0 }, isRead: false });
+    }
     if (videoKind === "short") clauses.push({ isShort: true });
     else if (videoKind === "long" || videoPrefs.hideShorts) clauses.push({ isShort: false });
     const range = LENGTHS[length ?? ""];

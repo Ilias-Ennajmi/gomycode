@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { AiError, isAiEnabled, summarizeArticle } from "@/lib/ai";
+import { isAiEnabled, isQuotaError, summarizeArticle } from "@/lib/ai";
 import { stripHtml } from "@/lib/utils";
 
 export const maxDuration = 30;
@@ -33,8 +33,8 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
     await prisma.article.update({ where: { id: article.id }, data: { aiSummary: summary } });
     return NextResponse.json({ summary });
   } catch (error) {
-    console.error("Summary failed", error);
-    const limited = error instanceof AiError && error.status === 429;
+    const limited = isQuotaError(error);
+    if (!limited) console.error("Summary failed", error);
     return NextResponse.json(
       { summary: null, reason: limited ? "rate-limited" : "failed" },
       { status: limited ? 429 : 502 }

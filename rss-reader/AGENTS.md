@@ -152,6 +152,47 @@ bot" and caption/transcript endpoints refuse, but its pages still load:
 - Lists: `?video=long|short` (the YouTube tab's Videos/Shorts), `?length=short|medium|long`,
   and the `video-prefs` Setting (`hideShorts`) removes Shorts everywhere else.
 
+**Podcasts.** A feed is a podcast when most of its items carry an audio enclosure (or it was
+followed from an Apple Podcasts link, resolved through Apple's free lookup API). Episodes keep
+`audioUrl`/`audioType`, `durationSeconds` (itunes:duration) and artwork; their show notes go
+through `showNotesHtml` (`lib/podcast.ts`), which turns times into `a[data-t]` seek links,
+and `chaptersFromNotes` fills `chapters` when the notes list three or more times. A newly
+followed podcast stores only its newest 20 episodes.
+
+- One player for the whole app (`components/audio/AudioProvider.tsx`): a single `<audio>`
+  element above everything, the now-playing bar at the bottom of `AppShell`, Media Session
+  (lock screen and notification controls), speed remembered per device, a sleep timer,
+  progress saved every 15 s and on pause (`watchedSeconds`, `readProgress`), played at 95%,
+  and continuous play (Later queue, then the same show) through the same
+  `/api/articles/[id]/video` extras route as videos. The last episode is restored paused
+  without downloading anything until play is pressed.
+- Gemini listens to episodes (`generateFromAudio` in `lib/ai.ts`): Gemini can't fetch audio
+  from podcast hosts, so the function downloads the file and puts it in Gemini's file store
+  (resumable upload, deleted after use). Same runs, tries and tick as videos
+  (`VIDEO_AI_CANDIDATE` covers both); transcripts for episodes up to an hour, summaries and
+  key moments up to 2 h 15 (32 tokens per second of audio vs. the free per-minute limit).
+- Discover's Podcasts channel searches Apple (`searchApplePodcasts`) and shows Apple's charts
+  (`/api/discover/podcasts`, US and French stores by language).
+
+**AI quota** (`lib/ai-budget.ts`). Every Gemini call goes through `callGemini`, which takes
+from a daily budget per kind (embed, text, video; env `GEMINI_*_DAILY`), counted per Pacific
+day like Google's quota. Background work (`priority: "background"`: embeddings, promo
+screening, the hourly video run) stops at 75%, leaving the rest for things you open. A 429
+pauses that model: for the day when Google says the daily quota is spent, else for its
+`retryDelay`. Running out throws `AiError` 429, which every caller already treats as "later".
+Settings shows today's use.
+
+**Rules** (`lib/rules.ts`). `FilterRule` actions: hide, boost, alert, save; by keyword (whole
+word, any case) or feed. After each refresh, `applyArrivalRules` checks the new articles:
+alert matches get `alertedAt` (the Alerts view, `?alerts=1`) and one grouped push per rule
+(4 at most per refresh); save matches go to Later. Hidden articles never trigger anything.
+
+**Daily review** (`lib/review.ts`). Five due highlights a day (overdue first, then
+never-reviewed ones a day old). Again → 1 day; Good → 4 days, then ×2.2; Easy → 10 days,
+then ×3.5 (max a year); "never" sets `reviewDisabled`. The streak comes from the
+`review-log` Setting. Highlights have lowercase `tags` (filter chips, `?tag=` on the list and
+the Markdown export).
+
 **Housekeeping** (`lib/maintenance.ts`, run after the hourly tick and the daily cron):
 articles dated in the future move to when they arrived; an article stored by two feeds
 (same link) keeps one copy; recent articles without a picture get their page's share
@@ -162,7 +203,7 @@ the rest 60, never saved/archived/snoozed/highlighted ones, and each feed keeps 
 articles don't come back. The free database is 500 MB and about a thousand articles arrive
 a day: keep retention in mind before storing more per article.
 
-**Data model in one paragraph.** A `Feed` has a `type` (rss, youtube, newsletter) and, when
+**Data model in one paragraph.** A `Feed` has a `type` (rss, youtube, newsletter, podcast) and, when
 it's a news outlet, a `newsDesk` (morocco, world, europe, africa, economy, sports, tech) and
 `region` ("ma"). News feeds show only in the News tab, not in RSS. `Article` holds reading
 state (isRead, isSaved, archivedAt, readProgress), AI data (embedding, aiSummary, isPromo) and
@@ -172,7 +213,8 @@ briefing as JSON (`version: 2`). `Setting` is a key/value store (news prefs, cac
 insights, weather city).
 
 **State on the client.** `useReaderState` holds the current view (`type`: foryou, briefing,
-recap, news, rss, youtube, newsletters, later, all, today, saved, feed, category), the Later
+recap, news, rss, youtube, newsletters, podcasts, alerts, review, later, all, today, saved,
+feed, category), the Later
 sub-tab (queue, snoozed, archive, highlights), the newsletter kind, the search with its
 scope and time filter, the selected article and the mobile pane (sidebar, list, reader,
 settings). Data comes from SWR hooks in `lib/hooks`.
@@ -198,6 +240,10 @@ settings). Data comes from SWR hooks in `lib/hooks`.
 - **Bing News topic feeds** need `setlang` and `mkt` (e.g. `fr-FR`) or results come back in
   other languages; article links are wrapped and unwrapped via the `url` param.
 - **lucide-react has no YouTube icon** in this version; the code uses `Play` or `MonitorPlay`.
+- **Restart `next dev` after `prisma generate`.** The running server keeps the old client, so
+  new columns or enum values fail with "Unknown argument" until it restarts.
+- **Testing audio needs HTTP ranges.** Python's `http.server` doesn't support them, so the
+  browser can't seek; serve fixtures with a range-capable server.
 - **`aspect-ratio` boxes grow with their content.** Put the image in an `absolute inset-0`
   frame (see ArticleCard's cards layout) or a tall picture stretches the 16:9 box.
 - The repo-root `.gitignore` ignores `lib/` (Python template); `rss-reader/.gitignore`
@@ -235,9 +281,15 @@ Built in this order (see `git log -- rss-reader`):
 9. Reader 2.0: highlights and notes, full-text search, newsletters split into Substack &
    web / Email (email-only via Kill the Newsletter), snooze, weekly recap, reading time,
    hourly refresh, card layout, resume reading, ⌘K command palette, skeletons.
+10. Data health (retention, duplicates, pictures, dates, dead feeds), notification prompt.
+11. YouTube upgrade: Shorts, lengths, progress, player, chapters, AI transcripts.
+12. v3: AI quota budget, Podcasts (app-wide player, Apple search, AI on episodes),
+    Alerts and auto-save rules, Daily review with tags.
 
 ## Open ideas (not built yet)
 
 - "Mark read when scrolled past" in lists.
-- Highlights export to Readwise / Notion; tags on highlights.
+- Highlights export to Readwise / Notion.
+- "Ask your reader": questions answered from your own feeds (embeddings already exist).
+- Story timelines across days; translation; reading stats.
 - Android shortcuts for Search, Highlights and Snoozed (needs a new APK).

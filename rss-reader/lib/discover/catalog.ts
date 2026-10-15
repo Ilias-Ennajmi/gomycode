@@ -1,7 +1,7 @@
 // Curated starter sources, by interest and language. Each URL is checked by
 // lib/discover/health.ts; entries that stop working are hidden automatically.
 
-export type SourceKind = "rss" | "youtube" | "newsletter";
+export type SourceKind = "rss" | "youtube" | "newsletter" | "podcast";
 export type Language = "en" | "fr";
 /** Which channel Discover is showing: one kind of source, or everything. */
 export type DiscoverKind = "all" | SourceKind;

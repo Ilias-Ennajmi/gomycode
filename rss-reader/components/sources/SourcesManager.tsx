@@ -4,10 +4,13 @@ import * as React from "react";
 import { toast } from "sonner";
 import {
   AlertTriangle,
+  Bell,
+  BellOff,
   Check,
   Eye,
   EyeOff,
   FolderInput,
+  Headphones,
   Layers,
   Library,
   Mail,
@@ -53,13 +56,14 @@ interface SourcesManagerProps {
   attention?: boolean;
 }
 
-type Channel = "all" | "rss" | "youtube" | "newsletter" | "attention";
+type Channel = "all" | "rss" | "youtube" | "newsletter" | "podcast" | "attention";
 
 const CHANNELS: { id: Channel; label: string; icon: React.ElementType }[] = [
   { id: "all", label: "All", icon: Layers },
   { id: "rss", label: "Sites", icon: Rss },
   { id: "youtube", label: "YouTube", icon: Play },
   { id: "newsletter", label: "Newsletters", icon: Mail },
+  { id: "podcast", label: "Podcasts", icon: Headphones },
   { id: "attention", label: "Needs attention", icon: AlertTriangle },
 ];
 
@@ -109,6 +113,7 @@ export function SourcesManager({ open, onOpenChange, onAddFeed, attention }: Sou
     rss: feeds.filter((f) => f.type === "rss").length,
     youtube: feeds.filter((f) => f.type === "youtube").length,
     newsletter: feeds.filter((f) => f.type === "newsletter").length,
+    podcast: feeds.filter((f) => f.type === "podcast").length,
     attention: needsAttention.length,
   };
 
@@ -139,7 +144,9 @@ export function SourcesManager({ open, onOpenChange, onAddFeed, attention }: Sou
   }
 
   const addKind: DiscoverKind =
-    channel === "rss" || channel === "youtube" || channel === "newsletter" ? channel : "all";
+    channel === "rss" || channel === "youtube" || channel === "newsletter" || channel === "podcast"
+      ? channel
+      : "all";
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -279,7 +286,13 @@ export function SourcesManager({ open, onOpenChange, onAddFeed, attention }: Sou
   );
 }
 
-const TYPE_ICON = { rss: Rss, youtube: Play, newsletter: Mail, manual: Rss } as const;
+const TYPE_ICON = {
+  rss: Rss,
+  youtube: Play,
+  newsletter: Mail,
+  podcast: Headphones,
+  manual: Rss,
+} as const;
 
 function SourceItem({
   feed,
@@ -340,6 +353,23 @@ function SourceItem({
         toast.success(`Muted ${feed.title}. It stays followed but leaves your lists.`);
       }
       onChanged();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update");
+    }
+  }
+
+  const alertRule = rules.find(
+    (r) => r.action === "alert" && r.match === "feed" && r.value === feed.id
+  );
+  async function toggleAlert() {
+    try {
+      if (alertRule) {
+        await removeRule(alertRule.id);
+        toast.success(`No more alerts from ${feed.title}`);
+      } else {
+        await addRule({ action: "alert", match: "feed", value: feed.id });
+        toast.success(`You'll get a notification for each new item from ${feed.title}`);
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not update");
     }
@@ -468,6 +498,10 @@ function SourceItem({
           <DropdownMenuItem onSelect={toggleMute} className="gap-2">
             {feed.muted ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
             {feed.muted ? "Unmute" : "Mute"}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={toggleAlert} className="gap-2">
+            {alertRule ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+            {alertRule ? "Stop alerts" : "Alert me about new items"}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem

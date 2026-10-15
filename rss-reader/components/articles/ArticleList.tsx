@@ -5,10 +5,13 @@ import { useInView } from "react-intersection-observer";
 import {
   Archive,
   ArrowLeft,
+  Bell,
   Bookmark,
   AlarmClock,
   AtSign,
   CheckCheck,
+  Headphones,
+  Hourglass,
   Inbox,
   LayoutGrid,
   ListTree,
@@ -58,6 +61,7 @@ import type {
   ArticleSummary,
   LaterTab,
   NewsletterKind,
+  PodcastKind,
   SearchScope,
   SearchSince,
   VideoKind,
@@ -71,6 +75,7 @@ const TAB_DISCOVER: Record<string, { kind: DiscoverKind; label: string }> = {
   rss: { kind: "rss", label: "Add site" },
   youtube: { kind: "youtube", label: "Add channel" },
   newsletters: { kind: "newsletter", label: "Add newsletter" },
+  podcasts: { kind: "podcast", label: "Add podcast" },
 };
 
 interface ArticleListProps {
@@ -100,6 +105,8 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
     setVideoKind,
     videoLength,
     setVideoLength,
+    podcastKind,
+    setPodcastKind,
     listParams,
     setMobilePane,
     laterTab,
@@ -261,6 +268,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   const showHighlights = isLater && laterTab === "highlights";
   const showNewsletterKinds = view.type === "newsletters" && !searching;
   const showVideoKinds = view.type === "youtube" && !searching;
+  const showPodcastKinds = view.type === "podcasts" && !searching;
   const shortsGrid = showVideoKinds && videoKind === "short";
   const channelFeed =
     view.type === "feed" && !searching
@@ -347,7 +355,17 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
           </Button>
         ) : (
           <div className="flex shrink-0 items-center gap-1">
-            {!isLater && !newsSection && (
+            {view.type === "alerts" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1 rounded-full px-3 text-xs"
+                onClick={() => requestAppEvent("content-filters")}
+              >
+                <Bell className="h-3.5 w-3.5" /> Alert rules
+              </Button>
+            )}
+            {!isLater && !newsSection && view.type !== "alerts" && (
               <Button
                 size="sm"
                 className="h-8 gap-1 rounded-full px-3 text-xs"
@@ -431,6 +449,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
           {showNewsletterKinds && (
             <NewsletterKinds kind={newsletterKind} onChange={setNewsletterKind} />
           )}
+          {showPodcastKinds && <PodcastKinds kind={podcastKind} onChange={setPodcastKind} />}
           {channelFeed && <ChannelHeader feed={channelFeed} videoCount={total} />}
           {showVideoKinds && (
             <VideoKinds
@@ -554,7 +573,9 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
                 ? `later-${laterTab}`
                 : view.type === "newsletters" && newsletterKind
                   ? `newsletters-${newsletterKind}`
-                  : view.type
+                  : view.type === "podcasts" && podcastKind === "progress"
+                    ? "podcasts-progress"
+                    : view.type
             }
             onAddFeed={onAddFeed}
             onSaveLink={onSaveLink}
@@ -630,6 +651,7 @@ const SCOPES: { id: SearchScope; label: string }[] = [
   { id: "rss", label: "RSS" },
   { id: "youtube", label: "YouTube" },
   { id: "newsletter", label: "Newsletters" },
+  { id: "podcast", label: "Podcasts" },
   { id: "later", label: "Later" },
   { id: "highlights", label: "Highlighted" },
 ];
@@ -746,6 +768,25 @@ function VideoKinds({
 }
 
 /** Newsletters → All · Substack & web · Email. */
+function PodcastKinds({
+  kind,
+  onChange,
+}: {
+  kind: PodcastKind;
+  onChange: (kind: PodcastKind) => void;
+}) {
+  return (
+    <div role="toolbar" aria-label="Episodes" className="flex gap-1.5 border-b px-3 py-2">
+      <Chip active={kind === "latest"} onClick={() => onChange("latest")}>
+        Latest
+      </Chip>
+      <Chip active={kind === "progress"} onClick={() => onChange("progress")}>
+        <Hourglass className="h-3.5 w-3.5" /> In progress
+      </Chip>
+    </div>
+  );
+}
+
 function NewsletterKinds({
   kind,
   onChange,
@@ -871,6 +912,37 @@ function EmptyState({
         text="No videos yet. Follow a YouTube channel and its new uploads land here."
         action="Find YouTube channels"
         onAction={() => onAddFeed("youtube")}
+      />
+    );
+  }
+
+  if (view === "alerts") {
+    return (
+      <EmptyMessage
+        icon={<Bell className="h-10 w-10" />}
+        text="No alerts yet. Add words or sources to watch, and anything new that matches lands here with a notification."
+        action="Add an alert"
+        onAction={() => requestAppEvent("content-filters")}
+      />
+    );
+  }
+
+  if (view === "podcasts") {
+    return (
+      <EmptyMessage
+        icon={<Headphones className="h-10 w-10" />}
+        text="No episodes yet. Follow a podcast and new episodes land here, ready to play while you read."
+        action="Find podcasts"
+        onAction={() => onAddFeed("podcast")}
+      />
+    );
+  }
+
+  if (view === "podcasts-progress") {
+    return (
+      <EmptyMessage
+        icon={<Hourglass className="h-10 w-10" />}
+        text="Nothing in progress. Episodes you start and don't finish wait here."
       />
     );
   }

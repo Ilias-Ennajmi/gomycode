@@ -25,6 +25,7 @@ enum FeedType {
   rss
   youtube
   newsletter
+  podcast
   /// Links saved to Read Later by hand; never refreshed.
   manual
 }
@@ -113,11 +114,16 @@ model Article {
   transcript        Json?
   /// [{ t: seconds, text }] from Gemini: the moments worth jumping to.
   keyMoments        Json?
-  /// Gemini runs: when it last tried and how often, so failures are retried a few times only.
+  /// Gemini runs (videos and episodes): when it last tried and how often, so failures are retried a few times only.
   videoAiAt         DateTime?
   videoAiAttempts   Int                      @default(0)
-  /// Where playback stopped, to resume there.
+  /// Where playback stopped (videos and podcast episodes), to resume there.
   watchedSeconds    Int?
+  /// When an alert rule matched it as it arrived; listed in Alerts.
+  alertedAt         DateTime?
+  /// Podcast episodes: the audio file (enclosure) and its type, e.g. audio/mpeg.
+  audioUrl          String?
+  audioType         String?
   /// Full-text search: a generated column (title, summaries, author, start of the text).
   /// Defined in the v2_library migration; Prisma only knows it exists.
   search            Unsupported("tsvector")?
@@ -130,26 +136,37 @@ model Article {
   @@index([topicId])
   @@index([snoozedUntil])
   @@index([isShort])
+  @@index([alertedAt])
   @@index([search], type: Gin)
 }
 
 /// A passage the reader highlighted, with an optional note.
 model Highlight {
-  id        String   @id @default(cuid())
-  articleId String
-  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  text      String
-  note      String?
+  id             String    @id @default(cuid())
+  articleId      String
+  article        Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  text           String
+  note           String?
   /// yellow, green, blue or pink
-  color     String   @default("yellow")
+  color          String    @default("yellow")
   /// Text just before and after, to find the passage again in the article.
-  prefix    String   @default("")
-  suffix    String   @default("")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  prefix         String    @default("")
+  suffix         String    @default("")
+  /// Lowercase labels, e.g. "seo", "quotes".
+  tags           String[]  @default([])
+  // Daily review (lib/review.ts): when it's due again, the gap that led there, and whether
+  // it was left out of reviews for good.
+  reviewDueAt    DateTime?
+  reviewInterval Int       @default(0)
+  reviewCount    Int       @default(0)
+  reviewedAt     DateTime?
+  reviewDisabled Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([articleId])
   @@index([createdAt])
+  @@index([reviewDueAt])
 }
 
 /// Articles from different sources covering the same story (last 48h).
@@ -170,6 +187,10 @@ model DailyDigest {
 enum FilterAction {
   hide
   boost
+  /// A notification when a new article matches (and it's listed in Alerts).
+  alert
+  /// New matching articles go straight to Later.
+  save
 }
 
 enum FilterMatch {

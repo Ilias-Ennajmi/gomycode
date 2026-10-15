@@ -67,7 +67,11 @@ export function highlightsToMarkdown(highlights: WithArticle[]) {
         .split(/\n+/)
         .map((line) => `> ${line}`)
         .join("\n");
-      parts.push(h.note ? `${quote}\n\n**Note:** ${h.note}` : quote);
+      const extras = [
+        h.note ? `**Note:** ${h.note}` : null,
+        h.tags?.length ? h.tags.map((t) => `#${t.replace(/\s+/g, "-")}`).join(" ") : null,
+      ].filter(Boolean);
+      parts.push([quote, ...extras].join("\n\n"));
     }
   }
   return parts.join("\n\n") + "\n";

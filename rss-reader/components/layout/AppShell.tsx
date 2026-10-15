@@ -21,6 +21,7 @@ import { SourcesManager } from "@/components/sources/SourcesManager";
 import { NewsView } from "@/components/news/NewsView";
 import { TodayView } from "@/components/today/TodayView";
 import { RecapView } from "@/components/today/RecapView";
+import { ReviewView } from "@/components/review/ReviewView";
 import { NewsSourcesDialog } from "@/components/news/NewsSourcesDialog";
 import { X } from "lucide-react";
 import { ReaderStateProvider, useReaderState } from "@/lib/hooks/useReaderState";
@@ -28,6 +29,8 @@ import { useBackToClose } from "@/lib/hooks/useHistorySync";
 import { AppUpdateBanner } from "@/components/layout/AppUpdateBanner";
 import { NotificationPrompt } from "@/components/layout/NotificationPrompt";
 import { OfflineSupport } from "@/components/layout/OfflineSupport";
+import { AudioProvider } from "@/components/audio/AudioProvider";
+import { NowPlayingBar } from "@/components/audio/NowPlayingBar";
 import { refreshFeeds, refreshToastMessage, useAutoRefresh, useFeeds } from "@/lib/hooks/useFeeds";
 import { useSWRConfig } from "swr";
 import type { DiscoverKind } from "@/lib/discover/catalog";
@@ -35,7 +38,9 @@ import type { DiscoverKind } from "@/lib/discover/catalog";
 export function AppShell() {
   return (
     <ReaderStateProvider>
-      <AppShellInner />
+      <AudioProvider>
+        <AppShellInner />
+      </AudioProvider>
     </ReaderStateProvider>
   );
 }
@@ -56,7 +61,8 @@ function AppShellInner() {
   const newsFront = view.type === "news" && !view.id;
   // A search shows its results as a list, whatever page it started from.
   const fullPage =
-    !search.trim() && (newsFront || view.type === "briefing" || view.type === "recap");
+    !search.trim() &&
+    (newsFront || view.type === "briefing" || view.type === "recap" || view.type === "review");
   const [newsSources, setNewsSources] = React.useState<{ open: boolean; setup: boolean }>({
     open: false,
     setup: false,
@@ -78,6 +84,7 @@ function AppShellInner() {
     setDiscoverOpen(false);
     setEmailNewsletterOpen(true);
   });
+  useAppEvent("content-filters", () => setFiltersOpen(true));
 
   // Android back (and browser back) closes the open dialog first.
   useBackToClose(discoverOpen, () => setDiscoverOpen(false));
@@ -248,6 +255,8 @@ function AppShellInner() {
                   />
                 ) : view.type === "recap" ? (
                   <RecapView />
+                ) : view.type === "review" ? (
+                  <ReviewView />
                 ) : (
                   <TodayView />
                 )}
@@ -307,6 +316,7 @@ function AppShellInner() {
           </div>
         )}
       </div>
+      <NowPlayingBar />
 
       <SaveLinkDialog open={saveLinkOpen} onOpenChange={setSaveLinkOpen} />
       <EmailNewsletterDialog open={emailNewsletterOpen} onOpenChange={setEmailNewsletterOpen} />

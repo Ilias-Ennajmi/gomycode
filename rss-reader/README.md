@@ -13,7 +13,7 @@ Google Gemini's free tier.
 
 | Area        | What's there                                                                                                                                                                                     |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Tabs        | For You (ranked by reading history) · News · RSS · YouTube · Newsletters · Later                                                                                                                 |
+| Tabs        | For You (ranked by reading history) · News · RSS · YouTube · Newsletters · Podcasts · Later                                                                                                      |
 | News        | Hero slider of the biggest stories, desks (Maroc, Monde, Europe, Afrique, Économie, Sport, Tech), AI "What's happening", Morocco in the world press, local weather                               |
 | Today       | A daily briefing page: top stories with bullets and "why it matters", per-interest picks, more on demand                                                                                         |
 | Discover    | Curated catalog (~230 sources) scoped by channel, live search (Feedly + YouTube), AI suggestions, follow a topic (Bing News search feed)                                                         |
@@ -24,6 +24,9 @@ Google Gemini's free tier.
 | Search      | Full-text search over titles, text and your highlights, with where-to-look and time filters; ⌘K command palette                                                                                  |
 | Newsletters | "Substack & web" and "Email" sub-tabs; email-only newsletters get their own sign-up address (Kill the Newsletter)                                                                                |
 | YouTube     | Videos / Shorts / length filters, lengths and watch progress on cards, resume, remembered speed, chapters, AI summary + key moments + searchable transcript, mini player, up next, channel pages |
+| Podcasts    | Apple Podcasts search and charts, one player for the whole app (now-playing bar, lock-screen controls, speed, sleep timer, resume), chapters, AI summary + transcript                            |
+| Alerts      | Notifications when new articles mention a word or come from a source; matches listed in Alerts; rules that save matches to Later                                                                 |
+| Review      | Daily review of highlights with spaced repetition and a streak; tags on highlights, export by tag                                                                                                |
 | Later       | Reading queue with total reading time, snooze (back at a chosen time with a notification), archive, weekly recap                                                                                 |
 | Android app | Installable app (`android/`): share links to Later, icon shortcuts, back gesture, deep links                                                                                                     |
 
