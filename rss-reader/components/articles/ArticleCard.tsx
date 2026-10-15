@@ -33,6 +33,8 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { shareLink } from "@/lib/share";
+import { preload } from "swr";
+import { needsFullArticle } from "@/lib/reader";
 
 interface ArticleCardProps {
   article: ArticleSummary;
@@ -104,6 +106,17 @@ export function ArticleCard({
   } | null>(null);
   const swiped = React.useRef(false);
 
+  // The full page of an excerpt-only article starts loading when a finger or pointer lands on
+  // the card, so it's usually there by the time the reader opens.
+  const prefetched = React.useRef(false);
+  function prefetchFull() {
+    if (prefetched.current || !needsFullArticle(article)) return;
+    prefetched.current = true;
+    preload(`/api/articles/${article.id}/full`, (key: string) =>
+      fetch(key).then((res) => res.json())
+    );
+  }
+
   function onTouchStart(event: React.TouchEvent) {
     const t = event.touches[0];
     drag.current = { x: t.clientX, y: t.clientY, horizontal: null, dx: 0 };
@@ -143,9 +156,14 @@ export function ArticleCard({
       <ContextMenuTrigger asChild>
         <div
           ref={cardRef}
-          className="relative overflow-hidden"
+          // Cards far off screen aren't laid out or painted until they're near.
+          className="relative overflow-hidden [contain-intrinsic-size:auto_104px] [content-visibility:auto]"
           style={{ touchAction: "pan-y" }}
-          onTouchStart={onTouchStart}
+          onPointerEnter={prefetchFull}
+          onTouchStart={(event) => {
+            prefetchFull();
+            onTouchStart(event);
+          }}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
         >
@@ -224,6 +242,7 @@ export function ArticleCard({
                     src={article.imageUrl!}
                     alt=""
                     loading="lazy"
+                    decoding="async"
                     className={cn(
                       "dim-dark h-full w-full object-cover",
                       article.isRead && "opacity-60"

@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import useSWR from "swr";
 import { toast } from "sonner";
 import {
   ArrowUpRight,
@@ -24,24 +23,9 @@ import { requestHighlightJump } from "@/lib/highlight-dom";
 import { shareQuoteImage } from "@/lib/quote-card";
 import { haptic } from "@/lib/native";
 import { useReaderState } from "@/lib/hooks/useReaderState";
-import type { HighlightSummary } from "@/lib/types";
+import { useReviewStatus, type ReviewItem } from "@/lib/hooks/useReview";
 
 type Grade = "again" | "good" | "easy" | "never";
-type ReviewItem = HighlightSummary & { next: { again: number; good: number; easy: number } };
-
-interface ReviewData {
-  highlights: ReviewItem[];
-  reviewedToday: number;
-  dailyCount: number;
-  moreDue: number;
-  total: number;
-  streak: number;
-}
-
-export function useReviewStatus() {
-  return useSWR<ReviewData>("/api/review", { revalidateOnFocus: false });
-}
-
 function inDays(days: number) {
   if (days <= 1) return "tomorrow";
   if (days < 14) return `in ${days} days`;

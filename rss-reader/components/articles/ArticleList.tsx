@@ -43,7 +43,7 @@ import { useListLayout } from "@/lib/hooks/useListLayout";
 import { copySignupAddress, openUnsubscribe } from "@/lib/hooks/useNewsletter";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import {
-  useArticleCount,
+  useCounts,
   useArticles,
   toggleArticleArchived,
   toggleArticleRead,
@@ -102,7 +102,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
     learnedFrom,
     minutes,
   } = useArticles(listParams, sort);
-  const snoozedCount = useArticleCount({ later: "snoozed" });
+  const snoozedCount = useCounts().snoozed;
   const { layout, setLayout } = useListLayout(search.trim() ? "search" : view.type);
   const { feeds } = useFeeds();
   const { addRule, removeRule } = useFilters();

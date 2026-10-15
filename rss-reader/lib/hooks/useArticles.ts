@@ -78,6 +78,32 @@ export function useArticle(id: string | null) {
   return { article: data?.article ?? null, mutate };
 }
 
+/**
+ * Every tab and sidebar number from one request. Its key starts with /api/articles, so
+ * anything that refreshes the article lists refreshes these too.
+ */
+export function useCounts() {
+  const { data } = useSWR<import("@/lib/counts").Counts>("/api/articles/counts", {
+    refreshInterval: 5 * 60 * 1000,
+    dedupingInterval: 5000,
+  });
+  return (
+    data ?? {
+      news: 0,
+      rss: 0,
+      youtube: 0,
+      newsletters: 0,
+      podcasts: 0,
+      later: 0,
+      snoozed: 0,
+      today: 0,
+      alerts: 0,
+      unread: 0,
+      listening: 0,
+    }
+  );
+}
+
 export function useArticleCount(params: ArticleListParams) {
   const search = toSearchParams(params);
   search.set("limit", "1");

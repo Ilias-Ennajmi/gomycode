@@ -22,13 +22,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NavItem } from "@/components/sidebar/NavItem";
-import { useReviewStatus } from "@/components/review/ReviewView";
+import { useReviewStatus } from "@/lib/hooks/useReview";
 import { Logo } from "@/components/shared/Logo";
 import { CategoryGroup } from "@/components/sidebar/CategoryGroup";
 import { FeedItem } from "@/components/sidebar/FeedItem";
 import { SidebarFooter } from "@/components/sidebar/SidebarFooter";
 import { useCategories, useFeeds } from "@/lib/hooks/useFeeds";
-import { useArticleCount } from "@/lib/hooks/useArticles";
+import { useCounts } from "@/lib/hooks/useArticles";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import type { CategorySummary, FeedSummary } from "@/lib/types";
 
@@ -73,8 +73,9 @@ export function Sidebar({
   const totalUnread = feeds
     .filter((feed) => !feed.muted)
     .reduce((sum, feed) => sum + feed.unreadCount, 0);
-  const todayCount = useArticleCount({ today: true });
-  const alertCount = useArticleCount({ alerts: true, unread: true });
+  const counts = useCounts();
+  const todayCount = counts.today;
+  const alertCount = counts.alerts;
   const { data: review } = useReviewStatus();
 
   function refetchAll() {

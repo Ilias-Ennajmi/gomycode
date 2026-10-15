@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { Bell, BookOpenCheck, Headphones, Inbox } from "lucide-react";
-import { useArticleCount } from "@/lib/hooks/useArticles";
-import { useReviewStatus } from "@/components/review/ReviewView";
+import { useCounts } from "@/lib/hooks/useArticles";
+import { useReviewStatus } from "@/lib/hooks/useReview";
 import { useReaderState, type ViewState } from "@/lib/hooks/useReaderState";
 
 function greeting(date = new Date()) {
@@ -20,9 +20,7 @@ function greeting(date = new Date()) {
  */
 export function ForYouGreeting() {
   const { setView } = useReaderState();
-  const unread = useArticleCount({ unread: true });
-  const alerts = useArticleCount({ alerts: true, unread: true });
-  const listening = useArticleCount({ source: "podcast", inProgress: true });
+  const { unread, alerts, listening } = useCounts();
   const { data: review } = useReviewStatus();
   const reviewCount = review?.highlights.length ?? 0;
 

@@ -26,6 +26,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
           fetcher,
           refreshInterval: 5 * 60 * 1000,
           revalidateOnFocus: true,
+          // Coming back to the app refreshes what's open, but not more than every half minute.
+          focusThrottleInterval: 30_000,
           shouldRetryOnError: true,
         }}
       >

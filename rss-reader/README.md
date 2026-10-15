@@ -18,6 +18,7 @@ Google Gemini's free tier.
 | Today       | A daily briefing page: top stories with bullets and "why it matters", per-interest picks, more on demand                                                                                         |
 | Discover    | Curated catalog (~230 sources) scoped by channel, live search (Feedly + YouTube), AI suggestions, follow a topic (Bing News search feed)                                                         |
 | Reader      | Full-article extraction, clutter removal, reading settings, up next / previous, swipe between articles, listen (browser text-to-speech)                                                          |
+| Phone UX    | Two thin bars that slide away while scrolling, filters as one row of chips, one options menu, long-press menu on cards, a line for what's new since your last visit                              |
 | Lists       | Swipe right for Later, left to mark read, Undo toasts, unread counts per tab, story grouping ("also covered by")                                                                                 |
 | Sources     | Manager for every followed source: rename, move, unfollow, health                                                                                                                                |
 | Highlights  | Select text to highlight in 4 colours and add notes; all highlights in Later → Highlights, Markdown export, old ones resurface on Today                                                          |

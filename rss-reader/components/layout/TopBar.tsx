@@ -6,7 +6,7 @@ import { requestAppEvent } from "@/lib/app-events";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useFeeds } from "@/lib/hooks/useFeeds";
-import { useArticleCount } from "@/lib/hooks/useArticles";
+import { useCounts } from "@/lib/hooks/useArticles";
 import { useReaderState, type ViewState, type ViewType } from "@/lib/hooks/useReaderState";
 import {
   DropdownMenu,
@@ -104,14 +104,15 @@ interface TopBarProps {
 export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBarProps) {
   const { view, setView, mobilePane, setMobilePane } = useReaderState();
   const { feeds } = useFeeds();
-  const laterCount = useArticleCount({ later: "queue" });
+  const counts = useCounts();
+  const laterCount = counts.later;
   // Unread per tab, so it's clear where something new is waiting.
   const unread: Partial<Record<ViewType, number>> = {
-    news: useArticleCount({ news: "all", unread: true }),
-    rss: useArticleCount({ source: "rss", unread: true }),
-    youtube: useArticleCount({ source: "youtube", unread: true }),
-    newsletters: useArticleCount({ source: "newsletter", unread: true }),
-    podcasts: useArticleCount({ source: "podcast", unread: true }),
+    news: counts.news,
+    rss: counts.rss,
+    youtube: counts.youtube,
+    newsletters: counts.newsletters,
+    podcasts: counts.podcasts,
   };
 
   // A single feed belongs to the tab for its kind of source.
