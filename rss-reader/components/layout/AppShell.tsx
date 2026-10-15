@@ -29,6 +29,8 @@ import { useBackToClose } from "@/lib/hooks/useHistorySync";
 import { AppUpdateBanner } from "@/components/layout/AppUpdateBanner";
 import { NotificationPrompt } from "@/components/layout/NotificationPrompt";
 import { OfflineSupport } from "@/components/layout/OfflineSupport";
+import { ChromeCollapse } from "@/components/layout/ChromeCollapse";
+import { showChrome } from "@/lib/hooks/useChrome";
 import { AudioProvider } from "@/components/audio/AudioProvider";
 import { NowPlayingBar } from "@/components/audio/NowPlayingBar";
 import { refreshFeeds, refreshToastMessage, useAutoRefresh, useFeeds } from "@/lib/hooks/useFeeds";
@@ -207,17 +209,20 @@ function AppShellInner() {
   const openShortcuts = React.useCallback(() => setShortcutsOpen(true), []);
 
   const hideTopBarOnPhone = mobilePane === "reader";
+  // Coming back to a list (or another pane), the bars are there.
+  React.useEffect(() => showChrome(), [mobilePane, view]);
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-hidden bg-background">
       <AppUpdateBanner />
       <OfflineSupport />
-      <TopBar
-        className={cn("md:hidden", hideTopBarOnPhone && "hidden")}
-        onSaveLink={() => setSaveLinkOpen(true)}
-        onAddFeed={dialogActions.onAddFeed}
-        onManageNews={() => setNewsSources({ open: true, setup: false })}
-      />
+      <ChromeCollapse className={cn("md:hidden", hideTopBarOnPhone && "hidden")}>
+        <TopBar
+          onSaveLink={() => setSaveLinkOpen(true)}
+          onAddFeed={dialogActions.onAddFeed}
+          onManageNews={() => setNewsSources({ open: true, setup: false })}
+        />
+      </ChromeCollapse>
       <div className="flex min-h-0 flex-1">
         <div
           className={cn(

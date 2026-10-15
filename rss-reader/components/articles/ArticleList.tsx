@@ -9,21 +9,14 @@ import {
   Bookmark,
   AlarmClock,
   AtSign,
-  CheckCheck,
   Headphones,
   Hourglass,
   Inbox,
-  LayoutGrid,
-  ListTree,
   Loader2,
   Mail,
   MonitorPlay,
-  Plus,
-  RefreshCw,
-  Rows3,
   Rss,
   SearchX,
-  Smartphone,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -37,16 +30,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArticleCard } from "@/components/articles/ArticleCard";
-import { CategoryChips } from "@/components/articles/CategoryChips";
+import { ListToolbar } from "@/components/articles/ListToolbar";
+import { Chip } from "@/components/ui/chip";
 import { ArticleSkeletonList } from "@/components/articles/ArticleSkeleton";
 import { DailyBriefing } from "@/components/articles/DailyBriefing";
 import { HighlightsList } from "@/components/highlights/HighlightsList";
 import { requestAppEvent } from "@/lib/app-events";
 import { useListLayout } from "@/lib/hooks/useListLayout";
 import { copySignupAddress, openUnsubscribe } from "@/lib/hooks/useNewsletter";
-import { isSourceTab, useReaderState } from "@/lib/hooks/useReaderState";
+import { useReaderState } from "@/lib/hooks/useReaderState";
 import {
   useArticleCount,
   useArticles,
@@ -56,27 +49,12 @@ import {
 } from "@/lib/hooks/useArticles";
 import { markAllRead, refreshFeeds, refreshToastMessage, useFeeds } from "@/lib/hooks/useFeeds";
 import { PullIndicator, usePullToRefresh } from "@/lib/hooks/usePullToRefresh";
-import type {
-  ArticleFilter,
-  ArticleSummary,
-  LaterTab,
-  NewsletterKind,
-  PodcastKind,
-  SearchScope,
-  SearchSince,
-  VideoKind,
-  VideoLength,
-} from "@/lib/types";
+import { showChrome, useHideOnScroll } from "@/lib/hooks/useChrome";
+import { ChromeCollapse } from "@/components/layout/ChromeCollapse";
+import type { ArticleSummary, LaterTab, SearchScope, SearchSince } from "@/lib/types";
 import { ShortsGrid } from "@/components/video/ShortsGrid";
 import { ChannelHeader } from "@/components/video/ChannelHeader";
 import type { DiscoverKind } from "@/lib/discover/catalog";
-
-const TAB_DISCOVER: Record<string, { kind: DiscoverKind; label: string }> = {
-  rss: { kind: "rss", label: "Add site" },
-  youtube: { kind: "youtube", label: "Add channel" },
-  newsletters: { kind: "newsletter", label: "Add newsletter" },
-  podcasts: { kind: "podcast", label: "Add podcast" },
-};
 
 interface ArticleListProps {
   onAddFeed: (kind?: DiscoverKind) => void;
@@ -88,9 +66,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   const {
     view,
     filterTab,
-    setFilterTab,
     sort,
-    setSort,
     selectedArticleId,
     setSelectedArticleId,
     search,
@@ -100,20 +76,13 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
     searchSince,
     setSearchSince,
     newsletterKind,
-    setNewsletterKind,
     videoKind,
-    setVideoKind,
-    videoLength,
-    setVideoLength,
     podcastKind,
-    setPodcastKind,
     listParams,
     setMobilePane,
     laterTab,
-    setLaterTab,
     setView,
   } = useReaderState();
-  const sourceTab = isSourceTab(view.type) ? view.type : null;
 
   const {
     articles,
@@ -137,8 +106,10 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   // Each view starts at the top instead of inheriting the previous scroll offset.
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const { bind: bindPull, pull, refreshing: pulling } = usePullToRefresh();
+  const onScrollList = useHideOnScroll();
   React.useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
+    showChrome();
   }, [view, filterTab, search, listParams.categoryId, searchScope, searchSince, newsletterKind]);
 
   React.useEffect(() => {
@@ -266,9 +237,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   const ranked = view.type === "foryou" || searching;
   const isLater = view.type === "later" && !searching;
   const showHighlights = isLater && laterTab === "highlights";
-  const showNewsletterKinds = view.type === "newsletters" && !searching;
   const showVideoKinds = view.type === "youtube" && !searching;
-  const showPodcastKinds = view.type === "podcasts" && !searching;
   const shortsGrid = showVideoKinds && videoKind === "short";
   const channelFeed =
     view.type === "feed" && !searching
@@ -283,8 +252,16 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between gap-2 border-b p-3">
-        <div className="flex min-w-0 items-center gap-1">
+      <ChromeCollapse>
+        {/* Phones show a title row only where there's somewhere to go back to; the tabs above
+          already say where you are. */}
+        <div
+          className={cn(
+            "flex items-center gap-1 border-b px-2 py-1.5 md:px-3 md:py-2.5",
+            !(searching || fromSourcesList || newsSection || view.type === "alerts") &&
+              "max-md:hidden"
+          )}
+        >
           {newsSection ? (
             <Button
               variant="ghost"
@@ -299,14 +276,17 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
             <Button
               variant="ghost"
               size="icon"
-              className={cn("h-8 w-8 shrink-0 md:hidden", !fromSourcesList && "hidden")}
+              className={cn(
+                "h-8 w-8 shrink-0 md:hidden",
+                !(fromSourcesList || view.type === "alerts") && "hidden"
+              )}
               onClick={() => setMobilePane("sidebar")}
               aria-label="Back"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1 pl-1 md:pl-0">
             <h2 className="truncate text-lg font-semibold leading-tight tracking-tight">
               {searching ? "Search" : isLater ? LATER_TITLES[laterTab] : view.label}
             </h2>
@@ -343,220 +323,81 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
                 (lastFetched ? `Updated ${formatRelativeTime(lastFetched)}` : "Not refreshed yet")}
             </p>
           </div>
-        </div>
-        {searching ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 shrink-0 gap-1.5 text-xs"
-            onClick={() => setSearch("")}
-          >
-            <X className="h-3.5 w-3.5" /> Clear
-          </Button>
-        ) : (
-          <div className="flex shrink-0 items-center gap-1">
-            {view.type === "alerts" && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 gap-1 rounded-full px-3 text-xs"
-                onClick={() => requestAppEvent("content-filters")}
-              >
-                <Bell className="h-3.5 w-3.5" /> Alert rules
-              </Button>
-            )}
-            {!isLater && !newsSection && view.type !== "alerts" && (
-              <Button
-                size="sm"
-                className="h-8 gap-1 rounded-full px-3 text-xs"
-                onClick={() =>
-                  view.type === "newsletters" && newsletterKind === "email"
-                    ? requestAppEvent("email-newsletter")
-                    : onAddFeed(TAB_DISCOVER[view.type]?.kind ?? "all")
-                }
-                title={TAB_DISCOVER[view.type] ? undefined : "Discover sources"}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                {TAB_DISCOVER[view.type] ? (
-                  <>
-                    {/* Phones: just "Add", so the title keeps its room. */}
-                    <span className="max-sm:hidden">{TAB_DISCOVER[view.type].label}</span>
-                    <span className="sm:hidden">Add</span>
-                  </>
-                ) : (
-                  <span className="max-sm:sr-only">Discover</span>
-                )}
-              </Button>
-            )}
-            {sourceTab && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5 rounded-full text-xs md:hidden"
-                onClick={() => setMobilePane("sidebar")}
-              >
-                <ListTree className="h-3.5 w-3.5" />
-                {view.type === "youtube" ? "Channels" : "Sources"}
-              </Button>
-            )}
+          {searching && (
             <Button
               variant="ghost"
-              size="icon"
-              className="h-8 w-8 shrink-0"
-              onClick={handleRefresh}
-              disabled={refreshing}
-              aria-label="Refresh feeds"
+              size="sm"
+              className="h-8 shrink-0 gap-1.5 text-xs"
+              onClick={() => setSearch("")}
             >
-              <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+              <X className="h-3.5 w-3.5" /> Clear
             </Button>
-          </div>
-        )}
-      </div>
-
-      {searching ? (
-        <SearchFilters
-          scope={searchScope}
-          onScope={setSearchScope}
-          since={searchSince}
-          onSince={setSearchSince}
-        />
-      ) : (
-        <>
-          {emailFeed?.email && (
-            <div className="flex items-center gap-2 border-b bg-muted/40 px-3 py-2 text-xs">
-              <AtSign className="h-3.5 w-3.5 shrink-0 text-primary" />
-              <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                {emailFeed.email}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => copySignupAddress(emailFeed.email!)}
-              >
-                Copy
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => openUnsubscribe(emailFeed.id)}
-              >
-                Unsubscribe
-              </Button>
-            </div>
           )}
-          {showNewsletterKinds && (
-            <NewsletterKinds kind={newsletterKind} onChange={setNewsletterKind} />
-          )}
-          {showPodcastKinds && <PodcastKinds kind={podcastKind} onChange={setPodcastKind} />}
-          {channelFeed && <ChannelHeader feed={channelFeed} videoCount={total} />}
-          {showVideoKinds && (
-            <VideoKinds
-              kind={videoKind}
-              onKind={setVideoKind}
-              length={videoLength}
-              onLength={setVideoLength}
-            />
-          )}
-          {sourceTab && <CategoryChips tab={sourceTab} />}
+        </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
-            {isLater ? (
-              // Up to four tabs: on phones they get the whole row, the controls go below.
-              <Tabs
-                value={laterTab}
-                onValueChange={(v) => setLaterTab(v as LaterTab)}
-                className="w-full min-w-0 md:w-auto"
-              >
-                <TabsList className="w-full md:w-auto">
-                  <TabsTrigger value="queue" className="flex-1 md:flex-none">
-                    Later
-                  </TabsTrigger>
-                  {(snoozedCount > 0 || laterTab === "snoozed") && (
-                    <TabsTrigger value="snoozed" className="flex-1 md:flex-none">
-                      Snoozed
-                    </TabsTrigger>
-                  )}
-                  <TabsTrigger value="archive" className="flex-1 md:flex-none">
-                    Archive
-                  </TabsTrigger>
-                  <TabsTrigger value="highlights" className="flex-1 md:flex-none">
-                    Highlights
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            ) : (
-              <Tabs value={filterTab} onValueChange={(v) => setFilterTab(v as ArticleFilter)}>
-                <TabsList>
-                  <TabsTrigger value="all">All</TabsTrigger>
-                  <TabsTrigger value="unread">Unread</TabsTrigger>
-                  <TabsTrigger value="saved">Saved</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            )}
-
-            <div className="ml-auto flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setLayout(layout === "cards" ? "list" : "cards")}
-                aria-label={layout === "cards" ? "Show as a list" : "Show big pictures"}
-                title={layout === "cards" ? "Show as a list" : "Show big pictures"}
-              >
-                {layout === "cards" ? (
-                  <Rows3 className="h-4 w-4" />
-                ) : (
-                  <LayoutGrid className="h-4 w-4" />
-                )}
-              </Button>
-              {!ranked && !(isLater && laterTab !== "queue" && laterTab !== "archive") && (
-                <Select value={sort} onValueChange={(v) => setSort(v as "newest" | "oldest")}>
-                  <SelectTrigger className="h-8 w-[92px] text-xs sm:w-[110px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="newest">Newest</SelectItem>
-                    <SelectItem value="oldest">Oldest</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-              {isLater ? (
-                laterTab === "queue" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 gap-1.5 text-xs"
-                    onClick={onSaveLink}
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span className="max-sm:sr-only">Save link</span>
-                  </Button>
-                )
-              ) : (
+        {searching ? (
+          <SearchFilters
+            scope={searchScope}
+            onScope={setSearchScope}
+            since={searchSince}
+            onSince={setSearchSince}
+          />
+        ) : (
+          <>
+            {emailFeed?.email && (
+              <div className="flex items-center gap-2 border-b bg-muted/40 px-3 py-2 text-xs">
+                <AtSign className="h-3.5 w-3.5 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                  {emailFeed.email}
+                </span>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 gap-1.5 text-xs"
-                  onClick={handleMarkAllRead}
-                  disabled={markingAllRead || articles.length === 0}
-                  title="Mark all read"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => copySignupAddress(emailFeed.email!)}
                 >
-                  <CheckCheck className="h-3.5 w-3.5" />
-                  <span className="sr-only">Mark all read</span>
+                  Copy
                 </Button>
-              )}
-            </div>
-          </div>
-        </>
-      )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => openUnsubscribe(emailFeed.id)}
+                >
+                  Unsubscribe
+                </Button>
+              </div>
+            )}
+            {channelFeed && <ChannelHeader feed={channelFeed} videoCount={total} />}
+            <ListToolbar
+              isLater={isLater}
+              ranked={ranked}
+              total={total}
+              minutes={minutes ?? 0}
+              lastFetched={lastFetched}
+              learnedFrom={learnedFrom ?? 0}
+              layout={layout}
+              onLayout={setLayout}
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              canMarkAllRead={articles.length > 0}
+              markingAllRead={markingAllRead}
+              onMarkAllRead={handleMarkAllRead}
+              snoozedCount={snoozedCount}
+              onAddFeed={onAddFeed}
+              onSaveLink={onSaveLink}
+              formatMinutes={formatMinutes}
+            />
+          </>
+        )}
+      </ChromeCollapse>
 
       <div
         ref={(node) => {
           (scrollRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
           bindPull(node);
         }}
+        onScroll={onScrollList}
         className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin"
       >
         <PullIndicator pull={pull} refreshing={pulling} />
@@ -700,144 +541,6 @@ function SearchFilters({
         </SelectContent>
       </Select>
     </div>
-  );
-}
-
-const VIDEO_KINDS: { id: VideoKind; label: string }[] = [
-  { id: "long", label: "Videos" },
-  { id: "short", label: "Shorts" },
-  { id: "all", label: "All" },
-];
-const VIDEO_LENGTHS: { id: VideoLength | null; label: string }[] = [
-  { id: null, label: "Any length" },
-  { id: "short", label: "Under 10 min" },
-  { id: "medium", label: "10–30 min" },
-  { id: "long", label: "30+ min" },
-];
-
-/** YouTube → Videos · Shorts · All, and for videos, how long. */
-function VideoKinds({
-  kind,
-  onKind,
-  length,
-  onLength,
-}: {
-  kind: VideoKind;
-  onKind: (kind: VideoKind) => void;
-  length: VideoLength | null;
-  onLength: (length: VideoLength | null) => void;
-}) {
-  return (
-    <div className="border-b">
-      <div role="toolbar" aria-label="Kind of video" className="flex gap-1.5 px-3 pt-2">
-        {VIDEO_KINDS.map((option) => (
-          <Chip key={option.id} active={kind === option.id} onClick={() => onKind(option.id)}>
-            {option.id === "short" && <Smartphone className="h-3.5 w-3.5" />}
-            {option.label}
-          </Chip>
-        ))}
-      </div>
-      {kind !== "short" ? (
-        <div
-          role="toolbar"
-          aria-label="Video length"
-          className="flex gap-1.5 overflow-x-auto px-3 pb-2 pt-1.5 scrollbar-none"
-        >
-          {VIDEO_LENGTHS.map((option) => (
-            <button
-              key={option.id ?? "any"}
-              type="button"
-              aria-pressed={length === option.id}
-              onClick={() => onLength(option.id)}
-              className={cn(
-                "shrink-0 rounded-md px-2 py-0.5 text-xs font-medium transition-colors",
-                length === option.id
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <div className="pb-2" />
-      )}
-    </div>
-  );
-}
-
-/** Newsletters → All · Substack & web · Email. */
-function PodcastKinds({
-  kind,
-  onChange,
-}: {
-  kind: PodcastKind;
-  onChange: (kind: PodcastKind) => void;
-}) {
-  return (
-    <div role="toolbar" aria-label="Episodes" className="flex gap-1.5 border-b px-3 py-2">
-      <Chip active={kind === "latest"} onClick={() => onChange("latest")}>
-        Latest
-      </Chip>
-      <Chip active={kind === "progress"} onClick={() => onChange("progress")}>
-        <Hourglass className="h-3.5 w-3.5" /> In progress
-      </Chip>
-    </div>
-  );
-}
-
-function NewsletterKinds({
-  kind,
-  onChange,
-}: {
-  kind: NewsletterKind | null;
-  onChange: (kind: NewsletterKind | null) => void;
-}) {
-  const options: { id: NewsletterKind | null; label: string; icon?: React.ReactNode }[] = [
-    { id: null, label: "All" },
-    { id: "web", label: "Substack & web", icon: <Rss className="h-3.5 w-3.5" /> },
-    { id: "email", label: "Email", icon: <Mail className="h-3.5 w-3.5" /> },
-  ];
-  return (
-    <div role="toolbar" aria-label="Kind of newsletter" className="flex gap-1.5 border-b px-3 py-2">
-      {options.map((option) => (
-        <Chip
-          key={option.id ?? "all"}
-          active={kind === option.id}
-          onClick={() => onChange(option.id)}
-        >
-          {option.icon}
-          {option.label}
-        </Chip>
-      ))}
-    </div>
-  );
-}
-
-function Chip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
-        active
-          ? "border-foreground bg-foreground text-background"
-          : "text-muted-foreground hover:bg-accent hover:text-foreground"
-      )}
-    >
-      {children}
-    </button>
   );
 }
 
