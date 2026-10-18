@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           input: [q],
-          model: process.env.VOYAGE_MODEL || "voyage-3.5-lite",
+          model: process.env.VOYAGE_MODEL || "voyage-4-lite",
           input_type: "query",
           output_dimension: 1024,
         }),

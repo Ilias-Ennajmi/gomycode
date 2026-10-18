@@ -48,6 +48,8 @@ const outboxSize = () =>
   );
 
 let itemId = null;
+// This test runs in a fresh browser (a new device identity), so its one save is the only tile.
+const tile = () => page.getByRole("button", { name: /Processing save|Stash e2e/ });
 
 await step("device identity (anonymous session)", async () => {
   await page.goto(`${BASE}/today`, { waitUntil: "networkidle" });
@@ -73,23 +75,28 @@ if (saved) {
 
   await step("Library lists the save", async () => {
     await page.goto(`${BASE}/library`, { waitUntil: "networkidle" });
-    await page.getByText(TITLE).first().waitFor({ timeout: 15_000 });
+    // A save still processing shows as a placeholder tile labelled "Processing save".
+    await tile().first().waitFor({ timeout: 15_000 });
+    return `${await tile().count()} tile(s)`;
   });
 
   await step("item page opens", async () => {
-    await page.getByText(TITLE).first().click();
+    await tile().first().click();
     await page.waitForURL(/\/item\//, { timeout: 10_000 });
     itemId = page.url().split("/item/")[1];
+    // While processing there's no title yet: the page shows the platform and the player.
+    await page.getByRole("button", { name: "More" }).waitFor({ timeout: 10_000 });
     return page.url().replace(BASE, "");
   });
 
   await step("delete removes it", async () => {
+    await page.getByRole("button", { name: "More" }).click();
     await page.getByRole("button", { name: "Delete" }).click();
     await page.getByText("Deleted", { exact: true }).waitFor({ timeout: 5_000 });
     await page.waitForTimeout(6_000); // undo window is 4 s
     await page.goto(`${BASE}/library`, { waitUntil: "networkidle" });
     await page.waitForTimeout(1_500);
-    if (await page.getByText(TITLE).count()) throw new Error("still listed after delete");
+    if (await tile().count()) throw new Error("still listed after delete");
   });
 }
 

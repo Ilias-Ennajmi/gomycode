@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from . import ai, media, r2
+from . import ai, media
 from .config import Config
 from .rules import choose_space, detect_platform, embedding_text, is_owner, segments_text
 from .supa import Supa
@@ -91,6 +91,14 @@ def process_job(supa: Supa, cfg: Config, job: dict[str, Any]) -> str:
         outcome = _ingest(supa, cfg, save, workdir)
         _finish_job(supa, job, "done")
         return outcome
+    except ai.RateLimited:
+        # The free tier's limit: try again later without spending one of the job's attempts.
+        retry_at = (datetime.now(timezone.utc) + timedelta(minutes=20)).isoformat()
+        values = {"state": "queued", "error": "rate_limited", "locked_at": None, "run_after": retry_at,
+                  "attempts": max(0, int(job.get("attempts", 1)) - 1)}
+        supa.update("jobs", {"id": f"eq.{job['id']}"}, values)
+        supa.update("saves", {"id": f"eq.{save['id']}"}, {"status": "queued", "error": None})
+        return "rate_limited"
     except media.DeadLink:
         supa.update("saves", {"id": f"eq.{save['id']}"}, {"status": "dead_link", "processed_at": _now()})
         _finish_job(supa, job, "done", "dead_link")
@@ -161,14 +169,16 @@ def _ingest(supa: Supa, cfg: Config, save: dict[str, Any], workdir: Path) -> str
         except Exception:  # noqa: BLE001 — a missing thumbnail must not stop the save
             pass
 
-        if cfg.has_r2 and info["has_video"]:
+        if cfg.has_video_storage and info["has_video"]:
             out = workdir / "video.mp4"
             media.transcode(fetched.video, out)
-            key = f"{user_id}/{save_id}.mp4"
-            r2.upload_video(cfg, out, key)
-            update["video_path"] = key
-        elif not cfg.has_r2:
-            note = "Video storage isn't set up yet; it plays from the original."
+            size_mb = out.stat().st_size / 1_048_576
+            if size_mb <= cfg.video_max_mb:
+                key = f"{user_id}/{save_id}.mp4"
+                supa.upload(cfg.video_bucket, key, out.read_bytes(), "video/mp4")
+                update["video_path"] = key
+            else:
+                note = "Too long to keep a copy; it plays from the original."
 
         if info["has_audio"] and not transcript_segments:
             audio = workdir / "audio.mp3"
@@ -200,7 +210,7 @@ def _ingest(supa: Supa, cfg: Config, save: dict[str, Any], workdir: Path) -> str
 
     # 3 · Understand + file ---------------------------------------------------------
     insights: dict[str, Any] | None = None
-    if cfg.has_claude:
+    if cfg.has_ai:
         space_names, inbox_id = _spaces(supa, user_id)
         u = ai.understand(cfg, platform=platform, creator=creator, title=title, caption=caption,
                           transcript=transcript_text, space_names=space_names, user_note=save.get("user_note"))
@@ -230,9 +240,13 @@ def _ingest(supa: Supa, cfg: Config, save: dict[str, Any], workdir: Path) -> str
     else:
         note = note or "AI isn't set up yet, so there's no summary."
 
-    # 4 · Embed --------------------------------------------------------------------
+    # 4 · Embed (optional: search by words still works without it) -----------------
     if insights:
-        emb = ai.embed(cfg, embedding_text(insights, caption, transcript_text))
+        try:
+            emb = ai.embed(cfg, embedding_text(insights, caption, transcript_text))
+        except Exception as exc:  # noqa: BLE001
+            log.warning("embedding skipped: %s", type(exc).__name__)
+            emb = None
         if emb:
             supa.insert("embeddings", {"save_id": save_id, "user_id": user_id,
                                        "vector": "[" + ",".join(f"{x:.6f}" for x in emb.vector) + "]",
@@ -242,17 +256,56 @@ def _ingest(supa: Supa, cfg: Config, save: dict[str, Any], workdir: Path) -> str
 
     _log_usage(supa, usage)
     supa.update("saves", {"id": f"eq.{save_id}"}, {"status": "ready", "processed_at": _now(), "error": note})
+    if update.get("video_path"):
+        try:
+            enforce_video_quota(supa, cfg, user_id, keep=save_id)
+        except Exception as exc:  # noqa: BLE001 — retried after the next save
+            log.warning("quota check failed: %s", type(exc).__name__)
     return "ready"
+
+
+def _eviction_order(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Which stored videos to clear first: archived, then watched, then unwatched; oldest first; kept last."""
+    def key(r: dict[str, Any]) -> tuple:
+        st = r.get("states") or {}
+        if isinstance(st, list):
+            st = st[0] if st else {}
+        kept = bool(st.get("kept"))
+        archived = st.get("archived_at") is not None
+        watched = st.get("watched_at") is not None
+        rank = 0 if archived else 1 if watched else 2
+        return (kept, rank, r.get("saved_at") or "")
+    return sorted(rows, key=key)
+
+
+def enforce_video_quota(supa: Supa, cfg: Config, user_id: str, keep: str | None = None) -> int:
+    """Keeps the user's stored videos under VIDEO_QUOTA_MB. Cleared saves play from the platform embed."""
+    files = supa.list_files(cfg.video_bucket, user_id)
+    sizes = {f"{user_id}/{f['name']}": int((f.get("metadata") or {}).get("size") or 0) for f in files}
+    total = sum(sizes.values())
+    limit = cfg.video_quota_mb * 1_048_576
+    if total <= limit:
+        return 0
+    rows = supa.select("saves", {"select": "id,video_path,saved_at,states(kept,archived_at,watched_at)",
+                                 "user_id": f"eq.{user_id}", "video_path": "not.is.null"})
+    cleared = 0
+    for r in _eviction_order(rows):
+        if total <= limit:
+            break
+        if r["id"] == keep or r["video_path"] not in sizes:
+            continue
+        supa.remove(cfg.video_bucket, [r["video_path"]])
+        supa.update("saves", {"id": f"eq.{r['id']}"}, {"video_path": None})
+        total -= sizes[r["video_path"]]
+        cleared += 1
+    return cleared
 
 
 def empty_trash(supa: Supa, cfg: Config) -> int:
     rows = supa.select("media_trash", {"select": "id,store,bucket,path", "order": "id", "limit": "200"})
     if not rows:
         return 0
-    # Without R2 configured the worker never stored a video there, so those rows have nothing to delete.
-    r2_keys = [r["path"] for r in rows if r["store"] == "r2"]
-    if r2_keys and cfg.has_r2:
-        r2.delete(cfg, r2_keys)
+    # Rows from the old R2 setup have nothing to delete (no video was ever stored there).
     by_bucket: dict[str, list[str]] = {}
     for r in rows:
         if r["store"] == "storage" and r.get("bucket"):
@@ -276,6 +329,8 @@ def run(supa: Supa, cfg: Config) -> dict[str, int]:
         for job in jobs:
             outcome = process_job(supa, cfg, job)
             summary[outcome] = summary.get(outcome, 0) + 1
+        if summary.get("rate_limited"):
+            break  # the free tier is out for now; the sweep wakes us again later
     try:
         summary["trash"] = empty_trash(supa, cfg)
     except Exception:  # noqa: BLE001 — cleanup retries on the next sweep

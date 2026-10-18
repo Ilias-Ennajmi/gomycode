@@ -142,12 +142,16 @@ def probe(path: Path) -> dict[str, Any]:
 
 
 def transcode(src: Path, dst: Path) -> None:
-    """720p H.264 MP4 with faststart, so the phone starts playing immediately."""
+    """720p H.264 MP4 with faststart, so the phone starts playing immediately.
+
+    Capped at ~1.2 Mbit/s (about 5 MB for a 30-second reel) so the free 1 GB of storage holds a lot.
+    """
     _run([
         "ffmpeg", "-y", "-loglevel", "error", "-i", str(src),
         "-vf", scale_filter(),
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "26", "-profile:v", "high", "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "96k", "-ac", "2",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "27", "-maxrate", "1200k", "-bufsize", "2400k",
+        "-profile:v", "high", "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "80k", "-ac", "2",
         "-movflags", "+faststart", str(dst),
     ])
 

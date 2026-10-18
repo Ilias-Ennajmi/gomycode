@@ -1,0 +1,52 @@
+# Stash worker: downloads saved reels, transcribes them and writes the AI summary.
+# Free: public repository minutes, Groq's free tier, Supabase Storage.
+#
+# Started by the database (stash.wake_worker → GitHub's workflow-dispatch API) when a
+# save is queued, and by its sweep when work waits. Each run drains the queue, then exits.
+# GitHub holds one secret, STASH_SUPABASE_SERVICE_ROLE_KEY; the AI keys are read from
+# Supabase Vault (stash.worker_config). Setup: stash/worker/README.md.
+name: Stash worker
+
+on:
+  workflow_dispatch:
+
+# One run at a time; a wake-up during a run waits and then finds whatever is left.
+concurrency:
+  group: stash-worker
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: stash/worker
+    env:
+      # Public already (the app ships it); the key below is the only secret.
+      SUPABASE_URL: https://rvbllpkhwakjuahxyfff.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STASH_SUPABASE_SERVICE_ROLE_KEY }}
+      RUN_BUDGET_SECONDS: "1500"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: stash/worker
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: stash/worker/requirements.txt
+
+      - name: Install ffmpeg
+        run: command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+
+      - name: Install the worker
+        # yt-dlp is always upgraded: Instagram and TikTok change often.
+        run: pip install -q -r requirements.txt && pip install -q -U yt-dlp
+
+      - name: Process the queue
+        run: python -m stash_worker

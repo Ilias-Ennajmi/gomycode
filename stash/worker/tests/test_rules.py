@@ -129,3 +129,15 @@ def test_embedding_text_includes_parts():
 
 def test_segments_text():
     assert segments_text([{"text": " hi "}, {"text": ""}, {"text": "there"}]) == "hi there"
+
+
+def test_vault_settings_fill_only_what_env_leaves_empty():
+    from stash_worker.config import Config, with_remote
+
+    base = Config(supabase_url="https://x", service_key="k", groq_key="from-env")
+    cfg = with_remote(base, {"groq_api_key": "from-vault", "groq_insights_model": "m",
+                             "owner_user_ids": "a, b", "voyage_api_key": ""})
+    assert cfg.groq_key == "from-env"
+    assert cfg.groq_insights_model == "m" and cfg.insights_provider == "groq"
+    assert cfg.owner_user_ids == frozenset({"a", "b"})
+    assert cfg.voyage_key == ""
