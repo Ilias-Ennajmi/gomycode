@@ -10,6 +10,7 @@ import {
   Flame,
   Highlighter,
   Inbox,
+  MessageCircleQuestion,
   Moon,
   Plus,
   Search,
@@ -222,6 +223,12 @@ export function Sidebar({
             }
             active={view.type === "review"}
             onClick={() => setView({ type: "review", label: "Daily review" })}
+          />
+          <NavItem
+            icon={<MessageCircleQuestion className="h-4 w-4" />}
+            label="Ask"
+            active={view.type === "ask"}
+            onClick={() => setView({ type: "ask", label: "Ask" })}
           />
           <NavItem
             icon={<Highlighter className="h-4 w-4" />}

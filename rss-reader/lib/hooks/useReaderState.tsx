@@ -28,6 +28,7 @@ export type ViewType =
   | "podcasts"
   | "alerts"
   | "review"
+  | "ask"
   | "later"
   | "all"
   | "today"
@@ -108,6 +109,7 @@ const LINKABLE_VIEWS: Record<string, ViewState> = {
   podcasts: { type: "podcasts", label: "Podcasts" },
   alerts: { type: "alerts", label: "Alerts" },
   review: { type: "review", label: "Daily review" },
+  ask: { type: "ask", label: "Ask" },
   later: { type: "later", label: "Later" },
   today: { type: "today", label: "Today" },
   all: { type: "all", label: "All articles" },

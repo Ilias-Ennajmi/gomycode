@@ -73,6 +73,8 @@ export interface ArticleSummary {
   isSaved: boolean;
   isVideo: boolean;
   boosted?: boolean;
+  /** For You: why it's here ("Covered by 4 sources", "You read X often"). */
+  reason?: string | null;
   isPromo?: boolean;
   archivedAt?: string | null;
   readProgress?: number;

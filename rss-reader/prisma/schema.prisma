@@ -121,6 +121,10 @@ model Article {
   watchedSeconds    Int?
   /// When an alert rule matched it as it arrived; listed in Alerts.
   alertedAt         DateTime?
+  /// The same article under another link (syndicated): hidden everywhere, that one shows.
+  duplicateOf       String?
+  /// Gemini translations of the body, by language code ("en", "fr"): { en: html }.
+  translations      Json?
   /// Podcast episodes: the audio file (enclosure) and its type, e.g. audio/mpeg.
   audioUrl          String?
   audioType         String?
@@ -137,6 +141,7 @@ model Article {
   @@index([snoozedUntil])
   @@index([isShort])
   @@index([alertedAt])
+  @@index([duplicateOf])
   @@index([search], type: Gin)
 }
 

@@ -21,6 +21,8 @@ import { haptic } from "@/lib/native";
 import { takeStartAt } from "@/lib/start-at";
 import { Lightbox } from "@/components/articles/Lightbox";
 import { MoreLikeThis } from "@/components/articles/MoreLikeThis";
+import { StoryTimeline } from "@/components/articles/StoryTimeline";
+import { TranslateMenu, useTranslation } from "@/components/articles/TranslateMenu";
 import { TableOfContents, readHeadings, type Heading } from "@/components/articles/TableOfContents";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -210,9 +212,12 @@ export function ArticleReader() {
   const articleHtml = hasFull && !showFeedVersion ? full!.content : (article?.content ?? null);
   // A video's or episode's body: its description or show notes, then the transcript (so
   // both can be highlighted).
+  // A translation (made once, kept on the article) replaces the body while it's on.
+  const translating = useTranslation(article?.id ?? null);
+  const aiStatus = useAiStatus();
   const bodyHtml = media
     ? (article?.content ?? "") + transcriptHtml(videoId, extras?.transcript ?? []) || null
-    : articleHtml;
+    : (translating.translation?.html ?? articleHtml);
 
   const { containerRef, progress } = useReadingProgress<HTMLDivElement>({
     resetKey: article?.id,
@@ -408,6 +413,14 @@ export function ArticleReader() {
               className="h-10 w-10"
             />
           )}
+          {!media && aiStatus?.enabled && (
+            <TranslateMenu
+              translation={translating.translation}
+              loading={translating.loading}
+              onTranslate={(to) => void translating.translate(to)}
+              onOriginal={translating.original}
+            />
+          )}
           <TableOfContents headings={headings} scrollRef={containerRef} className="h-10 w-10" />
           <ReaderSettings />
         </div>
@@ -432,6 +445,18 @@ export function ArticleReader() {
           speech={speech}
           html={bodyHtml || article.summary || ""}
           className="absolute right-14 top-3 z-10 hidden h-9 w-9 md:inline-flex"
+        />
+      )}
+      {!media && aiStatus?.enabled && (
+        <TranslateMenu
+          translation={translating.translation}
+          loading={translating.loading}
+          onTranslate={(to) => void translating.translate(to)}
+          onOriginal={translating.original}
+          className={cn(
+            "absolute right-[8.5rem] top-3 z-10 hidden h-9 w-9 md:inline-flex",
+            prefs.focus && "md:hidden"
+          )}
         />
       )}
       <ListenBar speech={speech} html={bodyHtml || article.summary || ""} />
@@ -631,6 +656,19 @@ export function ArticleReader() {
             missing={missingHighlights}
             bodyRef={bodyRef}
           />
+          {translating.translation && (
+            <p className="mt-6 flex items-center justify-between gap-3 rounded-xl border bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
+              <span>Translated by AI. It can miss nuances.</span>
+              <button
+                type="button"
+                onClick={translating.original}
+                className="shrink-0 font-medium text-primary hover:underline"
+              >
+                Read the original
+              </button>
+            </p>
+          )}
+          {!media && <StoryTimeline articleId={article.id} onOpen={goTo} />}
           {!media && <MoreLikeThis articleId={article.id} onOpen={goTo} />}
           {(previous || next) && <UpNext previous={previous} next={next} onGo={goTo} />}
         </div>

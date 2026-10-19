@@ -18,6 +18,13 @@ import { readSelection, type SelectionQuote } from "@/lib/highlight-dom";
 import { createHighlight, deleteHighlight, updateHighlight } from "@/lib/hooks/useHighlights";
 import { useBackToClose } from "@/lib/hooks/useHistorySync";
 import { haptic } from "@/lib/native";
+import { useAiStatus } from "@/lib/hooks/useAi";
+import {
+  SELECTION_ACTIONS,
+  SelectionHelp,
+  type SelectionRequest,
+} from "@/components/highlights/SelectionHelp";
+import type { SelectionAction } from "@/lib/smart";
 import type { ArticleSummary, HighlightColor, HighlightSummary } from "@/lib/types";
 
 export const HIGHLIGHT_SWATCH: Record<HighlightColor, string> = {
@@ -182,12 +189,21 @@ export function ReaderHighlights({
   });
 
   const openHighlight = open ? highlights.find((h) => h.id === open.id) : undefined;
+  const ai = useAiStatus();
+  const [help, setHelp] = React.useState<SelectionRequest | null>(null);
 
   return (
     <>
       {selection && !open && (
         <SelectionToolbar
           rect={selection.rect}
+          ai={Boolean(ai?.enabled)}
+          onAi={(action) => {
+            if (!lastQuote.current) return;
+            setHelp({ text: lastQuote.current.text, action, title: article.title });
+            window.getSelection()?.removeAllRanges();
+            setSelection(null);
+          }}
           onHighlight={(color) => highlight(color)}
           onNote={() => highlight("yellow", true)}
           onCopy={() => lastQuote.current && copyText(lastQuote.current.text)}
@@ -213,6 +229,7 @@ export function ReaderHighlights({
           onClose={() => setOpen(null)}
         />
       )}
+      <SelectionHelp request={help} onClose={() => setHelp(null)} />
     </>
   );
 }
@@ -231,6 +248,8 @@ function floatingStyle(rect: DOMRect, height: number, width: number): React.CSSP
 
 function SelectionToolbar({
   rect,
+  ai,
+  onAi,
   onHighlight,
   onNote,
   onCopy,
@@ -238,6 +257,8 @@ function SelectionToolbar({
   onPicture,
 }: {
   rect: DOMRect;
+  ai: boolean;
+  onAi: (action: SelectionAction) => void;
   onHighlight: (color: HighlightColor) => void;
   onNote: () => void;
   onCopy: () => void;
@@ -251,40 +272,56 @@ function SelectionToolbar({
       aria-label="Highlight the selection"
       // Keep the selection: pressing a button would otherwise clear it before the click.
       onMouseDown={(event) => event.preventDefault()}
-      style={floatingStyle(rect, 44, 300)}
+      style={floatingStyle(rect, ai ? 84 : 44, 300)}
       className={cn(
-        "fixed z-50 flex items-center gap-0.5 rounded-full border bg-popover p-1 text-popover-foreground shadow-xl animate-fade-in",
+        "fixed z-50 flex flex-col items-center gap-1 animate-fade-in",
         touch && "inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+16px)] mx-auto w-max"
       )}
     >
-      <span className="flex items-center gap-1 px-1.5">
-        <Highlighter className="mr-0.5 h-4 w-4 text-muted-foreground" aria-hidden />
-        {COLORS.map((color) => (
-          <button
-            key={color}
-            type="button"
-            onClick={() => onHighlight(color)}
-            className={cn(
-              "h-7 w-7 rounded-full ring-1 ring-black/10 transition-transform hover:scale-110",
-              HIGHLIGHT_SWATCH[color]
-            )}
-            aria-label={`Highlight in ${color}`}
-          />
-        ))}
-      </span>
-      <span className="mx-0.5 h-6 w-px bg-border" aria-hidden />
-      <ToolbarButton label="Add a note" onClick={onNote}>
-        <MessageSquarePlus className="h-4 w-4" />
-      </ToolbarButton>
-      <ToolbarButton label="Copy" onClick={onCopy}>
-        <Copy className="h-4 w-4" />
-      </ToolbarButton>
-      <ToolbarButton label="Share" onClick={onShare}>
-        <Share2 className="h-4 w-4" />
-      </ToolbarButton>
-      <ToolbarButton label="Share as a picture" onClick={onPicture}>
-        <ImageIcon className="h-4 w-4" />
-      </ToolbarButton>
+      {ai && (
+        <div className="flex items-center gap-0.5 rounded-full border bg-popover p-1 text-popover-foreground shadow-xl">
+          {SELECTION_ACTIONS.map((action) => (
+            <button
+              key={action.id}
+              type="button"
+              onClick={() => onAi(action.id)}
+              className="flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              {action.icon} {action.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="flex items-center gap-0.5 rounded-full border bg-popover p-1 text-popover-foreground shadow-xl">
+        <span className="flex items-center gap-1 px-1.5">
+          <Highlighter className="mr-0.5 h-4 w-4 text-muted-foreground" aria-hidden />
+          {COLORS.map((color) => (
+            <button
+              key={color}
+              type="button"
+              onClick={() => onHighlight(color)}
+              className={cn(
+                "h-7 w-7 rounded-full ring-1 ring-black/10 transition-transform hover:scale-110",
+                HIGHLIGHT_SWATCH[color]
+              )}
+              aria-label={`Highlight in ${color}`}
+            />
+          ))}
+        </span>
+        <span className="mx-0.5 h-6 w-px bg-border" aria-hidden />
+        <ToolbarButton label="Add a note" onClick={onNote}>
+          <MessageSquarePlus className="h-4 w-4" />
+        </ToolbarButton>
+        <ToolbarButton label="Copy" onClick={onCopy}>
+          <Copy className="h-4 w-4" />
+        </ToolbarButton>
+        <ToolbarButton label="Share" onClick={onShare}>
+          <Share2 className="h-4 w-4" />
+        </ToolbarButton>
+        <ToolbarButton label="Share as a picture" onClick={onPicture}>
+          <ImageIcon className="h-4 w-4" />
+        </ToolbarButton>
+      </div>
     </div>
   );
 }

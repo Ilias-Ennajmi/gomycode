@@ -193,6 +193,24 @@ then ×3.5 (max a year); "never" sets `reviewDisabled`. The streak comes from th
 `review-log` Setting. Highlights have lowercase `tags` (filter chips, `?tag=` on the list and
 the Markdown export).
 
+**Smart layer** (`lib/smart.ts`, all optional: every call throws `AiError` when AI is off).
+_Ask your reader_ (`components/ask/AskView.tsx`, `POST /api/ask`): the question is embedded
+at user priority, the 12 closest articles of the last 60 days (plus saved ones, plus
+full-text hits) go to Gemini, and the answer cites them as `[n]`; the conversation lives in
+`sessionStorage`. _Catch me up_ (`CatchUpSheet`, `POST /api/catchup`): 4–6 bullets over up
+to 40 unread articles of the list's scope, each pointing at its articles, and "Mark these
+read" (`/api/articles/mark-all-read` with `ids`). _Why this_: For You adds a `reason` per
+story (boosted, covered by N sources, a feed you read often, close to what you read).
+_Selection help_ (`SelectionHelp`, `POST /api/ai/selection`): Explain / Define / Translate
+a selected passage. _Translate_ (`TranslateMenu`, `POST /api/articles/[id]/translate?to=`):
+the whole article, kept in `Article.translations[lang]` so it's made once. _Tag ideas_
+(`POST /api/highlights/[id]/suggest-tags`): the sparkle in `TagEditor`. _Story timelines_
+(`StoryTimeline`, `GET /api/articles/[id]/timeline`, no AI): the same topic, or cosine ≥ 0.8
+with a shared capitalised name in the headline, within 21 days, grouped by day. _Near
+duplicates_: `markDuplicates` in `lib/enrich.ts` sets `Article.duplicateOf` when two fresh
+articles have the same folded title or cosine ≥ 0.97 within 3 days; `hiddenArticleClauses`
+drops them from every list and count.
+
 **Screen space** (phones). Two thin rows on top: `TopBar` (tabs, with search, add and settings
 on the right) and `components/articles/ListToolbar.tsx` (every filter as a chip in one
 sideways-scrolling row, plus a single "⋯" menu for add, refresh, layout, sort, mark all
@@ -233,8 +251,8 @@ briefing as JSON (`version: 2`). `Setting` is a key/value store (news prefs, cac
 insights, weather city).
 
 **State on the client.** `useReaderState` holds the current view (`type`: foryou, briefing,
-recap, news, rss, youtube, newsletters, podcasts, alerts, review, later, all, today, saved,
-feed, category), the Later
+recap, news, rss, youtube, newsletters, podcasts, alerts, review, ask, later, all, today,
+saved, feed, category), the Later
 sub-tab (queue, snoozed, archive, highlights), the newsletter kind, the search with its
 scope and time filter, the selected article and the mobile pane (sidebar, list, reader,
 settings). Data comes from SWR hooks in `lib/hooks`.
@@ -307,11 +325,16 @@ Built in this order (see `git log -- rss-reader`):
     scroll memory, greeting, review swipe, picture cards.
 13. v3: AI quota budget, Podcasts (app-wide player, Apple search, AI on episodes),
     Alerts and auto-save rules, Daily review with tags.
+14. Premium pass 1: Now Playing screen (queue, chapters, live transcript, per-show speed,
+    share a moment), view transitions, bottom sheets, paper theme, focus mode, contents,
+    lightbox, "More like this", what's new sheet.
+15. Premium pass 2 (smart): Ask your reader, Catch me up, why-this reasons, selection
+    Explain/Define/Translate, article translation, tag ideas, story timelines, near-duplicate
+    removal.
 
 ## Open ideas (not built yet)
 
 - "Mark read when scrolled past" in lists.
 - Highlights export to Readwise / Notion.
-- "Ask your reader": questions answered from your own feeds (embeddings already exist).
-- Story timelines across days; translation; reading stats.
+- Reading stats; source pages; per-source settings.
 - Android shortcuts for Search, Highlights and Snoozed (needs a new APK).

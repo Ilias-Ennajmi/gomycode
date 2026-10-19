@@ -16,6 +16,7 @@ import {
   ListStart,
   Play,
   Share,
+  Sparkles,
   TrendingUp,
 } from "lucide-react";
 import { cn, formatRelativeTime, readingTime, stripHtml } from "@/lib/utils";
@@ -411,6 +412,14 @@ export function ArticleCard({
                   className="-my-1.5 ml-auto [@media(hover:hover)]:hidden"
                 />
               </div>
+
+              {/* For You says why it picked this one. */}
+              {article.reason && (
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-primary/80">
+                  <Sparkles className="h-3 w-3 shrink-0" aria-hidden />
+                  <span className="truncate">{article.reason}</span>
+                </p>
+              )}
 
               {article.audioUrl && !article.isVideo && (
                 <PlayEpisodeButton article={article} className="mt-2" />

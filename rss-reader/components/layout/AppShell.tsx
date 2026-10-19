@@ -82,6 +82,9 @@ const ReviewView = dynamic(
   () => import("@/components/review/ReviewView").then((m) => m.ReviewView),
   { ssr: false }
 );
+const AskView = dynamic(() => import("@/components/ask/AskView").then((m) => m.AskView), {
+  ssr: false,
+});
 const NewsSourcesDialog = dynamic(
   () => import("@/components/news/NewsSourcesDialog").then((m) => m.NewsSourcesDialog),
   { ssr: false }
@@ -114,7 +117,11 @@ function AppShellInner() {
   // A search shows its results as a list, whatever page it started from.
   const fullPage =
     !search.trim() &&
-    (newsFront || view.type === "briefing" || view.type === "recap" || view.type === "review");
+    (newsFront ||
+      view.type === "briefing" ||
+      view.type === "recap" ||
+      view.type === "review" ||
+      view.type === "ask");
   const [newsSources, setNewsSources] = React.useState<{ open: boolean; setup: boolean }>({
     open: false,
     setup: false,
@@ -316,6 +323,8 @@ function AppShellInner() {
                   <RecapView />
                 ) : view.type === "review" ? (
                   <ReviewView />
+                ) : view.type === "ask" ? (
+                  <AskView />
                 ) : (
                   <TodayView />
                 )}
