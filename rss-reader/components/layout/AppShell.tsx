@@ -17,8 +17,11 @@ import { NotificationPrompt } from "@/components/layout/NotificationPrompt";
 import { OfflineSupport } from "@/components/layout/OfflineSupport";
 import { ChromeCollapse } from "@/components/layout/ChromeCollapse";
 import { showChrome } from "@/lib/hooks/useChrome";
+import { useReaderPrefs } from "@/lib/hooks/useReaderPrefs";
 import { AudioProvider } from "@/components/audio/AudioProvider";
 import { NowPlayingBar } from "@/components/audio/NowPlayingBar";
+import { NowPlayingSheet } from "@/components/audio/NowPlayingSheet";
+import { WhatsNew } from "@/components/layout/WhatsNew";
 import { refreshFeeds, refreshToastMessage, useAutoRefresh, useFeeds } from "@/lib/hooks/useFeeds";
 import { useSWRConfig } from "swr";
 import type { DiscoverKind } from "@/lib/discover/catalog";
@@ -256,6 +259,9 @@ function AppShellInner() {
   const openShortcuts = React.useCallback(() => setShortcutsOpen(true), []);
 
   const hideTopBarOnPhone = mobilePane === "reader";
+  // Focus mode: with an article open, only the article (desktop loses the sidebar and list).
+  const { prefs: readerPrefs } = useReaderPrefs();
+  const focus = readerPrefs.focus && Boolean(selectedArticleId);
   // Coming back to a list (or another pane), the bars are there.
   React.useEffect(() => showChrome(), [mobilePane, view]);
 
@@ -274,7 +280,8 @@ function AppShellInner() {
         <div
           className={cn(
             "h-full w-full shrink-0 md:w-[260px]",
-            mobilePane !== "sidebar" && "hidden md:block"
+            mobilePane !== "sidebar" && "hidden md:block",
+            focus && "md:hidden"
           )}
         >
           <Sidebar {...dialogActions} />
@@ -287,7 +294,7 @@ function AppShellInner() {
           )}
         >
           <TopBar
-            className="hidden md:block"
+            className={cn("hidden md:block", focus && "md:hidden")}
             onSaveLink={() => setSaveLinkOpen(true)}
             onAddFeed={dialogActions.onAddFeed}
             onManageNews={() => setNewsSources({ open: true, setup: false })}
@@ -341,7 +348,8 @@ function AppShellInner() {
               <div
                 className={cn(
                   "h-full w-full shrink-0 md:w-[420px] md:border-r",
-                  mobilePane !== "list" && "hidden md:block"
+                  mobilePane !== "list" && "hidden md:block",
+                  focus && "md:hidden"
                 )}
               >
                 <ArticleList
@@ -369,6 +377,8 @@ function AppShellInner() {
         )}
       </div>
       <NowPlayingBar />
+      <NowPlayingSheet />
+      <WhatsNew />
 
       <SaveLinkDialog open={saveLinkOpen} onOpenChange={setSaveLinkOpen} />
       <EmailNewsletterDialog open={emailNewsletterOpen} onOpenChange={setEmailNewsletterOpen} />

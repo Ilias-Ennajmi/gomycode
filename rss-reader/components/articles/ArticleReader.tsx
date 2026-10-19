@@ -18,6 +18,10 @@ import {
 } from "lucide-react";
 import { shareLink } from "@/lib/share";
 import { haptic } from "@/lib/native";
+import { takeStartAt } from "@/lib/start-at";
+import { Lightbox } from "@/components/articles/Lightbox";
+import { MoreLikeThis } from "@/components/articles/MoreLikeThis";
+import { TableOfContents, readHeadings, type Heading } from "@/components/articles/TableOfContents";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -83,7 +87,11 @@ export function ArticleReader() {
   const refreshAllLists = () =>
     globalMutate((key) => typeof key === "string" && key.startsWith("/api/articles"));
 
-  const { prefs } = useReaderPrefs();
+  const { prefs, update: updatePrefs } = useReaderPrefs();
+  // The article's headings, for the contents list (read once the body is on screen).
+  const [headings, setHeadings] = React.useState<Heading[]>([]);
+  const [lightbox, setLightbox] = React.useState<{ src: string; alt?: string } | null>(null);
+  React.useEffect(() => setLightbox(null), [selectedArticleId]);
 
   // Previous / next in the list the article was opened from (not on the News
   // front page or the briefing, whose order isn't a list).
@@ -130,7 +138,14 @@ export function ArticleReader() {
     setUpNextDismissed(false);
   }, [article?.id]);
   // Where to pick up: taken once when the video opens, not while it plays.
+  // A shared moment (?t=) is taken once, when the article opens, for whichever player it is.
+  const linkedStart = React.useMemo(
+    () => (article ? takeStartAt(article.id) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [article?.id]
+  );
   const resumeAt = React.useMemo(() => {
+    if (linkedStart !== null) return linkedStart;
     const seconds = article?.watchedSeconds ?? 0;
     const duration = article?.durationSeconds ?? 0;
     return seconds > 5 && (!duration || seconds < duration - 15) ? seconds : 0;
@@ -296,7 +311,21 @@ export function ArticleReader() {
         />
       </div>
 
-      <div className="flex items-center justify-between border-b px-1 py-1 md:hidden">
+      {prefs.focus && (
+        <button
+          type="button"
+          onClick={() => updatePrefs({ focus: false })}
+          className="absolute right-3 top-3 z-20 rounded-full border bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:text-foreground"
+        >
+          Exit focus
+        </button>
+      )}
+      <div
+        className={cn(
+          "flex items-center justify-between border-b px-1 py-1 md:hidden",
+          prefs.focus && "hidden"
+        )}
+      >
         <Button
           variant="ghost"
           size="sm"
@@ -379,11 +408,25 @@ export function ArticleReader() {
               className="h-10 w-10"
             />
           )}
+          <TableOfContents headings={headings} scrollRef={containerRef} className="h-10 w-10" />
           <ReaderSettings />
         </div>
       </div>
 
-      <ReaderSettings className="absolute right-4 top-3 z-10 hidden md:inline-flex" />
+      <ReaderSettings
+        className={cn(
+          "absolute right-4 top-3 z-10 hidden md:inline-flex",
+          prefs.focus && "md:hidden"
+        )}
+      />
+      <TableOfContents
+        headings={headings}
+        scrollRef={containerRef}
+        className={cn(
+          "absolute right-24 top-3 z-10 hidden h-9 w-9 md:inline-flex",
+          prefs.focus && "md:hidden"
+        )}
+      />
       {!media && (
         <ListenButton
           speech={speech}
@@ -429,7 +472,7 @@ export function ArticleReader() {
               <img
                 src={article.imageUrl!}
                 alt=""
-                className="dim-dark aspect-[16/9] w-full select-none rounded-2xl object-cover shadow-sm"
+                className="dim-dark aspect-[16/9] w-full select-none rounded-2xl object-cover shadow-sm [view-transition-name:article-image]"
                 onDoubleClick={() => {
                   if (!article.isSaved) setSavePop(true);
                   void handleToggleSave();
@@ -478,7 +521,7 @@ export function ArticleReader() {
               {resumeAt > 0 && <ResumedNote seconds={resumeAt} onRestart={() => seekVideo(0)} />}
             </div>
           )}
-          {episode && <EpisodePlayer article={episode} />}
+          {episode && <EpisodePlayer article={episode} startAt={linkedStart} />}
           <ArticleHeader
             article={article}
             onToggleSave={handleToggleSave}
@@ -545,6 +588,17 @@ export function ArticleReader() {
           <div
             className="mt-6"
             onClick={(event) => {
+              // A picture in the text opens full screen.
+              const picture = (event.target as HTMLElement).closest("img");
+              if (
+                picture &&
+                !picture.closest("a[href]:not([href^='#'])") &&
+                picture.naturalWidth > 120
+              ) {
+                event.preventDefault();
+                setLightbox({ src: picture.currentSrc || picture.src, alt: picture.alt });
+                return;
+              }
               // Times in a description or transcript jump the player there.
               const time = (event.target as HTMLElement).closest<HTMLElement>("[data-t]");
               if (!time) return;
@@ -566,13 +620,18 @@ export function ArticleReader() {
               highlights={highlights}
               onMissingHighlights={setMissingHighlights}
               bodyRef={bodyRef}
+              onRendered={() => setHeadings(readHeadings(bodyRef.current, containerRef.current))}
             />
           </div>
+          {lightbox && (
+            <Lightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />
+          )}
           <ArticleHighlights
             highlights={highlights}
             missing={missingHighlights}
             bodyRef={bodyRef}
           />
+          {!media && <MoreLikeThis articleId={article.id} onOpen={goTo} />}
           {(previous || next) && <UpNext previous={previous} next={next} onGo={goTo} />}
         </div>
       </div>

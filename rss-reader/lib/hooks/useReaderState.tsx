@@ -15,6 +15,7 @@ import type {
 } from "@/lib/types";
 import { useHistorySync, type NavSnapshot } from "@/lib/hooks/useHistorySync";
 import { rememberAppLaunch } from "@/lib/native";
+import { requestStartAt } from "@/lib/start-at";
 
 export type ViewType =
   | "foryou"
@@ -194,6 +195,9 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     if (articleId) {
       setSelectedArticleId(articleId);
       setMobilePane("reader");
+      // A shared moment: start the episode or video there.
+      const t = Number(params.get("t"));
+      if (t > 0) requestStartAt(articleId, t);
     }
     if (params.get("add") === "1") setAddRequested(true);
     if (params.get("search") === "1") {

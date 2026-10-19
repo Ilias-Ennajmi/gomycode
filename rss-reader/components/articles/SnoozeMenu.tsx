@@ -13,6 +13,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { snoozeArticle } from "@/lib/hooks/useArticles";
+import { Slot } from "@radix-ui/react-slot";
+import { ActionSheet, useIsPhone } from "@/components/ui/sheet";
 import { formatSnooze, snoozeOptions } from "@/lib/snooze";
 import type { ArticleSummary } from "@/lib/types";
 
@@ -57,6 +59,50 @@ export function SnoozeMenu({
   const snoozed = isSnoozed(article);
   // Computed when the menu opens, so "This evening" is right even hours later.
   const [options, setOptions] = React.useState(() => snoozeOptions());
+  const phone = useIsPhone();
+  const [sheetOpen, setSheetOpen] = React.useState(false);
+  if (phone) {
+    return (
+      <>
+        <Slot
+          onClick={(event: React.MouseEvent) => {
+            event.stopPropagation();
+            setOptions(snoozeOptions());
+            setSheetOpen(true);
+          }}
+        >
+          {children}
+        </Slot>
+        <ActionSheet
+          open={sheetOpen}
+          onOpenChange={setSheetOpen}
+          title={snoozed ? `Snoozed until ${formatSnooze(article.snoozedUntil!)}` : "Snooze until…"}
+          sections={[
+            {
+              actions: [
+                ...options.map((option) => ({
+                  id: option.id,
+                  label: option.label,
+                  hint: formatSnooze(option.until),
+                  onSelect: () => void snooze(article, option.until),
+                })),
+                ...(snoozed
+                  ? [
+                      {
+                        id: "unsnooze",
+                        label: "Unsnooze now",
+                        icon: <AlarmClockOff />,
+                        onSelect: () => void snooze(article, null),
+                      },
+                    ]
+                  : []),
+              ],
+            },
+          ]}
+        />
+      </>
+    );
+  }
   return (
     <DropdownMenu onOpenChange={(open) => open && setOptions(snoozeOptions())}>
       <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>

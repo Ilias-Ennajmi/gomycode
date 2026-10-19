@@ -37,6 +37,29 @@
     --radius: 0.625rem;
   }
 
+  /* Paper: warm, like a page in afternoon light. Lighter than dark, softer than light. */
+  .paper {
+    --background: 40 33% 94%;
+    --foreground: 30 20% 14%;
+    --card: 40 30% 97%;
+    --card-foreground: 30 20% 14%;
+    --popover: 40 33% 97%;
+    --popover-foreground: 30 20% 14%;
+    --primary: 262 60% 48%;
+    --primary-foreground: 40 33% 98%;
+    --secondary: 38 25% 88%;
+    --secondary-foreground: 30 20% 14%;
+    --muted: 38 25% 88%;
+    --muted-foreground: 30 10% 40%;
+    --accent: 38 28% 89%;
+    --accent-foreground: 30 20% 14%;
+    --destructive: 0 65% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 36 22% 82%;
+    --input: 36 22% 80%;
+    --ring: 262 60% 48%;
+  }
+
   .dark {
     --background: 228 13% 9%;
     --foreground: 220 15% 92%;
@@ -168,6 +191,27 @@ a,
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* A card's picture glides into the article's (document.startViewTransition). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+}
+::view-transition-group(article-image) {
+  animation-duration: 320ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+::view-transition-old(article-image),
+::view-transition-new(article-image) {
+  height: 100%;
+  object-fit: cover;
+  overflow: hidden;
 }
 
 /* Article bodies come from any site, often with fixed pixel widths. Everything

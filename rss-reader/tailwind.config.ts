@@ -55,6 +55,10 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      transitionTimingFunction: {
+        // A little overshoot, like something with weight settling.
+        spring: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
@@ -78,6 +82,10 @@ const config: Config = {
           from: { opacity: "0", transform: "translateY(8px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        "sheet-in": {
+          from: { transform: "translateY(24px)", opacity: "0" },
+          to: { transform: "translateY(0)", opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -85,6 +93,7 @@ const config: Config = {
         "fade-in": "fade-in 150ms ease",
         pop: "pop 280ms cubic-bezier(0.34, 1.56, 0.64, 1)",
         "rise-in": "rise-in 220ms ease-out",
+        "sheet-in": "sheet-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1)",
       },
       fontFamily: {
         sans: [

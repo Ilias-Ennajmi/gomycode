@@ -20,7 +20,13 @@ async function fetcher(url: string) {
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="dark"
+      enableSystem
+      themes={["light", "dark", "paper", "system"]}
+      disableTransitionOnChange
+    >
       <SWRConfig
         value={{
           fetcher,

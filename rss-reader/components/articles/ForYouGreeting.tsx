@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Bell, BookOpenCheck, Headphones, Inbox } from "lucide-react";
 import { useCounts } from "@/lib/hooks/useArticles";
+import { Ticker } from "@/components/ui/ticker";
 import { useReviewStatus } from "@/lib/hooks/useReview";
 import { useReaderState, type ViewState } from "@/lib/hooks/useReaderState";
 
@@ -60,7 +61,13 @@ export function ForYouGreeting() {
       <h2 className="text-xl font-semibold tracking-tight">{text}</h2>
       <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
         <Inbox className="h-3.5 w-3.5" />
-        {unread > 0 ? `${unread} unread` : "You're all caught up"}
+        {unread > 0 ? (
+          <>
+            <Ticker value={unread} /> unread
+          </>
+        ) : (
+          "You're all caught up"
+        )}
       </p>
       {items.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">

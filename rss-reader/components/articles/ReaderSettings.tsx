@@ -1,6 +1,6 @@
 "use client";
 
-import { Type } from "lucide-react";
+import { Focus, Type } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -55,7 +55,12 @@ export function ReaderSettings({ className }: { className?: string }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className={cn("h-10 w-10", className)} aria-label="Reading settings">
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn("h-10 w-10", className)}
+          aria-label="Reading settings"
+        >
           <Type className="h-5 w-5" />
         </Button>
       </PopoverTrigger>
@@ -102,6 +107,20 @@ export function ReaderSettings({ className }: { className?: string }) {
             { value: "relaxed", label: "Airy" },
           ]}
         />
+        <button
+          type="button"
+          onClick={() => update({ focus: !prefs.focus })}
+          aria-pressed={prefs.focus}
+          className={cn(
+            "flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors",
+            prefs.focus ? "border-primary bg-primary/10 text-primary" : "hover:bg-accent"
+          )}
+        >
+          <span className="flex items-center gap-2">
+            <Focus className="h-4 w-4" /> Focus mode
+          </span>
+          <span className="text-xs text-muted-foreground">{prefs.focus ? "On" : "Off"}</span>
+        </button>
       </PopoverContent>
     </Popover>
   );

@@ -19,12 +19,28 @@ import {
  * The full player on an episode's page. Until it's played, a single Play button (or
  * "Resume at 12:30"); once it's the episode playing, the scrubber and every control.
  */
-export function EpisodePlayer({ article }: { article: ArticleSummary }) {
+export function EpisodePlayer({
+  article,
+  startAt,
+}: {
+  article: ArticleSummary;
+  /** A shared moment (?t=): play from there right away. */
+  startAt?: number | null;
+}) {
   const audio = useAudio();
   const episode = episodeOf(article);
-  if (!episode) return null;
   const current = audio.episode?.id === article.id;
-  const resumeAt = resumePoint(article);
+  const resumeAt = startAt ?? resumePoint(article);
+  // A link to a moment starts playing on its own.
+  const started = React.useRef(false);
+  React.useEffect(() => {
+    if (!episode || startAt === null || startAt === undefined || started.current) return;
+    started.current = true;
+    audio.play(episode, startAt);
+    // Once, when the episode opens from a link.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [article.id]);
+  if (!episode) return null;
 
   return (
     <div className="mb-6 rounded-2xl border bg-card/60 p-4 shadow-sm">

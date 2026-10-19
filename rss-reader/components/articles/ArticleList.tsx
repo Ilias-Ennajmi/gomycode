@@ -55,6 +55,7 @@ import { showChrome, syncChromeScroll, useHideOnScroll } from "@/lib/hooks/useCh
 import { useLastVisit } from "@/lib/hooks/useLastVisit";
 import { useFilters } from "@/lib/hooks/useFilters";
 import { haptic } from "@/lib/native";
+import { withViewTransition } from "@/lib/motion";
 import { ChromeCollapse } from "@/components/layout/ChromeCollapse";
 import type { ArticleSummary, LaterTab, SearchScope, SearchSince } from "@/lib/types";
 import { ShortsGrid } from "@/components/video/ShortsGrid";
@@ -273,8 +274,19 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   }
 
   function handleSelect(article: ArticleSummary) {
-    setSelectedArticleId(article.id);
-    setMobilePane("reader");
+    // The card's picture glides into the article's picture (view transitions).
+    const image = scrollRef.current?.querySelector<HTMLElement>(
+      `[data-article-id="${article.id}"] [data-card-image]`
+    );
+    withViewTransition(
+      () => {
+        setSelectedArticleId(article.id);
+        setMobilePane("reader");
+      },
+      { prepare: () => image && (image.style.viewTransitionName = "article-image") }
+    );
+    // The name moves on to the article's own picture.
+    if (image) setTimeout(() => (image.style.viewTransitionName = ""), 50);
   }
 
   // Keyboard navigation scoped to the currently loaded article list.

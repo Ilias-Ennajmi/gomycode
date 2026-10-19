@@ -37,8 +37,9 @@ function CurrentChapter({ episodeId, fallback }: { episodeId: string; fallback: 
  * which has the full player.
  */
 export function NowPlayingBar() {
-  const { episode, playing, close } = useAudio();
-  const { selectedArticleId, setSelectedArticleId, mobilePane, setMobilePane } = useReaderState();
+  const { episode, playing, close, setExpanded } = useAudio();
+  const { selectedArticleId, mobilePane } = useReaderState();
+  const swipe = React.useRef<number | null>(null);
   if (!episode) return null;
 
   // The open episode has the full player: on phones when the reader covers the screen, on
@@ -56,16 +57,25 @@ export function NowPlayingBar() {
       role="region"
       aria-label="Now playing"
     >
+      <span
+        aria-hidden
+        className="absolute left-1/2 top-1.5 h-1 w-8 -translate-x-1/2 rounded-full bg-border"
+      />
       <BarProgress />
       <div className="mx-auto flex h-16 max-w-5xl items-center gap-3 px-3">
         <button
           type="button"
-          onClick={() => {
-            setSelectedArticleId(episode.id);
-            setMobilePane("reader");
+          onClick={() => setExpanded(true)}
+          onTouchStart={(event) => (swipe.current = event.touches[0].clientY)}
+          onTouchEnd={(event) => {
+            // A flick upward opens the full player too.
+            if (swipe.current !== null && swipe.current - event.changedTouches[0].clientY > 40) {
+              setExpanded(true);
+            }
+            swipe.current = null;
           }}
           className="flex min-w-0 flex-1 items-center gap-3 text-left"
-          aria-label={`Open ${episode.title}`}
+          aria-label={`Open the player for ${episode.title}`}
         >
           {episode.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element

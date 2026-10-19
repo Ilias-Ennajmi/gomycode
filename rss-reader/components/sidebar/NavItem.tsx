@@ -3,6 +3,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Ticker } from "@/components/ui/ticker";
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -46,7 +47,7 @@ export function NavItem({
           variant="secondary"
           className="h-5 min-w-5 justify-center rounded-full bg-primary/10 px-1.5 text-[11px] font-semibold text-primary"
         >
-          {count > 99 ? "99+" : count}
+          <Ticker value={count} />
         </Badge>
       )}
     </button>

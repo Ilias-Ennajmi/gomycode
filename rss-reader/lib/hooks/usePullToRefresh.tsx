@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { RefreshCw } from "lucide-react";
+import { Logo } from "@/components/shared/Logo";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { cn } from "@/lib/utils";
@@ -92,15 +92,18 @@ export function PullIndicator({ pull, refreshing }: { pull: number; refreshing: 
       style={{ height }}
       aria-hidden
     >
-      <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-full border bg-background shadow">
-        <RefreshCw
-          className={cn(
-            "h-4 w-4",
-            refreshing ? "animate-spin text-primary" : "text-muted-foreground",
-            pull >= PULL_TRIGGER && "text-primary"
-          )}
-          style={refreshing ? undefined : { transform: `rotate(${pull * 3}deg)` }}
-        />
+      <div
+        className={cn("mb-2 rounded-xl shadow", refreshing && "animate-pulse")}
+        style={
+          refreshing
+            ? undefined
+            : {
+                transform: `scale(${0.6 + Math.min(1, pull / PULL_TRIGGER) * 0.4}) rotate(${pull * 2}deg)`,
+                opacity: 0.4 + Math.min(1, pull / PULL_TRIGGER) * 0.6,
+              }
+        }
+      >
+        <Logo className="h-8 w-8" />
       </div>
     </div>
   );

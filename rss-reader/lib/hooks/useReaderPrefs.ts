@@ -11,10 +11,18 @@ export interface ReaderPrefs {
   size: 0 | 1 | 2 | 3;
   width: ReaderWidth;
   spacing: ReaderSpacing;
+  /** Focus: just the text, no bars (and on desktop, no sidebar or list). */
+  focus: boolean;
 }
 
 const STORAGE_KEY = "reader-prefs";
-const DEFAULTS: ReaderPrefs = { font: "sans", size: 1, width: "normal", spacing: "normal" };
+const DEFAULTS: ReaderPrefs = {
+  font: "sans",
+  size: 1,
+  width: "normal",
+  spacing: "normal",
+  focus: false,
+};
 
 export const READER_FONTS: Record<ReaderFont, string> = {
   sans: '"Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif',

@@ -3,6 +3,7 @@
 import type { DiscoverKind } from "@/lib/discover/catalog";
 import * as React from "react";
 import {
+  BookOpen,
   ChevronRight,
   Compass,
   Download,
@@ -22,6 +23,7 @@ import {
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { useAiStatus, type AiStatus } from "@/lib/hooks/useAi";
+import { WhatsNew } from "@/components/layout/WhatsNew";
 import { androidAppVersion, RELEASES_PAGE } from "@/lib/native";
 import { NotificationSettings } from "@/components/layout/NotificationSettings";
 import { useFeeds } from "@/lib/hooks/useFeeds";
@@ -39,6 +41,7 @@ interface SettingsPanelProps {
 const THEMES = [
   { id: "light", label: "Light", icon: Sun },
   { id: "dark", label: "Dark", icon: Moon },
+  { id: "paper", label: "Paper", icon: BookOpen },
   { id: "system", label: "System", icon: Monitor },
 ] as const;
 
@@ -51,6 +54,7 @@ export function SettingsPanel({
   onImportOpml,
   onShowShortcuts,
 }: SettingsPanelProps) {
+  const [whatsNew, setWhatsNew] = React.useState(false);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -96,7 +100,7 @@ export function SettingsPanel({
         </Section>
 
         <Section title="Appearance">
-          <div className="grid grid-cols-3 gap-2 p-2">
+          <div className="grid grid-cols-4 gap-2 p-2">
             {THEMES.map(({ id, label, icon: Icon }) => {
               const active = mounted && theme === id;
               return (
@@ -139,6 +143,8 @@ export function SettingsPanel({
 
         <Section title="Help">
           <Row icon={Keyboard} label="Keyboard shortcuts" onClick={onShowShortcuts} />
+          <Row icon={Sparkles} label="What's new" onClick={() => setWhatsNew(true)} />
+          <WhatsNew open={whatsNew} onOpenChange={setWhatsNew} />
         </Section>
 
         <Section>
