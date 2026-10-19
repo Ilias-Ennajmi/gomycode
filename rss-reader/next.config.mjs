@@ -33,7 +33,19 @@ const headers = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async headers() {
-    return [{ source: "/(.*)", headers }];
+    return [
+      { source: "/(.*)", headers },
+      // The service worker fetches articles' pictures from any host on the page's behalf; a
+      // CSP delivered with a worker script governs the worker's own fetch() calls, so the
+      // page's tight connect-src would block every image once the worker is in charge.
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Content-Security-Policy", value: "default-src 'self'; connect-src *" },
+          { key: "Cache-Control", value: "no-cache" },
+        ],
+      },
+    ];
   },
 };
 

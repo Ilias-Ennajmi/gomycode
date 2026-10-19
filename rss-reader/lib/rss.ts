@@ -94,6 +94,34 @@ export interface ParsedFeed {
   articles: ParsedArticle[];
 }
 
+// Fixes the malformations feeds most often ship, outside CDATA sections (whose text is
+// literal and must stay as it is): a "&" that starts no entity, an attribute without a
+// value (<video controls>), and control characters XML forbids.
+const CDATA = /(<!\[CDATA\[[\s\S]*?\]\]>)/;
+const BARE_AMP = /&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)/g;
+const CONTROL_CHARS = /[\x00-\x08\x0B\x0C\x0E-\x1F]/g;
+const TAG = /<([A-Za-z][\w:.-]*)((?:\s+[^<>]*?)?)(\/?)>/g;
+
+export function repairXml(xml: string) {
+  return xml
+    .split(CDATA)
+    .map((part, i) => {
+      if (i % 2 === 1) return part;
+      return part
+        .replace(CONTROL_CHARS, "")
+        .replace(BARE_AMP, "&amp;")
+        .replace(TAG, (_match, name: string, attrs: string, close: string) => {
+          // A name with no "=" after it anywhere in the attribute list is a valueless one.
+          const fixed = attrs.replace(
+            /(\s+)([A-Za-z_:][\w:.-]*)(?=\s|$)(?!\s*=)/g,
+            (_m, space: string, attr: string) => `${space}${attr}="${attr}"`
+          );
+          return `<${name}${fixed}${close}>`;
+        });
+    })
+    .join("");
+}
+
 /** The first piece of text in an xml2js value, whatever shape it came in. */
 export function firstText(value: unknown): string | undefined {
   if (value == null) return undefined;
@@ -200,7 +228,16 @@ function itunesImageUrl(value: unknown): string | undefined {
 }
 
 async function parseFeedXml(xml: string, url: string): Promise<ParsedFeed> {
-  const feed = await parser.parseString(xml);
+  let feed: Awaited<ReturnType<typeof parser.parseString>>;
+  try {
+    feed = await parser.parseString(xml);
+  } catch (error) {
+    // Some big outlets ship XML that isn't quite XML (a bare "&", an attribute with no
+    // value, a control character). Mend the usual mistakes once and try again.
+    const repaired = repairXml(xml);
+    if (repaired === xml) throw error;
+    feed = await parser.parseString(repaired);
+  }
   const image = feed.image as unknown;
 
   // Podcasts: the show's square artwork is the best picture of it.

@@ -291,6 +291,11 @@ export function ArticleCard({
                       article.isRead && imageLoaded && "opacity-60"
                     )}
                     style={{ backgroundColor: getFaviconFallbackColor(source.name) }}
+                    // A picture already in the cache can finish before React listens for
+                    // "load": check it when the element arrives too.
+                    ref={(img) => {
+                      if (img?.complete && img.naturalWidth > 0) setImageLoaded(true);
+                    }}
                     onLoad={() => setImageLoaded(true)}
                     onError={() => setImageFailed(true)}
                   />
