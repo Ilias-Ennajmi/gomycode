@@ -55,6 +55,8 @@ Building locally needs the Android SDK and JDK 17+: `./gradlew assembleRelease`.
 
 - A PKCS#12 keystore, alias `reader`. **Never commit it or its password.** The owner keeps
   a copy; `assetlinks.json` holds its public SHA-256 fingerprint.
+- The key was replaced for 1.2.0 (the first one was lost): releases up to 1.1.0 carry the
+  old certificate, so 1.2.0 had to be installed fresh once (uninstall, then install).
 - Every update must be signed with the same key, or Android refuses to install it over the
   old app. If it's lost: make a new key, update `assetlinks.json`, and reinstall. No data
   is lost, because everything lives on the server.
