@@ -5,6 +5,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useTheme } from "next-themes";
 import {
   AlarmClock,
+  BarChart3,
   BookmarkPlus,
   CalendarDays,
   CalendarRange,
@@ -182,6 +183,13 @@ export function CommandPalette({
         icon: <MessageCircleQuestion className={ICON} />,
         run: go({ type: "ask", label: "Ask" }),
         keywords: "question ai chat",
+      },
+      {
+        id: "stats",
+        label: "Your reading",
+        icon: <BarChart3 className={ICON} />,
+        run: go({ type: "stats", label: "Your reading" }),
+        keywords: "stats statistics streak numbers",
       },
       {
         id: "all",

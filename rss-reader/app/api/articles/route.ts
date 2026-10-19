@@ -16,6 +16,7 @@ import {
   sourceFilter,
 } from "@/lib/articles";
 import { searchArticleIds } from "@/lib/search";
+import { parseSearchQuery } from "@/lib/search-query";
 import { sqlName } from "@/lib/db";
 import { getVideoPrefs } from "@/lib/video-prefs";
 
@@ -43,8 +44,10 @@ export async function GET(request: NextRequest) {
     const source = parseSource(searchParams.get("source"));
     // Read Later: "later" is the queue, "archive" what was marked done.
     const later = searchParams.get("later");
-    const search = searchParams.get("search")?.trim() || undefined;
-    const news = searchParams.get("news") || undefined;
+    // Operators (from:, tag:, is:, in:) become filters; what's left is the text to search.
+    const query = parseSearchQuery(searchParams.get("search") ?? "");
+    const search = query.text || undefined;
+    const news = searchParams.get("news") || (query.in === "news" ? "all" : undefined);
     const newsletter = newsletterFilter(searchParams.get("newsletter"));
     const since = sinceDate(searchParams.get("since"));
     const highlighted = searchParams.get("highlighted") === "true";
@@ -64,15 +67,21 @@ export async function GET(request: NextRequest) {
     if (later === "queue") Object.assign(where, { isSaved: true, archivedAt: null });
     if (later === "archive") where.archivedAt = { not: null };
     if (later === "snoozed") where.snoozedUntil = { gt: new Date() };
-    if (unread) where.isRead = false;
+    if (unread || query.unread) where.isRead = false;
+    if (query.saved) where.isSaved = true;
+    if (query.from) where.feed = { title: { contains: query.from, mode: "insensitive" } };
     if (today) where.publishedAt = { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) };
     if (forYou && !search) where.publishedAt = { gte: new Date(Date.now() - FOR_YOU_WINDOW_MS) };
     if (since) where.publishedAt = { gte: since };
-    if (highlighted) where.highlights = { some: {} };
+    if (highlighted || query.highlighted) where.highlights = { some: {} };
+    if (query.tags.length > 0) {
+      where.highlights = { some: { tags: { hasEvery: query.tags } } };
+    }
 
     const clauses: Prisma.ArticleWhereInput[] = hiddenArticleClauses(rules, feedId);
     const sourceClause = source && sourceFilter(source);
     if (sourceClause) clauses.push(sourceClause);
+    if (query.in && query.in !== "news") clauses.push(sourceFilter(query.in));
     if (news) clauses.push(newsFilter(news));
     if (newsletter) clauses.push(newsletter);
     if (later !== "snoozed") clauses.push(notSnoozed());
@@ -111,7 +120,8 @@ export async function GET(request: NextRequest) {
       // Ranked in memory: one user's last 72 hours is a few hundred rows.
       const [candidates, profile] = await Promise.all([
         prisma.article.findMany({
-          where: { ...where, isPromo: false, feed: { type: { not: "manual" } } },
+          // Sources set to stay out of For You still show in their own lists.
+          where: { ...where, isPromo: false, feed: { type: { not: "manual" }, inForYou: true } },
           orderBy: { publishedAt: "desc" },
           take: FOR_YOU_CANDIDATES,
           include: ARTICLE_FEED_INCLUDE,

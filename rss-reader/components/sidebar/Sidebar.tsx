@@ -3,6 +3,7 @@
 import type { DiscoverKind } from "@/lib/discover/catalog";
 import * as React from "react";
 import {
+  BarChart3,
   Bell,
   BookOpenCheck,
   CalendarDays,
@@ -23,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NavItem } from "@/components/sidebar/NavItem";
+import { SearchSuggestions, rememberSearch } from "@/components/sidebar/SearchSuggestions";
 import { useReviewStatus } from "@/lib/hooks/useReview";
 import { Logo } from "@/components/shared/Logo";
 import { CategoryGroup } from "@/components/sidebar/CategoryGroup";
@@ -60,6 +62,7 @@ export function Sidebar({
   const { categories, isLoading: categoriesLoading, mutate: mutateCategories } = useCategories();
 
   const [searchDraft, setSearchDraft] = React.useState(search);
+  const [searchFocused, setSearchFocused] = React.useState(false);
   React.useEffect(() => {
     const timeout = setTimeout(() => setSearch(searchDraft), 300);
     return () => clearTimeout(timeout);
@@ -140,8 +143,12 @@ export function Sidebar({
             id="sidebar-search"
             value={searchDraft}
             onChange={(e) => setSearchDraft(e.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
             onKeyDown={(e) => {
+              if (e.key === "Escape") return e.currentTarget.blur();
               if (e.key !== "Enter") return;
+              rememberSearch(searchDraft);
               setSearch(searchDraft);
               setMobilePane("list");
               e.currentTarget.blur();
@@ -149,7 +156,24 @@ export function Sidebar({
             enterKeyHint="search"
             placeholder="Search articles…"
             className="h-8 pl-8 pr-7"
+            autoComplete="off"
           />
+          {searchFocused && (
+            <SearchSuggestions
+              draft={searchDraft}
+              onPick={(query, run) => {
+                setSearchDraft(query);
+                if (run) {
+                  rememberSearch(query);
+                  setSearch(query);
+                  setMobilePane("list");
+                  document.getElementById("sidebar-search")?.blur();
+                } else {
+                  document.getElementById("sidebar-search")?.focus();
+                }
+              }}
+            />
+          )}
           {searchDraft && (
             <button
               type="button"
@@ -229,6 +253,12 @@ export function Sidebar({
             label="Ask"
             active={view.type === "ask"}
             onClick={() => setView({ type: "ask", label: "Ask" })}
+          />
+          <NavItem
+            icon={<BarChart3 className="h-4 w-4" />}
+            label="Stats"
+            active={view.type === "stats"}
+            onClick={() => setView({ type: "stats", label: "Your reading" })}
           />
           <NavItem
             icon={<Highlighter className="h-4 w-4" />}

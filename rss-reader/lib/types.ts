@@ -25,6 +25,9 @@ export interface FeedSummary {
   /** Date of the newest article, or null before the first one. */
   lastPublished: string | null;
   createdAt: string;
+  /** Per-source settings (see SourceHeader). */
+  inForYou: boolean;
+  fullPage: boolean;
 }
 
 export interface CategoryFeedSummary {
@@ -56,6 +59,8 @@ export interface ArticleFeedRef {
   type?: FeedType;
   /** Newsletters: "substack", "beehiiv", "ghost", "buttondown" or "email". */
   platform?: string | null;
+  /** The source's setting: always read the full page, not the feed's text. */
+  fullPage?: boolean;
 }
 
 export interface ArticleSummary {

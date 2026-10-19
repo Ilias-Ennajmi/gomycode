@@ -1,0 +1,3 @@
+-- Per-source settings.
+ALTER TABLE "Feed" ADD COLUMN "inForYou" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "Feed" ADD COLUMN "fullPage" BOOLEAN NOT NULL DEFAULT false;

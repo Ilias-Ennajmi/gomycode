@@ -14,6 +14,7 @@ import {
   Layers,
   Library,
   Mail,
+  Moon,
   MoreHorizontal,
   Newspaper,
   Pencil,
@@ -25,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
+import useSWR from "swr";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { keepOpenOnToast } from "@/components/ui/sonner";
@@ -54,9 +56,12 @@ interface SourcesManagerProps {
   onAddFeed: (kind?: DiscoverKind) => void;
   /** Open on "Needs attention" instead of every source. */
   attention?: boolean;
+  /** Open on a given channel (e.g. "unused" from Today), once. */
+  channel?: Channel | null;
+  onChannelShown?: () => void;
 }
 
-type Channel = "all" | "rss" | "youtube" | "newsletter" | "podcast" | "attention";
+type Channel = "all" | "rss" | "youtube" | "newsletter" | "podcast" | "attention" | "unused";
 
 const CHANNELS: { id: Channel; label: string; icon: React.ElementType }[] = [
   { id: "all", label: "All", icon: Layers },
@@ -65,25 +70,45 @@ const CHANNELS: { id: Channel; label: string; icon: React.ElementType }[] = [
   { id: "newsletter", label: "Newsletters", icon: Mail },
   { id: "podcast", label: "Podcasts", icon: Headphones },
   { id: "attention", label: "Needs attention", icon: AlertTriangle },
+  { id: "unused", label: "Never read", icon: Moon },
 ];
+
+/** Sources with nothing read, saved or highlighted in two months. */
+export function useUnusedSources() {
+  const { data } = useSWR<{ ids: string[] }>("/api/feeds/unused", { revalidateOnFocus: false });
+  return data?.ids ?? EMPTY_IDS;
+}
+const EMPTY_IDS: string[] = [];
 
 function fold(text: string) {
   return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
 /** Every followed source in one place: search, rename, move, mute, unfollow, and spot broken feeds. */
-export function SourcesManager({ open, onOpenChange, onAddFeed, attention }: SourcesManagerProps) {
+export function SourcesManager({
+  open,
+  onOpenChange,
+  onAddFeed,
+  attention,
+  channel: requestedChannel,
+  onChannelShown,
+}: SourcesManagerProps) {
   const { feeds, mutate: mutateFeeds } = useFeeds();
   const { categories, mutate: mutateCategories } = useCategories();
   const { setView } = useReaderState();
   const [channel, setChannel] = React.useState<Channel>("all");
   const [query, setQuery] = React.useState("");
+  const unusedIds = useUnusedSources();
+  const unused = React.useMemo(() => new Set(unusedIds), [unusedIds]);
 
   React.useEffect(() => {
     if (!open) return;
     setQuery("");
-    setChannel(attention ? "attention" : "all");
-  }, [open, attention]);
+    setChannel(requestedChannel ?? (attention ? "attention" : "all"));
+    if (requestedChannel) onChannelShown?.();
+    // Only when the dialog opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   // On phones the chips scroll sideways: keep the selected one in view.
   const chipsRef = React.useRef<HTMLDivElement>(null);
@@ -115,12 +140,17 @@ export function SourcesManager({ open, onOpenChange, onAddFeed, attention }: Sou
     newsletter: feeds.filter((f) => f.type === "newsletter").length,
     podcast: feeds.filter((f) => f.type === "podcast").length,
     attention: needsAttention.length,
+    unused: feeds.filter((f) => unused.has(f.id)).length,
   };
 
   const words = fold(query).split(/\s+/).filter(Boolean);
   const visible = feeds.filter((feed) => {
     if (
-      channel === "attention" ? healthOf(feed) === "ok" : channel !== "all" && feed.type !== channel
+      channel === "attention"
+        ? healthOf(feed) === "ok"
+        : channel === "unused"
+          ? !unused.has(feed.id)
+          : channel !== "all" && feed.type !== channel
     ) {
       return false;
     }
@@ -203,6 +233,7 @@ export function SourcesManager({ open, onOpenChange, onAddFeed, attention }: Sou
             >
               {CHANNELS.map(({ id, label, icon: Icon }) => {
                 if (id === "attention" && counts.attention === 0) return null;
+                if (id === "unused" && counts.unused === 0) return null;
                 const active = channel === id;
                 return (
                   <button
@@ -230,6 +261,12 @@ export function SourcesManager({ open, onOpenChange, onAddFeed, attention }: Sou
           </header>
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-safe sm:px-6">
+            {channel === "unused" && groups.length > 0 && (
+              <p className="mt-4 rounded-xl border border-dashed px-3 py-2 text-xs text-muted-foreground">
+                Nothing read, saved or highlighted from these in two months. Unfollow the ones you
+                won&apos;t miss; the rest stay as they are.
+              </p>
+            )}
             {groups.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-16 text-center text-sm text-muted-foreground">
                 <p>
@@ -237,7 +274,9 @@ export function SourcesManager({ open, onOpenChange, onAddFeed, attention }: Sou
                     ? "You don't follow anything yet."
                     : channel === "attention"
                       ? "Every source is healthy."
-                      : "No sources match."}
+                      : channel === "unused"
+                        ? "You've read from every source lately."
+                        : "No sources match."}
                 </p>
                 {feeds.length === 0 && (
                   <Button

@@ -50,6 +50,8 @@ export async function GET() {
       unreadCount: feed._count.articles,
       lastPublished: lastPublished.get(feed.id) ?? null,
       createdAt: feed.createdAt,
+      inForYou: feed.inForYou,
+      fullPage: feed.fullPage,
     }));
 
     return NextResponse.json({ feeds: result });

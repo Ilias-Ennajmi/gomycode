@@ -6,11 +6,13 @@ import { isDesk } from "@/lib/news/desks";
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const body = await request.json();
-    const { title, categoryId, newsDesk } = body as {
+    const { title, categoryId, newsDesk, inForYou, fullPage } = body as {
       title?: string;
       categoryId?: string | null;
       /** A News section id to show the source in News, or null to take it out. */
       newsDesk?: string | null;
+      inForYou?: boolean;
+      fullPage?: boolean;
     };
     if (newsDesk !== undefined && newsDesk !== null && !isDesk(newsDesk)) {
       return NextResponse.json({ error: "Unknown News section" }, { status: 400 });
@@ -34,6 +36,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         ...(title !== undefined ? { title } : {}),
         ...(categoryId !== undefined ? { categoryId } : {}),
         ...(newsDesk !== undefined ? { newsDesk } : {}),
+        ...(typeof inForYou === "boolean" ? { inForYou } : {}),
+        ...(typeof fullPage === "boolean" ? { fullPage } : {}),
       },
     });
 

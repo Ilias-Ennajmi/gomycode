@@ -211,6 +211,26 @@ duplicates_: `markDuplicates` in `lib/enrich.ts` sets `Article.duplicateOf` when
 articles have the same folded title or cosine ≥ 0.97 within 3 days; `hiddenArticleClauses`
 drops them from every list and count.
 
+**Home and sources.** _Today_ (`components/today/TodayView.tsx`, view type `briefing`) is
+made of blocks rendered from `useHomeBlocks` (`lib/hooks/useHomeBlocks.ts`, localStorage
+`home-blocks`: order and hidden ids; the Customise sheet in `HomeBlocks.tsx`). Briefing
+blocks skip when there is no briefing; "Continue where you left off" (`GET /api/home`:
+part-read articles, part-played media) and "Tidy up" (`useUnusedSources` →
+`GET /api/feeds/unused`, `lib/unused-sources.ts`: followed 60+ days, nothing read, saved or
+highlighted in 60 days) work without AI. Settings → "Start on" (`start-view` in
+localStorage, read once in `useReaderState` when the URL has no `?view`/`?article`).
+_Stats_ (`lib/stats.ts`, `GET /api/stats`, `components/stats/StatsView.tsx`, view `stats`):
+the last 30 days by day and hour (app time zone), top sources, kinds, streak. _Source
+pages_: `components/sources/SourceHeader.tsx` sits above any feed's list (replaced the
+YouTube-only ChannelHeader); its settings sheet toggles `Feed.inForYou` (For You candidates
+require it), `Feed.fullPage` (`needsFullArticle` returns true), and the existing mute /
+alert rules. The sources manager has a "Never read" channel. _Search operators_
+(`lib/search-query.ts`, applied in `/api/articles`): `from:name` (`from:"two words"`),
+`tag:x`, `is:unread|saved|highlighted`, `in:rss|youtube|newsletters|podcasts|news`; the
+remaining words are the full-text search, and operators alone give a date-ordered list.
+`SearchSuggestions` under the sidebar box shows recents (`search-recents`) and, while
+typing, matching sources and tags as operator chips.
+
 **Screen space** (phones). Two thin rows on top: `TopBar` (tabs, with search, add and settings
 on the right) and `components/articles/ListToolbar.tsx` (every filter as a chip in one
 sideways-scrolling row, plus a single "⋯" menu for add, refresh, layout, sort, mark all
@@ -251,8 +271,8 @@ briefing as JSON (`version: 2`). `Setting` is a key/value store (news prefs, cac
 insights, weather city).
 
 **State on the client.** `useReaderState` holds the current view (`type`: foryou, briefing,
-recap, news, rss, youtube, newsletters, podcasts, alerts, review, ask, later, all, today,
-saved, feed, category), the Later
+recap, news, rss, youtube, newsletters, podcasts, alerts, review, ask, stats, later, all,
+today, saved, feed, category), the Later
 sub-tab (queue, snoozed, archive, highlights), the newsletter kind, the search with its
 scope and time filter, the selected article and the mobile pane (sidebar, list, reader,
 settings). Data comes from SWR hooks in `lib/hooks`.
@@ -331,10 +351,12 @@ Built in this order (see `git log -- rss-reader`):
 15. Premium pass 2 (smart): Ask your reader, Catch me up, why-this reasons, selection
     Explain/Define/Translate, article translation, tag ideas, story timelines, near-duplicate
     removal.
+16. Premium pass 3 (home): Today as a configurable home (continue, tidy up, start page),
+    reading stats, source pages with per-source settings, "Never read" sources, search
+    operators with recents and suggestions.
 
 ## Open ideas (not built yet)
 
 - "Mark read when scrolled past" in lists.
 - Highlights export to Readwise / Notion.
-- Reading stats; source pages; per-source settings.
 - Android shortcuts for Search, Highlights and Snoozed (needs a new APK).

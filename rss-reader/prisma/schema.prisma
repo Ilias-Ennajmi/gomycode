@@ -55,6 +55,10 @@ model Feed {
   category        Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   articles        Article[]
   lastFetched     DateTime?
+  /// Per-source settings: whether its articles may lead For You, and whether the reader
+  /// always fetches the full page (feeds that send a teaser the heuristics miss).
+  inForYou        Boolean   @default(true)
+  fullPage        Boolean   @default(false)
   /// YouTube: when the channel's pages were last read for lengths, Shorts and live status.
   videosScannedAt DateTime?
   errorCount      Int       @default(0)

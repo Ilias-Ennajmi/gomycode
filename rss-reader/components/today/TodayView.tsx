@@ -13,6 +13,7 @@ import {
   Play,
   RefreshCw,
   Shuffle,
+  SlidersHorizontal,
   Sparkles,
   Sunrise,
 } from "lucide-react";
@@ -24,8 +25,10 @@ import { StoryImage } from "@/components/news/StoryParts";
 import { WeatherWidget } from "@/components/news/WeatherWidget";
 import { useBriefing, type BriefPick, type BriefStory } from "@/lib/hooks/useAi";
 import { useReaderState } from "@/lib/hooks/useReaderState";
+import { useHomeBlocks, type HomeBlockId } from "@/lib/hooks/useHomeBlocks";
 import { ResurfacedHighlights } from "@/components/highlights/ResurfacedHighlights";
 import { ReviewPrompt } from "@/components/review/ReviewView";
+import { ContinueBlock, HomeCustomise, TidyBlock } from "@/components/today/HomeBlocks";
 import { ListenBar, ListenButton, useSpeech } from "@/components/articles/ListenButton";
 import type { Briefing } from "@/lib/digest";
 
@@ -52,11 +55,18 @@ function time(iso: string) {
   return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
-/** The Today briefing: the big picture, top stories, numbers, interests, and more on demand. */
+/**
+ * Today, the home page: the briefing's blocks (big picture, top stories, numbers,
+ * interests, videos, newsletters), plus what you left unfinished, the review, highlights
+ * and housekeeping. Each block can be hidden or moved (Customise); it all works without
+ * the briefing too.
+ */
 export function TodayView() {
   const { bind: bindPull, pull, refreshing: pulling } = usePullToRefresh();
   const { briefing, isLoading, mutate } = useBriefing(true);
   const { setSelectedArticleId, setMobilePane, selectedArticleId, setView } = useReaderState();
+  const layout = useHomeBlocks();
+  const [customising, setCustomising] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
   const [extra, setExtra] = React.useState<BriefStory[]>([]);
   const [loadingMore, setLoadingMore] = React.useState<"next" | "shuffle" | null>(null);
@@ -126,6 +136,242 @@ export function TodayView() {
     month: "long",
   });
 
+  const sectionTitle = (children: React.ReactNode) => <SectionTitle>{children}</SectionTitle>;
+
+  // The block that would hold the top stories says what's up when there is no briefing.
+  const renderBlock = (id: HomeBlockId): React.ReactNode => {
+    switch (id) {
+      case "bigPicture":
+        return briefing?.bigPicture ? (
+          <section className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card p-5 md:p-6">
+            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary">
+              <Sparkles className="h-4 w-4" /> The big picture
+            </h2>
+            <p className="mt-2 font-serif text-xl leading-snug md:text-[22px]">
+              {briefing.bigPicture}
+            </p>
+          </section>
+        ) : null;
+      case "continue":
+        return <ContinueBlock title={sectionTitle} onOpen={open} />;
+      case "top":
+        if (isLoading && !briefing) return <BriefingSkeleton />;
+        if (!briefing) {
+          return (
+            <section className="flex flex-col items-center gap-3 rounded-2xl border border-dashed px-5 py-10 text-center text-muted-foreground">
+              <Sunrise className="h-8 w-8" />
+              <p className="max-w-sm text-sm">
+                No briefing yet. It&rsquo;s written each morning from your new articles when AI is
+                on; follow a few more sources or come back after the next refresh.
+              </p>
+            </section>
+          );
+        }
+        return (
+          <section>
+            <SectionTitle>Top stories</SectionTitle>
+            <ol className="mt-2 divide-y">
+              {briefing.top.map((story, i) => (
+                <StoryEntry
+                  key={story.articleId}
+                  story={story}
+                  index={i + 1}
+                  active={story.articleId === selectedArticleId}
+                  onOpen={open}
+                />
+              ))}
+            </ol>
+          </section>
+        );
+      case "numbers":
+        return briefing && briefing.numbers.length > 0 ? (
+          <section>
+            <SectionTitle>By the numbers</SectionTitle>
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {briefing.numbers.map((n) => (
+                <button
+                  key={`${n.value}-${n.label}`}
+                  type="button"
+                  onClick={() => open(n.articleId)}
+                  className="rounded-xl border bg-card/60 p-4 text-left transition-colors hover:bg-accent/50"
+                >
+                  <p className="font-serif text-3xl font-semibold tabular-nums text-primary">
+                    {n.value}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">{n.label}</p>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null;
+      case "interests":
+        return briefing && briefing.interests.length > 0 ? (
+          <section>
+            <SectionTitle>In your interests</SectionTitle>
+            <div className="mt-3 grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
+              {briefing.interests.map((interest) => (
+                <div key={interest.name}>
+                  <h3 className="border-b pb-1.5 text-sm font-semibold">{interest.name}</h3>
+                  <ul className="divide-y">
+                    {interest.picks.map((p) => (
+                      <PickLine key={p.articleId} pick={p} onOpen={open} />
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null;
+      case "watch":
+        return briefing && briefing.watch.length > 0 ? (
+          <section>
+            <SectionTitle icon={<Play className="h-4 w-4 text-red-600" />}>
+              Worth watching
+            </SectionTitle>
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {briefing.watch.map((v) => (
+                <button
+                  key={v.articleId}
+                  type="button"
+                  onClick={() => open(v.articleId)}
+                  className="group text-left"
+                >
+                  <div className="relative overflow-hidden rounded-lg">
+                    <StoryImage src={v.imageUrl} className="aspect-video w-full" />
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/10 opacity-0 transition-opacity group-hover:opacity-100">
+                      <Play className="h-8 w-8 fill-white text-white" />
+                    </span>
+                  </div>
+                  <p className="mt-1.5 line-clamp-2 text-[13px] font-medium leading-snug">
+                    {v.title}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">{v.source.title}</p>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null;
+      case "reads":
+        return briefing && (briefing.newsletters.length > 0 || briefing.longRead) ? (
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
+            {briefing.newsletters.length > 0 && (
+              <section className={cn(!briefing.longRead && "sm:col-span-2")}>
+                <SectionTitle icon={<Mail className="h-4 w-4 text-muted-foreground" />}>
+                  Newsletters to read
+                </SectionTitle>
+                <ul className="mt-1 divide-y">
+                  {briefing.newsletters.map((p) => (
+                    <PickLine key={p.articleId} pick={p} onOpen={open} />
+                  ))}
+                </ul>
+              </section>
+            )}
+            {briefing.longRead && (
+              <section>
+                <SectionTitle icon={<BookOpen className="h-4 w-4 text-muted-foreground" />}>
+                  One long read
+                </SectionTitle>
+                <button
+                  type="button"
+                  onClick={() => open(briefing.longRead!.articleId)}
+                  className="group mt-3 block w-full text-left"
+                >
+                  {briefing.longRead.imageUrl && (
+                    <StoryImage
+                      src={briefing.longRead.imageUrl}
+                      className="mb-2 aspect-[16/9] w-full rounded-lg"
+                    />
+                  )}
+                  <p className="font-serif text-lg font-semibold leading-snug group-hover:underline">
+                    {briefing.longRead.title}
+                  </p>
+                  <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <FeedFavicon
+                      title={briefing.longRead.source.title}
+                      faviconUrl={briefing.longRead.source.faviconUrl}
+                      size={14}
+                    />
+                    {briefing.longRead.source.title} · {briefing.longRead.minutes} min
+                  </p>
+                </button>
+              </section>
+            )}
+          </div>
+        ) : null;
+      case "review":
+        return <ReviewPrompt />;
+      case "highlights":
+        return <ResurfacedHighlights onOpen={open} title={sectionTitle} />;
+      case "tidy":
+        return <TidyBlock />;
+      case "more":
+        return briefing ? (
+          <section>
+            <SectionTitle>More stories</SectionTitle>
+            {extra.length > 0 && (
+              <ol className="mt-2 divide-y">
+                {extra.map((story) => (
+                  <StoryEntry
+                    key={story.articleId}
+                    story={story}
+                    active={story.articleId === selectedArticleId}
+                    onOpen={open}
+                  />
+                ))}
+              </ol>
+            )}
+            {exhausted ? (
+              <p className="mt-3 text-sm text-muted-foreground">
+                That&rsquo;s every story from the last day.
+              </p>
+            ) : (
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  className="gap-1.5 rounded-full"
+                  onClick={() => more("next")}
+                  disabled={loadingMore !== null}
+                >
+                  {loadingMore === "next" && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {extra.length > 0 ? "Even more" : "Show more stories"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="gap-1.5 rounded-full"
+                  onClick={() => more("shuffle")}
+                  disabled={loadingMore !== null}
+                >
+                  {loadingMore === "shuffle" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Shuffle className="h-4 w-4" />
+                  )}
+                  Shuffle
+                </Button>
+              </div>
+            )}
+          </section>
+        ) : null;
+      case "week":
+        return (
+          <button
+            type="button"
+            onClick={() => setView({ type: "recap", label: "Weekly recap" })}
+            className="flex w-full items-center gap-3 rounded-2xl border bg-card/60 p-4 text-left transition-colors hover:bg-accent/60"
+          >
+            <CalendarRange className="h-6 w-6 shrink-0 text-primary" />
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold">Your week</span>
+              <span className="block text-sm text-muted-foreground">
+                The stories of the last seven days and what you read
+              </span>
+            </span>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </button>
+        );
+    }
+  };
+
   return (
     <div className="relative h-full">
       {briefing && <ListenBar speech={speech} html={briefingSpeech(briefing)} />}
@@ -135,7 +381,7 @@ export function TodayView() {
           <header className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-                <Sunrise className="h-4 w-4" /> Today&rsquo;s briefing
+                <Sunrise className="h-4 w-4" /> Today
               </p>
               <h1 className="mt-1 font-serif text-4xl font-semibold leading-tight tracking-tight md:text-5xl">
                 {greeting()}
@@ -170,238 +416,36 @@ export function TodayView() {
               >
                 <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-full"
+                onClick={() => setCustomising(true)}
+                aria-label="Customise Today"
+                title="Customise Today"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+              </Button>
             </div>
           </header>
 
-          {isLoading && !briefing ? (
-            <BriefingSkeleton />
-          ) : !briefing ? (
-            <div className="flex flex-col items-center gap-3 py-20 text-center text-muted-foreground">
-              <Sunrise className="h-10 w-10" />
-              <p className="max-w-sm text-sm">
-                Not enough new stories for a briefing yet. Follow a few more sources, or come back
-                after the next refresh.
-              </p>
-            </div>
-          ) : (
-            <div className="mt-8 space-y-12">
-              {briefing.bigPicture && (
-                <section className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card p-5 md:p-6">
-                  <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary">
-                    <Sparkles className="h-4 w-4" /> The big picture
-                  </h2>
-                  <p className="mt-2 font-serif text-xl leading-snug md:text-[22px]">
-                    {briefing.bigPicture}
-                  </p>
-                </section>
-              )}
+          <div className="mt-8 space-y-12">
+            {layout.blocks
+              .filter((block) => block.on)
+              .map((block) => {
+                const node = renderBlock(block.id);
+                return node ? <React.Fragment key={block.id}>{node}</React.Fragment> : null;
+              })}
 
-              <section>
-                <SectionTitle>Top stories</SectionTitle>
-                <ol className="mt-2 divide-y">
-                  {briefing.top.map((story, i) => (
-                    <StoryEntry
-                      key={story.articleId}
-                      story={story}
-                      index={i + 1}
-                      active={story.articleId === selectedArticleId}
-                      onOpen={open}
-                    />
-                  ))}
-                </ol>
-              </section>
-
-              {briefing.numbers.length > 0 && (
-                <section>
-                  <SectionTitle>By the numbers</SectionTitle>
-                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    {briefing.numbers.map((n) => (
-                      <button
-                        key={`${n.value}-${n.label}`}
-                        type="button"
-                        onClick={() => open(n.articleId)}
-                        className="rounded-xl border bg-card/60 p-4 text-left transition-colors hover:bg-accent/50"
-                      >
-                        <p className="font-serif text-3xl font-semibold tabular-nums text-primary">
-                          {n.value}
-                        </p>
-                        <p className="mt-1 text-sm text-muted-foreground">{n.label}</p>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {briefing.interests.length > 0 && (
-                <section>
-                  <SectionTitle>In your interests</SectionTitle>
-                  <div className="mt-3 grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
-                    {briefing.interests.map((interest) => (
-                      <div key={interest.name}>
-                        <h3 className="border-b pb-1.5 text-sm font-semibold">{interest.name}</h3>
-                        <ul className="divide-y">
-                          {interest.picks.map((p) => (
-                            <PickLine key={p.articleId} pick={p} onOpen={open} />
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {briefing.watch.length > 0 && (
-                <section>
-                  <SectionTitle icon={<Play className="h-4 w-4 text-red-600" />}>
-                    Worth watching
-                  </SectionTitle>
-                  <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    {briefing.watch.map((v) => (
-                      <button
-                        key={v.articleId}
-                        type="button"
-                        onClick={() => open(v.articleId)}
-                        className="group text-left"
-                      >
-                        <div className="relative overflow-hidden rounded-lg">
-                          <StoryImage src={v.imageUrl} className="aspect-video w-full" />
-                          <span className="absolute inset-0 flex items-center justify-center bg-black/10 opacity-0 transition-opacity group-hover:opacity-100">
-                            <Play className="h-8 w-8 fill-white text-white" />
-                          </span>
-                        </div>
-                        <p className="mt-1.5 line-clamp-2 text-[13px] font-medium leading-snug">
-                          {v.title}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">{v.source.title}</p>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {(briefing.newsletters.length > 0 || briefing.longRead) && (
-                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
-                  {briefing.newsletters.length > 0 && (
-                    <section className={cn(!briefing.longRead && "sm:col-span-2")}>
-                      <SectionTitle icon={<Mail className="h-4 w-4 text-muted-foreground" />}>
-                        Newsletters to read
-                      </SectionTitle>
-                      <ul className="mt-1 divide-y">
-                        {briefing.newsletters.map((p) => (
-                          <PickLine key={p.articleId} pick={p} onOpen={open} />
-                        ))}
-                      </ul>
-                    </section>
-                  )}
-                  {briefing.longRead && (
-                    <section>
-                      <SectionTitle icon={<BookOpen className="h-4 w-4 text-muted-foreground" />}>
-                        One long read
-                      </SectionTitle>
-                      <button
-                        type="button"
-                        onClick={() => open(briefing.longRead!.articleId)}
-                        className="group mt-3 block w-full text-left"
-                      >
-                        {briefing.longRead.imageUrl && (
-                          <StoryImage
-                            src={briefing.longRead.imageUrl}
-                            className="mb-2 aspect-[16/9] w-full rounded-lg"
-                          />
-                        )}
-                        <p className="font-serif text-lg font-semibold leading-snug group-hover:underline">
-                          {briefing.longRead.title}
-                        </p>
-                        <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <FeedFavicon
-                            title={briefing.longRead.source.title}
-                            faviconUrl={briefing.longRead.source.faviconUrl}
-                            size={14}
-                          />
-                          {briefing.longRead.source.title} · {briefing.longRead.minutes} min
-                        </p>
-                      </button>
-                    </section>
-                  )}
-                </div>
-              )}
-
-              <ReviewPrompt />
-              <ResurfacedHighlights
-                onOpen={open}
-                title={(children) => <SectionTitle>{children}</SectionTitle>}
-              />
-
-              <section>
-                <SectionTitle>More stories</SectionTitle>
-                {extra.length > 0 && (
-                  <ol className="mt-2 divide-y">
-                    {extra.map((story) => (
-                      <StoryEntry
-                        key={story.articleId}
-                        story={story}
-                        active={story.articleId === selectedArticleId}
-                        onOpen={open}
-                      />
-                    ))}
-                  </ol>
-                )}
-                {exhausted ? (
-                  <p className="mt-3 text-sm text-muted-foreground">
-                    That&rsquo;s every story from the last day.
-                  </p>
-                ) : (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      className="gap-1.5 rounded-full"
-                      onClick={() => more("next")}
-                      disabled={loadingMore !== null}
-                    >
-                      {loadingMore === "next" && <Loader2 className="h-4 w-4 animate-spin" />}
-                      {extra.length > 0 ? "Even more" : "Show more stories"}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="gap-1.5 rounded-full"
-                      onClick={() => more("shuffle")}
-                      disabled={loadingMore !== null}
-                    >
-                      {loadingMore === "shuffle" ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Shuffle className="h-4 w-4" />
-                      )}
-                      Shuffle
-                    </Button>
-                  </div>
-                )}
-              </section>
-
-              <button
-                type="button"
-                onClick={() => setView({ type: "recap", label: "Weekly recap" })}
-                className="flex w-full items-center gap-3 rounded-2xl border bg-card/60 p-4 text-left transition-colors hover:bg-accent/60"
-              >
-                <CalendarRange className="h-6 w-6 shrink-0 text-primary" />
-                <span className="min-w-0 flex-1">
-                  <span className="block font-semibold">Your week</span>
-                  <span className="block text-sm text-muted-foreground">
-                    The stories of the last seven days and what you read
-                  </span>
-                </span>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </button>
-
-              <footer className="flex flex-col items-center gap-2 border-t pt-8 text-center text-muted-foreground">
-                <CheckCircle2 className="h-8 w-8 text-primary" />
-                <p className="font-serif text-xl text-foreground">You&rsquo;re all caught up</p>
-                <p className="text-sm">A new briefing is written each morning.</p>
-              </footer>
-            </div>
-          )}
+            <footer className="flex flex-col items-center gap-2 border-t pt-8 text-center text-muted-foreground">
+              <CheckCircle2 className="h-8 w-8 text-primary" />
+              <p className="font-serif text-xl text-foreground">You&rsquo;re all caught up</p>
+              <p className="text-sm">A new briefing is written each morning.</p>
+            </footer>
+          </div>
         </div>
       </div>
+      <HomeCustomise open={customising} onOpenChange={setCustomising} layout={layout} />
     </div>
   );
 }
@@ -521,7 +565,7 @@ function PickLine({ pick, onOpen }: { pick: BriefPick; onOpen: (articleId: strin
 
 function BriefingSkeleton() {
   return (
-    <div className="mt-8 space-y-8" aria-label="Writing your briefing">
+    <div className="space-y-8" aria-label="Writing your briefing">
       <Skeleton className="h-28 w-full rounded-2xl" />
       {[0, 1, 2].map((i) => (
         <div key={i} className="space-y-2">
