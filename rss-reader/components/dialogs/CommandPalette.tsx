@@ -15,6 +15,7 @@ import {
   Inbox,
   Keyboard,
   Mail,
+  MessageCircleQuestion,
   MonitorPlay,
   Moon,
   Newspaper,
@@ -174,6 +175,13 @@ export function CommandPalette({
         label: "Today",
         icon: <CalendarDays className={ICON} />,
         run: go({ type: "today", label: "Today" }),
+      },
+      {
+        id: "ask",
+        label: "Ask your reader",
+        icon: <MessageCircleQuestion className={ICON} />,
+        run: go({ type: "ask", label: "Ask" }),
+        keywords: "question ai chat",
       },
       {
         id: "all",

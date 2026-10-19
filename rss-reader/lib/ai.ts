@@ -97,7 +97,10 @@ export function cosine(a: number[], b: number[]) {
 }
 
 /** Unit-length embeddings, one per input, for spotting the same story across sources. */
-export async function embedTexts(texts: string[]): Promise<number[][]> {
+export async function embedTexts(
+  texts: string[],
+  priority: AiPriority = "background"
+): Promise<number[][]> {
   if (texts.length === 0) return [];
   const data = await callGemini(
     EMBED_MODEL,
@@ -110,7 +113,7 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
         outputDimensionality: EMBED_DIMENSIONS,
       })),
     },
-    { bucket: "embed", units: texts.length, priority: "background" }
+    { bucket: "embed", units: texts.length, priority }
   );
   const embeddings = (data.embeddings ?? []) as { values: number[] }[];
   if (embeddings.length !== texts.length) throw new AiError("Gemini returned too few embeddings");

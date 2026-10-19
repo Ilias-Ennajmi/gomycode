@@ -14,7 +14,9 @@ import {
   RefreshCw,
   Rows3,
   Smartphone,
+  Sparkles,
 } from "lucide-react";
+import { CatchUpSheet } from "@/components/articles/CatchUpSheet";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { Chip } from "@/components/ui/chip";
 import {
@@ -286,6 +288,14 @@ function OptionsMenu(props: ListToolbarProps) {
   const { view, sort, setSort, newsletterKind, laterTab, setMobilePane } = useReaderState();
   const add = TAB_ADD[view.type];
   const sourceTab = isSourceTab(view.type);
+  const [catchUp, setCatchUp] = React.useState(false);
+  // The catch-up reads a pile of unread articles: lists of sources, not Later or Alerts.
+  const canCatchUp =
+    !props.isLater &&
+    view.type !== "alerts" &&
+    view.type !== "today" &&
+    view.type !== "saved" &&
+    props.canMarkAllRead;
   const canSort =
     !props.ranked && !(props.isLater && laterTab !== "queue" && laterTab !== "archive");
   const info = props.isLater
@@ -310,103 +320,111 @@ function OptionsMenu(props: ListToolbarProps) {
         .join(" · ");
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          aria-label="List options"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground data-[state=open]:bg-accent"
-        >
-          <MoreHorizontal className="h-5 w-5" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
-        {info && (
-          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-            {info}
-          </DropdownMenuLabel>
-        )}
-        {view.type === "alerts" && (
-          <DropdownMenuItem onSelect={() => requestAppEvent("content-filters")} className="gap-2">
-            <Bell className="h-4 w-4" /> Alert rules
-          </DropdownMenuItem>
-        )}
-        {props.isLater && laterTab === "queue" && (
-          <DropdownMenuItem onSelect={props.onSaveLink} className="gap-2">
-            <Plus className="h-4 w-4" /> Save a link
-          </DropdownMenuItem>
-        )}
-        {add && (
-          <DropdownMenuItem
-            onSelect={() =>
-              view.type === "newsletters" && newsletterKind === "email"
-                ? requestAppEvent("email-newsletter")
-                : props.onAddFeed(add.kind)
-            }
-            className="gap-2"
+    <>
+      {canCatchUp && <CatchUpSheet open={catchUp} onOpenChange={setCatchUp} />}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label="List options"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground data-[state=open]:bg-accent"
           >
-            {view.type === "podcasts" ? (
-              <Headphones className="h-4 w-4" />
-            ) : (
-              <Plus className="h-4 w-4" />
-            )}
-            {add.label}
-          </DropdownMenuItem>
-        )}
-        {sourceTab && (
-          <DropdownMenuItem onSelect={() => setMobilePane("sidebar")} className="gap-2 md:hidden">
-            <ListTree className="h-4 w-4" />
-            {view.type === "youtube" ? "Channels" : "Sources"}
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuItem
-          onSelect={props.onRefresh}
-          disabled={props.refreshing}
-          className="gap-2 md:hidden"
-        >
-          <RefreshCw className="h-4 w-4" /> Refresh feeds
-        </DropdownMenuItem>
-        {!props.isLater && (
-          <DropdownMenuItem
-            onSelect={props.onMarkAllRead}
-            disabled={props.markingAllRead || !props.canMarkAllRead}
-            className="gap-2"
-          >
-            <CheckCheck className="h-4 w-4" /> Mark all as read
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel className="flex items-center gap-1.5 text-xs">
-          {props.layout === "cards" ? (
-            <LayoutGrid className="h-3.5 w-3.5" />
-          ) : (
-            <Rows3 className="h-3.5 w-3.5" />
-          )}
-          Layout
-        </DropdownMenuLabel>
-        <DropdownMenuRadioGroup
-          value={props.layout}
-          onValueChange={(value) => props.onLayout(value as ListLayout)}
-        >
-          <DropdownMenuRadioItem value="list">Compact list</DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="cards">Big pictures</DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
-        {canSort && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className="flex items-center gap-1.5 text-xs">
-              <ArrowDownUp className="h-3.5 w-3.5" /> Sort
+            <MoreHorizontal className="h-5 w-5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-64">
+          {info && (
+            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+              {info}
             </DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={sort}
-              onValueChange={(value) => setSort(value as "newest" | "oldest")}
+          )}
+          {view.type === "alerts" && (
+            <DropdownMenuItem onSelect={() => requestAppEvent("content-filters")} className="gap-2">
+              <Bell className="h-4 w-4" /> Alert rules
+            </DropdownMenuItem>
+          )}
+          {props.isLater && laterTab === "queue" && (
+            <DropdownMenuItem onSelect={props.onSaveLink} className="gap-2">
+              <Plus className="h-4 w-4" /> Save a link
+            </DropdownMenuItem>
+          )}
+          {add && (
+            <DropdownMenuItem
+              onSelect={() =>
+                view.type === "newsletters" && newsletterKind === "email"
+                  ? requestAppEvent("email-newsletter")
+                  : props.onAddFeed(add.kind)
+              }
+              className="gap-2"
             >
-              <DropdownMenuRadioItem value="newest">Newest first</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="oldest">Oldest first</DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+              {view.type === "podcasts" ? (
+                <Headphones className="h-4 w-4" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+              {add.label}
+            </DropdownMenuItem>
+          )}
+          {sourceTab && (
+            <DropdownMenuItem onSelect={() => setMobilePane("sidebar")} className="gap-2 md:hidden">
+              <ListTree className="h-4 w-4" />
+              {view.type === "youtube" ? "Channels" : "Sources"}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem
+            onSelect={props.onRefresh}
+            disabled={props.refreshing}
+            className="gap-2 md:hidden"
+          >
+            <RefreshCw className="h-4 w-4" /> Refresh feeds
+          </DropdownMenuItem>
+          {canCatchUp && (
+            <DropdownMenuItem onSelect={() => setCatchUp(true)} className="gap-2">
+              <Sparkles className="h-4 w-4 text-primary" /> Catch me up
+            </DropdownMenuItem>
+          )}
+          {!props.isLater && (
+            <DropdownMenuItem
+              onSelect={props.onMarkAllRead}
+              disabled={props.markingAllRead || !props.canMarkAllRead}
+              className="gap-2"
+            >
+              <CheckCheck className="h-4 w-4" /> Mark all as read
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className="flex items-center gap-1.5 text-xs">
+            {props.layout === "cards" ? (
+              <LayoutGrid className="h-3.5 w-3.5" />
+            ) : (
+              <Rows3 className="h-3.5 w-3.5" />
+            )}
+            Layout
+          </DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            value={props.layout}
+            onValueChange={(value) => props.onLayout(value as ListLayout)}
+          >
+            <DropdownMenuRadioItem value="list">Compact list</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="cards">Big pictures</DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+          {canSort && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="flex items-center gap-1.5 text-xs">
+                <ArrowDownUp className="h-3.5 w-3.5" /> Sort
+              </DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={sort}
+                onValueChange={(value) => setSort(value as "newest" | "oldest")}
+              >
+                <DropdownMenuRadioItem value="newest">Newest first</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="oldest">Oldest first</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   );
 }

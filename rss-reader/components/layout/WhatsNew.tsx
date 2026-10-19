@@ -6,10 +6,22 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.10.19";
+export const WHATS_NEW_VERSION = "2026.10.19b";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "Ask your reader",
+    text: "A new page in the sidebar: ask a question and get an answer from your own feeds, with the articles it came from.",
+  },
+  {
+    title: "Catch me up",
+    text: "In any list's ⋯ menu: a few bullets over everything unread, then one tap to mark them read.",
+  },
+  {
+    title: "Smarter reading",
+    text: "Select text for Explain, Define or Translate; translate whole articles; see why For You picked a story; AI tag ideas on highlights; and “How this story unfolded” under articles.",
+  },
   {
     title: "A real podcast player",
     text: "Tap the bar at the bottom for the full player: chapters, a live transcript, your queue, per-show speed, and a link to share the exact moment.",

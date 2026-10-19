@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getFilterRules, hiddenArticleClauses } from "@/lib/filters";
 import { buildReadingProfile, scoreArticle } from "@/lib/ranking";
+import { cosine } from "@/lib/ai";
 import {
   ARTICLE_FEED_INCLUDE,
   categoryFilter,
@@ -139,11 +140,26 @@ export async function GET(request: NextRequest) {
         if (!topicId || (topicSizes.get(topicId) ?? 0) < 2) continue;
         byTopic.set(topicId, [...(byTopic.get(topicId) ?? []), entry]);
       }
+      // Why it's here: one short reason a card can show.
+      const reasonFor = (article: (typeof candidates)[number], boosted: boolean) => {
+        const size = topicSizes.get(article.topicId ?? "") ?? 1;
+        if (boosted) return "Boosted";
+        if (size > 1) return `Covered by ${size} sources`;
+        if (profile.learnedFrom >= 5) {
+          const affinity = profile.sourceAffinity.get(article.feedId) ?? 0;
+          if (affinity >= 0.5) return `You read ${article.feed.title} often`;
+          if (profile.interest.length > 0 && article.embedding.length === profile.interest.length) {
+            if (cosine(article.embedding, profile.interest) >= 0.6) return "Close to what you read";
+          }
+        }
+        return null;
+      };
       const seen = new Set<string>();
       const stories = ranked.flatMap(({ article, boosted }) => {
         const topicId = article.topicId;
         const group = topicId ? byTopic.get(topicId) : undefined;
-        if (!group) return [{ ...serializeArticle(article), boosted }];
+        const reason = reasonFor(article, boosted);
+        if (!group) return [{ ...serializeArticle(article), boosted, reason }];
         if (seen.has(topicId!)) return [];
         seen.add(topicId!);
         const related = group.slice(1).map((e) => serializeArticle(e.article));
@@ -151,6 +167,7 @@ export async function GET(request: NextRequest) {
           {
             ...serializeArticle(article),
             boosted,
+            reason,
             topic: {
               id: topicId!,
               sources: Array.from(new Set(group.map((e) => e.article.feed.title))),

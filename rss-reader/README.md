@@ -27,7 +27,9 @@ Google Gemini's free tier.
 | YouTube     | Videos / Shorts / length filters, lengths and watch progress on cards, resume, remembered speed, chapters, AI summary + key moments + searchable transcript, mini player, up next, channel pages |
 | Podcasts    | Apple Podcasts search and charts, one player for the whole app (now-playing bar, lock-screen controls, speed, sleep timer, resume), chapters, AI summary + transcript                            |
 | Alerts      | Notifications when new articles mention a word or come from a source; matches listed in Alerts; rules that save matches to Later                                                                 |
-| Review      | Daily review of highlights with spaced repetition and a streak; tags on highlights, export by tag                                                                                                |
+| Review      | Daily review of highlights with spaced repetition and a streak; tags on highlights (with AI tag ideas), export by tag                                                                            |
+| Ask         | "Ask your reader": questions answered from your own feeds, with the articles behind each answer; "Catch me up" bullets over any list's unread, then mark them read                               |
+| Smart       | Why For You picked a story, select text to Explain / Define / Translate, translate whole articles, "How this story unfolded" timelines, near-duplicate articles folded away                      |
 | Later       | Reading queue with total reading time, snooze (back at a chosen time with a notification), archive, weekly recap                                                                                 |
 | Android app | Installable app (`android/`): share links to Later, icon shortcuts, back gesture, deep links                                                                                                     |
 

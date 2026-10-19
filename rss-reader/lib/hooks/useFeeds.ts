@@ -139,6 +139,7 @@ export async function markAllRead(params: {
   feedId?: string;
   categoryId?: string;
   source?: FeedType;
+  ids?: string[];
 }) {
   const res = await fetch("/api/articles/mark-all-read", {
     method: "POST",

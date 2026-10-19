@@ -41,6 +41,8 @@ export function hiddenArticleClauses(
   viewingFeedId?: string
 ): Prisma.ArticleWhereInput[] {
   const clauses = hiddenKeywordClauses(rules);
+  // The same article stored under another link shows once (see dedupe in lib/enrich.ts).
+  clauses.push({ duplicateOf: null });
   const muted = Array.from(mutedFeedIds(rules)).filter((id) => id !== viewingFeedId);
   if (muted.length > 0) clauses.push({ feedId: { notIn: muted } });
   return clauses;

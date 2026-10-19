@@ -88,7 +88,50 @@ async function enrichArticles() {
       })
     )
   );
+  await markDuplicates(pending.map((a, i) => ({ ...a, embedding: embeddings[i] }))).catch((error) =>
+    console.error("Duplicate check skipped", error)
+  );
   return pending.length;
+}
+
+// The same article under two links (a site's several feeds, syndication): the newest copy
+// is hidden everywhere and the first one kept.
+const DUPLICATE_SIMILARITY = 0.97;
+const DUPLICATE_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
+
+function foldTitle(title: string) {
+  return title
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(new RegExp("[^\\p{L}\\p{N}]+", "gu"), " ")
+    .trim();
+}
+
+async function markDuplicates(fresh: { id: string; title: string; embedding: number[] }[]) {
+  const recent = await prisma.article.findMany({
+    where: {
+      publishedAt: { gte: new Date(Date.now() - DUPLICATE_WINDOW_MS) },
+      NOT: { embedding: { isEmpty: true } },
+      duplicateOf: null,
+      id: { notIn: fresh.map((a) => a.id) },
+    },
+    select: { id: true, title: true, embedding: true },
+  });
+  for (const article of fresh) {
+    const title = foldTitle(article.title);
+    const twin = recent.find(
+      (other) =>
+        foldTitle(other.title) === title &&
+        cosine(article.embedding, other.embedding) >= DUPLICATE_SIMILARITY
+    );
+    if (twin) {
+      await prisma.article.update({
+        where: { id: article.id },
+        data: { duplicateOf: twin.id },
+      });
+    }
+  }
 }
 
 /** Greedy single-pass clustering: good enough for a few hundred articles. */
