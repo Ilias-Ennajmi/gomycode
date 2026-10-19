@@ -1,10 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { toast } from "sonner";
 import {
   AlarmClock,
   Archive,
   ArchiveRestore,
+  ArrowDownToLine,
   Bookmark,
   Check,
   ChevronDown,
@@ -19,7 +21,15 @@ import {
   Sparkles,
   TrendingUp,
 } from "lucide-react";
-import { cn, formatRelativeTime, readingTime, stripHtml } from "@/lib/utils";
+import {
+  cn,
+  formatRelativeTime,
+  getFaviconFallbackColor,
+  readingTime,
+  stripHtml,
+} from "@/lib/utils";
+import { cacheArticleForOffline } from "@/components/layout/OfflineSupport";
+import { useT } from "@/lib/i18n";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { Highlight } from "@/components/shared/Highlight";
 import type { ArticleSummary } from "@/lib/types";
@@ -95,10 +105,12 @@ export function ArticleCard({
     hold.current = null;
   };
   const [imageFailed, setImageFailed] = React.useState(false);
+  const [imageLoaded, setImageLoaded] = React.useState(false);
   const summary = article.summary || stripHtml(article.content).slice(0, 200);
   const source = articleSource(article);
   const progress = article.readProgress ?? 0;
   const showImage = article.imageUrl && !imageFailed;
+  const { t } = useT();
   // Without a picture, a card falls back to the list look.
   const big = layout === "cards" && Boolean(showImage);
 
@@ -264,17 +276,22 @@ export function ArticleCard({
                 )}
               >
                 {showImage ? (
+                  // The source's colour shows while the picture loads, then it fades in.
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={article.imageUrl!}
                     alt=""
                     loading="lazy"
                     decoding="async"
+                    referrerPolicy="no-referrer"
                     data-card-image
                     className={cn(
-                      "dim-dark h-full w-full object-cover",
-                      article.isRead && "opacity-60"
+                      "dim-dark h-full w-full object-cover transition-opacity duration-300",
+                      imageLoaded ? "opacity-100" : "opacity-0",
+                      article.isRead && imageLoaded && "opacity-60"
                     )}
+                    style={{ backgroundColor: getFaviconFallbackColor(source.name) }}
+                    onLoad={() => setImageLoaded(true)}
                     onError={() => setImageFailed(true)}
                   />
                 ) : (
@@ -474,7 +491,7 @@ export function ArticleCard({
           className="gap-2"
         >
           <Bookmark className="h-4 w-4" />
-          {article.isSaved ? "Remove from Later" : "Read later"}
+          {article.isSaved ? t("Remove from Later") : t("Read later")}
         </ContextMenuItem>
         {onToggleRead && (
           <ContextMenuItem
@@ -490,8 +507,8 @@ export function ArticleCard({
                 ? "Mark as unplayed"
                 : "Mark as played"
               : article.isRead
-                ? "Mark as unread"
-                : "Mark as read"}
+                ? t("Mark as unread")
+                : t("Mark as read")}
           </ContextMenuItem>
         )}
         {article.audioUrl && !article.isVideo && (
@@ -520,14 +537,25 @@ export function ArticleCard({
           onSelect={() => void shareLink(article.title, article.link)}
           className="gap-2"
         >
-          <Share className="h-4 w-4" /> Share
+          <Share className="h-4 w-4" /> {t("Share")}
         </ContextMenuItem>
         <ContextMenuItem
           onSelect={() => window.open(article.link, "_blank", "noopener,noreferrer")}
           className="gap-2"
         >
-          <ExternalLink className="h-4 w-4" /> Open original
+          <ExternalLink className="h-4 w-4" /> {t("Open original")}
         </ContextMenuItem>
+        {!article.isVideo && !article.audioUrl && (
+          <ContextMenuItem
+            onSelect={() => {
+              cacheArticleForOffline(article.id);
+              toast.success("Kept for offline reading");
+            }}
+            className="gap-2"
+          >
+            <ArrowDownToLine className="h-4 w-4" /> {t("Save offline")}
+          </ContextMenuItem>
+        )}
         {onMuteSource && article.feed.type !== "manual" && (
           <>
             <ContextMenuSeparator />

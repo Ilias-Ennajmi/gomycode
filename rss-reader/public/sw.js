@@ -6,7 +6,7 @@
 // - Images are served from cache when possible and refreshed in the background.
 // Bump VERSION when this file's caching rules change.
 
-const VERSION = "v1";
+const VERSION = "v2";
 const APP_CACHE = `reader-app-${VERSION}`;
 const DATA_CACHE = `reader-data-${VERSION}`;
 const IMAGE_CACHE = `reader-images-${VERSION}`;
@@ -28,6 +28,10 @@ const CACHEABLE_API = [
   /^\/api\/digest(\?|$)/,
   /^\/api\/weather(\?|$)/,
   /^\/api\/filters(\?|$)/,
+  /^\/api\/home(\?|$)/,
+  /^\/api\/stats(\?|$)/,
+  /^\/api\/review(\?|$)/,
+  /^\/api\/highlights(\?|$)/,
 ];
 
 self.addEventListener("install", (event) => {
@@ -139,22 +143,31 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
-// The app asks for everything in Later to be saved for offline reading.
+// One article's text and full page, kept for offline reading.
+async function cacheArticle(cache, id) {
+  for (const path of [`/api/articles/${id}`, `/api/articles/${id}/full`]) {
+    if (await cache.match(path, MATCH)) continue;
+    const response = await fetch(path).catch(() => null);
+    if (worthKeeping(response)) await cache.put(path, response);
+  }
+}
+
+// The app asks for everything in Later ("cache-later") or one article ("cache-article")
+// to be saved for offline reading.
 self.addEventListener("message", (event) => {
-  if (event.data?.type !== "cache-later") return;
+  const type = event.data?.type;
+  if (type === "cache-article" && event.data.id) {
+    event.waitUntil(caches.open(DATA_CACHE).then((cache) => cacheArticle(cache, event.data.id)));
+    return;
+  }
+  if (type !== "cache-later") return;
   event.waitUntil(
     (async () => {
       const cache = await caches.open(DATA_CACHE);
       const res = await fetch("/api/articles?later=queue&limit=50").catch(() => null);
       if (!worthKeeping(res)) return;
       const { articles = [] } = await res.clone().json();
-      for (const article of articles) {
-        for (const path of [`/api/articles/${article.id}`, `/api/articles/${article.id}/full`]) {
-          if (await cache.match(path, MATCH)) continue;
-          const response = await fetch(path).catch(() => null);
-          if (worthKeeping(response)) await cache.put(path, response);
-        }
-      }
+      for (const article of articles) await cacheArticle(cache, article.id);
     })()
   );
 });

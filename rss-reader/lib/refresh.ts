@@ -7,18 +7,53 @@ import { applyArrivalRules } from "@/lib/rules";
 const MAX_ERROR_COUNT = 5;
 const CONCURRENCY = 6;
 
+// Adaptive cadence: a source that posts daily is read every hour; one quiet for a week is
+// read every six hours; one quiet for a month, once a day. Opening a single source always
+// reads it.
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+const QUIET_WEEK_INTERVAL_MS = 6 * HOUR_MS;
+const QUIET_MONTH_INTERVAL_MS = 24 * HOUR_MS;
+
 export interface RefreshResult {
   updated: number;
   newArticles: number;
+  /** Sources left alone this time because they rarely post. */
+  skipped: number;
   errors: string[];
 }
 
-/** Fetches every followed feed (or one), stores new articles and runs the AI pipeline. */
+function isDue(
+  feed: { lastFetched: Date | null; createdAt: Date; errorCount: number },
+  lastPublished: Date | undefined,
+  now: number
+) {
+  if (!feed.lastFetched) return true;
+  const quietFor = now - (lastPublished ?? feed.createdAt).getTime();
+  const sinceFetch = now - feed.lastFetched.getTime();
+  // Failing feeds are retried less often too, so one dead site doesn't cost every hour.
+  if (feed.errorCount >= MAX_ERROR_COUNT) return sinceFetch > QUIET_MONTH_INTERVAL_MS;
+  if (quietFor > 30 * DAY_MS) return sinceFetch > QUIET_MONTH_INTERVAL_MS;
+  if (quietFor > 7 * DAY_MS) return sinceFetch > QUIET_WEEK_INTERVAL_MS;
+  return true;
+}
+
+/** Fetches every followed feed that's due (or one), stores new articles and runs the AI pipeline. */
 export async function refreshFeeds(feedId?: string): Promise<RefreshResult | null> {
-  const feeds = feedId
+  const all = feedId
     ? await prisma.feed.findMany({ where: { id: feedId, type: { not: "manual" } } })
     : await prisma.feed.findMany({ where: { type: { not: "manual" } } });
-  if (feedId && feeds.length === 0) return null;
+  if (feedId && all.length === 0) return null;
+
+  let feeds = all;
+  if (!feedId) {
+    const latest = await prisma.article.groupBy({ by: ["feedId"], _max: { publishedAt: true } });
+    const lastPublished = new Map(
+      latest.map((row) => [row.feedId, row._max.publishedAt ?? undefined])
+    );
+    const now = Date.now();
+    feeds = all.filter((feed) => isDue(feed, lastPublished.get(feed.id), now));
+  }
 
   const errors: string[] = [];
   const arrived: string[] = [];
@@ -57,6 +92,7 @@ export async function refreshFeeds(feedId?: string): Promise<RefreshResult | nul
   return {
     updated: feeds.length - errors.length,
     newArticles: results.reduce((sum, n) => sum + n, 0),
+    skipped: all.length - feeds.length,
     errors,
   };
 }

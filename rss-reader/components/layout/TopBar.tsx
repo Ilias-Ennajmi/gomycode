@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { AtSign, Compass, Link2, Newspaper, Plus, Search, Settings } from "lucide-react";
+import { useT } from "@/lib/i18n";
 import { requestAppEvent } from "@/lib/app-events";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -105,6 +106,7 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
   const { view, setView, mobilePane, setMobilePane } = useReaderState();
   const { feeds } = useFeeds();
   const counts = useCounts();
+  const { t } = useT();
   const laterCount = counts.later;
   // Unread per tab, so it's clear where something new is waiting.
   const unread: Partial<Record<ViewType, number>> = {
@@ -218,7 +220,7 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
                   isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {tab.label}
+                {t(tab.label)}
                 {tab.type === "later" && laterCount > 0 && (
                   <span className="rounded-full bg-primary/15 px-1.5 py-px text-[10.5px] font-semibold tracking-normal text-primary">
                     {short(laterCount)}
@@ -280,7 +282,7 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
           onSaveLink={onSaveLink}
         >
           <Button size="sm" className="hidden h-8 gap-1.5 rounded-full md:inline-flex">
-            <Plus className="h-4 w-4" /> Add
+            <Plus className="h-4 w-4" /> {t("Add")}
           </Button>
         </AddMenu>
       </div>

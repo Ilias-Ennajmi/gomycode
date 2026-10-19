@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { CatchUpSheet } from "@/components/articles/CatchUpSheet";
+import { useT } from "@/lib/i18n";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { Chip } from "@/components/ui/chip";
 import {
@@ -101,16 +102,18 @@ export function ListToolbar(props: ListToolbarProps) {
   } = useReaderState();
   const sourceTab = isSourceTab(view.type) ? view.type : null;
   const category = useCategoryOptions(sourceTab);
+  const { t } = useT();
 
   const scroller = React.useRef<HTMLDivElement>(null);
   const [fade, setFade] = React.useState({ left: false, right: false });
   const measure = React.useCallback(() => {
     const node = scroller.current;
     if (!node) return;
-    setFade({
-      left: node.scrollLeft > 4,
-      right: node.scrollLeft + node.clientWidth < node.scrollWidth - 4,
-    });
+    const left = node.scrollLeft > 4;
+    const right = node.scrollLeft + node.clientWidth < node.scrollWidth - 4;
+    // Same values, same object: this runs after every render, and a fresh object each time
+    // would render forever (the row is measured even while hidden behind Settings).
+    setFade((prev) => (prev.left === left && prev.right === right ? prev : { left, right }));
   }, []);
   React.useEffect(() => {
     measure();
@@ -147,12 +150,12 @@ export function ListToolbar(props: ListToolbarProps) {
           <>
             {(
               [
-                ["queue", "Later"],
+                ["queue", t("Later")],
                 ...(props.snoozedCount > 0 || laterTab === "snoozed"
-                  ? [["snoozed", "Snoozed"]]
+                  ? [["snoozed", t("Snoozed")]]
                   : []),
-                ["archive", "Archive"],
-                ["highlights", "Highlights"],
+                ["archive", t("Archive")],
+                ["highlights", t("Highlights")],
               ] as [LaterTab, string][]
             ).map(([id, label]) => (
               <Chip
@@ -170,10 +173,10 @@ export function ListToolbar(props: ListToolbarProps) {
         ) : (
           <>
             <Chip active={filterTab === "unread"} onClick={() => toggleFilter("unread")}>
-              Unread
+              {t("Unread")}
             </Chip>
             <Chip active={filterTab === "saved"} onClick={() => toggleFilter("saved")}>
-              Saved
+              {t("Saved")}
             </Chip>
 
             {view.type === "youtube" && (
@@ -189,7 +192,7 @@ export function ListToolbar(props: ListToolbarProps) {
                     }}
                   >
                     {option.id === "short" && <Smartphone className="h-3.5 w-3.5" />}
-                    {option.label}
+                    {t(option.label)}
                   </Chip>
                 ))}
                 {videoKind !== "short" &&
@@ -203,7 +206,7 @@ export function ListToolbar(props: ListToolbarProps) {
                         setVideoLength(videoLength === option.id ? null : option.id);
                       }}
                     >
-                      {option.label}
+                      {t(option.label)}
                     </Chip>
                   ))}
               </>
@@ -216,13 +219,13 @@ export function ListToolbar(props: ListToolbarProps) {
                   active={newsletterKind === "web"}
                   onClick={() => setNewsletterKind(newsletterKind === "web" ? null : "web")}
                 >
-                  Substack &amp; web
+                  {t("Substack & web")}
                 </Chip>
                 <Chip
                   active={newsletterKind === "email"}
                   onClick={() => setNewsletterKind(newsletterKind === "email" ? null : "email")}
                 >
-                  Email
+                  {t("Email")}
                 </Chip>
               </>
             )}
@@ -234,7 +237,7 @@ export function ListToolbar(props: ListToolbarProps) {
                   active={podcastKind === "progress"}
                   onClick={() => setPodcastKind(podcastKind === "progress" ? "latest" : "progress")}
                 >
-                  <Hourglass className="h-3.5 w-3.5" /> In progress
+                  <Hourglass className="h-3.5 w-3.5" /> {t("In progress")}
                 </Chip>
               </>
             )}
@@ -286,6 +289,7 @@ export function ListToolbar(props: ListToolbarProps) {
 
 function OptionsMenu(props: ListToolbarProps) {
   const { view, sort, setSort, newsletterKind, laterTab, setMobilePane } = useReaderState();
+  const { t } = useT();
   const add = TAB_ADD[view.type];
   const sourceTab = isSourceTab(view.type);
   const [catchUp, setCatchUp] = React.useState(false);
@@ -340,12 +344,12 @@ function OptionsMenu(props: ListToolbarProps) {
           )}
           {view.type === "alerts" && (
             <DropdownMenuItem onSelect={() => requestAppEvent("content-filters")} className="gap-2">
-              <Bell className="h-4 w-4" /> Alert rules
+              <Bell className="h-4 w-4" /> {t("Alert rules")}
             </DropdownMenuItem>
           )}
           {props.isLater && laterTab === "queue" && (
             <DropdownMenuItem onSelect={props.onSaveLink} className="gap-2">
-              <Plus className="h-4 w-4" /> Save a link
+              <Plus className="h-4 w-4" /> {t("Save a link")}
             </DropdownMenuItem>
           )}
           {add && (
@@ -362,13 +366,13 @@ function OptionsMenu(props: ListToolbarProps) {
               ) : (
                 <Plus className="h-4 w-4" />
               )}
-              {add.label}
+              {t(add.label)}
             </DropdownMenuItem>
           )}
           {sourceTab && (
             <DropdownMenuItem onSelect={() => setMobilePane("sidebar")} className="gap-2 md:hidden">
               <ListTree className="h-4 w-4" />
-              {view.type === "youtube" ? "Channels" : "Sources"}
+              {view.type === "youtube" ? t("Channels") : t("Sources")}
             </DropdownMenuItem>
           )}
           <DropdownMenuItem
@@ -376,11 +380,11 @@ function OptionsMenu(props: ListToolbarProps) {
             disabled={props.refreshing}
             className="gap-2 md:hidden"
           >
-            <RefreshCw className="h-4 w-4" /> Refresh feeds
+            <RefreshCw className="h-4 w-4" /> {t("Refresh feeds")}
           </DropdownMenuItem>
           {canCatchUp && (
             <DropdownMenuItem onSelect={() => setCatchUp(true)} className="gap-2">
-              <Sparkles className="h-4 w-4 text-primary" /> Catch me up
+              <Sparkles className="h-4 w-4 text-primary" /> {t("Catch me up")}
             </DropdownMenuItem>
           )}
           {!props.isLater && (
@@ -389,7 +393,7 @@ function OptionsMenu(props: ListToolbarProps) {
               disabled={props.markingAllRead || !props.canMarkAllRead}
               className="gap-2"
             >
-              <CheckCheck className="h-4 w-4" /> Mark all as read
+              <CheckCheck className="h-4 w-4" /> {t("Mark all as read")}
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
@@ -405,21 +409,21 @@ function OptionsMenu(props: ListToolbarProps) {
             value={props.layout}
             onValueChange={(value) => props.onLayout(value as ListLayout)}
           >
-            <DropdownMenuRadioItem value="list">Compact list</DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="cards">Big pictures</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="list">{t("Compact list")}</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="cards">{t("Big pictures")}</DropdownMenuRadioItem>
           </DropdownMenuRadioGroup>
           {canSort && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="flex items-center gap-1.5 text-xs">
-                <ArrowDownUp className="h-3.5 w-3.5" /> Sort
+                <ArrowDownUp className="h-3.5 w-3.5" /> {t("Sort")}
               </DropdownMenuLabel>
               <DropdownMenuRadioGroup
                 value={sort}
                 onValueChange={(value) => setSort(value as "newest" | "oldest")}
               >
-                <DropdownMenuRadioItem value="newest">Newest first</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="oldest">Oldest first</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="newest">{t("Newest first")}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="oldest">{t("Oldest first")}</DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
             </>
           )}

@@ -3,6 +3,7 @@ import { refreshFeeds } from "@/lib/refresh";
 import { runMaintenance } from "@/lib/maintenance";
 import { checkCatalogBatch } from "@/lib/discover/health";
 import { sendScheduledPushes, wakeSnoozedArticles } from "@/lib/push";
+import { recordError } from "@/lib/errlog";
 
 export const maxDuration = 60;
 
@@ -15,6 +16,7 @@ async function handleRefresh(feedId?: string) {
     return NextResponse.json(result);
   } catch (error) {
     console.error("/api/refresh failed", error);
+    await recordError("refresh", error);
     return NextResponse.json({ error: "Failed to refresh feeds" }, { status: 500 });
   }
 }

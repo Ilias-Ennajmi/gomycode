@@ -54,6 +54,7 @@ import { PullIndicator, usePullToRefresh } from "@/lib/hooks/usePullToRefresh";
 import { showChrome, syncChromeScroll, useHideOnScroll } from "@/lib/hooks/useChrome";
 import { useLastVisit } from "@/lib/hooks/useLastVisit";
 import { useFilters } from "@/lib/hooks/useFilters";
+import { useT } from "@/lib/i18n";
 import { haptic } from "@/lib/native";
 import { withViewTransition } from "@/lib/motion";
 import { ChromeCollapse } from "@/components/layout/ChromeCollapse";
@@ -107,6 +108,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   const { layout, setLayout } = useListLayout(search.trim() ? "search" : view.type);
   const { feeds } = useFeeds();
   const { addRule, removeRule } = useFilters();
+  const { t } = useT();
   const [refreshing, setRefreshing] = React.useState(false);
   const [markingAllRead, setMarkingAllRead] = React.useState(false);
 
@@ -402,7 +404,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
           )}
           <div className="min-w-0 flex-1 pl-1 md:pl-0">
             <h2 className="truncate text-lg font-semibold leading-tight tracking-tight">
-              {searching ? "Search" : isLater ? LATER_TITLES[laterTab] : view.label}
+              {searching ? t("Search") : isLater ? t(LATER_TITLES[laterTab]) : t(view.label)}
             </h2>
             <p className="truncate text-xs text-muted-foreground">
               {searching ? (

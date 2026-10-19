@@ -4,6 +4,8 @@ import { SWRConfig } from "swr";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { SwrPersistence } from "@/lib/swr-cache";
+import { LocaleProvider } from "@/lib/i18n";
 
 async function fetcher(url: string) {
   const res = await fetch(url);
@@ -37,10 +39,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
           shouldRetryOnError: true,
         }}
       >
-        <TooltipProvider delayDuration={300}>
-          {children}
-          <Toaster position="bottom-right" richColors />
-        </TooltipProvider>
+        {/* Instant open: last time's lists and counts show before the network answers. */}
+        <SwrPersistence />
+        <LocaleProvider>
+          <TooltipProvider delayDuration={300}>
+            {children}
+            <Toaster position="bottom-right" richColors />
+          </TooltipProvider>
+        </LocaleProvider>
       </SWRConfig>
     </ThemeProvider>
   );

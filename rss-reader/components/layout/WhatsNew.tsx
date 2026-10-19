@@ -6,10 +6,18 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.10.19c";
+export const WHATS_NEW_VERSION = "2026.10.19d";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "Faster, and fine offline",
+    text: "The app opens on what you saw last time before it checks for news. Reading, saving and archiving work offline and sync when you're back; long-press a card to keep it offline.",
+  },
+  {
+    title: "En français, si vous voulez",
+    text: "Settings → Language switches the interface. Settings → Under the hood shows the build, the database, the last refresh and any errors; Your data → Download a backup saves everything that's yours in one file.",
+  },
   {
     title: "Today is your home",
     text: "Continue where you left off, sources to tidy up, and every block can be hidden or moved (the sliders icon). Settings → Start on picks the page the app opens to.",

@@ -46,6 +46,16 @@ export default function manifest(): MetadataRoute.Manifest {
         icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }],
       },
       {
+        name: "Podcasts",
+        url: "/reader?view=podcasts",
+        icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }],
+      },
+      {
+        name: "Daily review",
+        url: "/reader?view=review",
+        icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }],
+      },
+      {
         name: "Highlights",
         url: "/reader?view=highlights",
         icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }],

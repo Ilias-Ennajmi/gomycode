@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NavItem } from "@/components/sidebar/NavItem";
 import { SearchSuggestions, rememberSearch } from "@/components/sidebar/SearchSuggestions";
+import { useT } from "@/lib/i18n";
 import { useReviewStatus } from "@/lib/hooks/useReview";
 import { Logo } from "@/components/shared/Logo";
 import { CategoryGroup } from "@/components/sidebar/CategoryGroup";
@@ -58,6 +59,7 @@ export function Sidebar({
 
   const { view, setView, search, setSearch, setMobilePane, laterTab, setLaterTab } =
     useReaderState();
+  const { t } = useT();
   const { feeds, isLoading: feedsLoading, mutate: mutateFeeds } = useFeeds();
   const { categories, isLoading: categoriesLoading, mutate: mutateCategories } = useCategories();
 
@@ -154,7 +156,7 @@ export function Sidebar({
               e.currentTarget.blur();
             }}
             enterKeyHint="search"
-            placeholder="Search articles…"
+            placeholder={t("Search articles…")}
             className="h-8 pl-8 pr-7"
             autoComplete="off"
           />
@@ -206,34 +208,34 @@ export function Sidebar({
         <div className="space-y-0.5">
           <NavItem
             icon={<Inbox className="h-4 w-4" />}
-            label="All articles"
+            label={t("All articles")}
             count={totalUnread}
             active={view.type === "all"}
             onClick={() => setView({ type: "all", label: "All Articles" })}
           />
           <NavItem
             icon={<CalendarDays className="h-4 w-4" />}
-            label="Today"
+            label={t("Today")}
             count={todayCount}
             active={view.type === "today"}
             onClick={() => setView({ type: "today", label: "Today" })}
           />
           <NavItem
             icon={<CalendarRange className="h-4 w-4" />}
-            label="Weekly recap"
+            label={t("Weekly recap")}
             active={view.type === "recap"}
             onClick={() => setView({ type: "recap", label: "Weekly recap" })}
           />
           <NavItem
             icon={<Bell className="h-4 w-4" />}
-            label="Alerts"
+            label={t("Alerts")}
             count={alertCount}
             active={view.type === "alerts"}
             onClick={() => setView({ type: "alerts", label: "Alerts" })}
           />
           <NavItem
             icon={<BookOpenCheck className="h-4 w-4" />}
-            label="Daily review"
+            label={t("Daily review")}
             count={review?.highlights.length ?? 0}
             trailing={
               review && review.streak > 0 ? (
@@ -250,19 +252,19 @@ export function Sidebar({
           />
           <NavItem
             icon={<MessageCircleQuestion className="h-4 w-4" />}
-            label="Ask"
+            label={t("Ask")}
             active={view.type === "ask"}
             onClick={() => setView({ type: "ask", label: "Ask" })}
           />
           <NavItem
             icon={<BarChart3 className="h-4 w-4" />}
-            label="Stats"
+            label={t("Stats")}
             active={view.type === "stats"}
             onClick={() => setView({ type: "stats", label: "Your reading" })}
           />
           <NavItem
             icon={<Highlighter className="h-4 w-4" />}
-            label="Highlights"
+            label={t("Highlights")}
             active={view.type === "later" && laterTab === "highlights"}
             onClick={() => {
               setView({ type: "later", label: "Later" });
@@ -273,7 +275,7 @@ export function Sidebar({
 
         <div>
           <p className="px-2.5 pb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Library
+            {t("Library")}
           </p>
           {categoriesLoading || feedsLoading ? (
             <div className="space-y-2 px-2">
@@ -305,29 +307,29 @@ export function Sidebar({
                   onClick={() => onAddFeed("youtube")}
                   className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground"
                 >
-                  <Plus className="h-4 w-4" /> Add a channel
+                  <Plus className="h-4 w-4" /> {t("Add a channel")}
                 </button>
               )}
               {renderFeedGroup(
-                "Newsletters",
+                t("Newsletters"),
                 newsletterSenders,
                 <button
                   type="button"
                   onClick={() => onAddFeed("newsletter")}
                   className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground"
                 >
-                  <Plus className="h-4 w-4" /> Add a newsletter
+                  <Plus className="h-4 w-4" /> {t("Add a newsletter")}
                 </button>
               )}
               {renderFeedGroup(
-                "Podcasts",
+                t("Podcasts"),
                 podcastShows,
                 <button
                   type="button"
                   onClick={() => onAddFeed("podcast")}
                   className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground"
                 >
-                  <Plus className="h-4 w-4" /> Add a podcast
+                  <Plus className="h-4 w-4" /> {t("Add a podcast")}
                 </button>
               )}
             </div>
