@@ -4,7 +4,7 @@
     "target": {
       "namespace": "android_app",
       "package_name": "io.github.iliasennajmi.reader",
-      "sha256_cert_fingerprints": ["D7:93:06:97:EA:BA:2E:23:71:8C:16:A7:85:12:B5:63:FB:A0:63:D7:95:B3:49:51:80:86:D5:4C:FB:77:93:2A"]
+      "sha256_cert_fingerprints": ["B5:E4:3B:27:2A:D5:E6:64:1A:76:BF:25:AD:BA:DA:22:BC:2A:69:43:D3:16:F6:CE:B0:54:14:AD:D5:CD:8D:01"]
     }
   }
 ]
