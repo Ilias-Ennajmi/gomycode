@@ -8,6 +8,24 @@ import { useAudio } from "@/components/audio/AudioProvider";
 import { PlayPauseButton, SkipButton, usePlayerTime } from "@/components/audio/PlayerControls";
 import { useVideoExtras } from "@/lib/hooks/useVideo";
 
+/** Three little bars dancing on the artwork while something plays. */
+function Equalizer() {
+  return (
+    <span
+      aria-hidden
+      className="absolute inset-0 flex items-end justify-center gap-[3px] rounded-lg bg-black/35 pb-2"
+    >
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="w-[3px] rounded-sm bg-white animate-equalize motion-reduce:animate-none"
+          style={{ animationDelay: `${i * 140}ms`, height: "40%" }}
+        />
+      ))}
+    </span>
+  );
+}
+
 /** A thin line across the top of the bar: how far into the episode. */
 function BarProgress() {
   const { duration } = useAudio();
@@ -78,12 +96,16 @@ export function NowPlayingBar() {
           aria-label={`Open the player for ${episode.title}`}
         >
           {episode.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={episode.imageUrl}
-              alt=""
-              className="h-11 w-11 shrink-0 rounded-lg object-cover shadow-sm"
-            />
+            <span className="relative shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={episode.imageUrl}
+                alt=""
+                referrerPolicy="no-referrer"
+                className="h-11 w-11 rounded-lg object-cover shadow-sm"
+              />
+              {playing && <Equalizer />}
+            </span>
           ) : (
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Headphones className="h-5 w-5" />

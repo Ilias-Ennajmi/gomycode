@@ -66,6 +66,11 @@ interface ArticleCardProps {
   onMuteSource?: () => void;
   /** "cards": a big picture on top (News, YouTube); "list": a thumbnail on the side. */
   layout?: "list" | "cards";
+  /** Magazine look: lead cards get a serif headline (with or without a picture). */
+  editorial?: boolean;
+  lead?: boolean;
+  /** Milliseconds before the card rises in (the first few on a fresh list). */
+  enterDelay?: number;
 }
 
 const SWIPE_TRIGGER = 80;
@@ -94,6 +99,9 @@ export function ArticleCard({
   onToggleRead,
   onMuteSource,
   layout = "list",
+  editorial = false,
+  lead = false,
+  enterDelay,
 }: ArticleCardProps) {
   const [showRelated, setShowRelated] = React.useState(false);
   const { enqueue } = useAudio();
@@ -196,8 +204,16 @@ export function ArticleCard({
           ref={cardRef}
           data-article-id={article.id}
           // Cards far off screen aren't laid out or painted until they're near.
-          className="relative overflow-hidden [contain-intrinsic-size:auto_104px] [content-visibility:auto]"
-          style={{ touchAction: "pan-y" }}
+          className={cn(
+            "relative overflow-hidden [contain-intrinsic-size:auto_104px] [content-visibility:auto]",
+            enterDelay !== undefined && "animate-rise-in motion-reduce:animate-none"
+          )}
+          style={{
+            touchAction: "pan-y",
+            ...(enterDelay
+              ? { animationDelay: `${enterDelay}ms`, animationFillMode: "backwards" }
+              : {}),
+          }}
           onPointerEnter={prefetchFull}
           onTouchStart={(event) => {
             prefetchFull();
@@ -345,7 +361,10 @@ export function ArticleCard({
               <div className="flex items-start gap-3">
                 <h3
                   className={cn(
-                    "line-clamp-2 flex-1 text-[15px] leading-snug tracking-tight",
+                    "line-clamp-2 flex-1 leading-snug tracking-tight",
+                    editorial && (big || lead)
+                      ? "font-serif text-[22px] leading-[1.2] md:text-[24px]"
+                      : "text-[15px]",
                     article.isRead
                       ? "font-medium text-muted-foreground"
                       : "font-semibold text-foreground"

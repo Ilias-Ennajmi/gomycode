@@ -14,6 +14,8 @@ Google Gemini's free tier.
 | Area        | What's there                                                                                                                                                                                     |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Tabs        | For You (ranked by reading history) · News · RSS · YouTube · Newsletters · Podcasts · Later                                                                                                      |
+| Stories     | A row of your sources with something new; tap one to flip through its latest full screen, Instagram-style, and read or save from there                                                            |
+| Look        | Magazine layout (big picture cards with serif headlines leading each day), a cover story on Today, a daily reading-goal ring with a streak, seven accent colours, paper/dark/light themes       |
 | News        | Hero slider of the biggest stories, desks (Maroc, Monde, Europe, Afrique, Économie, Sport, Tech), AI "What's happening", Morocco in the world press, local weather                               |
 | Today       | The home page: briefing blocks (top stories, numbers, interests, videos, newsletters), continue where you left off, review, highlights, sources to tidy; hide or reorder any block; "Start on" |
 | Stats       | Your reading over 30 days: articles, time, highlights, streak, by day and hour, top sources                                                                                                      |

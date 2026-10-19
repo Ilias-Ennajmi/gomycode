@@ -4,6 +4,7 @@ import * as React from "react";
 import { Bell, BookOpenCheck, Headphones, Inbox } from "lucide-react";
 import { useCounts } from "@/lib/hooks/useArticles";
 import { Ticker } from "@/components/ui/ticker";
+import { GoalRing } from "@/components/shared/GoalRing";
 import { useReviewStatus } from "@/lib/hooks/useReview";
 import { useReaderState, type ViewState } from "@/lib/hooks/useReaderState";
 import { useT } from "@/lib/i18n";
@@ -60,17 +61,22 @@ export function ForYouGreeting() {
   if (!text) return <div className="h-[72px]" aria-hidden />;
   return (
     <div className="px-4 pb-1 pt-4">
-      <h2 className="text-xl font-semibold tracking-tight">{t(text)}</h2>
-      <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-        <Inbox className="h-3.5 w-3.5" />
-        {unread > 0 ? (
-          <>
-            <Ticker value={unread} /> {t("unread")}
-          </>
-        ) : (
-          t("You're all caught up")
-        )}
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-xl font-semibold tracking-tight">{t(text)}</h2>
+          <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Inbox className="h-3.5 w-3.5" />
+            {unread > 0 ? (
+              <>
+                <Ticker value={unread} /> {t("unread")}
+              </>
+            ) : (
+              t("You're all caught up")
+            )}
+          </p>
+        </div>
+        <GoalRing size={52} />
+      </div>
       {items.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {items.map((item) => (

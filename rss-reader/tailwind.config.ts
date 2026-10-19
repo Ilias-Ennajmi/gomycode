@@ -86,6 +86,14 @@ const config: Config = {
           from: { transform: "translateY(24px)", opacity: "0" },
           to: { transform: "translateY(0)", opacity: "1" },
         },
+        equalize: {
+          "0%, 100%": { height: "30%" },
+          "50%": { height: "95%" },
+        },
+        shimmer: {
+          from: { transform: "translateX(-100%)" },
+          to: { transform: "translateX(100%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -94,6 +102,8 @@ const config: Config = {
         pop: "pop 280ms cubic-bezier(0.34, 1.56, 0.64, 1)",
         "rise-in": "rise-in 220ms ease-out",
         "sheet-in": "sheet-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+        equalize: "equalize 900ms ease-in-out infinite",
+        shimmer: "shimmer 1.6s ease-in-out infinite",
       },
       fontFamily: {
         sans: [

@@ -37,11 +37,12 @@ import { Chip } from "@/components/ui/chip";
 import { ArticleSkeletonList } from "@/components/articles/ArticleSkeleton";
 import { DailyBriefing } from "@/components/articles/DailyBriefing";
 import { ForYouGreeting } from "@/components/articles/ForYouGreeting";
+import { StoryBubbles } from "@/components/stories/StoryBubbles";
 import { HighlightsList } from "@/components/highlights/HighlightsList";
 import { requestAppEvent, useAppEvent } from "@/lib/app-events";
 import { useListLayout } from "@/lib/hooks/useListLayout";
 import { copySignupAddress, openUnsubscribe } from "@/lib/hooks/useNewsletter";
-import { useReaderState } from "@/lib/hooks/useReaderState";
+import { SOURCE_TAB_FEED_TYPE, isSourceTab, useReaderState } from "@/lib/hooks/useReaderState";
 import {
   useCounts,
   useArticles,
@@ -520,8 +521,12 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
         {view.type === "foryou" && !searching && filterTab === "all" && (
           <>
             <ForYouGreeting />
+            <StoryBubbles />
             <DailyBriefing />
           </>
+        )}
+        {isSourceTab(view.type) && !searching && filterTab === "all" && (
+          <StoryBubbles type={SOURCE_TAB_FEED_TYPE[view.type]} />
         )}
         {showHighlights ? (
           <HighlightsList />
@@ -564,6 +569,14 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
               const dateLabel = formatDateSeparator(article.publishedAt);
               const showSeparator = !ranked && !isLater && dateLabel !== lastDateLabel;
               lastDateLabel = dateLabel;
+              // Magazine: the first story of a day (or every fifth) is a big picture card,
+              // the rest are rows, so the page has a rhythm instead of a wall.
+              const cardLayout =
+                layout === "magazine"
+                  ? showSeparator || index % 5 === 0 || (ranked && index === 0)
+                    ? "cards"
+                    : "list"
+                  : layout;
 
               return (
                 <React.Fragment key={article.id}>
@@ -591,7 +604,10 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
                     onToggleRead={() => handleToggleRead(article)}
                     onMuteSource={() => handleMute(article)}
                     onSelectRelated={handleSelect}
-                    layout={layout}
+                    layout={cardLayout}
+                    editorial={layout === "magazine"}
+                    lead={layout === "magazine" && cardLayout === "cards"}
+                    enterDelay={index < 10 ? index * 35 : undefined}
                     onArchive={
                       article.isSaved
                         ? () => handleArchive(article, !article.archivedAt)

@@ -24,7 +24,7 @@ import { MoreLikeThis } from "@/components/articles/MoreLikeThis";
 import { StoryTimeline } from "@/components/articles/StoryTimeline";
 import { TranslateMenu, useTranslation } from "@/components/articles/TranslateMenu";
 import { TableOfContents, readHeadings, type Heading } from "@/components/articles/TableOfContents";
-import { cn } from "@/lib/utils";
+import { cn, getFaviconFallbackColor } from "@/lib/utils";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ArticleHeader } from "@/components/articles/ArticleHeader";
@@ -308,7 +308,15 @@ export function ArticleReader() {
   }
 
   return (
-    <div className="relative flex h-full flex-col">
+    <div className="relative isolate flex h-full flex-col">
+      {/* A wash of the source's colour at the top, so each article has its own light. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 opacity-[0.14] dark:opacity-20"
+        style={{
+          background: `radial-gradient(70% 100% at 50% 0%, ${getFaviconFallbackColor(article.feed.title)}, transparent)`,
+        }}
+      />
       <div className="h-0.5 w-full shrink-0 bg-border">
         <div
           className="h-full bg-primary transition-[width] duration-150 ease-linear"

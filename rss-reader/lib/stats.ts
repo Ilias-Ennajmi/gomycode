@@ -150,3 +150,41 @@ export async function readingStats(): Promise<ReadingStats> {
     ),
   };
 }
+
+/** Just today and the streak: cheap enough to ask for every few minutes. */
+export async function todayStats() {
+  const since = new Date(Date.now() - 2 * DAY_MS);
+  const read = await prisma.article.findMany({
+    where: { readAt: { gte: since } },
+    select: {
+      readAt: true,
+      content: true,
+      summary: true,
+      isVideo: true,
+      audioUrl: true,
+      durationSeconds: true,
+      watchedSeconds: true,
+    },
+  });
+  const today = dayKey(new Date());
+  let minutes = 0;
+  let count = 0;
+  for (const article of read) {
+    if (!article.readAt || dayKey(article.readAt) !== today) continue;
+    minutes += minutesOf(article);
+    count += 1;
+  }
+  // The streak needs the run of days: count backwards from today over read days.
+  const days = await prisma.article.findMany({
+    where: { readAt: { gte: new Date(Date.now() - 60 * DAY_MS) } },
+    select: { readAt: true },
+  });
+  const readDays = new Set(days.map((d) => (d.readAt ? dayKey(d.readAt) : "")));
+  let streak = 0;
+  for (let i = 0; i < 60; i++) {
+    const day = dayKey(new Date(Date.now() - i * DAY_MS));
+    if (readDays.has(day)) streak += 1;
+    else if (i > 0) break;
+  }
+  return { minutes, read: count, streak };
+}
