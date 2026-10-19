@@ -23,6 +23,8 @@ interface ArticleContentProps {
   onMissingHighlights?: (ids: string[]) => void;
   /** The element holding the article text, for reading selections. */
   bodyRef?: React.MutableRefObject<HTMLDivElement | null>;
+  /** The text is on screen (sanitized and drawn): headings can be read, for instance. */
+  onRendered?: () => void;
 }
 
 type Purifier = typeof import("dompurify").default;
@@ -51,7 +53,10 @@ export function ArticleContent({
   highlights,
   onMissingHighlights,
   bodyRef,
+  onRendered,
 }: ArticleContentProps) {
+  const renderedRef = React.useRef(onRendered);
+  renderedRef.current = onRendered;
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const { prefs } = useReaderPrefs();
   // prose sizes everything in em, so one font-size scales the whole article.
@@ -106,6 +111,7 @@ export function ArticleContent({
     if (!sanitized || !container) return;
     missingRef.current?.(drawHighlights(container, highlights ?? []));
     consumeHighlightJump(container);
+    renderedRef.current?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sanitized, highlightKey]);
 

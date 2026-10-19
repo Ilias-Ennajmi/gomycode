@@ -3,6 +3,7 @@
 import type { DiscoverKind } from "@/lib/discover/catalog";
 import * as React from "react";
 import {
+  BookOpen,
   ChevronRight,
   Compass,
   Download,
@@ -40,6 +41,7 @@ interface SettingsPanelProps {
 const THEMES = [
   { id: "light", label: "Light", icon: Sun },
   { id: "dark", label: "Dark", icon: Moon },
+  { id: "paper", label: "Paper", icon: BookOpen },
   { id: "system", label: "System", icon: Monitor },
 ] as const;
 
@@ -98,7 +100,7 @@ export function SettingsPanel({
         </Section>
 
         <Section title="Appearance">
-          <div className="grid grid-cols-3 gap-2 p-2">
+          <div className="grid grid-cols-4 gap-2 p-2">
             {THEMES.map(({ id, label, icon: Icon }) => {
               const active = mounted && theme === id;
               return (

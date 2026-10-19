@@ -1,7 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { Copy, Highlighter, MessageSquarePlus, Share2, StickyNote, Trash2, X } from "lucide-react";
+import {
+  Copy,
+  Highlighter,
+  Image as ImageIcon,
+  MessageSquarePlus,
+  Share2,
+  StickyNote,
+  Trash2,
+  X,
+} from "lucide-react";
+import { shareQuoteImage } from "@/lib/quote-card";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { readSelection, type SelectionQuote } from "@/lib/highlight-dom";
@@ -182,6 +192,15 @@ export function ReaderHighlights({
           onNote={() => highlight("yellow", true)}
           onCopy={() => lastQuote.current && copyText(lastQuote.current.text)}
           onShare={() => lastQuote.current && shareQuote(lastQuote.current.text, article)}
+          onPicture={() =>
+            lastQuote.current &&
+            shareQuoteImage({
+              text: lastQuote.current.text,
+              color: "yellow",
+              title: article.title,
+              source: article.feed.title,
+            }).catch(() => toast.error("Could not make the picture"))
+          }
         />
       )}
       {open && openHighlight && (
@@ -216,12 +235,14 @@ function SelectionToolbar({
   onNote,
   onCopy,
   onShare,
+  onPicture,
 }: {
   rect: DOMRect;
   onHighlight: (color: HighlightColor) => void;
   onNote: () => void;
   onCopy: () => void;
   onShare: () => void;
+  onPicture: () => void;
 }) {
   const touch = isTouch();
   return (
@@ -260,6 +281,9 @@ function SelectionToolbar({
       </ToolbarButton>
       <ToolbarButton label="Share" onClick={onShare}>
         <Share2 className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton label="Share as a picture" onClick={onPicture}>
+        <ImageIcon className="h-4 w-4" />
       </ToolbarButton>
     </div>
   );
