@@ -19,6 +19,8 @@ import { ChromeCollapse } from "@/components/layout/ChromeCollapse";
 import { showChrome } from "@/lib/hooks/useChrome";
 import { AudioProvider } from "@/components/audio/AudioProvider";
 import { NowPlayingBar } from "@/components/audio/NowPlayingBar";
+import { NowPlayingSheet } from "@/components/audio/NowPlayingSheet";
+import { WhatsNew } from "@/components/layout/WhatsNew";
 import { refreshFeeds, refreshToastMessage, useAutoRefresh, useFeeds } from "@/lib/hooks/useFeeds";
 import { useSWRConfig } from "swr";
 import type { DiscoverKind } from "@/lib/discover/catalog";
@@ -369,6 +371,8 @@ function AppShellInner() {
         )}
       </div>
       <NowPlayingBar />
+      <NowPlayingSheet />
+      <WhatsNew />
 
       <SaveLinkDialog open={saveLinkOpen} onOpenChange={setSaveLinkOpen} />
       <EmailNewsletterDialog open={emailNewsletterOpen} onOpenChange={setEmailNewsletterOpen} />

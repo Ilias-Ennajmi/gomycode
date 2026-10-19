@@ -12,6 +12,8 @@ import {
   ExternalLink,
   Highlighter,
   Layers,
+  ListEnd,
+  ListStart,
   Play,
   Share,
   TrendingUp,
@@ -25,6 +27,7 @@ import { SnoozeMenu, isSnoozed } from "@/components/articles/SnoozeMenu";
 import { formatSnooze } from "@/lib/snooze";
 import { clock, durationLabel } from "@/lib/hooks/useVideo";
 import { PlayEpisodeButton } from "@/components/audio/EpisodePlayer";
+import { episodeOf, useAudio } from "@/components/audio/AudioProvider";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -33,6 +36,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { shareLink } from "@/lib/share";
+import { ActionSheet } from "@/components/ui/sheet";
 import { preload } from "swr";
 import { needsFullArticle } from "@/lib/reader";
 
@@ -81,6 +85,14 @@ export function ArticleCard({
   layout = "list",
 }: ArticleCardProps) {
   const [showRelated, setShowRelated] = React.useState(false);
+  const { enqueue } = useAudio();
+  // Phones: holding a card opens a sheet of actions (the right-click menu, as a sheet).
+  const [sheetOpen, setSheetOpen] = React.useState(false);
+  const hold = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelHold = () => {
+    if (hold.current) clearTimeout(hold.current);
+    hold.current = null;
+  };
   const [imageFailed, setImageFailed] = React.useState(false);
   const summary = article.summary || stripHtml(article.content).slice(0, 200);
   const source = articleSource(article);
@@ -120,6 +132,15 @@ export function ArticleCard({
   function onTouchStart(event: React.TouchEvent) {
     const t = event.touches[0];
     drag.current = { x: t.clientX, y: t.clientY, horizontal: null, dx: 0 };
+    cancelHold();
+    hold.current = setTimeout(() => {
+      hold.current = null;
+      drag.current = null;
+      swiped.current = true;
+      window.setTimeout(() => (swiped.current = false), 600);
+      haptic("medium");
+      setSheetOpen(true);
+    }, 450);
   }
   function onTouchMove(event: React.TouchEvent) {
     const d = drag.current;
@@ -129,6 +150,7 @@ export function ArticleCard({
     const my = t.clientY - d.y;
     if (d.horizontal === null && (Math.abs(mx) > 10 || Math.abs(my) > 10)) {
       d.horizontal = Math.abs(mx) > Math.abs(my) * 1.3;
+      cancelHold();
     }
     if (!d.horizontal) return;
     const limited = onToggleRead ? mx : Math.max(0, mx);
@@ -139,6 +161,7 @@ export function ArticleCard({
     setDx(d.dx);
   }
   function onTouchEnd() {
+    cancelHold();
     // Read from the ref: a quick flick can end before React re-renders with the new dx.
     const moved = drag.current?.dx ?? 0;
     drag.current = null;
@@ -147,8 +170,10 @@ export function ArticleCard({
     swiped.current = true;
     // Only swallow the click that some browsers fire right after the swipe.
     window.setTimeout(() => (swiped.current = false), 400);
-    if (moved >= SWIPE_TRIGGER) onToggleSave();
-    else if (moved <= -SWIPE_TRIGGER) onToggleRead?.();
+    if (moved >= SWIPE_TRIGGER) {
+      haptic("success");
+      onToggleSave();
+    } else if (moved <= -SWIPE_TRIGGER) onToggleRead?.();
   }
 
   return (
@@ -156,6 +181,7 @@ export function ArticleCard({
       <ContextMenuTrigger asChild>
         <div
           ref={cardRef}
+          data-article-id={article.id}
           // Cards far off screen aren't laid out or painted until they're near.
           className="relative overflow-hidden [contain-intrinsic-size:auto_104px] [content-visibility:auto]"
           style={{ touchAction: "pan-y" }}
@@ -211,7 +237,7 @@ export function ArticleCard({
             className={cn(
               "group relative flex w-full cursor-pointer border-b border-border/60 bg-background px-4 py-4 text-left md:px-5",
               big ? "flex-col gap-3" : "gap-4",
-              !dx && "transition-transform duration-200",
+              !dx && "transition-transform duration-300 ease-spring",
               active ? "bg-accent" : "hover:bg-accent/60"
             )}
           >
@@ -243,6 +269,7 @@ export function ArticleCard({
                     alt=""
                     loading="lazy"
                     decoding="async"
+                    data-card-image
                     className={cn(
                       "dim-dark h-full w-full object-cover",
                       article.isRead && "opacity-60"
@@ -458,6 +485,28 @@ export function ArticleCard({
                 : "Mark as read"}
           </ContextMenuItem>
         )}
+        {article.audioUrl && !article.isVideo && (
+          <>
+            <ContextMenuItem
+              onSelect={() => {
+                const episode = episodeOf(article);
+                if (episode) enqueue(episode, "next");
+              }}
+              className="gap-2"
+            >
+              <ListStart className="h-4 w-4" /> Play next
+            </ContextMenuItem>
+            <ContextMenuItem
+              onSelect={() => {
+                const episode = episodeOf(article);
+                if (episode) enqueue(episode, "last");
+              }}
+              className="gap-2"
+            >
+              <ListEnd className="h-4 w-4" /> Add to queue
+            </ContextMenuItem>
+          </>
+        )}
         <ContextMenuItem
           onSelect={() => void shareLink(article.title, article.link)}
           className="gap-2"
@@ -482,6 +531,88 @@ export function ArticleCard({
           </>
         )}
       </ContextMenuContent>
+      <ActionSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        title={<span className="line-clamp-1">{article.title}</span>}
+        sections={[
+          {
+            actions: [
+              {
+                id: "save",
+                label: article.isSaved ? "Remove from Later" : "Read later",
+                icon: <Bookmark />,
+                onSelect: () => {
+                  haptic("success");
+                  onToggleSave();
+                },
+              },
+              ...(onToggleRead
+                ? [
+                    {
+                      id: "read",
+                      label: article.isRead ? "Mark as unread" : "Mark as read",
+                      icon: <Check />,
+                      onSelect: () => {
+                        haptic();
+                        onToggleRead();
+                      },
+                    },
+                  ]
+                : []),
+              ...(article.audioUrl && !article.isVideo
+                ? [
+                    {
+                      id: "next",
+                      label: "Play next",
+                      icon: <ListStart />,
+                      onSelect: () => {
+                        const episode = episodeOf(article);
+                        if (episode) enqueue(episode, "next");
+                      },
+                    },
+                    {
+                      id: "queue",
+                      label: "Add to queue",
+                      icon: <ListEnd />,
+                      onSelect: () => {
+                        const episode = episodeOf(article);
+                        if (episode) enqueue(episode, "last");
+                      },
+                    },
+                  ]
+                : []),
+              {
+                id: "share",
+                label: "Share",
+                icon: <Share />,
+                onSelect: () => void shareLink(article.title, article.link),
+              },
+              {
+                id: "open",
+                label: "Open original",
+                icon: <ExternalLink />,
+                onSelect: () => window.open(article.link, "_blank", "noopener,noreferrer"),
+              },
+            ],
+          },
+          ...(onMuteSource && article.feed.type !== "manual"
+            ? [
+                {
+                  actions: [
+                    {
+                      id: "mute",
+                      label: `Mute ${article.feed.title}`,
+                      icon: <EyeOff />,
+                      destructive: true,
+                      onSelect: onMuteSource,
+                    },
+                  ],
+                },
+              ]
+            : []),
+        ]}
+      />
     </ContextMenu>
   );
 }

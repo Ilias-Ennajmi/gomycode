@@ -16,6 +16,7 @@ import type { ArticleSummary, VideoExtras } from "@/lib/types";
 export interface Episode {
   id: string;
   title: string;
+  feedId: string;
   feedTitle: string;
   imageUrl: string | null;
   audioUrl: string;
@@ -27,6 +28,7 @@ export function episodeOf(article: ArticleSummary): Episode | null {
   return {
     id: article.id,
     title: article.title,
+    feedId: article.feedId,
     feedTitle: article.feed.title,
     imageUrl: article.imageUrl,
     audioUrl: article.audioUrl,
@@ -44,6 +46,25 @@ export function resumePoint(article: Pick<ArticleSummary, "watchedSeconds" | "du
 export const AUDIO_RATES = [0.8, 1, 1.2, 1.5, 1.8, 2] as const;
 const RATE_KEY = "audio-playback-rate";
 const LAST_KEY = "audio-last-episode";
+const QUEUE_KEY = "audio-queue";
+const SHOW_PREFS_KEY = "audio-show-prefs";
+/** After a pause this long, resuming backs up a little so the thread is easy to pick up. */
+const REWIND_AFTER_MS = 60_000;
+const REWIND_SECONDS = 3;
+
+/** Per show: a default speed, and seconds to skip at the start (long intros). */
+export interface ShowPrefs {
+  rate?: number;
+  skipIntro?: number;
+}
+
+function readShowPrefs(): Record<string, ShowPrefs> {
+  try {
+    return JSON.parse(localStorage.getItem(SHOW_PREFS_KEY) ?? "{}") as Record<string, ShowPrefs>;
+  } catch {
+    return {};
+  }
+}
 const SAVE_EVERY_MS = 15_000;
 /** Counts as listened from here: the end is usually credits and ads. */
 const DONE_PERCENT = 95;
@@ -55,8 +76,25 @@ interface AudioContextValue {
   playing: boolean;
   buffering: boolean;
   duration: number;
+  /** How far ahead of the position the audio has loaded, in seconds. */
+  buffered: number;
   rate: number;
   sleep: SleepTimer;
+  /** What plays after this one, in order. */
+  queue: Episode[];
+  /** The full-screen player is open. */
+  expanded: boolean;
+  setExpanded: (open: boolean) => void;
+  enqueue: (episode: Episode, where: "next" | "last") => void;
+  dequeue: (id: string) => void;
+  moveInQueue: (from: number, to: number) => void;
+  clearQueue: () => void;
+  /** Plays the next episode now (the queue first, then the show). */
+  next: () => void;
+  showPrefs: (feedId: string) => ShowPrefs;
+  setShowPrefs: (feedId: string, prefs: ShowPrefs) => void;
+  /** A link to this moment of the episode, shared or copied. */
+  shareMoment: () => Promise<void>;
   /** The position, without re-rendering everything that uses the player every second. */
   time: TimeStore;
   play: (episode: Episode, startAt?: number) => void;
@@ -102,7 +140,14 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [duration, setDuration] = React.useState(0);
   const [rate, setRateState] = React.useState(1);
   const [sleep, setSleepState] = React.useState<SleepTimer>(null);
+  const [buffered, setBuffered] = React.useState(0);
+  const [queue, setQueue] = React.useState<Episode[]>([]);
+  const [expanded, setExpanded] = React.useState(false);
+  const [prefsVersion, setPrefsVersion] = React.useState(0);
   const time = React.useMemo(() => createTimeStore(), []);
+  const pausedAt = React.useRef<number | null>(null);
+  const queueRef = React.useRef<Episode[]>([]);
+  queueRef.current = queue;
   const { mutate } = useSWRConfig();
 
   const episodeRef = React.useRef<Episode | null>(null);
@@ -159,7 +204,15 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       } else if (startAt >= 0) {
         audio.currentTime = startAt;
       }
-      audio.playbackRate = readRate();
+      const show = readShowPrefs()[next.feedId] ?? {};
+      // A show's own speed wins over the general one; a long intro is skipped on a fresh start.
+      const rate = show.rate ?? readRate();
+      audio.playbackRate = rate;
+      setRateState(rate);
+      if (startAt === 0 && show.skipIntro && autoplay) {
+        pendingSeek.current = show.skipIntro;
+        time.set(show.skipIntro);
+      }
       remember(LAST_KEY, { episode: next, position: startAt });
       if (autoplay) {
         audio.play().catch((error: Error) => {
@@ -195,9 +248,21 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const current = episodeRef.current;
     if (!audio || !current) return;
     if (!audio.getAttribute("src")) audio.src = current.audioUrl;
-    if (audio.paused) audio.play().catch(() => toast.error("Couldn't play this episode"));
-    else audio.pause();
-  }, []);
+    if (audio.paused) {
+      // Back up a little after a long pause, so the thread is easy to pick up again.
+      if (
+        pausedAt.current &&
+        Date.now() - pausedAt.current > REWIND_AFTER_MS &&
+        audio.currentTime > REWIND_SECONDS + 2
+      ) {
+        audio.currentTime -= REWIND_SECONDS;
+        time.set(audio.currentTime);
+      }
+      audio.play().catch(() => toast.error("Couldn't play this episode"));
+    } else {
+      audio.pause();
+    }
+  }, [time]);
 
   const seek = React.useCallback(
     (seconds: number) => {
@@ -227,9 +292,87 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   const setRate = React.useCallback((next: number) => {
     setRateState(next);
-    remember(RATE_KEY, next);
+    // Remembered for this show if it has its own speed, else for everything.
+    const current = episodeRef.current;
+    const prefs = readShowPrefs();
+    if (current && prefs[current.feedId]?.rate !== undefined) {
+      prefs[current.feedId] = { ...prefs[current.feedId], rate: next };
+      remember(SHOW_PREFS_KEY, prefs);
+    } else {
+      remember(RATE_KEY, next);
+    }
     if (audioRef.current) audioRef.current.playbackRate = next;
   }, []);
+
+  const showPrefs = React.useCallback(
+    (feedId: string) => readShowPrefs()[feedId] ?? {},
+    // Re-read when they change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [prefsVersion]
+  );
+  const setShowPrefs = React.useCallback((feedId: string, next: ShowPrefs) => {
+    const prefs = readShowPrefs();
+    const cleaned: ShowPrefs = {};
+    if (next.rate !== undefined) cleaned.rate = next.rate;
+    if (next.skipIntro) cleaned.skipIntro = next.skipIntro;
+    if (Object.keys(cleaned).length) prefs[feedId] = cleaned;
+    else delete prefs[feedId];
+    remember(SHOW_PREFS_KEY, prefs);
+    setPrefsVersion((v) => v + 1);
+    const current = episodeRef.current;
+    if (current?.feedId === feedId && cleaned.rate !== undefined && audioRef.current) {
+      audioRef.current.playbackRate = cleaned.rate;
+      setRateState(cleaned.rate);
+    }
+  }, []);
+
+  const saveQueue = React.useCallback((next: Episode[]) => {
+    setQueue(next);
+    queueRef.current = next;
+    remember(QUEUE_KEY, next);
+  }, []);
+  const enqueue = React.useCallback(
+    (item: Episode, where: "next" | "last") => {
+      const without = queueRef.current.filter((e) => e.id !== item.id);
+      saveQueue(where === "next" ? [item, ...without] : [...without, item]);
+      toast(where === "next" ? "Playing next" : "Added to the queue", {
+        description: item.title,
+      });
+    },
+    [saveQueue]
+  );
+  const dequeue = React.useCallback(
+    (id: string) => saveQueue(queueRef.current.filter((e) => e.id !== id)),
+    [saveQueue]
+  );
+  const moveInQueue = React.useCallback(
+    (from: number, to: number) => {
+      const next = [...queueRef.current];
+      const [item] = next.splice(from, 1);
+      if (!item) return;
+      next.splice(Math.max(0, Math.min(next.length, to)), 0, item);
+      saveQueue(next);
+    },
+    [saveQueue]
+  );
+  const clearQueue = React.useCallback(() => saveQueue([]), [saveQueue]);
+
+  const shareMoment = React.useCallback(async () => {
+    const current = episodeRef.current;
+    if (!current) return;
+    const seconds = Math.floor(time.get());
+    const url = `${window.location.origin}/reader?article=${current.id}&t=${seconds}`;
+    const text = `${current.title} · ${current.feedTitle}`;
+    try {
+      if (navigator.share) await navigator.share({ title: current.title, text, url });
+      else {
+        await navigator.clipboard.writeText(url);
+        toast.success("Link copied", { description: "Opens the episode at this moment." });
+      }
+    } catch (error) {
+      if ((error as Error).name !== "AbortError") toast.error("Couldn't share");
+    }
+  }, [time]);
 
   const setSleep = React.useCallback((value: "end" | number | null) => {
     if (value === null) setSleepState(null);
@@ -255,6 +398,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const playNext = React.useCallback(async () => {
     const current = episodeRef.current;
     if (!current) return;
+    const [queued, ...rest] = queueRef.current;
+    if (queued) {
+      saveQueue(rest);
+      load(queued, 0, true);
+      return;
+    }
     try {
       const res = await fetch(`/api/articles/${current.id}/video`);
       const extras = (await res.json()) as VideoExtras;
@@ -267,7 +416,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // No next episode: stay on the finished one.
     }
-  }, [load]);
+  }, [load, saveQueue]);
+  const next = React.useCallback(() => void playNext(), [playNext]);
 
   // Restore the last episode (paused) so the bar offers to pick up where you were.
   React.useEffect(() => {
@@ -278,6 +428,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         position: number;
       } | null;
       if (last?.episode?.audioUrl) load(last.episode, last.position ?? 0, false);
+      const savedQueue = JSON.parse(localStorage.getItem(QUEUE_KEY) ?? "[]") as Episode[];
+      if (Array.isArray(savedQueue)) saveQueue(savedQueue.filter((e) => e?.audioUrl));
     } catch {
       // Nothing to restore.
     }
@@ -350,8 +502,20 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     playing,
     buffering,
     duration,
+    buffered,
     rate,
     sleep,
+    queue,
+    expanded,
+    setExpanded,
+    enqueue,
+    dequeue,
+    moveInQueue,
+    clearQueue,
+    next,
+    showPrefs,
+    setShowPrefs,
+    shareMoment,
     time,
     play,
     toggle,
@@ -386,11 +550,24 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             updatePositionState();
           }
         }}
+        onProgress={(event) => {
+          const audio = event.currentTarget;
+          // The loaded stretch around the position, for the scrubber.
+          let end = 0;
+          for (let i = 0; i < audio.buffered.length; i++) {
+            if (audio.buffered.start(i) <= audio.currentTime + 1) {
+              end = Math.max(end, audio.buffered.end(i));
+            }
+          }
+          setBuffered(end);
+        }}
         onPlay={() => {
+          pausedAt.current = null;
           setPlaying(true);
           if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing";
         }}
         onPause={() => {
+          pausedAt.current = Date.now();
           setPlaying(false);
           setBuffering(false);
           save();

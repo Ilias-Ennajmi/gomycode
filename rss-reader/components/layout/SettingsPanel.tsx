@@ -22,6 +22,7 @@ import {
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { useAiStatus, type AiStatus } from "@/lib/hooks/useAi";
+import { WhatsNew } from "@/components/layout/WhatsNew";
 import { androidAppVersion, RELEASES_PAGE } from "@/lib/native";
 import { NotificationSettings } from "@/components/layout/NotificationSettings";
 import { useFeeds } from "@/lib/hooks/useFeeds";
@@ -51,6 +52,7 @@ export function SettingsPanel({
   onImportOpml,
   onShowShortcuts,
 }: SettingsPanelProps) {
+  const [whatsNew, setWhatsNew] = React.useState(false);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -139,6 +141,8 @@ export function SettingsPanel({
 
         <Section title="Help">
           <Row icon={Keyboard} label="Keyboard shortcuts" onClick={onShowShortcuts} />
+          <Row icon={Sparkles} label="What's new" onClick={() => setWhatsNew(true)} />
+          <WhatsNew open={whatsNew} onOpenChange={setWhatsNew} />
         </Section>
 
         <Section>

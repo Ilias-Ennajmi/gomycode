@@ -27,10 +27,25 @@ export function androidAppVersion(): string | null {
   }
 }
 
-/** A short tap on phones that support it; does nothing elsewhere. */
-export function haptic(ms = 10) {
+/**
+ * A tap on phones that support it; does nothing elsewhere. Pass a pattern name for
+ * meaning: "light" for small actions, "success" for saved, "done" for finishing something.
+ */
+export function haptic(
+  kind: number | "light" | "medium" | "success" | "warning" | "done" = "light"
+) {
   try {
-    navigator.vibrate?.(ms);
+    const pattern =
+      typeof kind === "number"
+        ? kind
+        : {
+            light: 8,
+            medium: 14,
+            success: [10, 30, 18],
+            warning: [20, 40, 20],
+            done: [12, 40, 12, 40, 24],
+          }[kind];
+    navigator.vibrate?.(pattern as number | number[]);
   } catch {
     // Not allowed here.
   }

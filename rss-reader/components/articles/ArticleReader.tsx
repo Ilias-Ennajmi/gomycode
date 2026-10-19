@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { shareLink } from "@/lib/share";
 import { haptic } from "@/lib/native";
+import { takeStartAt } from "@/lib/start-at";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -130,7 +131,14 @@ export function ArticleReader() {
     setUpNextDismissed(false);
   }, [article?.id]);
   // Where to pick up: taken once when the video opens, not while it plays.
+  // A shared moment (?t=) is taken once, when the article opens, for whichever player it is.
+  const linkedStart = React.useMemo(
+    () => (article ? takeStartAt(article.id) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [article?.id]
+  );
   const resumeAt = React.useMemo(() => {
+    if (linkedStart !== null) return linkedStart;
     const seconds = article?.watchedSeconds ?? 0;
     const duration = article?.durationSeconds ?? 0;
     return seconds > 5 && (!duration || seconds < duration - 15) ? seconds : 0;
@@ -429,7 +437,7 @@ export function ArticleReader() {
               <img
                 src={article.imageUrl!}
                 alt=""
-                className="dim-dark aspect-[16/9] w-full select-none rounded-2xl object-cover shadow-sm"
+                className="dim-dark aspect-[16/9] w-full select-none rounded-2xl object-cover shadow-sm [view-transition-name:article-image]"
                 onDoubleClick={() => {
                   if (!article.isSaved) setSavePop(true);
                   void handleToggleSave();
@@ -478,7 +486,7 @@ export function ArticleReader() {
               {resumeAt > 0 && <ResumedNote seconds={resumeAt} onRestart={() => seekVideo(0)} />}
             </div>
           )}
-          {episode && <EpisodePlayer article={episode} />}
+          {episode && <EpisodePlayer article={episode} startAt={linkedStart} />}
           <ArticleHeader
             article={article}
             onToggleSave={handleToggleSave}

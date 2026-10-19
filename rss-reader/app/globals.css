@@ -168,6 +168,27 @@ a,
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* A card's picture glides into the article's (document.startViewTransition). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+}
+::view-transition-group(article-image) {
+  animation-duration: 320ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+::view-transition-old(article-image),
+::view-transition-new(article-image) {
+  height: 100%;
+  object-fit: cover;
+  overflow: hidden;
 }
 
 /* Article bodies come from any site, often with fixed pixel widths. Everything

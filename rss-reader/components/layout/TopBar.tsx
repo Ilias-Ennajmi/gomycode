@@ -153,6 +153,33 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
     unread.podcasts,
   ]);
 
+  // Where the underline sits: measured from the active tab, re-measured when counts change
+  // the widths or the window resizes.
+  const [underline, setUnderline] = React.useState({ left: 0, width: 0 });
+  React.useLayoutEffect(() => {
+    const nav = navRef.current;
+    const tab = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!nav || !tab) {
+      setUnderline({ left: 0, width: 0 });
+      return;
+    }
+    const measure = () => {
+      const inset = window.matchMedia("(min-width: 768px)").matches ? 12 : 8;
+      setUnderline({ left: tab.offsetLeft + inset, width: tab.offsetWidth - inset * 2 });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [
+    active,
+    laterCount,
+    unread.news,
+    unread.rss,
+    unread.youtube,
+    unread.newsletters,
+    unread.podcasts,
+  ]);
+
   function select(tab: ViewState) {
     // From a section list inside News, the tab goes back to the front page.
     if (view.type === tab.type && !(tab.type === "news" && view.id)) {
@@ -173,7 +200,7 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
         <nav
           ref={navRef}
           aria-label="Sections"
-          className="flex min-w-0 flex-1 items-center overflow-x-auto px-2 scrollbar-none md:px-3"
+          className="relative flex min-w-0 flex-1 items-center overflow-x-auto px-2 scrollbar-none md:px-3"
         >
           {TABS.map((tab) => {
             const isActive = active === tab.type;
@@ -203,12 +230,18 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
                     aria-label="New since you last looked"
                   />
                 )}
-                {isActive && (
-                  <span className="absolute inset-x-2 bottom-0 h-[2px] rounded-full bg-primary md:inset-x-3" />
-                )}
               </button>
             );
           })}
+          {/* One underline for all the tabs: it slides to the active one. */}
+          <span
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute bottom-0 h-[2px] rounded-full bg-primary transition-[left,width] duration-300 ease-spring",
+              underline.width === 0 && "opacity-0"
+            )}
+            style={{ left: underline.left, width: underline.width }}
+          />
         </nav>
         <div className="flex shrink-0 items-center md:hidden">
           <Button
