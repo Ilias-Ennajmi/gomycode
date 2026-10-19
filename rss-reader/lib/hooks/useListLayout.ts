@@ -2,15 +2,20 @@
 
 import * as React from "react";
 
-export type ListLayout = "list" | "cards";
+export type ListLayout = "list" | "cards" | "magazine";
 
-const DEFAULTS: Record<string, ListLayout> = { youtube: "cards" };
+// For You and News open as a magazine; YouTube as a wall of thumbnails.
+const DEFAULTS: Record<string, ListLayout> = {
+  youtube: "cards",
+  foryou: "magazine",
+  news: "magazine",
+};
 
 function storageKey(listKey: string) {
   return `reader-layout:${listKey}`;
 }
 
-/** List or big-picture cards, remembered per tab on this device. YouTube starts as cards. */
+/** List, big-picture cards or magazine, remembered per tab on this device. */
 export function useListLayout(listKey: string) {
   const [layout, setLayoutState] = React.useState<ListLayout>(DEFAULTS[listKey] ?? "list");
 
@@ -21,7 +26,11 @@ export function useListLayout(listKey: string) {
     } catch {
       // Storage unavailable: keep the default.
     }
-    setLayoutState(saved === "cards" || saved === "list" ? saved : (DEFAULTS[listKey] ?? "list"));
+    setLayoutState(
+      saved === "cards" || saved === "list" || saved === "magazine"
+        ? saved
+        : (DEFAULTS[listKey] ?? "list")
+    );
   }, [listKey]);
 
   const setLayout = React.useCallback(

@@ -10,6 +10,7 @@ import {
   LayoutGrid,
   ListTree,
   MoreHorizontal,
+  Newspaper,
   Plus,
   RefreshCw,
   Rows3,
@@ -398,7 +399,9 @@ function OptionsMenu(props: ListToolbarProps) {
           )}
           <DropdownMenuSeparator />
           <DropdownMenuLabel className="flex items-center gap-1.5 text-xs">
-            {props.layout === "cards" ? (
+            {props.layout === "magazine" ? (
+              <Newspaper className="h-3.5 w-3.5" />
+            ) : props.layout === "cards" ? (
               <LayoutGrid className="h-3.5 w-3.5" />
             ) : (
               <Rows3 className="h-3.5 w-3.5" />
@@ -409,6 +412,7 @@ function OptionsMenu(props: ListToolbarProps) {
             value={props.layout}
             onValueChange={(value) => props.onLayout(value as ListLayout)}
           >
+            <DropdownMenuRadioItem value="magazine">{t("Magazine")}</DropdownMenuRadioItem>
             <DropdownMenuRadioItem value="list">{t("Compact list")}</DropdownMenuRadioItem>
             <DropdownMenuRadioItem value="cards">{t("Big pictures")}</DropdownMenuRadioItem>
           </DropdownMenuRadioGroup>

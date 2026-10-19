@@ -23,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { StoryImage } from "@/components/news/StoryParts";
 import { WeatherWidget } from "@/components/news/WeatherWidget";
+import { GoalRing } from "@/components/shared/GoalRing";
 import { useBriefing, type BriefPick, type BriefStory } from "@/lib/hooks/useAi";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import { useHomeBlocks, type HomeBlockId } from "@/lib/hooks/useHomeBlocks";
@@ -167,22 +168,28 @@ export function TodayView() {
             </section>
           );
         }
-        return (
-          <section>
-            <SectionTitle>Top stories</SectionTitle>
-            <ol className="mt-2 divide-y">
-              {briefing.top.map((story, i) => (
-                <StoryEntry
-                  key={story.articleId}
-                  story={story}
-                  index={i + 1}
-                  active={story.articleId === selectedArticleId}
-                  onOpen={open}
-                />
-              ))}
-            </ol>
-          </section>
-        );
+        {
+          // The lead story with a picture becomes the cover, the way a front page opens.
+          const [cover, ...rest] = briefing.top;
+          const hasCover = Boolean(cover?.imageUrl);
+          return (
+            <section>
+              {hasCover && <CoverStory story={cover} onOpen={open} />}
+              <SectionTitle>{hasCover ? "More top stories" : "Top stories"}</SectionTitle>
+              <ol className="mt-2 divide-y">
+                {(hasCover ? rest : briefing.top).map((story, i) => (
+                  <StoryEntry
+                    key={story.articleId}
+                    story={story}
+                    index={i + (hasCover ? 2 : 1)}
+                    active={story.articleId === selectedArticleId}
+                    onOpen={open}
+                  />
+                ))}
+              </ol>
+            </section>
+          );
+        }
       case "numbers":
         return briefing && briefing.numbers.length > 0 ? (
           <section>
@@ -397,6 +404,7 @@ export function TodayView() {
               </p>
             </div>
             <div className="flex items-center gap-1.5">
+              <GoalRing size={48} className="mr-1" />
               <WeatherWidget />
               {briefing && (
                 <ListenButton
@@ -447,6 +455,55 @@ export function TodayView() {
       </div>
       <HomeCustomise open={customising} onOpenChange={setCustomising} layout={layout} />
     </div>
+  );
+}
+
+/** The cover: the day's lead story full-bleed, headline over the picture. */
+function CoverStory({ story, onOpen }: { story: BriefStory; onOpen: (articleId: string) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(story.articleId)}
+      className="group relative mb-8 block w-full overflow-hidden rounded-3xl bg-muted text-left text-white shadow-lg"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={story.imageUrl!}
+        alt=""
+        referrerPolicy="no-referrer"
+        className="aspect-[4/5] w-full object-cover transition-transform duration-700 group-hover:scale-[1.03] sm:aspect-[16/10]"
+      />
+      <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/5" />
+      <span className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
+        {story.section && (
+          <span className="inline-block rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] backdrop-blur">
+            {story.section}
+          </span>
+        )}
+        <span className="mt-3 block text-balance font-serif text-3xl font-semibold leading-[1.1] sm:text-4xl">
+          {story.headline}
+        </span>
+        {story.bullets[0] && (
+          <span className="mt-2 line-clamp-2 block text-sm text-white/85 sm:text-[15px]">
+            {story.bullets[0]}
+          </span>
+        )}
+        <span className="mt-3 flex items-center gap-2 text-xs text-white/80">
+          <span className="flex -space-x-1.5">
+            {story.sources.slice(0, 4).map((s) => (
+              <FeedFavicon
+                key={s.title}
+                title={s.title}
+                faviconUrl={s.faviconUrl}
+                size={18}
+                className="ring-2 ring-black/40"
+              />
+            ))}
+          </span>
+          {story.sources.length > 1 ? `${story.sources.length} sources` : story.sources[0]?.title}
+        </span>
+      </span>
+    </button>
   );
 }
 

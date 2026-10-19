@@ -91,6 +91,60 @@
   }
 }
 
+/* Accent colours (Settings → Appearance). Light themes get a deeper tone for white text;
+   dark gets a brighter one that reads on near-black. */
+@layer base {
+  [data-accent="blue"] {
+    --primary: 217 85% 52%;
+    --ring: 217 85% 52%;
+  }
+  .dark[data-accent="blue"] {
+    --primary: 213 90% 68%;
+    --ring: 213 90% 68%;
+  }
+  [data-accent="teal"] {
+    --primary: 174 70% 36%;
+    --ring: 174 70% 36%;
+  }
+  .dark[data-accent="teal"] {
+    --primary: 172 66% 56%;
+    --ring: 172 66% 56%;
+  }
+  [data-accent="green"] {
+    --primary: 150 60% 36%;
+    --ring: 150 60% 36%;
+  }
+  .dark[data-accent="green"] {
+    --primary: 150 60% 56%;
+    --ring: 150 60% 56%;
+  }
+  [data-accent="amber"] {
+    --primary: 28 85% 46%;
+    --ring: 28 85% 46%;
+  }
+  .dark[data-accent="amber"] {
+    --primary: 34 95% 62%;
+    --ring: 34 95% 62%;
+  }
+  [data-accent="rose"] {
+    --primary: 340 75% 50%;
+    --ring: 340 75% 50%;
+  }
+  .dark[data-accent="rose"] {
+    --primary: 345 85% 70%;
+    --ring: 345 85% 70%;
+  }
+  [data-accent="mono"] {
+    --primary: 224 22% 18%;
+    --ring: 224 22% 18%;
+  }
+  .dark[data-accent="mono"] {
+    --primary: 220 15% 88%;
+    --ring: 220 15% 88%;
+    --primary-foreground: 228 20% 8%;
+  }
+}
+
 @layer base {
   * {
     @apply border-border;

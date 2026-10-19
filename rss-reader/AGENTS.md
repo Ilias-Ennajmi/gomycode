@@ -254,6 +254,22 @@ sidebar, settings, list menus, common actions); strings not in the table fall ba
 English. _Android_ 1.2.0 adds Podcasts and Review shortcuts (needs signing, see
 `android/README.md`).
 
+**Delight.** _Stories_ (`lib/stories.ts`, `components/stories/`): `StoryBubbles` lists
+sources with unread (For You adds a "For you" bubble over the ranked pool) above For You and
+each source tab; `StoriesPlayer` is a full-screen `role="dialog"` flow over
+`/api/articles?feedId=…&unread=true&limit=8` with a 7 s clock per story driven by
+`requestAnimationFrame` (hold pauses, tap left/right steps, sideways swipe changes source,
+down closes), Read opens the reader, "seen" is local (`stories-seen`). _Magazine layout_
+(`useListLayout`: `"magazine"`, the default for foryou and news): the first card of each day
+or every fifth is a big picture card with a serif headline (`ArticleCard` `editorial`/`lead`),
+the rest rows; `enterDelay` staggers the first ten cards in. _Cover story_: Today's lead
+story with a picture renders full-bleed (`CoverStory`). _Goal ring_ (`GoalRing`,
+`useReadingGoal`, `GET /api/stats/today`): minutes read today against a goal kept on the
+device (`reading-goal`, Settings → Daily goal) plus the streak. _Accent colours_
+(`useAccent`, `data-accent` on `<html>`, variables in `globals.css`; `AccentBoot` in
+`Providers`). Small life: shimmer skeletons, an equalizer on the now-playing artwork, a
+source-colour wash at the top of the reader.
+
 **Screen space** (phones). Two thin rows on top: `TopBar` (tabs, with search, add and settings
 on the right) and `components/articles/ListToolbar.tsx` (every filter as a chip in one
 sideways-scrolling row, plus a single "⋯" menu for add, refresh, layout, sort, mark all
@@ -380,6 +396,8 @@ Built in this order (see `git log -- rss-reader`):
 17. Premium pass 4 (under the hood): instant open, offline outbox and per-article offline
     copies, adaptive refresh, link cleaning, security headers, error boundaries and log,
     System sheet, backup export, French interface, Android shortcuts for Podcasts and Review.
+18. Delight pass: Stories, magazine layout and cover story, goal ring and streak, accent
+    colours, shimmer, equalizer, reader wash.
 
 ## Open ideas (not built yet)
 

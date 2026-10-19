@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { SwrPersistence } from "@/lib/swr-cache";
 import { LocaleProvider } from "@/lib/i18n";
+import { AccentBoot } from "@/lib/hooks/useAccent";
 
 async function fetcher(url: string) {
   const res = await fetch(url);
@@ -41,6 +42,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       >
         {/* Instant open: last time's lists and counts show before the network answers. */}
         <SwrPersistence />
+        <AccentBoot />
         <LocaleProvider>
           <TooltipProvider delayDuration={300}>
             {children}

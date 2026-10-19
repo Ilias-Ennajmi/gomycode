@@ -6,10 +6,22 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.10.19d";
+export const WHATS_NEW_VERSION = "2026.10.20";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "Stories",
+    text: "A row of your sources at the top of For You and each tab. Tap one to flip through its latest unread full screen: tap to advance, hold to pause, swipe sideways for the next source, Read to open.",
+  },
+  {
+    title: "A magazine, not a wall",
+    text: "For You and News open as a magazine: a big picture card leads each day, the rest are rows, with serif headlines. Today opens on a full-bleed cover story. Pick Magazine, Compact or Big pictures in any list's ⋯ menu.",
+  },
+  {
+    title: "Your ring, your colour",
+    text: "A daily reading goal ring with your streak, on For You and Today (set the goal in Settings). Settings → Appearance now has seven accent colours.",
+  },
   {
     title: "Faster, and fine offline",
     text: "The app opens on what you saw last time before it checks for news. Reading, saving and archiving work offline and sync when you're back; long-press a card to keep it offline.",

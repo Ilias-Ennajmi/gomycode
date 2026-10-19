@@ -29,6 +29,8 @@ import { useAiStatus, type AiStatus } from "@/lib/hooks/useAi";
 import { WhatsNew } from "@/components/layout/WhatsNew";
 import { SystemSheet } from "@/components/layout/SystemSheet";
 import { useT, type Locale } from "@/lib/i18n";
+import { ACCENTS, useAccent } from "@/lib/hooks/useAccent";
+import { GOALS, useReadingGoal } from "@/lib/hooks/useReadingGoal";
 import { androidAppVersion, RELEASES_PAGE } from "@/lib/native";
 import { NotificationSettings } from "@/components/layout/NotificationSettings";
 import { useFeeds } from "@/lib/hooks/useFeeds";
@@ -83,6 +85,8 @@ export function SettingsPanel({
   const { setView, setMobilePane } = useReaderState();
   const [startView, setStartView] = React.useState<(typeof START_VIEWS)[number]>("foryou");
   React.useEffect(() => setStartView(readStartView()), []);
+  const { accent, setAccent } = useAccent();
+  const { goal, setGoal, minutes } = useReadingGoal();
 
   return (
     <div className="flex h-full flex-col">
@@ -160,6 +164,36 @@ export function SettingsPanel({
               ))}
             </div>
           </div>
+          <div className="px-4 py-3">
+            <p className="flex items-baseline justify-between text-sm font-medium">
+              {t("Daily goal")}
+              <span className="text-xs font-normal text-muted-foreground">{minutes} min today</span>
+            </p>
+            <div
+              role="radiogroup"
+              aria-label="Daily goal"
+              className="mt-2 grid grid-cols-5 gap-1 rounded-lg bg-muted p-1"
+            >
+              {GOALS.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={goal === value}
+                  onClick={() => setGoal(value)}
+                  className={cn(
+                    "rounded-md px-1 py-1.5 text-sm tabular-nums transition-colors",
+                    goal === value
+                      ? "bg-background font-medium text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {value}
+                  <span className="text-[10px]">m</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </Section>
 
         <Section title={t("Sources")}>
@@ -215,6 +249,31 @@ export function SettingsPanel({
                 </button>
               );
             })}
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-sm font-medium">{t("Accent colour")}</p>
+            <div
+              role="radiogroup"
+              aria-label="Accent colour"
+              className="mt-2 flex flex-wrap gap-2.5"
+            >
+              {ACCENTS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={accent === option.id}
+                  aria-label={option.label}
+                  title={option.label}
+                  onClick={() => setAccent(option.id)}
+                  className={cn(
+                    "h-8 w-8 rounded-full ring-offset-2 ring-offset-card transition-transform",
+                    accent === option.id ? "scale-110 ring-2 ring-foreground" : "hover:scale-105"
+                  )}
+                  style={{ backgroundColor: option.swatch }}
+                />
+              ))}
+            </div>
           </div>
         </Section>
 
