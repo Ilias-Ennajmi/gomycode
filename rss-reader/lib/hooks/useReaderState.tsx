@@ -29,6 +29,7 @@ export type ViewType =
   | "alerts"
   | "review"
   | "ask"
+  | "stats"
   | "later"
   | "all"
   | "today"
@@ -97,6 +98,20 @@ interface ReaderStateValue {
 
 const DEFAULT_VIEW: ViewState = { type: "foryou", label: "For You" };
 
+/** Settings → "Start on": which page the app opens to (a LINKABLE_VIEWS key). */
+export const START_VIEW_KEY = "start-view";
+export const START_VIEWS = ["foryou", "briefing", "news", "later"] as const;
+export function readStartView(): (typeof START_VIEWS)[number] {
+  try {
+    const saved = localStorage.getItem(START_VIEW_KEY);
+    return (START_VIEWS as readonly string[]).includes(saved ?? "")
+      ? (saved as (typeof START_VIEWS)[number])
+      : "foryou";
+  } catch {
+    return "foryou";
+  }
+}
+
 // Views that links, shortcuts and the Android app can open with ?view=.
 const LINKABLE_VIEWS: Record<string, ViewState> = {
   foryou: DEFAULT_VIEW,
@@ -110,6 +125,7 @@ const LINKABLE_VIEWS: Record<string, ViewState> = {
   alerts: { type: "alerts", label: "Alerts" },
   review: { type: "review", label: "Daily review" },
   ask: { type: "ask", label: "Ask" },
+  stats: { type: "stats", label: "Your reading" },
   later: { type: "later", label: "Later" },
   today: { type: "today", label: "Today" },
   all: { type: "all", label: "All articles" },
@@ -188,6 +204,11 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     rememberAppLaunch(params);
     const linked = LINKABLE_VIEWS[params.get("view") ?? ""];
     if (linked) setViewState(linked);
+    // Opened plainly: the page chosen in Settings.
+    else if (!params.get("article")) {
+      const start = readStartView();
+      if (start !== "foryou") setViewState(LINKABLE_VIEWS[start]);
+    }
     const laterTab = LINKABLE_LATER_TABS[params.get("view") ?? ""];
     if (laterTab) {
       setViewState(LINKABLE_VIEWS.later);

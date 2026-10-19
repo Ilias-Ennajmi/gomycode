@@ -59,7 +59,7 @@ import { withViewTransition } from "@/lib/motion";
 import { ChromeCollapse } from "@/components/layout/ChromeCollapse";
 import type { ArticleSummary, LaterTab, SearchScope, SearchSince } from "@/lib/types";
 import { ShortsGrid } from "@/components/video/ShortsGrid";
-import { ChannelHeader } from "@/components/video/ChannelHeader";
+import { SourceHeader } from "@/components/sources/SourceHeader";
 import type { DiscoverKind } from "@/lib/discover/catalog";
 
 interface ArticleListProps {
@@ -344,10 +344,9 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   const showHighlights = isLater && laterTab === "highlights";
   const showVideoKinds = view.type === "youtube" && !searching;
   const shortsGrid = showVideoKinds && videoKind === "short";
-  const channelFeed =
-    view.type === "feed" && !searching
-      ? feeds.find((f) => f.id === view.id && f.type === "youtube")
-      : undefined;
+  // A source's own list gets its page header (who it is, settings, unfollow).
+  const sourceFeed =
+    view.type === "feed" && !searching ? feeds.find((f) => f.id === view.id) : undefined;
   // An email newsletter's own list shows its sign-up address.
   const emailFeed =
     view.type === "feed" && !searching ? feeds.find((f) => f.id === view.id && f.email) : undefined;
@@ -483,7 +482,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
                 </Button>
               </div>
             )}
-            {channelFeed && <ChannelHeader feed={channelFeed} videoCount={total} />}
+            {sourceFeed && <SourceHeader feed={sourceFeed} total={total} />}
             <ListToolbar
               isLater={isLater}
               ranked={ranked}

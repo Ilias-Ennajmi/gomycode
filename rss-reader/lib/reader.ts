@@ -14,6 +14,8 @@ export function needsFullArticle(
   if (article.isVideo || article.feed.type === "manual" || article.feed.type === "podcast") {
     return false;
   }
+  // The source's own setting wins over the guess.
+  if (article.feed.fullPage) return true;
   const text = stripHtml(article.content || article.summary);
   return text.length < SHORT_TEXT || CUT_OFF.test(text);
 }

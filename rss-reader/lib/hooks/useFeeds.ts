@@ -25,7 +25,10 @@ export function useCategories() {
   return { categories: data?.categories ?? EMPTY_CATEGORIES, isLoading, error, mutate };
 }
 
-export async function updateFeed(id: string, data: { title?: string; categoryId?: string | null }) {
+export async function updateFeed(
+  id: string,
+  data: { title?: string; categoryId?: string | null; inForYou?: boolean; fullPage?: boolean }
+) {
   const res = await fetch(`/api/feeds/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },

@@ -3,6 +3,7 @@
 import type { DiscoverKind } from "@/lib/discover/catalog";
 import * as React from "react";
 import {
+  BarChart3,
   BookOpen,
   ChevronRight,
   Compass,
@@ -28,6 +29,19 @@ import { androidAppVersion, RELEASES_PAGE } from "@/lib/native";
 import { NotificationSettings } from "@/components/layout/NotificationSettings";
 import { useFeeds } from "@/lib/hooks/useFeeds";
 import { needingAttention } from "@/lib/feed-health";
+import {
+  START_VIEWS,
+  START_VIEW_KEY,
+  readStartView,
+  useReaderState,
+} from "@/lib/hooks/useReaderState";
+
+const START_LABELS: Record<(typeof START_VIEWS)[number], string> = {
+  foryou: "For You",
+  briefing: "Today",
+  news: "News",
+  later: "Later",
+};
 
 interface SettingsPanelProps {
   onAddFeed: (kind?: DiscoverKind) => void;
@@ -60,6 +74,9 @@ export function SettingsPanel({
   React.useEffect(() => setMounted(true), []);
   const { feeds } = useFeeds();
   const attention = needingAttention(feeds).length;
+  const { setView, setMobilePane } = useReaderState();
+  const [startView, setStartView] = React.useState<(typeof START_VIEWS)[number]>("foryou");
+  React.useEffect(() => setStartView(readStartView()), []);
 
   return (
     <div className="flex h-full flex-col">
@@ -68,6 +85,51 @@ export function SettingsPanel({
       </header>
 
       <div className="flex-1 space-y-6 overflow-y-auto px-4 py-5">
+        <Section title="You">
+          <Row
+            icon={BarChart3}
+            label="Your reading"
+            hint="Articles, time and highlights over the last 30 days"
+            onClick={() => {
+              setView({ type: "stats", label: "Your reading" });
+              setMobilePane("list");
+            }}
+          />
+          <div className="px-4 py-3">
+            <p className="text-sm font-medium">Start on</p>
+            <div
+              role="radiogroup"
+              aria-label="Start on"
+              className="mt-2 grid grid-cols-4 gap-1 rounded-lg bg-muted p-1"
+            >
+              {START_VIEWS.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="radio"
+                  aria-checked={startView === id}
+                  onClick={() => {
+                    setStartView(id);
+                    try {
+                      localStorage.setItem(START_VIEW_KEY, id);
+                    } catch {
+                      // Fine.
+                    }
+                  }}
+                  className={cn(
+                    "rounded-md px-2 py-1.5 text-sm transition-colors",
+                    startView === id
+                      ? "bg-background font-medium text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {START_LABELS[id]}
+                </button>
+              ))}
+            </div>
+          </div>
+        </Section>
+
         <Section title="Sources">
           <Row
             icon={Compass}

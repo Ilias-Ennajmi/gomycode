@@ -9,6 +9,7 @@ export const ARTICLE_FEED_INCLUDE = {
       categoryId: true,
       type: true,
       platform: true,
+      fullPage: true,
     },
   },
   _count: { select: { highlights: true } },

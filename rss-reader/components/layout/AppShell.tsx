@@ -85,6 +85,9 @@ const ReviewView = dynamic(
 const AskView = dynamic(() => import("@/components/ask/AskView").then((m) => m.AskView), {
   ssr: false,
 });
+const StatsView = dynamic(() => import("@/components/stats/StatsView").then((m) => m.StatsView), {
+  ssr: false,
+});
 const NewsSourcesDialog = dynamic(
   () => import("@/components/news/NewsSourcesDialog").then((m) => m.NewsSourcesDialog),
   { ssr: false }
@@ -121,7 +124,8 @@ function AppShellInner() {
       view.type === "briefing" ||
       view.type === "recap" ||
       view.type === "review" ||
-      view.type === "ask");
+      view.type === "ask" ||
+      view.type === "stats");
   const [newsSources, setNewsSources] = React.useState<{ open: boolean; setup: boolean }>({
     open: false,
     setup: false,
@@ -144,6 +148,11 @@ function AppShellInner() {
     setEmailNewsletterOpen(true);
   });
   useAppEvent("content-filters", () => setFiltersOpen(true));
+  useAppEvent("sources-unused", () => {
+    setSourcesChannel("unused");
+    setSourcesOpen(true);
+  });
+  const [sourcesChannel, setSourcesChannel] = React.useState<"unused" | null>(null);
 
   // Android back (and browser back) closes the open dialog first.
   useBackToClose(discoverOpen, () => setDiscoverOpen(false));
@@ -325,6 +334,8 @@ function AppShellInner() {
                   <ReviewView />
                 ) : view.type === "ask" ? (
                   <AskView />
+                ) : view.type === "stats" ? (
+                  <StatsView />
                 ) : (
                   <TodayView />
                 )}
@@ -406,6 +417,8 @@ function AppShellInner() {
         onOpenChange={setSourcesOpen}
         onAddFeed={dialogActions.onAddFeed}
         attention={sourcesAttention}
+        channel={sourcesChannel}
+        onChannelShown={() => setSourcesChannel(null)}
       />
       <ManageCategoriesDialog open={manageCategoriesOpen} onOpenChange={setManageCategoriesOpen} />
       <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />

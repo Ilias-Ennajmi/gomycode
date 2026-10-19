@@ -6,10 +6,22 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.10.19b";
+export const WHATS_NEW_VERSION = "2026.10.19c";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "Today is your home",
+    text: "Continue where you left off, sources to tidy up, and every block can be hidden or moved (the sliders icon). Settings → Start on picks the page the app opens to.",
+  },
+  {
+    title: "Your reading, in numbers",
+    text: "Stats in the sidebar: articles, time and highlights over 30 days, by day and by hour, your top sources and your streak.",
+  },
+  {
+    title: "Source pages and smarter search",
+    text: "Every source has a page with its settings (For You, full page, mute, alerts). Search understands from:, tag:, is:unread and in:youtube, and remembers recent searches.",
+  },
   {
     title: "Ask your reader",
     text: "A new page in the sidebar: ask a question and get an answer from your own feeds, with the articles it came from.",
