@@ -22,6 +22,7 @@ import { AudioProvider } from "@/components/audio/AudioProvider";
 import { NowPlayingBar } from "@/components/audio/NowPlayingBar";
 import { NowPlayingSheet } from "@/components/audio/NowPlayingSheet";
 import { WhatsNew } from "@/components/layout/WhatsNew";
+import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 import { refreshFeeds, refreshToastMessage, useAutoRefresh, useFeeds } from "@/lib/hooks/useFeeds";
 import { useSWRConfig } from "swr";
 import type { DiscoverKind } from "@/lib/discover/catalog";
@@ -324,21 +325,23 @@ function AppShellInner() {
                   mobilePane === "reader" && "hidden md:block"
                 )}
               >
-                {newsFront ? (
-                  <NewsView
-                    onManageSources={(setup = false) => setNewsSources({ open: true, setup })}
-                  />
-                ) : view.type === "recap" ? (
-                  <RecapView />
-                ) : view.type === "review" ? (
-                  <ReviewView />
-                ) : view.type === "ask" ? (
-                  <AskView />
-                ) : view.type === "stats" ? (
-                  <StatsView />
-                ) : (
-                  <TodayView />
-                )}
+                <ErrorBoundary name={view.type}>
+                  {newsFront ? (
+                    <NewsView
+                      onManageSources={(setup = false) => setNewsSources({ open: true, setup })}
+                    />
+                  ) : view.type === "recap" ? (
+                    <RecapView />
+                  ) : view.type === "review" ? (
+                    <ReviewView />
+                  ) : view.type === "ask" ? (
+                    <AskView />
+                  ) : view.type === "stats" ? (
+                    <StatsView />
+                  ) : (
+                    <TodayView />
+                  )}
+                </ErrorBoundary>
               </div>
               {selectedArticleId && (
                 <div
@@ -359,7 +362,9 @@ function AppShellInner() {
                   >
                     <X className="h-4 w-4" />
                   </button>
-                  <ArticleReader />
+                  <ErrorBoundary name="reader">
+                    <ArticleReader />
+                  </ErrorBoundary>
                 </div>
               )}
             </div>
@@ -372,10 +377,12 @@ function AppShellInner() {
                   focus && "md:hidden"
                 )}
               >
-                <ArticleList
-                  onAddFeed={dialogActions.onAddFeed}
-                  onSaveLink={() => setSaveLinkOpen(true)}
-                />
+                <ErrorBoundary name="list">
+                  <ArticleList
+                    onAddFeed={dialogActions.onAddFeed}
+                    onSaveLink={() => setSaveLinkOpen(true)}
+                  />
+                </ErrorBoundary>
               </div>
 
               <div
@@ -384,7 +391,9 @@ function AppShellInner() {
                   mobilePane === "reader" ? "animate-pane-in md:animate-none" : "hidden md:block"
                 )}
               >
-                <ArticleReader />
+                <ErrorBoundary name="reader">
+                  <ArticleReader />
+                </ErrorBoundary>
               </div>
             </div>
           )}

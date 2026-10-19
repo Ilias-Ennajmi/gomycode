@@ -3,6 +3,7 @@
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 import { useMemo } from "react";
+import { enqueue, isNetworkError } from "@/lib/outbox";
 import type { ArticleListParams, ArticleSort, ArticleSummary } from "@/lib/types";
 
 const PAGE_SIZE = 20;
@@ -123,11 +124,26 @@ async function patchArticle(
     snoozedUntil?: string | null;
   }
 ) {
-  const res = await fetch(`/api/articles/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`/api/articles/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  } catch (error) {
+    // No network: keep the change in the outbox and let the screen update as if it worked.
+    if (!isNetworkError(error)) throw error;
+    enqueue(`/api/articles/${id}`, "PATCH", data);
+    const { isArchived, ...rest } = data;
+    return {
+      id,
+      ...rest,
+      ...(isArchived !== undefined
+        ? { archivedAt: isArchived ? new Date().toISOString() : null }
+        : {}),
+    } as unknown as ArticleSummary;
+  }
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || "Could not update article");
   return body.article as ArticleSummary;

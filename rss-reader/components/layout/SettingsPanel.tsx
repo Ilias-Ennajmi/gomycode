@@ -3,10 +3,12 @@
 import type { DiscoverKind } from "@/lib/discover/catalog";
 import * as React from "react";
 import {
+  Archive,
   BarChart3,
   BookOpen,
   ChevronRight,
   Compass,
+  Cpu,
   Download,
   FolderCog,
   Keyboard,
@@ -25,6 +27,8 @@ import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { useAiStatus, type AiStatus } from "@/lib/hooks/useAi";
 import { WhatsNew } from "@/components/layout/WhatsNew";
+import { SystemSheet } from "@/components/layout/SystemSheet";
+import { useT, type Locale } from "@/lib/i18n";
 import { androidAppVersion, RELEASES_PAGE } from "@/lib/native";
 import { NotificationSettings } from "@/components/layout/NotificationSettings";
 import { useFeeds } from "@/lib/hooks/useFeeds";
@@ -69,6 +73,8 @@ export function SettingsPanel({
   onShowShortcuts,
 }: SettingsPanelProps) {
   const [whatsNew, setWhatsNew] = React.useState(false);
+  const [system, setSystem] = React.useState(false);
+  const { t, locale, setLocale } = useT();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -81,22 +87,48 @@ export function SettingsPanel({
   return (
     <div className="flex h-full flex-col">
       <header className="border-b px-4 py-3">
-        <h2 className="tracking-tight text-2xl font-semibold">Settings</h2>
+        <h2 className="tracking-tight text-2xl font-semibold">{t("Settings")}</h2>
       </header>
 
       <div className="flex-1 space-y-6 overflow-y-auto px-4 py-5">
-        <Section title="You">
+        <Section title={t("You")}>
           <Row
             icon={BarChart3}
-            label="Your reading"
-            hint="Articles, time and highlights over the last 30 days"
+            label={t("Your reading")}
+            hint={t("Articles, time and highlights over the last 30 days")}
             onClick={() => {
               setView({ type: "stats", label: "Your reading" });
               setMobilePane("list");
             }}
           />
           <div className="px-4 py-3">
-            <p className="text-sm font-medium">Start on</p>
+            <p className="text-sm font-medium">{t("Language")}</p>
+            <div
+              role="radiogroup"
+              aria-label="Language"
+              className="mt-2 grid grid-cols-2 gap-1 rounded-lg bg-muted p-1"
+            >
+              {(["en", "fr"] as Locale[]).map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="radio"
+                  aria-checked={locale === id}
+                  onClick={() => setLocale(id)}
+                  className={cn(
+                    "rounded-md px-2 py-1.5 text-sm transition-colors",
+                    locale === id
+                      ? "bg-background font-medium text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {id === "en" ? "English" : "Français"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-sm font-medium">{t("Start on")}</p>
             <div
               role="radiogroup"
               aria-label="Start on"
@@ -123,45 +155,45 @@ export function SettingsPanel({
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {START_LABELS[id]}
+                  {t(START_LABELS[id])}
                 </button>
               ))}
             </div>
           </div>
         </Section>
 
-        <Section title="Sources">
+        <Section title={t("Sources")}>
           <Row
             icon={Compass}
-            label="Discover sources"
-            hint="Browse by interest, search, or paste a link"
+            label={t("Discover sources")}
+            hint={t("Browse by interest, search, or paste a link")}
             onClick={() => onAddFeed()}
           />
           <Row
             icon={Library}
-            label="Your sources"
+            label={t("Your sources")}
             hint={
               attention > 0
                 ? `${attention} ${attention === 1 ? "needs" : "need"} attention: not loading or no new posts`
-                : "Rename, move, mute or unfollow"
+                : t("Rename, move, mute or unfollow")
             }
             warn={attention > 0}
             onClick={() => onManageSources(attention > 0)}
           />
-          <Row icon={FolderCog} label="Categories" onClick={onManageCategories} />
+          <Row icon={FolderCog} label={t("Categories")} onClick={onManageCategories} />
           <Row
             icon={SlidersHorizontal}
-            label="Content filters"
-            hint="Hide, boost, alerts and auto-save"
+            label={t("Content filters")}
+            hint={t("Hide, boost, alerts and auto-save")}
             onClick={onContentFilters}
           />
         </Section>
 
-        <Section title="AI">
+        <Section title={t("AI")}>
           <AiStatusRow />
         </Section>
 
-        <Section title="Appearance">
+        <Section title={t("Appearance")}>
           <div className="grid grid-cols-4 gap-2 p-2">
             {THEMES.map(({ id, label, icon: Icon }) => {
               const active = mounted && theme === id;
@@ -179,38 +211,51 @@ export function SettingsPanel({
                   )}
                 >
                   <Icon className="h-5 w-5" />
-                  {label}
+                  {t(label)}
                 </button>
               );
             })}
           </div>
         </Section>
 
-        <Section title="Your data">
-          <Row icon={Upload} label="Import OPML" onClick={onImportOpml} />
+        <Section title={t("Your data")}>
+          <Row icon={Upload} label={t("Import OPML")} onClick={onImportOpml} />
           <Row
             icon={Download}
-            label="Export OPML"
+            label={t("Export OPML")}
             onClick={() => window.open("/api/opml", "_blank")}
+          />
+          <Row
+            icon={Archive}
+            label={t("Download a backup")}
+            hint={t("Sources, highlights, saved articles and settings, as one file")}
+            onClick={() => window.open("/api/backup", "_blank")}
           />
         </Section>
 
-        <Section title="Notifications">
+        <Section title={t("Notifications")}>
           <NotificationSettings />
         </Section>
 
-        <Section title="App">
+        <Section title={t("App")}>
           <AppRow />
+          <Row
+            icon={Cpu}
+            label={t("Under the hood")}
+            hint={t("Build, database, last refresh, errors")}
+            onClick={() => setSystem(true)}
+          />
+          <SystemSheet open={system} onOpenChange={setSystem} />
         </Section>
 
-        <Section title="Help">
-          <Row icon={Keyboard} label="Keyboard shortcuts" onClick={onShowShortcuts} />
-          <Row icon={Sparkles} label="What's new" onClick={() => setWhatsNew(true)} />
+        <Section title={t("Help")}>
+          <Row icon={Keyboard} label={t("Keyboard shortcuts")} onClick={onShowShortcuts} />
+          <Row icon={Sparkles} label={t("What's new")} onClick={() => setWhatsNew(true)} />
           <WhatsNew open={whatsNew} onOpenChange={setWhatsNew} />
         </Section>
 
         <Section>
-          <Row icon={LogOut} label="Sign out" destructive onClick={signOut} />
+          <Row icon={LogOut} label={t("Sign out")} destructive onClick={signOut} />
         </Section>
       </div>
     </div>

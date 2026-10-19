@@ -9,6 +9,10 @@
     <string name="shortcutHighlightsLong">Open your highlights and notes</string>
     <string name="shortcutLater">Later</string>
     <string name="shortcutLaterLong">Open your Read Later list</string>
+    <string name="shortcutPodcasts">Podcasts</string>
+    <string name="shortcutPodcastsLong">Open your podcasts</string>
+    <string name="shortcutReview">Review</string>
+    <string name="shortcutReviewLong">Today\'s review of your highlights</string>
     <string name="shortcutAdd">Add source</string>
     <string name="shortcutAddLong">Add sites, channels or topics</string>
 </resources>

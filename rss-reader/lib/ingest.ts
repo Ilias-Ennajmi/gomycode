@@ -4,6 +4,7 @@ import type { ParsedArticle } from "@/lib/rss";
 import { cleanHtml } from "@/lib/clean-html";
 import { DAY_MS, retentionDays } from "@/lib/retention";
 import { chaptersFromNotes, showNotesHtml } from "@/lib/podcast";
+import { cleanLink } from "@/lib/links";
 
 // A new podcast can list hundreds of episodes; the newest are the ones worth having.
 const FIRST_EPISODES = 20;
@@ -21,12 +22,17 @@ function notInFuture(date: Date) {
  * by another feed (same link, e.g. a site's main and sports feeds) is skipped, and so is
  * backlog older than the retention window once a feed has articles (see cleanupArticles).
  */
-export async function insertNewArticles(feedId: string, articles: ParsedArticle[]) {
-  if (articles.length === 0) return [];
+export async function insertNewArticles(feedId: string, parsed: ParsedArticle[]) {
+  if (parsed.length === 0) return [];
 
+  // Links are stored without tracking parameters; articles stored before that still match
+  // by their original link, so they aren't inserted a second time.
+  const articles = parsed.map((article) => ({ ...article, link: cleanLink(article.link) }));
   const [existing, feed, hasArticles] = await Promise.all([
     prisma.article.findMany({
-      where: { link: { in: articles.map((article) => article.link) } },
+      where: {
+        link: { in: [...articles.map((a) => a.link), ...parsed.map((a) => a.link)] },
+      },
       select: { link: true },
     }),
     prisma.feed.findUnique({ where: { id: feedId }, select: { newsDesk: true, type: true } }),
@@ -35,8 +41,10 @@ export async function insertNewArticles(feedId: string, articles: ParsedArticle[
   const known = new Set(existing.map((row) => row.link));
   const cutoff = Date.now() - retentionDays(feed?.newsDesk ?? null) * DAY_MS;
   let fresh = articles.filter(
-    (article) =>
-      !known.has(article.link) && !(hasArticles && article.publishedAt.getTime() < cutoff)
+    (article, i) =>
+      !known.has(article.link) &&
+      !known.has(parsed[i].link) &&
+      !(hasArticles && article.publishedAt.getTime() < cutoff)
   );
   if (feed?.type === "podcast" && !hasArticles) {
     fresh = fresh

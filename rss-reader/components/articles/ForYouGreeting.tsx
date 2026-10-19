@@ -6,6 +6,7 @@ import { useCounts } from "@/lib/hooks/useArticles";
 import { Ticker } from "@/components/ui/ticker";
 import { useReviewStatus } from "@/lib/hooks/useReview";
 import { useReaderState, type ViewState } from "@/lib/hooks/useReaderState";
+import { useT } from "@/lib/i18n";
 
 function greeting(date = new Date()) {
   const hour = date.getHours();
@@ -21,6 +22,7 @@ function greeting(date = new Date()) {
  */
 export function ForYouGreeting() {
   const { setView } = useReaderState();
+  const { t } = useT();
   const { unread, alerts, listening } = useCounts();
   const { data: review } = useReviewStatus();
   const reviewCount = review?.highlights.length ?? 0;
@@ -41,7 +43,7 @@ export function ForYouGreeting() {
   if (reviewCount > 0) {
     items.push({
       key: "review",
-      label: "Review ready",
+      label: t("Review ready"),
       icon: <BookOpenCheck className="h-3.5 w-3.5" />,
       view: { type: "review", label: "Daily review" },
     });
@@ -58,15 +60,15 @@ export function ForYouGreeting() {
   if (!text) return <div className="h-[72px]" aria-hidden />;
   return (
     <div className="px-4 pb-1 pt-4">
-      <h2 className="text-xl font-semibold tracking-tight">{text}</h2>
+      <h2 className="text-xl font-semibold tracking-tight">{t(text)}</h2>
       <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
         <Inbox className="h-3.5 w-3.5" />
         {unread > 0 ? (
           <>
-            <Ticker value={unread} /> unread
+            <Ticker value={unread} /> {t("unread")}
           </>
         ) : (
-          "You're all caught up"
+          t("You're all caught up")
         )}
       </p>
       {items.length > 0 && (

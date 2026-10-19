@@ -40,6 +40,30 @@
     </shortcut>
     <shortcut
         android:enabled="true"
+        android:icon="@drawable/ic_shortcut_podcasts"
+        android:shortcutId="podcasts"
+        android:shortcutLongLabel="@string/shortcutPodcastsLong"
+        android:shortcutShortLabel="@string/shortcutPodcasts">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="https://rss-reader-jet.vercel.app/reader?view=podcasts&amp;source=android"
+            android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity"
+            android:targetPackage="io.github.iliasennajmi.reader" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_review"
+        android:shortcutId="review"
+        android:shortcutLongLabel="@string/shortcutReviewLong"
+        android:shortcutShortLabel="@string/shortcutReview">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="https://rss-reader-jet.vercel.app/reader?view=review&amp;source=android"
+            android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity"
+            android:targetPackage="io.github.iliasennajmi.reader" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
         android:icon="@drawable/ic_shortcut_highlights"
         android:shortcutId="highlights"
         android:shortcutLongLabel="@string/shortcutHighlightsLong"

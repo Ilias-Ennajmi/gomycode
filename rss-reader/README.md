@@ -32,7 +32,9 @@ Google Gemini's free tier.
 | Ask         | "Ask your reader": questions answered from your own feeds, with the articles behind each answer; "Catch me up" bullets over any list's unread, then mark them read                               |
 | Smart       | Why For You picked a story, select text to Explain / Define / Translate, translate whole articles, "How this story unfolded" timelines, near-duplicate articles folded away                      |
 | Later       | Reading queue with total reading time, snooze (back at a chosen time with a notification), archive, weekly recap                                                                                 |
-| Android app | Installable app (`android/`): share links to Later, icon shortcuts, back gesture, deep links                                                                                                     |
+| Offline     | Opens instantly from the last visit, lists and Later articles cached, "Save offline" per article, changes made offline sent when back online                                                     |
+| Settings    | Start page, English / French interface, theme, "Under the hood" (build, database, last refresh, errors), one-file backup of everything that's yours                                              |
+| Android app | Installable app (`android/`): share links to Later, icon shortcuts (Search, News, Later, Podcasts, Review, Highlights, Add), back gesture, deep links                                             |
 
 ## Stack
 

@@ -231,6 +231,29 @@ remaining words are the full-text search, and operators alone give a date-ordere
 `SearchSuggestions` under the sidebar box shows recents (`search-recents`) and, while
 typing, matching sources and tags as operator chips.
 
+**Under the hood.** _Instant open_: `lib/swr-cache.ts` (`SwrPersistence`, mounted in
+`Providers`) restores first pages, counts, feeds and the briefing from localStorage
+(`swr-cache`) right after mount, then saves them when the page is hidden; restoring during
+render would break hydration. _Outbox_: `lib/outbox.ts`; `patchArticle` queues a change when
+the network is down and answers optimistically; `OfflineSupport` replays the queue when back
+online and shows the count in the offline bar. `cache-article` (service worker) keeps one
+article offline ("Save offline" on cards); the System sheet counts what's cached. _Adaptive
+refresh_ (`lib/refresh.ts`): sources quiet for a week are read every 6 h, for a month (or
+failing) once a day; `skipped` is reported. _Link cleaning_ (`lib/links.ts`): utm and
+friends are stripped at ingest (existing articles still match by their old link) and when
+sharing. _Security headers_ in `next.config.mjs` (CSP, HSTS, nosniff, frame-ancestors
+none; the CSP allows YouTube frames and scripts, any image/audio host, api.github.com).
+_Error log_ (`lib/errlog.ts`, `/api/errors`): the hourly tick, the refresh route and the
+client `ErrorBoundary` (around the list, the reader and each full page; `app/error.tsx`
+for a whole page) record errors in the `error-log` Setting. _System sheet_ (Settings →
+Under the hood, `GET /api/system`): build, database size and counts, last tick summary
+(`last-tick` Setting), offline state, the error log. _Backup_: `GET /api/backup` downloads
+sources, categories, rules, highlights, saved articles and preferences as JSON. _French_:
+`lib/i18n.tsx` (`useT`, `LocaleProvider`, localStorage `locale`) covers the chrome (tabs,
+sidebar, settings, list menus, common actions); strings not in the table fall back to
+English. _Android_ 1.2.0 adds Podcasts and Review shortcuts (needs signing, see
+`android/README.md`).
+
 **Screen space** (phones). Two thin rows on top: `TopBar` (tabs, with search, add and settings
 on the right) and `components/articles/ListToolbar.tsx` (every filter as a chip in one
 sideways-scrolling row, plus a single "⋯" menu for add, refresh, layout, sort, mark all
@@ -354,6 +377,9 @@ Built in this order (see `git log -- rss-reader`):
 16. Premium pass 3 (home): Today as a configurable home (continue, tidy up, start page),
     reading stats, source pages with per-source settings, "Never read" sources, search
     operators with recents and suggestions.
+17. Premium pass 4 (under the hood): instant open, offline outbox and per-article offline
+    copies, adaptive refresh, link cleaning, security headers, error boundaries and log,
+    System sheet, backup export, French interface, Android shortcuts for Podcasts and Review.
 
 ## Open ideas (not built yet)
 
