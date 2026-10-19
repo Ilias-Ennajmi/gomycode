@@ -6,7 +6,7 @@
 // - Images are served from cache when possible and refreshed in the background.
 // Bump VERSION when this file's caching rules change.
 
-const VERSION = "v2";
+const VERSION = "v3";
 const APP_CACHE = `reader-app-${VERSION}`;
 const DATA_CACHE = `reader-data-${VERSION}`;
 const IMAGE_CACHE = `reader-images-${VERSION}`;
