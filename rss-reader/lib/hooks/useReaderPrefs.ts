@@ -14,6 +14,8 @@ export interface ReaderPrefs {
   spacing: ReaderSpacing;
   /** Focus: just the text, no bars (and on desktop, no sidebar or list). */
   focus: boolean;
+  /** A scroll (the default) or pages turned like a book. */
+  mode: "scroll" | "pages";
 }
 
 const STORAGE_KEY = "reader-prefs";
@@ -23,6 +25,7 @@ const DEFAULTS: ReaderPrefs = {
   width: "normal",
   spacing: "normal",
   focus: false,
+  mode: "scroll",
 };
 
 export const READER_FONTS: Record<ReaderFont, string> = {

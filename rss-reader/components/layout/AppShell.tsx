@@ -66,6 +66,10 @@ const EpisodeSearch = dynamic(
   () => import("@/components/discover/EpisodeSearch").then((m) => m.EpisodeSearch),
   { ssr: false }
 );
+const StarterPacks = dynamic(
+  () => import("@/components/onboarding/StarterPacks").then((m) => m.StarterPacks),
+  { ssr: false }
+);
 const SettingsPanel = dynamic(
   () => import("@/components/layout/SettingsPanel").then((m) => m.SettingsPanel),
   { ssr: false }
@@ -181,8 +185,9 @@ function AppShellInner() {
     setDiscoverOpen(true);
   }, [addRequested, clearAddRequest]);
 
-  // With nothing followed yet, start in Discover (once per visit).
+  // With nothing followed yet, start with the starter packs (once per visit).
   const { feeds, isLoading: feedsLoading } = useFeeds();
+  const [packsOpen, setPacksOpen] = React.useState(false);
   React.useEffect(() => {
     if (feedsLoading || feeds.length > 0) return;
     try {
@@ -191,8 +196,7 @@ function AppShellInner() {
     } catch {
       // Storage unavailable: still show it.
     }
-    setDiscoverKind("all");
-    setDiscoverOpen(true);
+    setPacksOpen(true);
   }, [feedsLoading, feeds.length]);
 
   useAutoRefresh((result) => {
@@ -416,6 +420,7 @@ function AppShellInner() {
       <WhatsNew />
 
       <SaveLinkDialog open={saveLinkOpen} onOpenChange={setSaveLinkOpen} />
+      {packsOpen && <StarterPacks open firstRun onOpenChange={setPacksOpen} />}
       {episodeSearchOpen && <EpisodeSearch open onOpenChange={setEpisodeSearchOpen} />}
       <EmailNewsletterDialog open={emailNewsletterOpen} onOpenChange={setEmailNewsletterOpen} />
       <DiscoverDialog

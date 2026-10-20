@@ -69,11 +69,17 @@ export function ReaderSettings({ className }: { className?: string }) {
           label="Font"
           value={prefs.font}
           onChange={(font) => update({ font })}
-          options={(["sans", "serif", "mono"] as const).map((font) => ({
+          options={(["sans", "serif", "mono", "dyslexic"] as const).map((font) => ({
             value: font,
             label: (
               <span style={{ fontFamily: READER_FONTS[font] }}>
-                {font === "sans" ? "Sans" : font === "serif" ? "Serif" : "Mono"}
+                {font === "sans"
+                  ? "Sans"
+                  : font === "serif"
+                    ? "Serif"
+                    : font === "mono"
+                      ? "Mono"
+                      : "Easy"}
               </span>
             ),
           }))}
