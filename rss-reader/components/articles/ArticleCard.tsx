@@ -12,6 +12,7 @@ import {
   ChevronDown,
   EyeOff,
   ExternalLink,
+  FolderPlus,
   Highlighter,
   Layers,
   ListEnd,
@@ -48,6 +49,7 @@ import {
 } from "@/components/ui/context-menu";
 import { shareLink } from "@/lib/share";
 import { ActionSheet } from "@/components/ui/sheet";
+import { CollectionPicker } from "@/components/collections/CollectionPicker";
 import { preload } from "swr";
 import { needsFullArticle } from "@/lib/reader";
 
@@ -107,6 +109,7 @@ export function ArticleCard({
   const { enqueue } = useAudio();
   // Phones: holding a card opens a sheet of actions (the right-click menu, as a sheet).
   const [sheetOpen, setSheetOpen] = React.useState(false);
+  const [collectOpen, setCollectOpen] = React.useState(false);
   const hold = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelHold = () => {
     if (hold.current) clearTimeout(hold.current);
@@ -557,6 +560,9 @@ export function ArticleCard({
             </ContextMenuItem>
           </>
         )}
+        <ContextMenuItem onSelect={() => setCollectOpen(true)} className="gap-2">
+          <FolderPlus className="h-4 w-4" /> {t("Add to collection")}
+        </ContextMenuItem>
         <ContextMenuItem
           onSelect={() => void shareLink(article.title, article.link)}
           className="gap-2"
@@ -644,6 +650,12 @@ export function ArticleCard({
                   ]
                 : []),
               {
+                id: "collect",
+                label: "Add to collection",
+                icon: <FolderPlus />,
+                onSelect: () => setCollectOpen(true),
+              },
+              {
                 id: "share",
                 label: "Share",
                 icon: <Share />,
@@ -674,6 +686,9 @@ export function ArticleCard({
             : []),
         ]}
       />
+      {collectOpen && (
+        <CollectionPicker articleId={article.id} open onOpenChange={setCollectOpen} />
+      )}
     </ContextMenu>
   );
 }

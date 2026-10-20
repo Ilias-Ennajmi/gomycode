@@ -7,6 +7,7 @@ import {
   Bookmark,
   Check,
   ExternalLink,
+  FolderPlus,
   Share2,
 } from "lucide-react";
 import { shareLink } from "@/lib/share";
@@ -25,6 +26,7 @@ interface ArticleHeaderProps {
   onToggleSave: () => void;
   onToggleRead: () => void;
   onToggleArchive: () => void;
+  onCollect?: () => void;
 }
 
 export function ArticleHeader({
@@ -32,6 +34,7 @@ export function ArticleHeader({
   onToggleSave,
   onToggleRead,
   onToggleArchive,
+  onCollect,
 }: ArticleHeaderProps) {
   const { setView } = useReaderState();
   const source = articleSource(article);
@@ -104,6 +107,11 @@ export function ArticleHeader({
               <Archive className="h-3.5 w-3.5" />
             )}
             {article.archivedAt ? "Unarchive" : "Archive"}
+          </Button>
+        )}
+        {onCollect && (
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={onCollect}>
+            <FolderPlus className="h-3.5 w-3.5" /> Collect
           </Button>
         )}
         <SnoozeMenu article={article} align="start">

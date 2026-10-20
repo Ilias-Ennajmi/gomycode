@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const feedId = searchParams.get("feedId") || undefined;
     const categoryId = searchParams.get("categoryId") || undefined;
+    const collectionId = searchParams.get("collectionId") || undefined;
     const saved = searchParams.get("saved") === "true";
     const today = searchParams.get("today") === "true";
     const unread = searchParams.get("unread") === "true";
@@ -63,6 +64,7 @@ export async function GET(request: NextRequest) {
 
     if (feedId) where.feedId = feedId;
     if (categoryId) Object.assign(where, categoryFilter(categoryId));
+    if (collectionId) where.collections = { some: { collectionId } };
     if (saved) where.isSaved = true;
     if (later === "queue") Object.assign(where, { isSaved: true, archivedAt: null });
     if (later === "archive") where.archivedAt = { not: null };

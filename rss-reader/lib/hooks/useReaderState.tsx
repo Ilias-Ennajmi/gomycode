@@ -36,7 +36,8 @@ export type ViewType =
   | "today"
   | "saved"
   | "feed"
-  | "category";
+  | "category"
+  | "collection";
 
 export interface ViewState {
   type: ViewType;
@@ -130,6 +131,7 @@ const LINKABLE_VIEWS: Record<string, ViewState> = {
 // Later's sub-tabs that links can open, e.g. ?view=highlights (the Android shortcut).
 const LINKABLE_LATER_TABS: Record<string, LaterTab> = {
   highlights: "highlights",
+  collections: "collections",
   snoozed: "snoozed",
 };
 
@@ -278,6 +280,7 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     else if (view.type === "later") params.later = laterTab;
     if (view.type === "feed") params.feedId = view.id;
     if (view.type === "category") params.categoryId = view.id;
+    if (view.type === "collection") params.collectionId = view.id;
     if (view.type === "today") params.today = true;
     if (view.type === "alerts") params.alerts = true;
     if (view.type === "saved") params.saved = true;
