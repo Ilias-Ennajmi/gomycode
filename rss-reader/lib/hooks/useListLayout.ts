@@ -2,11 +2,12 @@
 
 import * as React from "react";
 
-export type ListLayout = "list" | "cards" | "magazine";
+export type ListLayout = "list" | "cards" | "magazine" | "grid";
 
 // For You and News open as a magazine; YouTube as a wall of thumbnails.
 const DEFAULTS: Record<string, ListLayout> = {
   youtube: "cards",
+  podcasts: "grid",
   foryou: "magazine",
   news: "magazine",
 };
@@ -27,7 +28,7 @@ export function useListLayout(listKey: string) {
       // Storage unavailable: keep the default.
     }
     setLayoutState(
-      saved === "cards" || saved === "list" || saved === "magazine"
+      saved === "cards" || saved === "list" || saved === "magazine" || saved === "grid"
         ? saved
         : (DEFAULTS[listKey] ?? "list")
     );

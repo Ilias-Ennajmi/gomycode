@@ -6,7 +6,12 @@ import {
   Archive,
   BarChart3,
   BookOpen,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
+  Eye,
+  EyeOff,
+  PinOff,
   Compass,
   Cpu,
   Download,
@@ -31,6 +36,8 @@ import { SystemSheet } from "@/components/layout/SystemSheet";
 import { useT, type Locale } from "@/lib/i18n";
 import { ACCENTS, useAccent } from "@/lib/hooks/useAccent";
 import { GOALS, useReadingGoal } from "@/lib/hooks/useReadingGoal";
+import { TAB_TYPES, usePersonal, type Personal } from "@/lib/hooks/usePersonal";
+import { useCategories } from "@/lib/hooks/useFeeds";
 import { androidAppVersion, RELEASES_PAGE } from "@/lib/native";
 import { NotificationSettings } from "@/components/layout/NotificationSettings";
 import { useFeeds } from "@/lib/hooks/useFeeds";
@@ -87,6 +94,8 @@ export function SettingsPanel({
   React.useEffect(() => setStartView(readStartView()), []);
   const { accent, setAccent } = useAccent();
   const { goal, setGoal, minutes } = useReadingGoal();
+  const { personal, update } = usePersonal();
+  const { categories } = useCategories();
 
   return (
     <div className="flex h-full flex-col">
@@ -95,7 +104,7 @@ export function SettingsPanel({
       </header>
 
       <div className="flex-1 space-y-6 overflow-y-auto px-4 py-5">
-        <Section title={t("You")}>
+        <Section title={t("Personalise")}>
           <Row
             icon={BarChart3}
             label={t("Your reading")}
@@ -194,6 +203,37 @@ export function SettingsPanel({
               ))}
             </div>
           </div>
+          <Switch
+            label={t("Stories row")}
+            hint={t("Sources with something new, above the lists")}
+            on={personal.stories}
+            onChange={(on) => update({ stories: on })}
+          />
+          <Switch
+            label={t("Goal ring")}
+            hint={t("Today's minutes against your goal, on For You and Today")}
+            on={personal.ring}
+            onChange={(on) => update({ ring: on })}
+          />
+          <Switch
+            label={t("Briefing card")}
+            hint={t("Today's briefing at the top of For You")}
+            on={personal.briefingCard}
+            onChange={(on) => update({ briefingCard: on })}
+          />
+          <Switch
+            label={t("Compact density")}
+            hint={t("Tighter cards, more on screen")}
+            on={personal.density === "compact"}
+            onChange={(on) => update({ density: on ? "compact" : "comfortable" })}
+          />
+          <Switch
+            label={t("Haptics")}
+            hint={t("A tap you can feel on saves, swipes and goals")}
+            on={personal.haptics}
+            onChange={(on) => update({ haptics: on })}
+          />
+          <TabEditor personal={personal} update={update} categories={categories} />
         </Section>
 
         <Section title={t("Sources")}>
@@ -317,6 +357,186 @@ export function SettingsPanel({
           <Row icon={LogOut} label={t("Sign out")} destructive onClick={signOut} />
         </Section>
       </div>
+    </div>
+  );
+}
+
+/** A row with a switch on the right. */
+function Switch({
+  label,
+  hint,
+  on,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  on: boolean;
+  onChange: (on: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={() => onChange(!on)}
+      className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-accent/60"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium">{label}</span>
+        {hint && <span className="block text-xs text-muted-foreground">{hint}</span>}
+      </span>
+      <span
+        aria-hidden
+        className={cn(
+          "relative h-6 w-10 shrink-0 rounded-full transition-colors",
+          on ? "bg-primary" : "bg-muted"
+        )}
+      >
+        <span
+          className={cn(
+            "absolute top-0.5 h-5 w-5 rounded-full bg-background shadow transition-transform",
+            on ? "translate-x-[18px]" : "translate-x-0.5"
+          )}
+        />
+      </span>
+    </button>
+  );
+}
+
+const TAB_LABELS: Record<string, string> = {
+  foryou: "For You",
+  news: "News",
+  rss: "RSS",
+  youtube: "YouTube",
+  newsletters: "Newsletters",
+  podcasts: "Podcasts",
+  later: "Later",
+};
+
+/** The top tabs: reorder, hide, and pin categories as tabs of their own. */
+function TabEditor({
+  personal,
+  update,
+  categories,
+}: {
+  personal: Personal;
+  update: (changes: Partial<Personal>) => void;
+  categories: { id: string; name: string; color: string }[];
+}) {
+  const { t } = useT();
+  const move = (type: Personal["tabs"][number], direction: -1 | 1) => {
+    const tabs = [...personal.tabs];
+    const i = tabs.indexOf(type);
+    const j = i + direction;
+    if (i < 0 || j < 0 || j >= tabs.length) return;
+    [tabs[i], tabs[j]] = [tabs[j], tabs[i]];
+    update({ tabs });
+  };
+  const toggleHidden = (type: Personal["tabs"][number]) =>
+    update({
+      hiddenTabs: personal.hiddenTabs.includes(type)
+        ? personal.hiddenTabs.filter((x) => x !== type)
+        : personal.hiddenTabs.length < TAB_TYPES.length - 1
+          ? [...personal.hiddenTabs, type]
+          : personal.hiddenTabs,
+    });
+  const unpinned = categories.filter((c) => !personal.pinnedCategories.includes(c.id));
+  return (
+    <div className="px-4 py-3">
+      <p className="text-sm font-medium">{t("Top tabs")}</p>
+      <p className="text-xs text-muted-foreground">
+        {t("Order them, hide the ones you don't use, pin a category.")}
+      </p>
+      <ol className="mt-2 divide-y rounded-lg border">
+        {personal.tabs.map((type, i) => {
+          const hidden = personal.hiddenTabs.includes(type);
+          return (
+            <li key={type} className="flex items-center gap-1 py-1 pl-3 pr-1">
+              <span
+                className={cn(
+                  "min-w-0 flex-1 truncate text-sm",
+                  hidden && "text-muted-foreground line-through"
+                )}
+              >
+                {t(TAB_LABELS[type] ?? type)}
+              </span>
+              <button
+                type="button"
+                onClick={() => move(type, -1)}
+                disabled={i === 0}
+                aria-label={`Move ${TAB_LABELS[type]} up`}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-accent disabled:opacity-30"
+              >
+                <ChevronUp className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => move(type, 1)}
+                disabled={i === personal.tabs.length - 1}
+                aria-label={`Move ${TAB_LABELS[type]} down`}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-accent disabled:opacity-30"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={!hidden}
+                aria-label={`${hidden ? "Show" : "Hide"} ${TAB_LABELS[type]}`}
+                onClick={() => toggleHidden(type)}
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-full hover:bg-accent",
+                  hidden ? "text-muted-foreground" : "text-primary"
+                )}
+              >
+                {hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </li>
+          );
+        })}
+        {personal.pinnedCategories.map((id) => {
+          const category = categories.find((c) => c.id === id);
+          if (!category) return null;
+          return (
+            <li key={id} className="flex items-center gap-2 py-1 pl-3 pr-1">
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: category.color }}
+                aria-hidden
+              />
+              <span className="min-w-0 flex-1 truncate text-sm">{category.name}</span>
+              <button
+                type="button"
+                onClick={() =>
+                  update({ pinnedCategories: personal.pinnedCategories.filter((x) => x !== id) })
+                }
+                aria-label={`Unpin ${category.name}`}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-accent"
+              >
+                <PinOff className="h-4 w-4" />
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+      {unpinned.length > 0 && (
+        <select
+          aria-label="Pin a category as a tab"
+          value=""
+          onChange={(event) => {
+            if (event.target.value)
+              update({ pinnedCategories: [...personal.pinnedCategories, event.target.value] });
+          }}
+          className="mt-2 h-9 w-full rounded-lg border bg-background px-2 text-sm"
+        >
+          <option value="">{t("Pin a category as a tab…")}</option>
+          {unpinned.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      )}
     </div>
   );
 }

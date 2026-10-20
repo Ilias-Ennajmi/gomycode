@@ -6,7 +6,8 @@ import { useT } from "@/lib/i18n";
 import { requestAppEvent } from "@/lib/app-events";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useFeeds } from "@/lib/hooks/useFeeds";
+import { useCategories, useFeeds } from "@/lib/hooks/useFeeds";
+import { usePersonal } from "@/lib/hooks/usePersonal";
 import { useCounts } from "@/lib/hooks/useArticles";
 import { useReaderState, type ViewState, type ViewType } from "@/lib/hooks/useReaderState";
 import {
@@ -105,9 +106,27 @@ interface TopBarProps {
 export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBarProps) {
   const { view, setView, mobilePane, setMobilePane } = useReaderState();
   const { feeds } = useFeeds();
+  const { categories } = useCategories();
+  const { personal } = usePersonal();
   const counts = useCounts();
   const { t } = useT();
   const laterCount = counts.later;
+  // The bar as personalised: built-in tabs in the chosen order minus the hidden ones, then
+  // any categories pinned as tabs.
+  const tabs = React.useMemo<ViewState[]>(
+    () => [
+      ...personal.tabs
+        .filter((type) => !personal.hiddenTabs.includes(type))
+        .map((type) => TABS.find((tab) => tab.type === type)!)
+        .filter(Boolean),
+      ...personal.pinnedCategories
+        .map((id) => categories.find((c) => c.id === id))
+        .filter((c): c is NonNullable<typeof c> => Boolean(c))
+        .map((c) => ({ type: "category" as const, id: c.id, label: c.name })),
+    ],
+    [personal.tabs, personal.hiddenTabs, personal.pinnedCategories, categories]
+  );
+  const keyOf = (tab: { type: ViewType; id?: string }) => `${tab.type}:${tab.id ?? ""}`;
   // Unread per tab, so it's clear where something new is waiting.
   const unread: Partial<Record<ViewType, number>> = {
     news: counts.news,
@@ -118,11 +137,12 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
   };
 
   // A single feed belongs to the tab for its kind of source.
-  function activeTab(): ViewType | null {
+  function activeType(): ViewType | null {
     if (mobilePane === "settings") return null;
     // The briefing and the recap are reached from For You.
     if (view.type === "briefing" || view.type === "recap") return "foryou";
-    if (view.type !== "feed") return TABS.some((t) => t.type === view.type) ? view.type : null;
+    if (view.type === "category") return "category";
+    if (view.type !== "feed") return tabs.some((t) => t.type === view.type) ? view.type : null;
     const feed = feeds.find((f) => f.id === view.id);
     if (feed?.newsDesk) return "news";
     return feed?.type === "youtube"
@@ -133,10 +153,22 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
           ? "podcasts"
           : "rss";
   }
-  const active = activeTab();
+  const activeTypeValue = activeType();
+  // A pinned category lights its own tab; another category lights nothing.
+  const active =
+    activeTypeValue === "category"
+      ? tabs.some((t) => t.type === "category" && t.id === view.id)
+        ? keyOf({ type: "category", id: view.id })
+        : null
+      : activeTypeValue
+        ? keyOf({ type: activeTypeValue })
+        : null;
   // A dot on a tab says "something new since you last looked", not a count that never goes
   // away: each tab remembers how many unread it had when it was last open.
-  const hasNew = useNewSinceLastLook(unread, active);
+  const hasNew = useNewSinceLastLook(
+    unread,
+    activeTypeValue === "category" ? null : activeTypeValue
+  );
 
   // Opened from a link or shortcut (e.g. Highlights, inside Later): bring the tab into view.
   const navRef = React.useRef<HTMLElement>(null);
@@ -184,7 +216,7 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
 
   function select(tab: ViewState) {
     // From a section list inside News, the tab goes back to the front page.
-    if (view.type === tab.type && !(tab.type === "news" && view.id)) {
+    if (view.type === tab.type && view.id === tab.id && !(tab.type === "news" && view.id)) {
       // Tapping the tab you're on goes back to the top, like a native app.
       setMobilePane("list");
       requestAppEvent("scroll-top");
@@ -204,11 +236,11 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
           aria-label="Sections"
           className="relative flex min-w-0 flex-1 items-center overflow-x-auto px-2 scrollbar-none md:px-3"
         >
-          {TABS.map((tab) => {
-            const isActive = active === tab.type;
+          {tabs.map((tab) => {
+            const isActive = active === keyOf(tab);
             return (
               <button
-                key={tab.type}
+                key={keyOf(tab)}
                 type="button"
                 onClick={(event) => {
                   event.currentTarget.scrollIntoView({ inline: "nearest", block: "nearest" });

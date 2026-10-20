@@ -5,6 +5,7 @@ import {
   ArrowDownUp,
   Bell,
   CheckCheck,
+  Grid2x2,
   Headphones,
   Hourglass,
   LayoutGrid,
@@ -55,6 +56,51 @@ const VIDEO_LENGTHS: { id: VideoLength; label: string }[] = [
   { id: "medium", label: "10–30 min" },
   { id: "long", label: "30+ min" },
 ];
+
+const LAYOUTS: { id: ListLayout; label: string; icon: React.ElementType }[] = [
+  { id: "list", label: "Compact list", icon: Rows3 },
+  { id: "magazine", label: "Magazine", icon: Newspaper },
+  { id: "cards", label: "Big pictures", icon: LayoutGrid },
+  { id: "grid", label: "Grid", icon: Grid2x2 },
+];
+
+/** Four little icons in the chip row: rows, magazine, big pictures, grid of tiles. */
+function LayoutSwitch({
+  value,
+  onChange,
+}: {
+  value: ListLayout;
+  onChange: (l: ListLayout) => void;
+}) {
+  const { t } = useT();
+  return (
+    <span
+      role="radiogroup"
+      aria-label="Layout"
+      className="ml-0.5 flex shrink-0 items-center rounded-full border p-0.5"
+    >
+      {LAYOUTS.map(({ id, label, icon: Icon }) => (
+        <button
+          key={id}
+          type="button"
+          role="radio"
+          aria-checked={value === id}
+          aria-label={t(label)}
+          title={t(label)}
+          onClick={() => onChange(id)}
+          className={cn(
+            "flex h-6 w-7 items-center justify-center rounded-full transition-colors",
+            value === id
+              ? "bg-foreground text-background"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Icon className="h-3.5 w-3.5" />
+        </button>
+      ))}
+    </span>
+  );
+}
 
 function Divider() {
   return <span className="mx-0.5 h-4 w-px shrink-0 self-center bg-border" aria-hidden />;
@@ -179,6 +225,7 @@ export function ListToolbar(props: ListToolbarProps) {
             <Chip active={filterTab === "saved"} onClick={() => toggleFilter("saved")}>
               {t("Saved")}
             </Chip>
+            <LayoutSwitch value={props.layout} onChange={props.onLayout} />
 
             {view.type === "youtube" && (
               <>
@@ -401,6 +448,8 @@ function OptionsMenu(props: ListToolbarProps) {
           <DropdownMenuLabel className="flex items-center gap-1.5 text-xs">
             {props.layout === "magazine" ? (
               <Newspaper className="h-3.5 w-3.5" />
+            ) : props.layout === "grid" ? (
+              <Grid2x2 className="h-3.5 w-3.5" />
             ) : props.layout === "cards" ? (
               <LayoutGrid className="h-3.5 w-3.5" />
             ) : (
@@ -415,6 +464,7 @@ function OptionsMenu(props: ListToolbarProps) {
             <DropdownMenuRadioItem value="magazine">{t("Magazine")}</DropdownMenuRadioItem>
             <DropdownMenuRadioItem value="list">{t("Compact list")}</DropdownMenuRadioItem>
             <DropdownMenuRadioItem value="cards">{t("Big pictures")}</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="grid">{t("Grid")}</DropdownMenuRadioItem>
           </DropdownMenuRadioGroup>
           {canSort && (
             <>

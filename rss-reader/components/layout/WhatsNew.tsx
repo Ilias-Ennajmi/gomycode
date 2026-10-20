@@ -6,10 +6,18 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.10.20";
+export const WHATS_NEW_VERSION = "2026.10.21";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "Make it yours",
+    text: "Settings → Personalise: switch the stories row, goal ring and briefing card on or off, go compact, reorder or hide the top tabs, and pin a category as a tab of its own.",
+  },
+  {
+    title: "Pick a view from the chip row",
+    text: "Four little icons next to Unread and Saved: compact list, magazine, big pictures, or a grid of square tiles (the default for podcasts). The stories row now shows only that tab's sources and folds away with the chevron.",
+  },
   {
     title: "Stories",
     text: "A row of your sources at the top of For You and each tab. Tap one to flip through its latest unread full screen: tap to advance, hold to pause, swipe sideways for the next source, Read to open.",

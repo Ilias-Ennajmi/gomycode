@@ -14,16 +14,18 @@ Google Gemini's free tier.
 | Area        | What's there                                                                                                                                                                                     |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Tabs        | For You (ranked by reading history) · News · RSS · YouTube · Newsletters · Podcasts · Later                                                                                                      |
-| Stories     | A row of your sources with something new; tap one to flip through its latest full screen, Instagram-style, and read or save from there                                                            |
-| Look        | Magazine layout (big picture cards with serif headlines leading each day), a cover story on Today, a daily reading-goal ring with a streak, seven accent colours, paper/dark/light themes       |
+| Stories     | A row of that tab's sources with something new (collapsible); tap one to flip through its latest full screen, Instagram-style, and read or save from there                                       |
+| Views       | Per-tab layout switch in the chip row: compact list, magazine, big pictures, or a grid of square tiles (podcasts default)                                                                        |
+| Personalise | Settings: stories row, goal ring, briefing card, compact density and haptics switches; reorder or hide the top tabs; pin categories as tabs; start page, accent, goal, language                  |
+| Look        | Magazine layout (big picture cards with serif headlines leading each day), a cover story on Today, a daily reading-goal ring with a streak, seven accent colours, paper/dark/light themes        |
 | News        | Hero slider of the biggest stories, desks (Maroc, Monde, Europe, Afrique, Économie, Sport, Tech), AI "What's happening", Morocco in the world press, local weather                               |
-| Today       | The home page: briefing blocks (top stories, numbers, interests, videos, newsletters), continue where you left off, review, highlights, sources to tidy; hide or reorder any block; "Start on" |
+| Today       | The home page: briefing blocks (top stories, numbers, interests, videos, newsletters), continue where you left off, review, highlights, sources to tidy; hide or reorder any block; "Start on"   |
 | Stats       | Your reading over 30 days: articles, time, highlights, streak, by day and hour, top sources                                                                                                      |
 | Discover    | Curated catalog (~230 sources) scoped by channel, live search (Feedly + YouTube), AI suggestions, follow a topic (Bing News search feed)                                                         |
 | Reader      | Full-article extraction, clutter removal, reading settings, up next / previous, swipe between articles, listen (browser text-to-speech)                                                          |
 | Phone UX    | Two thin bars that slide away while scrolling, filters as one row of chips, one options menu, long-press menu on cards, a line for what's new since your last visit                              |
 | Lists       | Swipe right for Later, left to mark read, Undo toasts, unread counts per tab, story grouping ("also covered by")                                                                                 |
-| Sources     | A page for every source with its settings (For You, full page, mute, alerts); manager to rename, move, unfollow, health, "Never read" in two months                                             |
+| Sources     | A page for every source with its settings (For You, full page, mute, alerts); manager to rename, move, unfollow, health, "Never read" in two months                                              |
 | Highlights  | Select text to highlight in 4 colours and add notes; all highlights in Later → Highlights, Markdown export, old ones resurface on Today                                                          |
 | Search      | Full-text search over titles, text and your highlights, with where-to-look and time filters; operators `from:`, `tag:`, `is:unread`, `in:youtube`; recents and suggestions; ⌘K palette           |
 | Newsletters | "Substack & web" and "Email" sub-tabs; email-only newsletters get their own sign-up address (Kill the Newsletter)                                                                                |
@@ -36,7 +38,7 @@ Google Gemini's free tier.
 | Later       | Reading queue with total reading time, snooze (back at a chosen time with a notification), archive, weekly recap                                                                                 |
 | Offline     | Opens instantly from the last visit, lists and Later articles cached, "Save offline" per article, changes made offline sent when back online                                                     |
 | Settings    | Start page, English / French interface, theme, "Under the hood" (build, database, last refresh, errors), one-file backup of everything that's yours                                              |
-| Android app | Installable app (`android/`): share links to Later, icon shortcuts (Search, News, Later, Podcasts, Review, Highlights, Add), back gesture, deep links                                             |
+| Android app | Installable app (`android/`): share links to Later, icon shortcuts (Search, News, Later, Podcasts, Review, Highlights, Add), back gesture, deep links                                            |
 
 ## Stack
 

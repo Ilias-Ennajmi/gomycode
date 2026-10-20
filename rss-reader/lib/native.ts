@@ -2,6 +2,8 @@
 // The app opens /reader?source=android&v=<version>; that's remembered so later visits
 // (shortcuts, shared links, reloads) still know they're in the app.
 
+import { hapticsEnabled } from "@/lib/hooks/usePersonal";
+
 const APP_VERSION_KEY = "android-app-version";
 const RELEASES_URL = "https://api.github.com/repos/Ilias-Ennajmi/gomycode/releases?per_page=10";
 export const RELEASES_PAGE = "https://github.com/Ilias-Ennajmi/gomycode/releases";
@@ -34,6 +36,7 @@ export function androidAppVersion(): string | null {
 export function haptic(
   kind: number | "light" | "medium" | "success" | "warning" | "done" = "light"
 ) {
+  if (!hapticsEnabled()) return;
   try {
     const pattern =
       typeof kind === "number"
