@@ -170,6 +170,12 @@ model Highlight {
   reviewCount    Int       @default(0)
   reviewedAt     DateTime?
   reviewDisabled Boolean   @default(false)
+  // Snips (lib/snips.ts): a moment of an episode. The text is the transcript of the last
+  // half-minute, the title and note come from Gemini, the seconds say where to replay.
+  kind           String    @default("text")
+  title          String?
+  startSeconds   Int?
+  endSeconds     Int?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 

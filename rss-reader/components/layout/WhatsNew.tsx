@@ -6,10 +6,22 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.10.21";
+export const WHATS_NEW_VERSION = "2026.10.21b";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "Snips",
+    text: "Hear something worth keeping? Tap the scissors in the player, or press “previous” twice on your earbuds, and the last half-minute becomes a note: what was said, a title, and a play button back to the moment. Snips live in Highlights, join the daily review, and share as a picture.",
+  },
+  {
+    title: "Episode notes and episode search",
+    text: "An episode's page now gathers your snips and a search box over its transcript (tap a line to jump there). Podcasts → ⋯ → Find episodes searches episodes, not shows, across your shows and the whole catalogue; play one straight away or follow its show.",
+  },
+  {
+    title: "Your settings follow you",
+    text: "Accent, goal, layouts, tabs, language and reading preferences now sync between your phone and your desktop. Desktop has a Settings screen too (the gear in the sidebar footer).",
+  },
   {
     title: "Make it yours",
     text: "Settings → Personalise: switch the stories row, goal ring and briefing card on or off, go compact, reorder or hide the top tabs, and pin a category as a tab of its own.",

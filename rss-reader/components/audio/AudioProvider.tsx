@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { createTimeStore, type TimeStore } from "@/components/video/VideoGuide";
 import { saveVideoProgress } from "@/lib/hooks/useVideo";
+import { clockLabel, createSnip } from "@/lib/snips";
+import { haptic } from "@/lib/native";
 import { toggleArticleRead } from "@/lib/hooks/useArticles";
 import type { ArticleSummary, VideoExtras } from "@/lib/types";
 
@@ -95,6 +97,8 @@ interface AudioContextValue {
   setShowPrefs: (feedId: string, prefs: ShowPrefs) => void;
   /** A link to this moment of the episode, shared or copied. */
   shareMoment: () => Promise<void>;
+  /** Saves the last half-minute as a snip (a highlight with a title and where to replay). */
+  snip: () => Promise<void>;
   /** The position, without re-rendering everything that uses the player every second. */
   time: TimeStore;
   play: (episode: Episode, startAt?: number) => void;
@@ -174,8 +178,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     lastSave.current = Date.now();
     // Finished: next time it starts over.
     const seconds = percent >= DONE_PERCENT ? 0 : audio.currentTime;
-    saveVideoProgress(current.id, seconds, percent).catch(() => undefined);
     remember(LAST_KEY, { episode: current, position: seconds });
+    // An episode played straight from the catalogue has no article to keep progress on.
+    if (current.id.startsWith("ext:")) return;
+    saveVideoProgress(current.id, seconds, percent).catch(() => undefined);
     if (percent >= DONE_PERCENT && markedDone.current !== current.id) {
       markedDone.current = current.id;
       toggleArticleRead(current.id, true)
@@ -374,6 +380,34 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [time]);
 
+  const snipping = React.useRef(false);
+  const snip = React.useCallback(async () => {
+    const current = episodeRef.current;
+    if (!current || snipping.current) return;
+    if (current.id.startsWith("ext:")) {
+      toast("Follow the show to snip its episodes");
+      return;
+    }
+    snipping.current = true;
+    haptic("medium");
+    const audio = audioRef.current;
+    const at = Math.floor(audio?.getAttribute("src") ? audio.currentTime : time.get());
+    const id = toast.loading(`Snipping ${clockLabel(at)}…`);
+    try {
+      const { highlight, transcript } = await createSnip(current.id, at);
+      toast.success(highlight.title ?? "Snipped", {
+        id,
+        description: transcript
+          ? (highlight.note ?? "Saved to Highlights")
+          : "Saved the moment; the words come once the transcript is ready.",
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't snip that", { id });
+    } finally {
+      snipping.current = false;
+    }
+  }, [time]);
+
   const setSleep = React.useCallback((value: "end" | number | null) => {
     if (value === null) setSleepState(null);
     else if (value === "end") setSleepState({ kind: "end" });
@@ -453,6 +487,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, [sleep]);
 
   // Lock screen and notification controls.
+  const lastPrevious = React.useRef(0);
   React.useEffect(() => {
     if (!("mediaSession" in navigator)) return;
     const session = navigator.mediaSession;
@@ -473,6 +508,21 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       ["seekforward", (d) => skip(d.seekOffset ?? 30)],
       ["seekto", (d) => d.seekTime !== undefined && seek(d.seekTime)],
       ["nexttrack", () => void playNext()],
+      // Earbuds: "previous" once backs up 15 s; twice quickly makes a snip instead, hands free.
+      [
+        "previoustrack",
+        () => {
+          const now = Date.now();
+          if (now - lastPrevious.current < 700) {
+            lastPrevious.current = 0;
+            skip(15);
+            void snip();
+          } else {
+            lastPrevious.current = now;
+            skip(-15);
+          }
+        },
+      ],
     ];
     for (const [action, handler] of handlers) {
       try {
@@ -481,7 +531,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         // Not supported on this device.
       }
     }
-  }, [episode, playNext, seek, skip]);
+  }, [episode, playNext, seek, skip, snip]);
 
   function updatePositionState() {
     const audio = audioRef.current;
@@ -516,6 +566,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     showPrefs,
     setShowPrefs,
     shareMoment,
+    snip,
     time,
     play,
     toggle,

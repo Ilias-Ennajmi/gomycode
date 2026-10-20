@@ -133,6 +133,12 @@ export interface HighlightSummary {
   suffix: string;
   /** Lowercase labels. */
   tags?: string[];
+  /** "text" (a passage) or "snip" (a moment of an episode). */
+  kind?: "text" | "snip";
+  /** Snips: Gemini's title for the moment. */
+  title?: string | null;
+  startSeconds?: number | null;
+  endSeconds?: number | null;
   createdAt: string;
   updatedAt: string;
   /** Included in the Highlights list, not when loading one article's highlights. */

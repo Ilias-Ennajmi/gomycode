@@ -62,6 +62,10 @@ const CommandPalette = dynamic(
   () => import("@/components/dialogs/CommandPalette").then((m) => m.CommandPalette),
   { ssr: false }
 );
+const EpisodeSearch = dynamic(
+  () => import("@/components/discover/EpisodeSearch").then((m) => m.EpisodeSearch),
+  { ssr: false }
+);
 const SettingsPanel = dynamic(
   () => import("@/components/layout/SettingsPanel").then((m) => m.SettingsPanel),
   { ssr: false }
@@ -149,6 +153,8 @@ function AppShellInner() {
     setEmailNewsletterOpen(true);
   });
   useAppEvent("content-filters", () => setFiltersOpen(true));
+  const [episodeSearchOpen, setEpisodeSearchOpen] = React.useState(false);
+  useAppEvent("find-episodes", () => setEpisodeSearchOpen(true));
   useAppEvent("sources-unused", () => {
     setSourcesChannel("unused");
     setSourcesOpen(true);
@@ -410,6 +416,7 @@ function AppShellInner() {
       <WhatsNew />
 
       <SaveLinkDialog open={saveLinkOpen} onOpenChange={setSaveLinkOpen} />
+      {episodeSearchOpen && <EpisodeSearch open onOpenChange={setEpisodeSearchOpen} />}
       <EmailNewsletterDialog open={emailNewsletterOpen} onOpenChange={setEmailNewsletterOpen} />
       <DiscoverDialog
         open={discoverOpen}

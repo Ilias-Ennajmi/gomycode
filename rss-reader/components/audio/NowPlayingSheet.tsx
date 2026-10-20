@@ -22,9 +22,11 @@ import {
   PlayPauseButton,
   SkipButton,
   SleepButton,
+  SnipButton,
   SpeedButton,
   usePlayerTime,
 } from "@/components/audio/PlayerControls";
+import { SNIP_WINDOWS, useSnipWindow } from "@/lib/snips";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -152,6 +154,9 @@ export function NowPlayingSheet() {
               <SkipButton seconds={30} />
             </div>
             <SleepButton />
+          </div>
+          <div className="mt-2 flex justify-center">
+            <SnipButton label />
           </div>
         </div>
 
@@ -473,6 +478,8 @@ function PlayerMenu({ episode }: { episode: Episode }) {
   const { shareMoment, showPrefs, setShowPrefs, setExpanded } = useAudio();
   const { setSelectedArticleId, setMobilePane } = useReaderState();
   const prefs = showPrefs(episode.feedId);
+  const [snipWindow, setSnipWindow] = useSnipWindow();
+  const catalogue = episode.id.startsWith("ext:");
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -488,16 +495,30 @@ function PlayerMenu({ episode }: { episode: Episode }) {
         <DropdownMenuItem onSelect={() => void shareMoment()} className="gap-2">
           <Share className="h-4 w-4" /> Share this moment
         </DropdownMenuItem>
-        <DropdownMenuItem
-          onSelect={() => {
-            setExpanded(false);
-            setSelectedArticleId(episode.id);
-            setMobilePane("reader");
-          }}
-          className="gap-2"
+        {!catalogue && (
+          <DropdownMenuItem
+            onSelect={() => {
+              setExpanded(false);
+              setSelectedArticleId(episode.id);
+              setMobilePane("reader");
+            }}
+            className="gap-2"
+          >
+            <Text className="h-4 w-4" /> Episode notes
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-xs">A snip keeps the last</DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={String(snipWindow)}
+          onValueChange={(value) => setSnipWindow(Number(value) === 60 ? 60 : 30)}
         >
-          <Text className="h-4 w-4" /> Show notes
-        </DropdownMenuItem>
+          {SNIP_WINDOWS.map((seconds) => (
+            <DropdownMenuRadioItem key={seconds} value={String(seconds)}>
+              {seconds} seconds
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-xs">Speed for {episode.feedTitle}</DropdownMenuLabel>
         <DropdownMenuRadioGroup

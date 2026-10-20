@@ -33,6 +33,7 @@ export const SYNCED = new Set([
   "stories-seen",
   "comfort",
   "saved-searches",
+  "snip-window",
 ]);
 
 function readMeta(): Record<string, number> {

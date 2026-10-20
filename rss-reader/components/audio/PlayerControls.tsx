@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Loader2, Moon, Pause, Play, RotateCcw, RotateCw } from "lucide-react";
+import { Loader2, Moon, Pause, Play, RotateCcw, RotateCw, Scissors } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { clock } from "@/lib/hooks/useVideo";
 import { AUDIO_RATES, useAudio, type SleepTimer } from "@/components/audio/AudioProvider";
@@ -205,5 +205,34 @@ export function SleepButton({ className }: { className?: string }) {
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** Snip: saves the last half-minute as a note (what was said, a title, where to replay). */
+export function SnipButton({
+  className,
+  label = false,
+}: {
+  className?: string;
+  /** Show the word next to the scissors (the full player); else just the icon. */
+  label?: boolean;
+}) {
+  const { snip, episode } = useAudio();
+  if (!episode) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => void snip()}
+      aria-label="Snip the last half-minute"
+      title="Snip the last half-minute"
+      className={cn(
+        "flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95",
+        label ? "px-3 text-xs font-semibold" : "w-10",
+        className
+      )}
+    >
+      <Scissors className="h-[18px] w-[18px]" strokeWidth={1.9} />
+      {label && "Snip"}
+    </button>
   );
 }

@@ -49,6 +49,8 @@ import { youTubeVideoId } from "@/lib/youtube";
 import { VideoPlayer, type VideoControls } from "@/components/video/VideoPlayer";
 import { episodeOf, useAudio } from "@/components/audio/AudioProvider";
 import { EpisodePlayer } from "@/components/audio/EpisodePlayer";
+import { EpisodeNotes } from "@/components/audio/EpisodeNotes";
+import { isSnip } from "@/lib/snips";
 import {
   createTimeStore,
   LiveVideoGuide,
@@ -593,6 +595,14 @@ export function ArticleReader() {
               store={episodeTime}
               keyMoments={extras.keyMoments}
               chapters={extras.chapters}
+              onSeek={seekEpisode}
+            />
+          )}
+          {episode && (
+            <EpisodeNotes
+              article={article}
+              snips={highlights.filter(isSnip)}
+              transcript={extras?.transcript ?? []}
               onSeek={seekEpisode}
             />
           )}

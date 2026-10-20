@@ -9,6 +9,8 @@ import {
   Highlighter,
   Image as ImageIcon,
   Loader2,
+  Play,
+  Scissors,
   Search,
   Share2,
   Trash2,
@@ -24,6 +26,8 @@ import { HIGHLIGHT_SWATCH, shareQuote } from "@/components/highlights/ReaderHigh
 import { deleteHighlight, useHighlightList } from "@/lib/hooks/useHighlights";
 import { requestHighlightJump } from "@/lib/highlight-dom";
 import { shareQuoteImage } from "@/lib/quote-card";
+import { requestStartAt } from "@/lib/start-at";
+import { clockLabel } from "@/lib/snips";
 import { TagEditor } from "@/components/highlights/TagEditor";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import type { HighlightColor, HighlightSummary } from "@/lib/types";
@@ -180,9 +184,13 @@ function HighlightRow({ highlight }: { highlight: HighlightSummary }) {
   const { setSelectedArticleId, setMobilePane } = useReaderState();
   const article = highlight.article;
 
+  const snip = highlight.kind === "snip";
+  const start = highlight.startSeconds ?? 0;
+
   function open() {
     if (!article) return;
-    requestHighlightJump(highlight.id);
+    if (snip) requestStartAt(article.id, start);
+    else requestHighlightJump(highlight.id);
     setSelectedArticleId(article.id);
     setMobilePane("reader");
   }
@@ -205,7 +213,24 @@ function HighlightRow({ highlight }: { highlight: HighlightSummary }) {
         />
         <div className="min-w-0 flex-1">
           <button type="button" onClick={open} className="block w-full text-left">
-            <span className="line-clamp-6 font-serif text-[16px] leading-relaxed">
+            {snip && (
+              <span className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
+                <Scissors className="h-3 w-3" /> Snip · {clockLabel(start)}
+                {highlight.endSeconds ? `–${clockLabel(highlight.endSeconds)}` : ""}
+              </span>
+            )}
+            {snip && highlight.title && (
+              <span className="block text-[15px] font-semibold leading-snug">
+                {highlight.title}
+              </span>
+            )}
+            <span
+              className={cn(
+                snip
+                  ? "mt-1 line-clamp-4 text-sm leading-relaxed text-muted-foreground"
+                  : "line-clamp-6 font-serif text-[16px] leading-relaxed"
+              )}
+            >
               {highlight.text}
             </span>
             {highlight.note && (
@@ -228,7 +253,16 @@ function HighlightRow({ highlight }: { highlight: HighlightSummary }) {
               </span>
             )}
           </button>
-          <div className="mt-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {snip && article && (
+              <button
+                type="button"
+                onClick={open}
+                className="flex h-7 items-center gap-1.5 rounded-full bg-primary/10 px-2.5 text-xs font-semibold text-primary hover:bg-primary/20"
+              >
+                <Play className="h-3 w-3 fill-current" /> Play from {clockLabel(start)}
+              </button>
+            )}
             <TagEditor highlight={highlight} />
           </div>
         </div>
@@ -252,8 +286,13 @@ function HighlightRow({ highlight }: { highlight: HighlightSummary }) {
               shareQuoteImage({
                 text: highlight.text,
                 color: highlight.color,
-                title: article?.title,
-                source: article?.feed.title,
+                title: snip ? undefined : article?.title,
+                source: snip
+                  ? [article?.title, article?.feed.title].filter(Boolean).join(" · ")
+                  : article?.feed.title,
+                moment: snip
+                  ? `${clockLabel(start)}${highlight.endSeconds ? ` – ${clockLabel(highlight.endSeconds)}` : ""}`
+                  : undefined,
               }).catch((error) =>
                 toast.error(error instanceof Error ? error.message : "Could not make the picture")
               )
