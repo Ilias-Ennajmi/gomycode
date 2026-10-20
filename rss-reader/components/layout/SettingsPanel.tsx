@@ -37,6 +37,8 @@ import { useT, type Locale } from "@/lib/i18n";
 import { ACCENTS, useAccent } from "@/lib/hooks/useAccent";
 import { GOALS, useReadingGoal } from "@/lib/hooks/useReadingGoal";
 import { TAB_TYPES, usePersonal, type Personal } from "@/lib/hooks/usePersonal";
+import { useComfort } from "@/lib/hooks/useComfort";
+import { StarterPacks } from "@/components/onboarding/StarterPacks";
 import { useCategories } from "@/lib/hooks/useFeeds";
 import { usePref } from "@/lib/prefs";
 import { androidAppVersion, RELEASES_PAGE } from "@/lib/native";
@@ -94,6 +96,8 @@ export function SettingsPanel({
   const { goal, setGoal, minutes } = useReadingGoal();
   const { personal, update } = usePersonal();
   const { categories } = useCategories();
+  const { comfort, update: updateComfort } = useComfort();
+  const [packsOpen, setPacksOpen] = React.useState(false);
 
   return (
     <div className="flex h-full flex-col">
@@ -227,6 +231,32 @@ export function SettingsPanel({
           <TabEditor personal={personal} update={update} categories={categories} />
         </Section>
 
+        <Section title={t("Reading comfort")}>
+          <Switch
+            label={t("Bionic reading")}
+            hint={t("The start of each word in bold, to carry the eye")}
+            on={comfort.bionic}
+            onChange={(on) => updateComfort({ bionic: on })}
+          />
+          <Switch
+            label={t("Larger tap targets")}
+            hint={t("Bigger buttons and rows")}
+            on={comfort.bigTargets}
+            onChange={(on) => updateComfort({ bigTargets: on })}
+          />
+          <Switch
+            label={t("Dark after sunset")}
+            hint={t("Light by day, dark by night, by the clock (and your location when shared)")}
+            on={comfort.autoDark}
+            onChange={(on) => updateComfort({ autoDark: on })}
+          />
+          <p className="px-4 pb-3 pt-1 text-xs text-muted-foreground">
+            {t(
+              "Pages instead of a scroll, and the easy-to-read font, are in the reader: ⋯ and Aa."
+            )}
+          </p>
+        </Section>
+
         <Section title={t("Sources")}>
           <Row
             icon={Compass}
@@ -244,6 +274,12 @@ export function SettingsPanel({
             }
             warn={attention > 0}
             onClick={() => onManageSources(attention > 0)}
+          />
+          <Row
+            icon={Sparkles}
+            label={t("Starter packs")}
+            hint={t("Follow a curated bundle for an interest in one tap")}
+            onClick={() => setPacksOpen(true)}
           />
           <Row icon={FolderCog} label={t("Categories")} onClick={onManageCategories} />
           <Row
@@ -341,6 +377,7 @@ export function SettingsPanel({
         <Section title={t("Help")}>
           <Row icon={Keyboard} label={t("Keyboard shortcuts")} onClick={onShowShortcuts} />
           <Row icon={Sparkles} label={t("What's new")} onClick={() => setWhatsNew(true)} />
+          {packsOpen && <StarterPacks open onOpenChange={setPacksOpen} />}
           <WhatsNew open={whatsNew} onOpenChange={setWhatsNew} />
         </Section>
 

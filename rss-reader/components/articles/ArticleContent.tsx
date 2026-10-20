@@ -4,6 +4,7 @@ import * as React from "react";
 import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { consumeHighlightJump, drawHighlights, type Highlightable } from "@/lib/highlight-dom";
+import { bionicHtml, useComfort } from "@/lib/hooks/useComfort";
 import {
   READER_FONTS,
   READER_LEADING,
@@ -59,6 +60,7 @@ export function ArticleContent({
   renderedRef.current = onRendered;
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const { prefs } = useReaderPrefs();
+  const { comfort } = useComfort();
   // prose sizes everything in em, so one font-size scales the whole article.
   const readerStyle: React.CSSProperties = {
     fontFamily: READER_FONTS[prefs.font],
@@ -76,13 +78,15 @@ export function ArticleContent({
     if (!content) return;
 
     getPurifier().then((DOMPurify) => {
-      if (!cancelled) setSanitized(DOMPurify.sanitize(content, { ADD_ATTR: ["target"] }));
+      if (cancelled) return;
+      const clean = DOMPurify.sanitize(content, { ADD_ATTR: ["target"] });
+      setSanitized(comfort.bionic ? bionicHtml(clean) : clean);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [content]);
+  }, [content, comfort.bionic]);
 
   React.useEffect(() => {
     if (!sanitized || !containerRef.current) return;

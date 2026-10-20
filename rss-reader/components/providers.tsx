@@ -9,6 +9,7 @@ import { LocaleProvider } from "@/lib/i18n";
 import { AccentBoot } from "@/lib/hooks/useAccent";
 import { PersonalBoot } from "@/lib/hooks/usePersonal";
 import { PrefsSync } from "@/lib/prefs";
+import { ComfortBoot } from "@/lib/hooks/useComfort";
 
 async function fetcher(url: string) {
   const res = await fetch(url);
@@ -47,6 +48,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <AccentBoot />
         <PersonalBoot />
         <PrefsSync />
+        <ComfortBoot />
         <LocaleProvider>
           <TooltipProvider delayDuration={300}>
             {children}

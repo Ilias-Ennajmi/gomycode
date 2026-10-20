@@ -6,10 +6,22 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.10.21d";
+export const WHATS_NEW_VERSION = "2026.10.21e";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "Pages, like a book",
+    text: "In any article, ⋯ → Pages turns the scroll into pages you tap or swipe through, with a page counter. Scrolling stays the default; switch back the same way.",
+  },
+  {
+    title: "Reading comfort",
+    text: "Bionic reading (the start of each word in bold), an easy-to-read font under Aa, larger tap targets, and a theme that goes dark after sunset: all in Settings → Reading comfort and the reader's ⋯ menu.",
+  },
+  {
+    title: "Starter packs",
+    text: "New here, or new to a topic? Pick interests and follow a curated bundle for each in one tap, sorted into categories. On the first open, and in Settings → Sources.",
+  },
   {
     title: "Shorts, full screen",
     text: "Tap a Short on the YouTube tab and it plays portrait, full screen; swipe up for the next (arrow keys or the wheel on a desktop), save or share from the side, and each one you watch is marked seen.",

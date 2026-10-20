@@ -6,7 +6,6 @@ import {
   ArrowDownToLine,
   Archive,
   ArchiveRestore,
-  FolderPlus,
   Bookmark,
   BookOpen,
   Check,
@@ -24,6 +23,8 @@ import { Lightbox } from "@/components/articles/Lightbox";
 import { MoreLikeThis } from "@/components/articles/MoreLikeThis";
 import { Discussion } from "@/components/articles/Discussion";
 import { CollectionPicker } from "@/components/collections/CollectionPicker";
+import { ReaderMenu } from "@/components/articles/ReaderMenu";
+import { usePagedLayout } from "@/lib/hooks/usePagedLayout";
 import { StoryTimeline } from "@/components/articles/StoryTimeline";
 import { TranslateMenu, useTranslation } from "@/components/articles/TranslateMenu";
 import { TableOfContents, readHeadings, type Heading } from "@/components/articles/TableOfContents";
@@ -225,7 +226,7 @@ export function ArticleReader() {
     ? (article?.content ?? "") + transcriptHtml(videoId, extras?.transcript ?? []) || null
     : (translating.translation?.html ?? articleHtml);
 
-  const { containerRef, progress } = useReadingProgress<HTMLDivElement>({
+  const { containerRef, progress: scrollProgress } = useReadingProgress<HTMLDivElement>({
     resetKey: article?.id,
     onThresholdReached: () => {
       // Videos and episodes count as done from the player, not from scrolling.
@@ -236,6 +237,18 @@ export function ArticleReader() {
       }
     },
   });
+
+  // Pages instead of a scroll (the ⋯ menu): progress is pages turned, not pixels scrolled.
+  const paged = usePagedLayout(containerRef, prefs.mode === "pages" && !media, article?.id);
+  const progress = paged.enabled ? paged.progress : scrollProgress;
+  React.useEffect(() => {
+    if (!paged.enabled || paged.progress < 80 || !article || article.isRead || media) return;
+    toggleArticleRead(article.id, true)
+      .then(() => mutate())
+      .catch(() => undefined);
+    // Once the last pages are reached.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paged.enabled, paged.progress >= 80, article?.id]);
 
   // Persist how far the reader got, in 10% steps, so lists can show progress bars.
   const savedProgress = React.useRef({ id: "", value: 0 });
@@ -375,16 +388,6 @@ export function ArticleReader() {
           >
             <Bookmark className={cn("h-5 w-5", article.isSaved && "fill-current")} />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10"
-            onClick={() => setCollectOpen(true)}
-            aria-label="Add to collection"
-            title="Add to collection"
-          >
-            <FolderPlus className="h-5 w-5" />
-          </Button>
           <SnoozeMenu article={article}>
             <Button
               variant="ghost"
@@ -410,17 +413,6 @@ export function ArticleReader() {
               )}
             </Button>
           )}
-          <Button variant="ghost" size="icon" className="h-10 w-10" asChild>
-            <a
-              href={article.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Open original"
-              title="Open original (V)"
-            >
-              <ExternalLink className="h-5 w-5" />
-            </a>
-          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -447,12 +439,26 @@ export function ArticleReader() {
           )}
           <TableOfContents headings={headings} scrollRef={containerRef} className="h-10 w-10" />
           <ReaderSettings />
+          <ReaderMenu
+            article={article}
+            media={Boolean(media)}
+            onCollect={() => setCollectOpen(true)}
+          />
         </div>
       </div>
 
+      <ReaderMenu
+        article={article}
+        media={Boolean(media)}
+        onCollect={() => setCollectOpen(true)}
+        className={cn(
+          "absolute right-4 top-3 z-10 hidden h-9 w-9 md:inline-flex",
+          prefs.focus && "md:hidden"
+        )}
+      />
       <ReaderSettings
         className={cn(
-          "absolute right-4 top-3 z-10 hidden md:inline-flex",
+          "absolute right-14 top-3 z-10 hidden h-9 w-9 md:inline-flex",
           prefs.focus && "md:hidden"
         )}
       />
@@ -460,7 +466,7 @@ export function ArticleReader() {
         headings={headings}
         scrollRef={containerRef}
         className={cn(
-          "absolute right-24 top-3 z-10 hidden h-9 w-9 md:inline-flex",
+          "absolute right-[8.5rem] top-3 z-10 hidden h-9 w-9 md:inline-flex",
           prefs.focus && "md:hidden"
         )}
       />
@@ -468,7 +474,7 @@ export function ArticleReader() {
         <ListenButton
           speech={speech}
           html={bodyHtml || article.summary || ""}
-          className="absolute right-14 top-3 z-10 hidden h-9 w-9 md:inline-flex"
+          className="absolute right-24 top-3 z-10 hidden h-9 w-9 md:inline-flex"
         />
       )}
       {!media && aiStatus?.enabled && (
@@ -478,10 +484,20 @@ export function ArticleReader() {
           onTranslate={(to) => void translating.translate(to)}
           onOriginal={translating.original}
           className={cn(
-            "absolute right-[8.5rem] top-3 z-10 hidden h-9 w-9 md:inline-flex",
+            "absolute right-[11rem] top-3 z-10 hidden h-9 w-9 md:inline-flex",
             prefs.focus && "md:hidden"
           )}
         />
+      )}
+      {paged.enabled && (
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-2 z-10 flex justify-center text-[11px] font-medium tabular-nums text-muted-foreground"
+          aria-live="polite"
+        >
+          <span className="rounded-full bg-background/80 px-2 py-0.5 shadow-sm backdrop-blur">
+            {paged.page + 1} / {paged.pages}
+          </span>
+        </div>
       )}
       <ListenBar speech={speech} html={bodyHtml || article.summary || ""} />
       {!media && (
@@ -506,7 +522,10 @@ export function ArticleReader() {
         ref={containerRef}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
-        className="flex-1 overflow-y-auto scrollbar-thin"
+        className={cn(
+          "flex-1 scrollbar-thin",
+          paged.enabled ? "overflow-hidden" : "overflow-y-auto"
+        )}
       >
         <div
           // A new key per article: the page eases in instead of snapping.
