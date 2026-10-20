@@ -109,6 +109,8 @@ function Divider() {
 }
 
 export interface ListToolbarProps {
+  /** Later: read the queue aloud as a playlist. */
+  onListen?: () => void;
   isLater: boolean;
   ranked: boolean;
   total: number;
@@ -403,6 +405,11 @@ function OptionsMenu(props: ListToolbarProps) {
               <DropdownMenuItem onSelect={props.onSaveLink} className="gap-2">
                 <Plus className="h-4 w-4" /> {t("Save a link")}
               </DropdownMenuItem>
+              {props.onListen && (
+                <DropdownMenuItem onSelect={props.onListen} className="gap-2">
+                  <Headphones className="h-4 w-4" /> {t("Listen to Later")}
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem asChild className="gap-2">
                 <a href="/api/later/epub" download>
                   <BookDown className="h-4 w-4" /> {t("Download as EPUB")}

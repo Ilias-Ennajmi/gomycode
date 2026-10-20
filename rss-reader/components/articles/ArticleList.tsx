@@ -41,6 +41,16 @@ import { StoryBubbles } from "@/components/stories/StoryBubbles";
 import { usePersonal } from "@/lib/hooks/usePersonal";
 import { HighlightsList } from "@/components/highlights/HighlightsList";
 import { CollectionsView } from "@/components/collections/CollectionsView";
+import dynamic from "next/dynamic";
+
+const ShortsPlayer = dynamic(
+  () => import("@/components/video/ShortsPlayer").then((m) => m.ShortsPlayer),
+  { ssr: false }
+);
+const ListenLater = dynamic(
+  () => import("@/components/later/ListenLater").then((m) => m.ListenLater),
+  { ssr: false }
+);
 import { requestAppEvent, useAppEvent } from "@/lib/app-events";
 import { useListLayout } from "@/lib/hooks/useListLayout";
 import { copySignupAddress, openUnsubscribe } from "@/lib/hooks/useNewsletter";
@@ -350,6 +360,10 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
       : -1;
   const showHighlights = isLater && laterTab === "highlights";
   const showCollections = isLater && laterTab === "collections";
+  // Shorts open in the vertical player; Later can be read aloud as a playlist.
+  const [shortsAt, setShortsAt] = React.useState<number | null>(null);
+  const [listening, setListening] = React.useState(false);
+  React.useEffect(() => setListening(false), [view.type, laterTab]);
   const showVideoKinds = view.type === "youtube" && !searching;
   const shortsGrid = showVideoKinds && videoKind === "short";
   // A source's own list gets its page header (who it is, settings, unfollow).
@@ -504,6 +518,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
               onLayout={setLayout}
               refreshing={refreshing}
               onRefresh={handleRefresh}
+              onListen={isLater && laterTab === "queue" ? () => setListening(true) : undefined}
               canMarkAllRead={articles.length > 0}
               markingAllRead={markingAllRead}
               onMarkAllRead={handleMarkAllRead}
@@ -565,7 +580,14 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
               <ShortsGrid
                 articles={articles}
                 selectedId={selectedArticleId}
-                onSelect={handleSelect}
+                onSelect={(article) =>
+                  setShortsAt(
+                    Math.max(
+                      0,
+                      articles.findIndex((a) => a.id === article.id)
+                    )
+                  )
+                }
               />
             ) : (
               <TileGrid
@@ -650,6 +672,12 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
           </>
         )}
       </div>
+      {listening && isLater && (
+        <ListenLater articles={articles} onClose={() => setListening(false)} />
+      )}
+      {shortsAt !== null && (
+        <ShortsPlayer articles={articles} startIndex={shortsAt} onClose={() => setShortsAt(null)} />
+      )}
     </div>
   );
 }

@@ -3,44 +3,13 @@
 import * as React from "react";
 import { Headphones, Pause, Play, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { chunks, guessLang, htmlToText, voiceFor } from "@/lib/speech";
 
 // Read aloud with the browser's own speech engine: free, offline-capable, and
 // available on phones. Long texts are spoken sentence by sentence because some
 // engines (Chrome) stop an utterance after ~15 seconds.
 
 const RATES = [1, 1.25, 1.5, 0.85];
-const FRENCH = /\b(le|la|les|des|une|est|dans|pour|avec|qui|sur|pas|du|au)\b/gi;
-const ENGLISH = /\b(the|and|is|in|for|with|that|on|not|of|to|was)\b/gi;
-
-function guessLang(text: string) {
-  const sample = text.slice(0, 2000);
-  const fr = sample.match(FRENCH)?.length ?? 0;
-  const en = sample.match(ENGLISH)?.length ?? 0;
-  return fr > en ? "fr-FR" : "en-US";
-}
-
-function chunks(text: string) {
-  const sentences = text.replace(/\s+/g, " ").match(/[^.!?…]+[.!?…]*\s*/g) ?? [text];
-  const out: string[] = [];
-  let current = "";
-  for (const sentence of sentences) {
-    if ((current + sentence).length > 220 && current) {
-      out.push(current.trim());
-      current = "";
-    }
-    current += sentence;
-  }
-  if (current.trim()) out.push(current.trim());
-  return out;
-}
-
-function htmlToText(html: string) {
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  doc
-    .querySelectorAll("script, style, figure, figcaption, pre, code, table")
-    .forEach((n) => n.remove());
-  return doc.body.textContent ?? "";
-}
 
 type Status = "idle" | "playing" | "paused";
 
@@ -74,9 +43,7 @@ export function useSpeech(resetKey: string | undefined) {
     const utterance = new SpeechSynthesisUtterance(parts[index]);
     utterance.lang = lang;
     utterance.rate = speed;
-    const voice = window.speechSynthesis
-      .getVoices()
-      .find((v) => v.lang.toLowerCase().startsWith(lang.slice(0, 2)));
+    const voice = voiceFor(lang);
     if (voice) utterance.voice = voice;
     utterance.onend = () => {
       // Cancelled queues are emptied, so this only continues real playback.

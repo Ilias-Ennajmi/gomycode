@@ -6,10 +6,18 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.10.21c";
+export const WHATS_NEW_VERSION = "2026.10.21d";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "Shorts, full screen",
+    text: "Tap a Short on the YouTube tab and it plays portrait, full screen; swipe up for the next (arrow keys or the wheel on a desktop), save or share from the side, and each one you watch is marked seen.",
+  },
+  {
+    title: "Listen to Later",
+    text: "Later → ⋯ → Listen to Later reads your queue aloud, one article after the next, with play, pause, skip and speed, and the lock-screen controls. Articles are marked read as they finish.",
+  },
   {
     title: "Collections",
     text: "Group saved articles into named sets (long-press a card or tap the folder in the reader). Later → Collections shows them as cards; publish one and anyone with the link can read it as a clean page.",
