@@ -267,7 +267,15 @@ story with a picture renders full-bleed (`CoverStory`). _Goal ring_ (`GoalRing`,
 `useReadingGoal`, `GET /api/stats/today`): minutes read today against a goal kept on the
 device (`reading-goal`, Settings → Daily goal) plus the streak. _Accent colours_
 (`useAccent`, `data-accent` on `<html>`, variables in `globals.css`; `AccentBoot` in
-`Providers`). Small life: shimmer skeletons, an equalizer on the now-playing artwork, a
+`Providers`). _Personalise_ (`usePersonal`, one JSON blob under `personal` read through
+`useSyncExternalStore`; `PersonalBoot` puts `data-density` on `<html>`): switches for the
+stories row, ring and briefing card, compact density (CSS under `[data-density="compact"]`),
+haptics (`lib/native.ts` `haptic()` checks `hapticsEnabled()`), and the top tabs (`TopBar`
+builds them from `personal.tabs` minus `hiddenTabs`, plus `pinnedCategories` as
+`{type:"category"}` tabs). `StoryBubbles` takes `scope` (the source tab) so RSS never shows
+the News desk, and folds away under `stories-collapsed`. `LayoutSwitch` in `ListToolbar` is
+a radiogroup in the chip row; `"grid"` renders `TileGrid` (square artwork tiles, the default
+for podcasts). Small life: shimmer skeletons, an equalizer on the now-playing artwork, a
 source-colour wash at the top of the reader.
 
 **Screen space** (phones). Two thin rows on top: `TopBar` (tabs, with search, add and settings
@@ -398,6 +406,9 @@ Built in this order (see `git log -- rss-reader`):
     System sheet, backup export, French interface, Android shortcuts for Podcasts and Review.
 18. Delight pass: Stories, magazine layout and cover story, goal ring and streak, accent
     colours, shimmer, equalizer, reader wash.
+19. Personalise: stories scoped per tab and collapsible, layout switch in the chip row with
+    a square tile grid, Settings → Personalise (switches, density, haptics, tab order and
+    hidden tabs, pinned categories).
 
 ## Open ideas (not built yet)
 

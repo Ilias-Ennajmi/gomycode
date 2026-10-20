@@ -38,11 +38,12 @@ import { ArticleSkeletonList } from "@/components/articles/ArticleSkeleton";
 import { DailyBriefing } from "@/components/articles/DailyBriefing";
 import { ForYouGreeting } from "@/components/articles/ForYouGreeting";
 import { StoryBubbles } from "@/components/stories/StoryBubbles";
+import { usePersonal } from "@/lib/hooks/usePersonal";
 import { HighlightsList } from "@/components/highlights/HighlightsList";
 import { requestAppEvent, useAppEvent } from "@/lib/app-events";
 import { useListLayout } from "@/lib/hooks/useListLayout";
 import { copySignupAddress, openUnsubscribe } from "@/lib/hooks/useNewsletter";
-import { SOURCE_TAB_FEED_TYPE, isSourceTab, useReaderState } from "@/lib/hooks/useReaderState";
+import { isSourceTab, useReaderState } from "@/lib/hooks/useReaderState";
 import {
   useCounts,
   useArticles,
@@ -61,6 +62,7 @@ import { withViewTransition } from "@/lib/motion";
 import { ChromeCollapse } from "@/components/layout/ChromeCollapse";
 import type { ArticleSummary, LaterTab, SearchScope, SearchSince } from "@/lib/types";
 import { ShortsGrid } from "@/components/video/ShortsGrid";
+import { TileGrid } from "@/components/articles/TileGrid";
 import { SourceHeader } from "@/components/sources/SourceHeader";
 import type { DiscoverKind } from "@/lib/discover/catalog";
 
@@ -110,6 +112,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   const { feeds } = useFeeds();
   const { addRule, removeRule } = useFilters();
   const { t } = useT();
+  const { personal } = usePersonal();
   const [refreshing, setRefreshing] = React.useState(false);
   const [markingAllRead, setMarkingAllRead] = React.useState(false);
 
@@ -522,11 +525,11 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
           <>
             <ForYouGreeting />
             <StoryBubbles />
-            <DailyBriefing />
+            {personal.briefingCard && <DailyBriefing />}
           </>
         )}
         {isSourceTab(view.type) && !searching && filterTab === "all" && (
-          <StoryBubbles type={SOURCE_TAB_FEED_TYPE[view.type]} />
+          <StoryBubbles scope={view.type} />
         )}
         {showHighlights ? (
           <HighlightsList />
@@ -550,13 +553,21 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
             onShowLatest={() => setPodcastKind("latest")}
             onRefresh={handleRefresh}
           />
-        ) : shortsGrid ? (
+        ) : shortsGrid || layout === "grid" ? (
           <>
-            <ShortsGrid
-              articles={articles}
-              selectedId={selectedArticleId}
-              onSelect={handleSelect}
-            />
+            {shortsGrid ? (
+              <ShortsGrid
+                articles={articles}
+                selectedId={selectedArticleId}
+                onSelect={handleSelect}
+              />
+            ) : (
+              <TileGrid
+                articles={articles}
+                selectedId={selectedArticleId}
+                onSelect={handleSelect}
+              />
+            )}
             {hasMore && (
               <div ref={sentinelRef} className="flex justify-center py-4">
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />

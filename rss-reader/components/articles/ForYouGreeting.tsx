@@ -5,6 +5,7 @@ import { Bell, BookOpenCheck, Headphones, Inbox } from "lucide-react";
 import { useCounts } from "@/lib/hooks/useArticles";
 import { Ticker } from "@/components/ui/ticker";
 import { GoalRing } from "@/components/shared/GoalRing";
+import { usePersonal } from "@/lib/hooks/usePersonal";
 import { useReviewStatus } from "@/lib/hooks/useReview";
 import { useReaderState, type ViewState } from "@/lib/hooks/useReaderState";
 import { useT } from "@/lib/i18n";
@@ -24,6 +25,7 @@ function greeting(date = new Date()) {
 export function ForYouGreeting() {
   const { setView } = useReaderState();
   const { t } = useT();
+  const { personal } = usePersonal();
   const { unread, alerts, listening } = useCounts();
   const { data: review } = useReviewStatus();
   const reviewCount = review?.highlights.length ?? 0;
@@ -75,7 +77,7 @@ export function ForYouGreeting() {
             )}
           </p>
         </div>
-        <GoalRing size={52} />
+        {personal.ring && <GoalRing size={52} />}
       </div>
       {items.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">

@@ -145,6 +145,15 @@
   }
 }
 
+/* Compact density (Settings → Personalise): tighter cards and rows. */
+[data-density="compact"] [data-article-id] > [role="button"] {
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+}
+[data-density="compact"] [data-article-id] h3 {
+  font-size: 14px;
+}
+
 @layer base {
   * {
     @apply border-border;

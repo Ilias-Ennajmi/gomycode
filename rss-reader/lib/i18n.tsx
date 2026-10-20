@@ -48,6 +48,7 @@ const FR: Record<string, string> = {
   "Save a link": "Enregistrer un lien",
   Layout: "Affichage",
   Magazine: "Magazine",
+  Grid: "Grille",
   "Daily goal": "Objectif du jour",
   "Accent colour": "Couleur d'accent",
   Stories: "Stories",
@@ -78,6 +79,24 @@ const FR: Record<string, string> = {
   "Review ready": "Révision prête",
   // Settings
   You: "Vous",
+  Personalise: "Personnaliser",
+  "Stories row": "Rangée des stories",
+  "Sources with something new, above the lists":
+    "Les sources avec du nouveau, au-dessus des listes",
+  "Goal ring": "Anneau d'objectif",
+  "Today's minutes against your goal, on For You and Today":
+    "Vos minutes du jour face à l'objectif, sur Pour vous et Aujourd'hui",
+  "Briefing card": "Carte du briefing",
+  "Today's briefing at the top of For You": "Le briefing du jour en haut de Pour vous",
+  "Compact density": "Densité compacte",
+  "Tighter cards, more on screen": "Des cartes plus serrées, plus à l'écran",
+  Haptics: "Vibrations",
+  "A tap you can feel on saves, swipes and goals":
+    "Une petite vibration sur les enregistrements, balayages et objectifs",
+  "Top tabs": "Onglets du haut",
+  "Order them, hide the ones you don't use, pin a category.":
+    "Ordonnez-les, masquez ceux que vous n'utilisez pas, épinglez une catégorie.",
+  "Pin a category as a tab…": "Épingler une catégorie comme onglet…",
   "Your reading": "Vos lectures",
   "Articles, time and highlights over the last 30 days":
     "Articles, temps et surlignages des 30 derniers jours",

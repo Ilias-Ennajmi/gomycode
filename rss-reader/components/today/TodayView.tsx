@@ -24,6 +24,7 @@ import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { StoryImage } from "@/components/news/StoryParts";
 import { WeatherWidget } from "@/components/news/WeatherWidget";
 import { GoalRing } from "@/components/shared/GoalRing";
+import { usePersonal } from "@/lib/hooks/usePersonal";
 import { useBriefing, type BriefPick, type BriefStory } from "@/lib/hooks/useAi";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import { useHomeBlocks, type HomeBlockId } from "@/lib/hooks/useHomeBlocks";
@@ -67,6 +68,7 @@ export function TodayView() {
   const { briefing, isLoading, mutate } = useBriefing(true);
   const { setSelectedArticleId, setMobilePane, selectedArticleId, setView } = useReaderState();
   const layout = useHomeBlocks();
+  const { personal } = usePersonal();
   const [customising, setCustomising] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
   const [extra, setExtra] = React.useState<BriefStory[]>([]);
@@ -404,7 +406,7 @@ export function TodayView() {
               </p>
             </div>
             <div className="flex items-center gap-1.5">
-              <GoalRing size={48} className="mr-1" />
+              {personal.ring && <GoalRing size={48} className="mr-1" />}
               <WeatherWidget />
               {briefing && (
                 <ListenButton
