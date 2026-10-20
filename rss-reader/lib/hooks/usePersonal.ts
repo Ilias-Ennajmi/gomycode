@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import type { ViewType } from "@/lib/hooks/useReaderState";
+import { readPref, subscribePref, usePref } from "@/lib/prefs";
 
-// Settings → Personalise: the small switches and the tab bar's order, kept on the device in
-// one JSON blob. A tiny store so every reader of a switch re-renders when it flips.
+// Settings → Personalise: the small switches and the tab bar's order, one JSON blob in the
+// shared preference store (so the phone and the desktop agree).
 
 export const TAB_TYPES: ViewType[] = [
   "foryou",
@@ -33,8 +34,8 @@ export interface Personal {
 }
 
 const KEY = "personal";
-const EVENT = "reader:personal";
-const DEFAULT: Personal = {
+const EMPTY: Partial<Personal> = {};
+export const DEFAULT_PERSONAL: Personal = {
   stories: true,
   ring: true,
   briefingCard: true,
@@ -45,36 +46,27 @@ const DEFAULT: Personal = {
   pinnedCategories: [],
 };
 
-let current: Personal | null = null;
+const normalised = new WeakMap<object, Personal>();
 
-function load(): Personal {
-  if (current) return current;
-  try {
-    const saved = JSON.parse(localStorage.getItem(KEY) || "{}") as Partial<Personal>;
-    const tabs = (saved.tabs ?? []).filter((t) => TAB_TYPES.includes(t));
-    for (const t of TAB_TYPES) if (!tabs.includes(t)) tabs.push(t);
-    current = {
-      ...DEFAULT,
-      ...saved,
-      tabs,
-      hiddenTabs: (saved.hiddenTabs ?? []).filter((t) => TAB_TYPES.includes(t)),
-      pinnedCategories: saved.pinnedCategories ?? [],
-    };
-  } catch {
-    current = DEFAULT;
-  }
-  return current;
+function normalise(saved: Partial<Personal>): Personal {
+  const hit = normalised.get(saved);
+  if (hit) return hit;
+  const tabs = (saved.tabs ?? []).filter((t) => TAB_TYPES.includes(t));
+  for (const t of TAB_TYPES) if (!tabs.includes(t)) tabs.push(t);
+  const result: Personal = {
+    ...DEFAULT_PERSONAL,
+    ...saved,
+    tabs,
+    hiddenTabs: (saved.hiddenTabs ?? []).filter((t) => TAB_TYPES.includes(t)),
+    pinnedCategories: saved.pinnedCategories ?? [],
+  };
+  normalised.set(saved, result);
+  return result;
 }
 
-function save(next: Personal) {
-  current = next;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(next));
-  } catch {
-    // This visit only.
-  }
-  applyDensity(next.density);
-  window.dispatchEvent(new CustomEvent(EVENT));
+function load(): Personal {
+  const saved = readPref<Partial<Personal>>(KEY, EMPTY);
+  return normalise(saved && typeof saved === "object" ? saved : EMPTY);
 }
 
 export function applyDensity(density: Personal["density"]) {
@@ -82,17 +74,16 @@ export function applyDensity(density: Personal["density"]) {
   else delete document.documentElement.dataset.density;
 }
 
-function subscribe(onChange: () => void) {
-  window.addEventListener(EVENT, onChange);
-  return () => window.removeEventListener(EVENT, onChange);
-}
-
 /** The personal switches, live. Server render and the first paint use the defaults. */
 export function usePersonal() {
-  const personal = React.useSyncExternalStore(subscribe, load, () => DEFAULT);
+  const [raw, setRaw] = usePref<Partial<Personal>>(KEY, EMPTY);
+  const personal = React.useMemo(
+    () => normalise(raw && typeof raw === "object" ? raw : EMPTY),
+    [raw]
+  );
   const update = React.useCallback(
-    (changes: Partial<Personal>) => save({ ...load(), ...changes }),
-    []
+    (changes: Partial<Personal>) => setRaw({ ...load(), ...changes }),
+    [setRaw]
   );
   return { personal, update };
 }
@@ -106,8 +97,11 @@ export function hapticsEnabled() {
   }
 }
 
-/** Mount once (Providers): puts the density on <html> before anything is tapped. */
+/** Mount once (Providers): keeps the density on <html>, including when it syncs in. */
 export function PersonalBoot() {
-  React.useEffect(() => applyDensity(load().density), []);
+  React.useEffect(() => {
+    applyDensity(load().density);
+    return subscribePref(KEY, () => applyDensity(load().density));
+  }, []);
   return null;
 }

@@ -38,16 +38,12 @@ import { ACCENTS, useAccent } from "@/lib/hooks/useAccent";
 import { GOALS, useReadingGoal } from "@/lib/hooks/useReadingGoal";
 import { TAB_TYPES, usePersonal, type Personal } from "@/lib/hooks/usePersonal";
 import { useCategories } from "@/lib/hooks/useFeeds";
+import { usePref } from "@/lib/prefs";
 import { androidAppVersion, RELEASES_PAGE } from "@/lib/native";
 import { NotificationSettings } from "@/components/layout/NotificationSettings";
 import { useFeeds } from "@/lib/hooks/useFeeds";
 import { needingAttention } from "@/lib/feed-health";
-import {
-  START_VIEWS,
-  START_VIEW_KEY,
-  readStartView,
-  useReaderState,
-} from "@/lib/hooks/useReaderState";
+import { START_VIEWS, START_VIEW_KEY, useReaderState } from "@/lib/hooks/useReaderState";
 
 const START_LABELS: Record<(typeof START_VIEWS)[number], string> = {
   foryou: "For You",
@@ -90,8 +86,10 @@ export function SettingsPanel({
   const { feeds } = useFeeds();
   const attention = needingAttention(feeds).length;
   const { setView, setMobilePane } = useReaderState();
-  const [startView, setStartView] = React.useState<(typeof START_VIEWS)[number]>("foryou");
-  React.useEffect(() => setStartView(readStartView()), []);
+  const [startRaw, setStartView] = usePref<string>(START_VIEW_KEY, "foryou");
+  const startView = (START_VIEWS as readonly string[]).includes(startRaw)
+    ? (startRaw as (typeof START_VIEWS)[number])
+    : "foryou";
   const { accent, setAccent } = useAccent();
   const { goal, setGoal, minutes } = useReadingGoal();
   const { personal, update } = usePersonal();
@@ -153,14 +151,7 @@ export function SettingsPanel({
                   type="button"
                   role="radio"
                   aria-checked={startView === id}
-                  onClick={() => {
-                    setStartView(id);
-                    try {
-                      localStorage.setItem(START_VIEW_KEY, id);
-                    } catch {
-                      // Fine.
-                    }
-                  }}
+                  onClick={() => setStartView(id)}
                   className={cn(
                     "rounded-md px-2 py-1.5 text-sm transition-colors",
                     startView === id

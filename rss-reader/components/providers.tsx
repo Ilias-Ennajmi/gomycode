@@ -8,6 +8,7 @@ import { SwrPersistence } from "@/lib/swr-cache";
 import { LocaleProvider } from "@/lib/i18n";
 import { AccentBoot } from "@/lib/hooks/useAccent";
 import { PersonalBoot } from "@/lib/hooks/usePersonal";
+import { PrefsSync } from "@/lib/prefs";
 
 async function fetcher(url: string) {
   const res = await fetch(url);
@@ -45,6 +46,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <SwrPersistence />
         <AccentBoot />
         <PersonalBoot />
+        <PrefsSync />
         <LocaleProvider>
           <TooltipProvider delayDuration={300}>
             {children}

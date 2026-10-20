@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { readPref } from "@/lib/prefs";
 import type {
   ArticleFilter,
   ArticleListParams,
@@ -102,14 +103,10 @@ const DEFAULT_VIEW: ViewState = { type: "foryou", label: "For You" };
 export const START_VIEW_KEY = "start-view";
 export const START_VIEWS = ["foryou", "briefing", "news", "later"] as const;
 export function readStartView(): (typeof START_VIEWS)[number] {
-  try {
-    const saved = localStorage.getItem(START_VIEW_KEY);
-    return (START_VIEWS as readonly string[]).includes(saved ?? "")
-      ? (saved as (typeof START_VIEWS)[number])
-      : "foryou";
-  } catch {
-    return "foryou";
-  }
+  const saved = readPref<string>(START_VIEW_KEY, "foryou");
+  return (START_VIEWS as readonly string[]).includes(saved)
+    ? (saved as (typeof START_VIEWS)[number])
+    : "foryou";
 }
 
 // Views that links, shortcuts and the Android app can open with ?view=.

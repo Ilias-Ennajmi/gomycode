@@ -1,10 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { readPref, usePref, writePref } from "@/lib/prefs";
 
 export type ListLayout = "list" | "cards" | "magazine" | "grid";
+const LAYOUTS: ListLayout[] = ["list", "cards", "magazine", "grid"];
 
-// For You and News open as a magazine; YouTube as a wall of thumbnails.
+// For You and News open as a magazine; YouTube as a wall of thumbnails; Podcasts as tiles.
 const DEFAULTS: Record<string, ListLayout> = {
   youtube: "cards",
   podcasts: "grid",
@@ -12,39 +14,46 @@ const DEFAULTS: Record<string, ListLayout> = {
   news: "magazine",
 };
 
-function storageKey(listKey: string) {
-  return `reader-layout:${listKey}`;
+const KEY = "layouts";
+const EMPTY: Record<string, string> = {};
+let migrated = false;
+
+/** Layouts chosen before they were one shared pref sat under reader-layout:<tab>. */
+function migrate() {
+  if (migrated) return;
+  migrated = true;
+  try {
+    const found: Record<string, string> = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith("reader-layout:")) {
+        found[key.slice("reader-layout:".length)] = localStorage.getItem(key) ?? "";
+      }
+    }
+    if (Object.keys(found).length > 0) {
+      writePref(KEY, { ...found, ...readPref(KEY, EMPTY) });
+      for (const tab of Object.keys(found)) localStorage.removeItem(`reader-layout:${tab}`);
+    }
+  } catch {
+    // Nothing to carry over.
+  }
 }
 
-/** List, big-picture cards or magazine, remembered per tab on this device. */
+function pick(saved: Record<string, string>, listKey: string): ListLayout {
+  const value = saved?.[listKey];
+  return LAYOUTS.includes(value as ListLayout)
+    ? (value as ListLayout)
+    : (DEFAULTS[listKey] ?? "list");
+}
+
+/** List, big-picture cards, magazine or grid, remembered per tab and shared between devices. */
 export function useListLayout(listKey: string) {
-  const [layout, setLayoutState] = React.useState<ListLayout>(DEFAULTS[listKey] ?? "list");
-
-  React.useEffect(() => {
-    let saved: string | null = null;
-    try {
-      saved = localStorage.getItem(storageKey(listKey));
-    } catch {
-      // Storage unavailable: keep the default.
-    }
-    setLayoutState(
-      saved === "cards" || saved === "list" || saved === "magazine" || saved === "grid"
-        ? saved
-        : (DEFAULTS[listKey] ?? "list")
-    );
-  }, [listKey]);
-
+  React.useEffect(migrate, []);
+  const [saved, setSaved] = usePref<Record<string, string>>(KEY, EMPTY);
+  const layout = pick(saved, listKey);
   const setLayout = React.useCallback(
-    (next: ListLayout) => {
-      setLayoutState(next);
-      try {
-        localStorage.setItem(storageKey(listKey), next);
-      } catch {
-        // Not remembered, still applied.
-      }
-    },
-    [listKey]
+    (next: ListLayout) => setSaved((prev) => ({ ...(prev ?? {}), [listKey]: next })),
+    [listKey, setSaved]
   );
-
   return { layout, setLayout };
 }
