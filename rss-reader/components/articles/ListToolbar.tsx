@@ -415,6 +415,11 @@ function OptionsMenu(props: ListToolbarProps) {
               <Search className="h-4 w-4" /> {t("Find episodes")}
             </DropdownMenuItem>
           )}
+          {view.type === "podcasts" && (
+            <DropdownMenuItem onSelect={() => requestAppEvent("find-episodes")} className="gap-2">
+              <Search className="h-4 w-4" /> {t("Find episodes")}
+            </DropdownMenuItem>
+          )}
           {add && (
             <DropdownMenuItem
               onSelect={() =>
