@@ -6,7 +6,7 @@ import type { TimedText, VideoExtras } from "@/lib/types";
 /** Chapters, key moments, transcript and what's next, for the video being watched. */
 export function useVideoExtras(articleId: string | null) {
   const { data, mutate } = useSWR<VideoExtras>(
-    articleId ? `/api/articles/${articleId}/video` : null
+    articleId && !articleId.startsWith("ext:") ? `/api/articles/${articleId}/video` : null
   );
   return { extras: data ?? null, mutate };
 }

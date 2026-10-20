@@ -5,7 +5,12 @@ import { Headphones, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import { useAudio } from "@/components/audio/AudioProvider";
-import { PlayPauseButton, SkipButton, usePlayerTime } from "@/components/audio/PlayerControls";
+import {
+  PlayPauseButton,
+  SkipButton,
+  SnipButton,
+  usePlayerTime,
+} from "@/components/audio/PlayerControls";
 import { useVideoExtras } from "@/lib/hooks/useVideo";
 
 /** Three little bars dancing on the artwork while something plays. */
@@ -121,6 +126,7 @@ export function NowPlayingBar() {
             </span>
           </span>
         </button>
+        <SnipButton className="h-9 w-9" />
         <SkipButton seconds={-15} className="hidden sm:flex" />
         <PlayPauseButton size="sm" />
         <SkipButton seconds={30} />

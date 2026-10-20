@@ -34,6 +34,8 @@ export async function quoteCardBlob(input: {
   color: string;
   title?: string;
   source?: string;
+  /** Snip cards: a waveform strip and the moment's time under the quote. */
+  moment?: string;
 }): Promise<Blob> {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
@@ -51,7 +53,8 @@ export async function quoteCardBlob(input: {
 
   const lineHeight = fontSize * 1.45;
   const quoteHeight = lines.length * lineHeight;
-  const height = Math.max(560, PADDING * 2 + quoteHeight + 150);
+  const waveHeight = input.moment ? 110 : 0;
+  const height = Math.max(560, PADDING * 2 + quoteHeight + 150 + waveHeight);
   canvas.width = WIDTH;
   canvas.height = height;
 
@@ -68,8 +71,26 @@ export async function quoteCardBlob(input: {
   ctx.font = serif;
   lines.forEach((line, i) => ctx.fillText(line, PADDING + 40, PADDING + i * lineHeight + 6));
 
+  // Snips: a waveform strip (shaped by the words, so each card differs) and the moment.
+  if (input.moment) {
+    const top = PADDING + quoteHeight + 44;
+    let seed = 0;
+    for (const ch of input.text) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+    const bars = 72;
+    const gap = (WIDTH - PADDING * 2) / bars;
+    for (let i = 0; i < bars; i++) {
+      seed = (seed * 1103515245 + 12345) >>> 0;
+      const h = 10 + (seed % 48);
+      ctx.fillStyle = i < bars * 0.62 ? (COLORS[input.color] ?? COLORS.blue) : "#3A3D47";
+      ctx.fillRect(PADDING + i * gap, top + (56 - h) / 2, gap * 0.55, h);
+    }
+    ctx.font = "600 26px system-ui, -apple-system, 'Segoe UI', sans-serif";
+    ctx.fillStyle = "#C9C4B8";
+    ctx.fillText(input.moment, PADDING, top + 68);
+  }
+
   // Source line and brand.
-  const footerY = PADDING + quoteHeight + 56;
+  const footerY = PADDING + quoteHeight + 56 + waveHeight;
   ctx.font = "600 30px system-ui, -apple-system, 'Segoe UI', sans-serif";
   ctx.fillStyle = "#C9C4B8";
   const attribution = [input.title, input.source].filter(Boolean).join(" · ");

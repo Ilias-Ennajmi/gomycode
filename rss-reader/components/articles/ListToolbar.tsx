@@ -7,6 +7,7 @@ import {
   CheckCheck,
   Grid2x2,
   Headphones,
+  Search,
   Hourglass,
   LayoutGrid,
   ListTree,
@@ -398,6 +399,11 @@ function OptionsMenu(props: ListToolbarProps) {
           {props.isLater && laterTab === "queue" && (
             <DropdownMenuItem onSelect={props.onSaveLink} className="gap-2">
               <Plus className="h-4 w-4" /> {t("Save a link")}
+            </DropdownMenuItem>
+          )}
+          {view.type === "podcasts" && (
+            <DropdownMenuItem onSelect={() => requestAppEvent("find-episodes")} className="gap-2">
+              <Search className="h-4 w-4" /> {t("Find episodes")}
             </DropdownMenuItem>
           )}
           {add && (

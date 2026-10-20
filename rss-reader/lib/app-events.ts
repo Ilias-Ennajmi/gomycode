@@ -4,7 +4,12 @@ import * as React from "react";
 
 // App-wide requests that any component can make without threading callbacks through the tree,
 // handled by AppShell (which owns the dialogs).
-type AppEvent = "email-newsletter" | "content-filters" | "scroll-top" | "sources-unused";
+type AppEvent =
+  | "email-newsletter"
+  | "content-filters"
+  | "scroll-top"
+  | "sources-unused"
+  | "find-episodes";
 
 export function requestAppEvent(event: AppEvent) {
   window.dispatchEvent(new CustomEvent(`reader:${event}`));

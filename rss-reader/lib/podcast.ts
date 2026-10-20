@@ -147,6 +147,64 @@ export async function searchApplePodcasts(term: string, lang?: string) {
   return (data.results ?? []).map(showResult).filter((r): r is DiscoverResult => r !== null);
 }
 
+export interface AppleEpisode {
+  id: string;
+  title: string;
+  show: string;
+  showId: string | null;
+  feedUrl: string | null;
+  imageUrl: string | null;
+  audioUrl: string;
+  durationSeconds: number | null;
+  publishedAt: string | null;
+  description: string | null;
+}
+
+interface AppleEpisodeRaw {
+  wrapperType?: string;
+  trackId?: number;
+  trackName?: string;
+  collectionName?: string;
+  collectionId?: number;
+  feedUrl?: string;
+  artworkUrl600?: string;
+  artworkUrl160?: string;
+  episodeUrl?: string;
+  trackTimeMillis?: number;
+  releaseDate?: string;
+  shortDescription?: string;
+  description?: string;
+}
+
+/** Episodes (not shows) about a topic, across Apple's whole catalogue. */
+export async function searchAppleEpisodes(term: string, lang?: string): Promise<AppleEpisode[]> {
+  const params = new URLSearchParams({
+    media: "podcast",
+    entity: "podcastEpisode",
+    limit: "25",
+    term,
+    country: storeFor(lang),
+  });
+  const data = await appleJson<{ results?: AppleEpisodeRaw[] }>(
+    `https://itunes.apple.com/search?${params}`
+  );
+  return (data.results ?? [])
+    .filter((r) => r.wrapperType === "podcastEpisode" && r.episodeUrl && r.trackName)
+    .map((r) => ({
+      id: String(r.trackId),
+      title: r.trackName!,
+      show: r.collectionName ?? "",
+      showId: r.collectionId ? String(r.collectionId) : null,
+      feedUrl: r.feedUrl ?? null,
+      imageUrl: r.artworkUrl600 ?? r.artworkUrl160 ?? null,
+      audioUrl: r.episodeUrl!,
+      durationSeconds: r.trackTimeMillis ? Math.round(r.trackTimeMillis / 1000) : null,
+      publishedAt: r.releaseDate ?? null,
+      description:
+        (r.shortDescription || r.description || "").replace(/<[^>]+>/g, "").slice(0, 300) || null,
+    }));
+}
+
 async function lookupShows(ids: string[], lang?: string) {
   if (ids.length === 0) return [];
   const data = await appleJson<{ results?: AppleShow[] }>(

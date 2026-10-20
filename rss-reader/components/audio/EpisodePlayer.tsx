@@ -12,6 +12,7 @@ import {
   Scrubber,
   SkipButton,
   SleepButton,
+  SnipButton,
   SpeedButton,
 } from "@/components/audio/PlayerControls";
 
@@ -81,7 +82,10 @@ export function EpisodePlayer({
           <Scrubber />
           <EndsAt />
           <div className="mt-2 flex items-center justify-between gap-2">
-            <SpeedButton />
+            <div className="flex items-center gap-1">
+              <SpeedButton />
+              <SnipButton />
+            </div>
             <div className="flex items-center gap-2">
               <SkipButton seconds={-15} />
               <PlayPauseButton />
