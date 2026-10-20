@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { useFeeds } from "@/lib/hooks/useFeeds";
 import { usePersonal } from "@/lib/hooks/usePersonal";
+import { usePref } from "@/lib/prefs";
 import { readSeen, type StorySource } from "@/lib/stories";
 import type { FeedSummary } from "@/lib/types";
 import type { SourceTab } from "@/lib/hooks/useReaderState";
@@ -46,24 +47,9 @@ export function StoryBubbles({ scope, className }: { scope?: SourceTab; classNam
   const seenCount = React.useRef(0);
   seenCount.current = readSeen().size;
   // Folded into one slim line when the reader prefers the list to start higher.
-  const [collapsed, setCollapsed] = React.useState(false);
-  React.useEffect(() => {
-    try {
-      setCollapsed(localStorage.getItem(COLLAPSED_KEY) === "1");
-    } catch {
-      // Open.
-    }
-  }, []);
-  const toggle = () => {
-    setCollapsed((c) => {
-      try {
-        localStorage.setItem(COLLAPSED_KEY, c ? "0" : "1");
-      } catch {
-        // This visit only.
-      }
-      return !c;
-    });
-  };
+  const [collapsedRaw, setCollapsed] = usePref<unknown>(COLLAPSED_KEY, false);
+  const collapsed = collapsedRaw === true || collapsedRaw === 1 || collapsedRaw === "1";
+  const toggle = () => setCollapsed(!collapsed);
 
   const sources = React.useMemo<StorySource[]>(() => {
     const withNews = feeds

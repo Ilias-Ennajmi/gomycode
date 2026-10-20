@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { readPref, usePref } from "@/lib/prefs";
 
 // The interface in English or French. Article text stays in its own language; this covers
 // the chrome: tabs, the sidebar, settings, list menus and the common actions. Strings not in
@@ -147,27 +148,16 @@ const LocaleContext = React.createContext<{
 }>({ locale: "en", setLocale: () => {}, t: (text) => text });
 
 export function readLocale(): Locale {
-  try {
-    return localStorage.getItem(KEY) === "fr" ? "fr" : "en";
-  } catch {
-    return "en";
-  }
+  return readPref<string>(KEY, "en") === "fr" ? "fr" : "en";
 }
 
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = React.useState<Locale>("en");
-  React.useEffect(() => setLocaleState(readLocale()), []);
+  const [raw, setRaw] = usePref<string>(KEY, "en");
+  const locale: Locale = raw === "fr" ? "fr" : "en";
   React.useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
-  const setLocale = React.useCallback((next: Locale) => {
-    setLocaleState(next);
-    try {
-      localStorage.setItem(KEY, next);
-    } catch {
-      // Fine: this visit only.
-    }
-  }, []);
+  const setLocale = React.useCallback((next: Locale) => setRaw(next), [setRaw]);
   const t = React.useCallback(
     (text: string) => (locale === "fr" ? (FR[text] ?? text) : text),
     [locale]
@@ -175,8 +165,6 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const value = React.useMemo(() => ({ locale, setLocale, t }), [locale, setLocale, t]);
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
 }
-
-/** `t("Mark as read")` → the label in the chosen language. */
 export function useT() {
   return React.useContext(LocaleContext);
 }

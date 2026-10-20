@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
+import { usePref } from "@/lib/prefs";
 
 // Today is made of blocks; which ones show, and in what order, is up to the reader
-// (Today → Customise). Kept on the device.
+// (Today → Customise). A shared preference, so every device shows the same home.
 
 export const HOME_BLOCKS = [
   { id: "bigPicture", label: "The big picture", briefing: true },
@@ -31,31 +32,18 @@ const KEY = "home-blocks";
 const DEFAULT: Layout = { order: HOME_BLOCKS.map((b) => b.id), hidden: [] };
 const IDS = new Set<string>(HOME_BLOCKS.map((b) => b.id));
 
-function read(): Layout {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return DEFAULT;
-    const saved = JSON.parse(raw) as Partial<Layout>;
-    // Blocks added since the layout was saved go at their default place.
-    const order = (saved.order ?? []).filter((id) => IDS.has(id));
-    for (const id of DEFAULT.order) if (!order.includes(id)) order.push(id);
-    return { order, hidden: (saved.hidden ?? []).filter((id) => IDS.has(id)) };
-  } catch {
-    return DEFAULT;
-  }
+function normalise(saved: Partial<Layout> | null | undefined): Layout {
+  if (!saved || typeof saved !== "object") return DEFAULT;
+  // Blocks added since the layout was saved go at their default place.
+  const order = (saved.order ?? []).filter((id) => IDS.has(id));
+  for (const id of DEFAULT.order) if (!order.includes(id)) order.push(id);
+  return { order, hidden: (saved.hidden ?? []).filter((id) => IDS.has(id)) };
 }
 
 export function useHomeBlocks() {
-  const [layout, setLayout] = React.useState<Layout>(DEFAULT);
-  React.useEffect(() => setLayout(read()), []);
-  const save = (next: Layout) => {
-    setLayout(next);
-    try {
-      localStorage.setItem(KEY, JSON.stringify(next));
-    } catch {
-      // Fine: the default layout.
-    }
-  };
+  const [raw, setRaw] = usePref<Partial<Layout>>(KEY, DEFAULT);
+  const layout = React.useMemo(() => normalise(raw), [raw]);
+  const save = (next: Layout) => setRaw(next);
   const blocks = layout.order.map((id) => ({
     ...HOME_BLOCKS.find((b) => b.id === id)!,
     on: !layout.hidden.includes(id),

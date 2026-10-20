@@ -1,6 +1,8 @@
 "use client";
 
 import type { DiscoverKind } from "@/lib/discover/catalog";
+import * as React from "react";
+import dynamic from "next/dynamic";
 import {
   Bell,
   Compass,
@@ -9,6 +11,7 @@ import {
   Keyboard,
   Library,
   LogOut,
+  Settings,
   SlidersHorizontal,
   Upload,
 } from "lucide-react";
@@ -19,6 +22,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { NotificationSettings } from "@/components/layout/NotificationSettings";
 import { useFeeds } from "@/lib/hooks/useFeeds";
 import { needingAttention } from "@/lib/feed-health";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+
+const SettingsPanel = dynamic(
+  () => import("@/components/layout/SettingsPanel").then((m) => m.SettingsPanel),
+  { ssr: false }
+);
 
 interface SidebarFooterProps {
   onAddFeed: (kind?: DiscoverKind) => void;
@@ -29,16 +38,18 @@ interface SidebarFooterProps {
   onShowShortcuts: () => void;
 }
 
-export function SidebarFooter({
-  onAddFeed,
-  onManageSources,
-  onManageCategories,
-  onContentFilters,
-  onImportOpml,
-  onShowShortcuts,
-}: SidebarFooterProps) {
+export function SidebarFooter(props: SidebarFooterProps) {
+  const {
+    onAddFeed,
+    onManageSources,
+    onManageCategories,
+    onContentFilters,
+    onImportOpml,
+    onShowShortcuts,
+  } = props;
   const { feeds } = useFeeds();
   const attention = needingAttention(feeds).length;
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
   return (
     <div className="space-y-2 border-t p-3 max-md:border-t-0 max-md:pt-0">
       <div className="grid grid-cols-2 gap-1">
@@ -92,10 +103,20 @@ export function SidebarFooter({
         <IconAction label="Keyboard shortcuts" onClick={onShowShortcuts}>
           <Keyboard className="h-4 w-4" />
         </IconAction>
+        <IconAction label="Settings" onClick={() => setSettingsOpen(true)}>
+          <Settings className="h-4 w-4" />
+        </IconAction>
         <IconAction label="Sign out" onClick={signOut}>
           <LogOut className="h-4 w-4" />
         </IconAction>
       </div>
+      {/* Desktop: the same Settings screen as the phone, in a dialog. */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="h-[min(88vh,820px)] max-w-xl gap-0 overflow-hidden p-0">
+          <DialogTitle className="sr-only">Settings</DialogTitle>
+          {settingsOpen && <SettingsPanel {...props} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

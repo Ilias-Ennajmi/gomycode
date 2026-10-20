@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { readPref, subscribePref, usePref } from "@/lib/prefs";
 
-// The accent colour (buttons, rings, links), chosen in Settings and kept on the device.
+// The accent colour (buttons, rings, links), chosen in Settings and shared between devices.
 // It's a data attribute on <html>; globals.css maps each one to --primary.
 
 export const ACCENTS = [
@@ -18,13 +19,12 @@ export type Accent = (typeof ACCENTS)[number]["id"];
 
 const KEY = "accent";
 
+function valid(value: unknown): Accent {
+  return ACCENTS.some((a) => a.id === value) ? (value as Accent) : "violet";
+}
+
 export function readAccent(): Accent {
-  try {
-    const saved = localStorage.getItem(KEY);
-    return ACCENTS.some((a) => a.id === saved) ? (saved as Accent) : "violet";
-  } catch {
-    return "violet";
-  }
+  return valid(readPref<string>(KEY, "violet"));
 }
 
 export function applyAccent(accent: Accent) {
@@ -32,28 +32,19 @@ export function applyAccent(accent: Accent) {
   else document.documentElement.dataset.accent = accent;
 }
 
-/** The chosen accent, applied on mount and whenever it changes. */
+/** The chosen accent, applied whenever it changes (here or on another device). */
 export function useAccent() {
-  const [accent, setAccentState] = React.useState<Accent>("violet");
-  React.useEffect(() => {
-    const saved = readAccent();
-    setAccentState(saved);
-    applyAccent(saved);
-  }, []);
-  const setAccent = React.useCallback((next: Accent) => {
-    setAccentState(next);
-    applyAccent(next);
-    try {
-      localStorage.setItem(KEY, next);
-    } catch {
-      // This visit only.
-    }
-  }, []);
+  const [raw, setRaw] = usePref<string>(KEY, "violet");
+  const accent = valid(raw);
+  const setAccent = React.useCallback((next: Accent) => setRaw(next), [setRaw]);
   return { accent, setAccent };
 }
 
-/** Mount once (Providers): puts the saved accent on <html> before anything is tapped. */
+/** Mount once (Providers): puts the saved accent on <html> and follows changes. */
 export function AccentBoot() {
-  React.useEffect(() => applyAccent(readAccent()), []);
+  React.useEffect(() => {
+    applyAccent(readAccent());
+    return subscribePref(KEY, () => applyAccent(readAccent()));
+  }, []);
   return null;
 }
