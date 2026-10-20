@@ -38,6 +38,7 @@ import { ArticleSkeletonList } from "@/components/articles/ArticleSkeleton";
 import { DailyBriefing } from "@/components/articles/DailyBriefing";
 import { ForYouGreeting } from "@/components/articles/ForYouGreeting";
 import { StoryBubbles } from "@/components/stories/StoryBubbles";
+import { episodeOf, useAudio } from "@/components/audio/AudioProvider";
 import { usePersonal } from "@/lib/hooks/usePersonal";
 import dynamic from "next/dynamic";
 
@@ -91,6 +92,7 @@ interface ArticleListProps {
 
 export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   const { mutate: globalMutate } = useSWRConfig();
+  const audio = useAudio();
   const {
     view,
     filterTab,
@@ -298,6 +300,13 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   }
 
   function handleSelect(article: ArticleSummary) {
+    // Phones: an episode opens the full-screen player, like a podcast app.
+    const asEpisode = !article.isVideo ? episodeOf(article) : null;
+    if (asEpisode && window.matchMedia("(max-width: 767px)").matches) {
+      setSelectedArticleId(article.id);
+      audio.openPlayer(asEpisode);
+      return;
+    }
     // The card's picture glides into the article's picture (view transitions).
     const image = scrollRef.current?.querySelector<HTMLElement>(
       `[data-article-id="${article.id}"] [data-card-image]`

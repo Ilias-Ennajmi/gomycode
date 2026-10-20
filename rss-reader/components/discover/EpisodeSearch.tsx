@@ -84,7 +84,9 @@ export function EpisodeSearch({
       imageUrl: episode.imageUrl,
       audioUrl: episode.audioUrl,
       durationSeconds: episode.durationSeconds,
+      feedUrl: episode.feedUrl,
     });
+    audio.setExpanded(true);
     onOpenChange(false);
   }
 

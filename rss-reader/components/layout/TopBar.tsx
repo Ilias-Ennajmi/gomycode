@@ -6,10 +6,8 @@ import { useT } from "@/lib/i18n";
 import { requestAppEvent } from "@/lib/app-events";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useCategories, useFeeds } from "@/lib/hooks/useFeeds";
-import { usePersonal } from "@/lib/hooks/usePersonal";
-import { useCounts } from "@/lib/hooks/useArticles";
-import { useReaderState, type ViewState, type ViewType } from "@/lib/hooks/useReaderState";
+import { useReaderState, type ViewType } from "@/lib/hooks/useReaderState";
+import { shortCount, tabKey, useSectionTabs } from "@/lib/hooks/useSectionTabs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,69 +33,11 @@ const KIND_LABEL: Record<DiscoverKind, string> = {
   podcast: "Add podcasts",
 };
 
-const SEEN_KEY = "reader-tab-seen";
-
-/** For each tab: is there more unread than when it was last open? Remembered on this device. */
-function useNewSinceLastLook(unread: Partial<Record<ViewType, number>>, active: ViewType | null) {
-  const [seen, setSeen] = React.useState<Record<string, number>>({});
-  React.useEffect(() => {
-    try {
-      setSeen(JSON.parse(localStorage.getItem(SEEN_KEY) ?? "{}"));
-    } catch {
-      // Not remembered: no dots until this visit has looked at each tab.
-    }
-  }, []);
-
-  // The key of the unread counts, so effects run when they change, not on every render.
-  const signature = Object.entries(unread)
-    .map(([tab, count]) => `${tab}:${count ?? 0}`)
-    .join(",");
-  React.useEffect(() => {
-    setSeen((previous) => {
-      const next = { ...previous };
-      let changed = false;
-      for (const [tab, count] of Object.entries(unread)) {
-        const current = count ?? 0;
-        // Open now, or first time seen, or fewer than before (read some): that's the new baseline.
-        if (tab === active || next[tab] === undefined || current < next[tab]) {
-          if (next[tab] !== current) {
-            next[tab] = current;
-            changed = true;
-          }
-        }
-      }
-      if (!changed) return previous;
-      try {
-        localStorage.setItem(SEEN_KEY, JSON.stringify(next));
-      } catch {
-        // Fine: dots just reset next time.
-      }
-      return next;
-    });
-    // `signature` stands for `unread`.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature, active]);
-
-  return (tab: ViewType) => (unread[tab] ?? 0) > (seen[tab] ?? Number.POSITIVE_INFINITY);
-}
-
-function short(n: number) {
-  return n > 99 ? "99+" : String(n);
-}
-
-const TABS: ViewState[] = [
-  { type: "foryou", label: "For You" },
-  { type: "news", label: "News" },
-  { type: "rss", label: "RSS" },
-  { type: "youtube", label: "YouTube" },
-  { type: "newsletters", label: "Newsletters" },
-  { type: "podcasts", label: "Podcasts" },
-  { type: "later", label: "Later" },
-];
-
 interface TopBarProps {
   /** The phone copy is the page banner; the desktop copy (hidden on phones) is plain. */
   landmark?: boolean;
+  /** Phones show the section's name here; its tabs are in the bottom bar. */
+  phone?: boolean;
   className?: string;
   onSaveLink: () => void;
   onAddFeed: (kind?: DiscoverKind) => void;
@@ -111,72 +51,13 @@ export function TopBar({
   onAddFeed,
   onManageNews,
   landmark = true,
+  phone = false,
 }: TopBarProps) {
-  const { view, setView, mobilePane, setMobilePane } = useReaderState();
-  const { feeds } = useFeeds();
-  const { categories } = useCategories();
-  const { personal } = usePersonal();
-  const counts = useCounts();
+  const { view, mobilePane, setMobilePane } = useReaderState();
+  const { tabs, active, select, hasNew, laterCount, unread } = useSectionTabs();
   const { t } = useT();
-  const laterCount = counts.later;
-  // The bar as personalised: built-in tabs in the chosen order minus the hidden ones, then
-  // any categories pinned as tabs.
-  const tabs = React.useMemo<ViewState[]>(
-    () => [
-      ...personal.tabs
-        .filter((type) => !personal.hiddenTabs.includes(type))
-        .map((type) => TABS.find((tab) => tab.type === type)!)
-        .filter(Boolean),
-      ...personal.pinnedCategories
-        .map((id) => categories.find((c) => c.id === id))
-        .filter((c): c is NonNullable<typeof c> => Boolean(c))
-        .map((c) => ({ type: "category" as const, id: c.id, label: c.name })),
-    ],
-    [personal.tabs, personal.hiddenTabs, personal.pinnedCategories, categories]
-  );
-  const keyOf = (tab: { type: ViewType; id?: string }) => `${tab.type}:${tab.id ?? ""}`;
-  // Unread per tab, so it's clear where something new is waiting.
-  const unread: Partial<Record<ViewType, number>> = {
-    news: counts.news,
-    rss: counts.rss,
-    youtube: counts.youtube,
-    newsletters: counts.newsletters,
-    podcasts: counts.podcasts,
-  };
-
-  // A single feed belongs to the tab for its kind of source.
-  function activeType(): ViewType | null {
-    if (mobilePane === "settings") return null;
-    // The briefing and the recap are reached from For You.
-    if (view.type === "briefing" || view.type === "recap") return "foryou";
-    if (view.type === "category") return "category";
-    if (view.type !== "feed") return tabs.some((t) => t.type === view.type) ? view.type : null;
-    const feed = feeds.find((f) => f.id === view.id);
-    if (feed?.newsDesk) return "news";
-    return feed?.type === "youtube"
-      ? "youtube"
-      : feed?.type === "newsletter"
-        ? "newsletters"
-        : feed?.type === "podcast"
-          ? "podcasts"
-          : "rss";
-  }
-  const activeTypeValue = activeType();
-  // A pinned category lights its own tab; another category lights nothing.
-  const active =
-    activeTypeValue === "category"
-      ? tabs.some((t) => t.type === "category" && t.id === view.id)
-        ? keyOf({ type: "category", id: view.id })
-        : null
-      : activeTypeValue
-        ? keyOf({ type: activeTypeValue })
-        : null;
-  // A dot on a tab says "something new since you last looked", not a count that never goes
-  // away: each tab remembers how many unread it had when it was last open.
-  const hasNew = useNewSinceLastLook(
-    unread,
-    activeTypeValue === "category" ? null : activeTypeValue
-  );
+  const keyOf = tabKey;
+  const short = shortCount;
 
   // Opened from a link or shortcut (e.g. Highlights, inside Later): bring the tab into view.
   const navRef = React.useRef<HTMLElement>(null);
@@ -222,14 +103,14 @@ export function TopBar({
     unread.podcasts,
   ]);
 
-  function select(tab: ViewState) {
-    // From a section list inside News, the tab goes back to the front page.
-    if (view.type === tab.type && view.id === tab.id && !(tab.type === "news" && view.id)) {
-      // Tapping the tab you're on goes back to the top, like a native app.
-      setMobilePane("list");
-      requestAppEvent("scroll-top");
-    } else setView(tab);
-  }
+  // Phones: the tabs live in the bottom bar; the top shows where you are.
+  const activeTab = tabs.find((tab) => keyOf(tab) === active);
+  const title =
+    mobilePane === "settings"
+      ? "Settings"
+      : mobilePane === "sidebar"
+        ? "Library"
+        : (activeTab?.label ?? view.label);
 
   function openSearch() {
     setMobilePane("sidebar");
@@ -240,10 +121,18 @@ export function TopBar({
   return (
     <Tag className={cn("shrink-0 border-b bg-background/95 pt-safe backdrop-blur", className)}>
       <div className="flex items-center gap-1 pr-1.5 md:h-14 md:gap-2 md:pr-5">
+        {phone && (
+          <p className="min-w-0 flex-1 truncate px-4 py-2.5 text-[22px] font-bold tracking-tight">
+            {t(title)}
+          </p>
+        )}
         <nav
           ref={navRef}
           aria-label="Sections"
-          className="relative flex min-w-0 flex-1 items-center overflow-x-auto px-2 scrollbar-none md:px-3"
+          className={cn(
+            "relative flex min-w-0 flex-1 items-center overflow-x-auto px-2 scrollbar-none md:px-3",
+            phone && "hidden"
+          )}
         >
           {tabs.map((tab) => {
             const isActive = active === keyOf(tab);

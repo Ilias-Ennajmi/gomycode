@@ -6,10 +6,22 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.10.21f";
+export const WHATS_NEW_VERSION = "2026.10.22";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "A real podcast player",
+    text: "Tap an episode and it opens full screen: artwork, a scrubber with the chapter playing, Skip ahead to the next chapter, snip, share. Scroll for Read along (the transcript following the voice, full screen with search), chapters, key moments, your snips, the show notes, the show, up next, more from the show and similar episodes. Every card folds shut with its chevron and stays that way.",
+  },
+  {
+    title: "Tabs at the bottom",
+    text: "On phones the sections moved to a bar at the bottom, where your thumb is, with dots for what's new and Later's count. More than five? The rest are under More. Order and hide them in Settings → Personalise.",
+  },
+  {
+    title: "Videos get the same cards",
+    text: "A YouTube video's page now has Read along, chapters, key moments and more from the channel as folding cards, instead of a long transcript at the bottom.",
+  },
   {
     title: "Lighter and friendlier",
     text: "The reader, Highlights and Collections now load only when you open them, so the first screen arrives sooner. Lists, the reader, Later, Settings and the login pass an accessibility audit: proper landmarks and headings, headline buttons for keyboards, no controls inside controls, better contrast.",

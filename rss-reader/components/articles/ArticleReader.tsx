@@ -14,6 +14,7 @@ import {
   ExternalLink,
   Lock,
   Share,
+  ListVideo,
   Sparkles,
 } from "lucide-react";
 import { shareLink } from "@/lib/share";
@@ -22,6 +23,12 @@ import { takeStartAt } from "@/lib/start-at";
 import { Lightbox } from "@/components/articles/Lightbox";
 import { MoreLikeThis } from "@/components/articles/MoreLikeThis";
 import { Discussion } from "@/components/articles/Discussion";
+import {
+  DiscussionCard,
+  MediaRow,
+  ReadAlongCard,
+  TimeListCard,
+} from "@/components/media/MediaCards";
 import { CollectionPicker } from "@/components/collections/CollectionPicker";
 import { ReaderMenu } from "@/components/articles/ReaderMenu";
 import { usePagedLayout } from "@/lib/hooks/usePagedLayout";
@@ -57,12 +64,11 @@ import { EpisodeNotes } from "@/components/audio/EpisodeNotes";
 import { isSnip } from "@/lib/snips";
 import {
   createTimeStore,
-  LiveVideoGuide,
   ResumedNote,
   UpNextCard,
   VideoAiPending,
 } from "@/components/video/VideoGuide";
-import { saveVideoProgress, transcriptHtml, useVideoExtras } from "@/lib/hooks/useVideo";
+import { saveVideoProgress, useVideoExtras } from "@/lib/hooks/useVideo";
 import { requestAutoplay } from "@/lib/youtube-player";
 
 import { isPaidPreview } from "@/lib/newsletters";
@@ -222,8 +228,10 @@ export function ArticleReader() {
   // A translation (made once, kept on the article) replaces the body while it's on.
   const translating = useTranslation(article?.id ?? null);
   const aiStatus = useAiStatus();
+  // The transcript lives in the Read along card above (it follows the player and can be
+  // searched); the body keeps the description or show notes.
   const bodyHtml = media
-    ? (article?.content ?? "") + transcriptHtml(videoId, extras?.transcript ?? []) || null
+    ? article?.content || null
     : (translating.translation?.html ?? articleHtml);
 
   const { containerRef, progress: scrollProgress } = useReadingProgress<HTMLDivElement>({
@@ -619,27 +627,36 @@ export function ArticleReader() {
               ready={media ? extras?.ai === "unavailable" : !wantsFull || !fullLoading}
             />
           )}
-          {videoId && extras && (
-            <LiveVideoGuide
-              store={timeStore}
-              keyMoments={extras.keyMoments}
-              chapters={extras.chapters}
-              onSeek={seekVideo}
-            />
-          )}
-          {episode && extras && (
-            <LiveVideoGuide
-              store={episodeTime}
-              keyMoments={extras.keyMoments}
-              chapters={extras.chapters}
-              onSeek={seekEpisode}
-            />
+          {media && extras && (
+            <div className="mt-6 space-y-3">
+              <ReadAlongCard
+                transcript={extras.transcript}
+                store={videoId ? timeStore : episodeTime}
+                onSeek={videoId ? seekVideo : seekEpisode}
+              />
+              <TimeListCard
+                id="chapters"
+                title="Chapters"
+                icon={ListVideo}
+                items={extras.chapters.map((c) => ({ t: c.t, label: c.title }))}
+                store={videoId ? timeStore : episodeTime}
+                onSeek={videoId ? seekVideo : seekEpisode}
+              />
+              <TimeListCard
+                id="key-moments"
+                title="Key moments"
+                icon={Sparkles}
+                items={extras.keyMoments.map((m) => ({ t: m.t, label: m.text }))}
+                store={videoId ? timeStore : episodeTime}
+                onSeek={videoId ? seekVideo : seekEpisode}
+              />
+            </div>
           )}
           {episode && (
             <EpisodeNotes
               article={article}
               snips={highlights.filter(isSnip)}
-              transcript={extras?.transcript ?? []}
+              transcript={[]}
               onSeek={seekEpisode}
             />
           )}
@@ -722,6 +739,19 @@ export function ArticleReader() {
                 Read the original
               </button>
             </p>
+          )}
+          {media && (
+            <div className="mt-8 space-y-3">
+              <MediaRow
+                id={videoId ? "more-from-channel" : "more-from-show"}
+                title={`More from ${article.feed.title}`}
+                url={`/api/articles?feedId=${article.feedId}&sort=newest&page=1&limit=13`}
+                excludeId={article.id}
+                square={!videoId}
+                onOpen={goTo}
+              />
+              <DiscussionCard articleId={article.id} />
+            </div>
           )}
           {!media && <StoryTimeline articleId={article.id} onOpen={goTo} />}
           {!media && <MoreLikeThis articleId={article.id} onOpen={goTo} />}

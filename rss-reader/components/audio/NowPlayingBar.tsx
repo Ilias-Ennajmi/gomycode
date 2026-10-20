@@ -73,7 +73,9 @@ export function NowPlayingBar() {
   return (
     <div
       className={cn(
-        "relative shrink-0 border-t bg-background/95 pb-safe backdrop-blur",
+        "relative shrink-0 border-t bg-background/95 backdrop-blur",
+        // Phones: the tab bar under it takes the safe area, except in the reader.
+        mobilePane === "reader" ? "pb-safe" : "md:pb-safe",
         hidden && "hidden",
         openHere && "md:hidden"
       )}

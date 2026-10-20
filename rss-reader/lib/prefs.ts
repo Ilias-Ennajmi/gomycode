@@ -34,6 +34,7 @@ export const SYNCED = new Set([
   "comfort",
   "saved-searches",
   "snip-window",
+  "player-cards",
 ]);
 
 function readMeta(): Record<string, number> {

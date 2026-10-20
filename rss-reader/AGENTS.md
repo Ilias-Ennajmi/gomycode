@@ -357,6 +357,21 @@ Pinned searches are the `saved-searches` pref, shown in the sidebar with a count
 voice (`lib/speech.ts` helpers shared with the reader's Listen button) and marks each article
 read at its end.
 
+**Player and tabs.** `NowPlayingSheet` is one scrolling page: header (turns into a mini bar
+with play once scrolled), artwork, title, `ChapterScrubber` with the current chapter's
+name, controls, actions; then cards from `components/media/MediaCards.tsx`: `MediaCard`
+(folds with its chevron; folded ids in the synced `player-cards` pref), `ReadAlongCard`
+(+ full-screen `TranscriptOverlay` with search), `TimeListCard` (chapters, key moments),
+`AboutCard` (sanitised notes, `[data-t]` times seek, "see more" only when it overflows),
+`MediaRow` (more from the show, similar), `DiscussionCard`, `Art` (picture with a letter
+fallback). `AudioProvider.openPlayer(episode)` shows an episode without playing it
+(`viewing`); a static `TimeStore` stands in for its position until Play. Phones open
+episodes from lists this way (`ArticleList.handleSelect`); desktop keeps the reader, whose
+episode player has a full-screen button. The reader's video and episode pages use the same
+cards; the transcript left the page body. `useSectionTabs` (tabs, active, select, new dots)
+feeds both the desktop `TopBar` and the phone `BottomNav` (five slots, or four + More
+sheet); the phone `TopBar` shows the section's name.
+
 **Comfort, pages, starter packs.** `useComfort` (bionic via `bionicHtml` after DOMPurify, big
 targets as `data-targets`, dark after sunset via `ComfortBoot` and NOAA sun times from the
 weather location); `usePagedLayout` turns the reader's scroll area into screen-tall CSS
@@ -370,6 +385,9 @@ bundle on first run and from Settings.
   builds all seven projects in it. Preview + production for each PR burns four or more;
   after ~12 PRs in a day the rest fail with "Deployment rate limited". Batch pushes, or set
   an Ignored Build Step per project so only the changed folder builds.
+- Hide-on-scroll: toggling the bars resizes the list, and at the end of a short list the
+  browser then clamps the scroll position, which reads as scrolling up. `useHideOnScroll`
+  ignores moves for 350 ms after a toggle and upward moves pinned to the end.
 - Squash merges leave the working branch with different commits from `main`; merge `main`
   back after each one and resolve `WhatsNew.tsx` / `i18n.tsx` with the branch's version.
 
@@ -467,6 +485,8 @@ Built in this order (see `git log -- rss-reader`):
 25. Speed and accessibility pass: reader, Highlights and Collections loaded on demand,
     axe-clean lists, reader, Later, Settings and login (landmarks, heading order, no
     nested controls, contrast).
+26. Full-screen podcast player with folding cards (also on video pages), bottom tab bar on
+    phones, hide-on-scroll no longer shakes at the end of short lists.
 
 ## Open ideas (not built yet)
 
