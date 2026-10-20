@@ -6,10 +6,14 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.10.21e";
+export const WHATS_NEW_VERSION = "2026.10.21f";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "Lighter and friendlier",
+    text: "The reader, Highlights and Collections now load only when you open them, so the first screen arrives sooner. Lists, the reader, Later, Settings and the login pass an accessibility audit: proper landmarks and headings, headline buttons for keyboards, no controls inside controls, better contrast.",
+  },
   {
     title: "Pages, like a book",
     text: "In any article, ⋯ → Pages turns the scroll into pages you tap or swipe through, with a page counter. Scrolling stays the default; switch back the same way.",

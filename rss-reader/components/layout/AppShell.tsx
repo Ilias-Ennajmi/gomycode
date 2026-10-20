@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { ArticleList } from "@/components/articles/ArticleList";
-import { ArticleReader } from "@/components/articles/ArticleReader";
 import { TopBar } from "@/components/layout/TopBar";
 import { useAppEvent } from "@/lib/app-events";
 import { X } from "lucide-react";
@@ -65,6 +64,11 @@ const CommandPalette = dynamic(
 const EpisodeSearch = dynamic(
   () => import("@/components/discover/EpisodeSearch").then((m) => m.EpisodeSearch),
   { ssr: false }
+);
+// The reader is most of the page's code and only needed once an article opens.
+const ArticleReader = dynamic(
+  () => import("@/components/articles/ArticleReader").then((m) => m.ArticleReader),
+  { ssr: false, loading: () => <div className="h-full" /> }
 );
 const StarterPacks = dynamic(
   () => import("@/components/onboarding/StarterPacks").then((m) => m.StarterPacks),
@@ -315,12 +319,14 @@ function AppShellInner() {
         </div>
 
         <div
+          role="main"
           className={cn(
             "min-w-0 flex-1 flex-col",
             mobilePane === "sidebar" || mobilePane === "settings" ? "hidden md:flex" : "flex"
           )}
         >
           <TopBar
+            landmark={false}
             className={cn("hidden md:block", focus && "md:hidden")}
             onSaveLink={() => setSaveLinkOpen(true)}
             onAddFeed={dialogActions.onAddFeed}
@@ -410,7 +416,7 @@ function AppShellInner() {
         </div>
 
         {mobilePane === "settings" && (
-          <div className="h-full w-full md:hidden">
+          <div role="main" className="h-full w-full md:hidden">
             <SettingsPanel {...dialogActions} />
           </div>
         )}

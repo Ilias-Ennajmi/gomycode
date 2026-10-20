@@ -39,9 +39,16 @@ import { DailyBriefing } from "@/components/articles/DailyBriefing";
 import { ForYouGreeting } from "@/components/articles/ForYouGreeting";
 import { StoryBubbles } from "@/components/stories/StoryBubbles";
 import { usePersonal } from "@/lib/hooks/usePersonal";
-import { HighlightsList } from "@/components/highlights/HighlightsList";
-import { CollectionsView } from "@/components/collections/CollectionsView";
 import dynamic from "next/dynamic";
+
+const HighlightsList = dynamic(
+  () => import("@/components/highlights/HighlightsList").then((m) => m.HighlightsList),
+  { ssr: false }
+);
+const CollectionsView = dynamic(
+  () => import("@/components/collections/CollectionsView").then((m) => m.CollectionsView),
+  { ssr: false }
+);
 
 const ShortsPlayer = dynamic(
   () => import("@/components/video/ShortsPlayer").then((m) => m.ShortsPlayer),
@@ -378,6 +385,9 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
 
   return (
     <div className="relative flex h-full flex-col">
+      <h1 className="sr-only">
+        {searching ? t("Search") : isLater ? t(LATER_TITLES[laterTab]) : t(view.label)}
+      </h1>
       {freshCount > 0 && (
         <button
           type="button"
@@ -423,9 +433,9 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
             </Button>
           )}
           <div className="min-w-0 flex-1 pl-1 md:pl-0">
-            <h2 className="truncate text-lg font-semibold leading-tight tracking-tight">
+            <p className="truncate text-lg font-semibold leading-tight tracking-tight" aria-hidden>
               {searching ? t("Search") : isLater ? t(LATER_TITLES[laterTab]) : t(view.label)}
-            </h2>
+            </p>
             <p className="truncate text-xs text-muted-foreground">
               {searching ? (
                 isLoading ? (

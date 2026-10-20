@@ -48,7 +48,7 @@ export function ArticleHeader({
   });
 
   return (
-    <header className="space-y-4 border-b pb-6">
+    <div className="space-y-4 border-b pb-6">
       <button
         type="button"
         disabled={isSavedLink}
@@ -138,6 +138,6 @@ export function ArticleHeader({
           <Share2 className="h-3.5 w-3.5" /> Share
         </Button>
       </div>
-    </header>
+    </div>
   );
 }
