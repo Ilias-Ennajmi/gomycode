@@ -101,9 +101,9 @@ export function SettingsPanel({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="border-b px-4 py-3">
-        <h2 className="tracking-tight text-2xl font-semibold">{t("Settings")}</h2>
-      </header>
+      <div className="border-b px-4 py-3">
+        <h1 className="tracking-tight text-2xl font-semibold">{t("Settings")}</h1>
+      </div>
 
       <div className="flex-1 space-y-6 overflow-y-auto px-4 py-5">
         <Section title={t("Personalise")}>
@@ -595,9 +595,9 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
   return (
     <section className="space-y-2">
       {title && (
-        <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {title}
-        </h3>
+        </h2>
       )}
       <div className="divide-y overflow-hidden rounded-xl border bg-card">{children}</div>
     </section>

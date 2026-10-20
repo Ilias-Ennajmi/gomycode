@@ -150,7 +150,7 @@
   padding-top: 0.625rem;
   padding-bottom: 0.625rem;
 }
-[data-density="compact"] [data-article-id] h3 {
+[data-density="compact"] [data-article-id] h2 {
   font-size: 14px;
 }
 
@@ -471,7 +471,7 @@ a,
   padding-top: 1.1rem;
   padding-bottom: 1.1rem;
 }
-[data-targets="big"] [data-article-id] h3 {
+[data-targets="big"] [data-article-id] h2 {
   font-size: 17px;
 }
 [data-targets="big"] nav[aria-label="Sections"] button {

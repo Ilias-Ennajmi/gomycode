@@ -130,46 +130,46 @@ export function StoryBubbles({ scope, className }: { scope?: SourceTab; classNam
           )}
         >
           {sources.map((source, i) => (
-            <button
-              key={source.id}
-              type="button"
-              role="listitem"
-              onClick={() => setOpen(i)}
-              className="flex w-[66px] shrink-0 snap-start flex-col items-center gap-1.5"
-              aria-label={`${source.title}: ${source.unread} new`}
-            >
-              <span
-                className={cn(
-                  "relative flex h-[62px] w-[62px] items-center justify-center rounded-full p-[3px]",
-                  source.kind === "foryou"
-                    ? "bg-gradient-to-tr from-primary via-fuchsia-500 to-amber-400"
-                    : "bg-gradient-to-tr from-primary via-fuchsia-500 to-amber-400"
-                )}
+            <span key={source.id} role="listitem" className="shrink-0 snap-start">
+              <button
+                type="button"
+                onClick={() => setOpen(i)}
+                className="flex w-[66px] flex-col items-center gap-1.5"
+                aria-label={`${source.title}: ${source.unread} new`}
               >
-                <span className="flex h-full w-full items-center justify-center rounded-full bg-background p-[2px]">
-                  {source.kind === "foryou" ? (
-                    <span className="flex h-full w-full items-center justify-center rounded-full bg-primary/15 text-primary">
-                      <Sparkles className="h-6 w-6" />
+                <span
+                  className={cn(
+                    "relative flex h-[62px] w-[62px] items-center justify-center rounded-full p-[3px]",
+                    source.kind === "foryou"
+                      ? "bg-gradient-to-tr from-primary via-fuchsia-500 to-amber-400"
+                      : "bg-gradient-to-tr from-primary via-fuchsia-500 to-amber-400"
+                  )}
+                >
+                  <span className="flex h-full w-full items-center justify-center rounded-full bg-background p-[2px]">
+                    {source.kind === "foryou" ? (
+                      <span className="flex h-full w-full items-center justify-center rounded-full bg-primary/15 text-primary">
+                        <Sparkles className="h-6 w-6" />
+                      </span>
+                    ) : (
+                      <FeedFavicon
+                        title={source.title}
+                        faviconUrl={source.faviconUrl}
+                        size={52}
+                        className="rounded-full"
+                      />
+                    )}
+                  </span>
+                  {source.kind === "feed" && (
+                    <span className="absolute -bottom-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground ring-2 ring-background">
+                      {source.unread > 99 ? "99+" : source.unread}
                     </span>
-                  ) : (
-                    <FeedFavicon
-                      title={source.title}
-                      faviconUrl={source.faviconUrl}
-                      size={52}
-                      className="rounded-full"
-                    />
                   )}
                 </span>
-                {source.kind === "feed" && (
-                  <span className="absolute -bottom-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground ring-2 ring-background">
-                    {source.unread > 99 ? "99+" : source.unread}
-                  </span>
-                )}
-              </span>
-              <span className="w-full truncate text-center text-[11px] font-medium leading-tight">
-                {source.title}
-              </span>
-            </button>
+                <span className="w-full truncate text-center text-[11px] font-medium leading-tight">
+                  {source.title}
+                </span>
+              </button>
+            </span>
           ))}
         </div>
       </div>

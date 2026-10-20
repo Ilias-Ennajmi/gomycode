@@ -96,6 +96,8 @@ const TABS: ViewState[] = [
 ];
 
 interface TopBarProps {
+  /** The phone copy is the page banner; the desktop copy (hidden on phones) is plain. */
+  landmark?: boolean;
   className?: string;
   onSaveLink: () => void;
   onAddFeed: (kind?: DiscoverKind) => void;
@@ -103,7 +105,13 @@ interface TopBarProps {
 }
 
 /** Section tabs across the top, Readwise-style; phones also get search and settings. */
-export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBarProps) {
+export function TopBar({
+  className,
+  onSaveLink,
+  onAddFeed,
+  onManageNews,
+  landmark = true,
+}: TopBarProps) {
   const { view, setView, mobilePane, setMobilePane } = useReaderState();
   const { feeds } = useFeeds();
   const { categories } = useCategories();
@@ -228,8 +236,9 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
     requestAnimationFrame(() => document.getElementById("sidebar-search")?.focus());
   }
 
+  const Tag = landmark ? "header" : "div";
   return (
-    <header className={cn("shrink-0 border-b bg-background/95 pt-safe backdrop-blur", className)}>
+    <Tag className={cn("shrink-0 border-b bg-background/95 pt-safe backdrop-blur", className)}>
       <div className="flex items-center gap-1 pr-1.5 md:h-14 md:gap-2 md:pr-5">
         <nav
           ref={navRef}
@@ -318,7 +327,7 @@ export function TopBar({ className, onSaveLink, onAddFeed, onManageNews }: TopBa
           </Button>
         </AddMenu>
       </div>
-    </header>
+    </Tag>
   );
 }
 

@@ -48,6 +48,7 @@ export function ShortsGrid({
             {!article.isRead && (
               <span
                 className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-black/30"
+                role="img"
                 aria-label="Unread"
               />
             )}

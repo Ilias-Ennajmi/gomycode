@@ -324,7 +324,54 @@ sub-tab (queue, snoozed, archive, highlights), the newsletter kind, the search w
 scope and time filter, the selected article and the mobile pane (sidebar, list, reader,
 settings). Data comes from SWR hooks in `lib/hooks`.
 
+**Preferences.** `lib/prefs.ts` is the one store for everything the reader chooses:
+`usePref(key, fallback)` reads through `useSyncExternalStore` (server render and first paint
+use the fallback), `writePref` saves to localStorage and queues a debounced `PUT /api/prefs`;
+`PrefsSync` (Providers) pulls on open, on return to the app (once a minute at most) and when
+back online, newest timestamp per key winning. Keys in `SYNCED` travel; the rest stay local.
+`usePersonal`, `useAccent`, `useReadingGoal`, `useHomeBlocks`, `useListLayout` (`layouts`
+object), `useReaderPrefs`, the locale, start view, stories seen/collapsed, `useComfort`,
+`useSavedSearches` and the snip window all sit on it.
+
+**Snips.** `POST /api/articles/[id]/snip` { at, window } takes the transcript slice ending at
+`at`, asks Gemini for a title and summary (first sentence when AI is off) and stores a
+`Highlight` with `kind = "snip"`, `title`, `startSeconds`, `endSeconds`. `AudioProvider.snip()`
+reads the position off the element; Media Session `previoustrack` twice within 700 ms snips.
+`EpisodeNotes` lists snips and searches the transcript; `EpisodeSearch` (Podcasts → ⋯) hits
+`/api/discover/episodes` (own episodes + Apple `entity=podcastEpisode`); catalogue episodes
+play as `ext:<id>` and skip progress and extras calls.
+
+**Collections.** `Collection` / `CollectionItem` tables; `/api/collections` (+`?articleId=`
+for ticks), `/api/collections/[id]` (PATCH name/description/public → slug), `.../items`.
+`CollectionPicker` from cards and the reader; `CollectionsView` under Later; `view.type ===
+"collection"` lists one (`collectionId` on `/api/articles`); `/c/[slug]` is public (middleware
+lets `/c/` through). `/api/later/epub` builds an EPUB 3 with `lib/zip.ts` (stored zip).
+
+**Discussion, pinned searches.** `/api/articles/[id]/discussion` asks HN Algolia (by URL, then
+title) and Reddit (often 403 server side); `Discussion` renders under the article once in view.
+Pinned searches are the `saved-searches` pref, shown in the sidebar with a count from
+`/api/articles?search=…&unread=true&limit=1`.
+
+**Shorts and Listen to Later.** `ShortsPlayer` reuses one YouTube IFrame player
+(`loadVideoById`) with swipe/keys/wheel; `ListenLater` reads the Later queue with the browser
+voice (`lib/speech.ts` helpers shared with the reader's Listen button) and marks each article
+read at its end.
+
+**Comfort, pages, starter packs.** `useComfort` (bionic via `bionicHtml` after DOMPurify, big
+targets as `data-targets`, dark after sunset via `ComfortBoot` and NOAA sun times from the
+weather location); `usePagedLayout` turns the reader's scroll area into screen-tall CSS
+columns (styles only on existing nodes) when `reader-prefs.mode === "pages"`, chosen from
+`ReaderMenu` (⋯); `StarterPacks` + `POST /api/feeds/batch` follow a category's catalogue
+bundle on first run and from Settings.
+
 ## Gotchas learned the hard way
+
+- Vercel Hobby allows 100 deployments a day across the team, and every push to this repo
+  builds all seven projects in it. Preview + production for each PR burns four or more;
+  after ~12 PRs in a day the rest fail with "Deployment rate limited". Batch pushes, or set
+  an Ignored Build Step per project so only the changed folder builds.
+- Squash merges leave the working branch with different commits from `main`; merge `main`
+  back after each one and resolve `WhatsNew.tsx` / `i18n.tsx` with the branch's version.
 
 - **Feed fields can be arrays.** xml2js returns `image`, `language`, etc. as arrays for many
   feeds (Substack, WordPress). Always normalise with `firstText()` in `lib/rss.ts` before saving.
@@ -409,6 +456,17 @@ Built in this order (see `git log -- rss-reader`):
 19. Personalise: stories scoped per tab and collapsible, layout switch in the chip row with
     a square tile grid, Settings → Personalise (switches, density, haptics, tab order and
     hidden tabs, pinned categories).
+20. Preferences synced through the server (`lib/prefs.ts`, `/api/prefs`), Settings on
+    desktop.
+21. Snips (player button, earbud double press, snip cards), episode notes, episode search.
+22. Collections with public pages (`/c/<slug>`), discussion threads (HN, Reddit), pinned
+    searches, EPUB export.
+23. Vertical Shorts player, Listen to Later.
+24. Pages mode, reading comfort (bionic, easy font, big targets, dark after sunset),
+    starter packs, the reader's ⋯ menu.
+25. Speed and accessibility pass: reader, Highlights and Collections loaded on demand,
+    axe-clean lists, reader, Later, Settings and login (landmarks, heading order, no
+    nested controls, contrast).
 
 ## Open ideas (not built yet)
 

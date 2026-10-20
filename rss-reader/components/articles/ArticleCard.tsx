@@ -249,8 +249,6 @@ export function ArticleCard({
             </div>
           )}
           <div
-            role="button"
-            tabIndex={0}
             onClick={() => {
               // A swipe ends with a click on some browsers; it shouldn't open the article.
               if (swiped.current) {
@@ -260,12 +258,6 @@ export function ArticleCard({
               onClick();
             }}
             style={dx ? { transform: `translateX(${dx}px)` } : undefined}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onClick();
-              }
-            }}
             className={cn(
               "group relative flex w-full cursor-pointer border-b border-border/60 bg-background px-4 py-4 text-left md:px-5",
               big ? "flex-col gap-3" : "gap-4",
@@ -355,6 +347,7 @@ export function ArticleCard({
                     "absolute h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background",
                     big ? "left-2.5 top-2.5" : "-left-1 -top-1"
                   )}
+                  role="img"
                   aria-label="Unread"
                 />
               )}
@@ -362,7 +355,7 @@ export function ArticleCard({
 
             <div className="min-w-0 flex-1">
               <div className="flex items-start gap-3">
-                <h3
+                <h2
                   className={cn(
                     "line-clamp-2 flex-1 leading-snug tracking-tight",
                     editorial && (big || lead)
@@ -373,8 +366,19 @@ export function ArticleCard({
                       : "font-semibold text-foreground"
                   )}
                 >
-                  <Highlight text={article.title} query={searchQuery} />
-                </h3>
+                  {/* The headline is the card's button for keyboards and screen readers; the
+                      whole card still opens on tap. */}
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onClick();
+                    }}
+                    className="rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                  >
+                    <Highlight text={article.title} query={searchQuery} />
+                  </button>
+                </h2>
                 <time
                   dateTime={article.publishedAt}
                   className="hidden shrink-0 pt-0.5 text-xs text-muted-foreground sm:block"
@@ -459,7 +463,7 @@ export function ArticleCard({
 
               {/* For You says why it picked this one. */}
               {article.reason && (
-                <p className="mt-1 flex items-center gap-1 text-[11px] text-primary/80">
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-primary">
                   <Sparkles className="h-3 w-3 shrink-0" aria-hidden />
                   <span className="truncate">{article.reason}</span>
                 </p>
