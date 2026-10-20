@@ -6,10 +6,18 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.10.21b";
+export const WHATS_NEW_VERSION = "2026.10.21c";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "Collections",
+    text: "Group saved articles into named sets (long-press a card or tap the folder in the reader). Later → Collections shows them as cards; publish one and anyone with the link can read it as a clean page.",
+  },
+  {
+    title: "Discussion, pinned searches, EPUB",
+    text: "The end of an article now shows the Hacker News and Reddit threads about it. Pin any search to the sidebar as a smart folder with its own unread count. Later → ⋯ → Download as EPUB turns your queue (or a collection) into a book for an e-reader.",
+  },
   {
     title: "Snips",
     text: "Hear something worth keeping? Tap the scissors in the player, or press “previous” twice on your earbuds, and the last half-minute becomes a note: what was said, a title, and a play button back to the moment. Snips live in Highlights, join the daily review, and share as a picture.",

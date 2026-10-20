@@ -6,6 +6,7 @@ import {
   ArrowDownToLine,
   Archive,
   ArchiveRestore,
+  FolderPlus,
   Bookmark,
   BookOpen,
   Check,
@@ -21,6 +22,8 @@ import { haptic } from "@/lib/native";
 import { takeStartAt } from "@/lib/start-at";
 import { Lightbox } from "@/components/articles/Lightbox";
 import { MoreLikeThis } from "@/components/articles/MoreLikeThis";
+import { Discussion } from "@/components/articles/Discussion";
+import { CollectionPicker } from "@/components/collections/CollectionPicker";
 import { StoryTimeline } from "@/components/articles/StoryTimeline";
 import { TranslateMenu, useTranslation } from "@/components/articles/TranslateMenu";
 import { TableOfContents, readHeadings, type Heading } from "@/components/articles/TableOfContents";
@@ -135,6 +138,7 @@ export function ArticleReader() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const timeStore = React.useMemo(() => createTimeStore(), [article?.id]);
   const [upNextDismissed, setUpNextDismissed] = React.useState(false);
+  const [collectOpen, setCollectOpen] = React.useState(false);
   const markedWatched = React.useRef(false);
   React.useEffect(() => {
     videoControls.current = null;
@@ -371,6 +375,16 @@ export function ArticleReader() {
           >
             <Bookmark className={cn("h-5 w-5", article.isSaved && "fill-current")} />
           </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10"
+            onClick={() => setCollectOpen(true)}
+            aria-label="Add to collection"
+            title="Add to collection"
+          >
+            <FolderPlus className="h-5 w-5" />
+          </Button>
           <SnoozeMenu article={article}>
             <Button
               variant="ghost"
@@ -562,7 +576,11 @@ export function ArticleReader() {
             onToggleSave={handleToggleSave}
             onToggleRead={handleToggleRead}
             onToggleArchive={handleToggleArchive}
+            onCollect={() => setCollectOpen(true)}
           />
+          {collectOpen && (
+            <CollectionPicker articleId={article.id} open onOpenChange={setCollectOpen} />
+          )}
           {media && extras?.ai === "pending" ? (
             <VideoAiPending
               key={article.id}
@@ -688,6 +706,7 @@ export function ArticleReader() {
           )}
           {!media && <StoryTimeline articleId={article.id} onOpen={goTo} />}
           {!media && <MoreLikeThis articleId={article.id} onOpen={goTo} />}
+          {!media && <Discussion articleId={article.id} />}
           {(previous || next) && <UpNext previous={previous} next={next} onGo={goTo} />}
         </div>
       </div>

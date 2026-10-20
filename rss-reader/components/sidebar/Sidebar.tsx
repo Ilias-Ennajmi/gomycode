@@ -13,6 +13,8 @@ import {
   Inbox,
   MessageCircleQuestion,
   Moon,
+  Pin,
+  PinOff,
   Plus,
   Search,
   Sun,
@@ -20,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,6 +37,11 @@ import { SidebarFooter } from "@/components/sidebar/SidebarFooter";
 import { useCategories, useFeeds } from "@/lib/hooks/useFeeds";
 import { useCounts } from "@/lib/hooks/useArticles";
 import { useReaderState } from "@/lib/hooks/useReaderState";
+import {
+  useSavedSearchCount,
+  useSavedSearches,
+  type SavedSearch,
+} from "@/lib/hooks/useSavedSearches";
 import type { CategorySummary, FeedSummary } from "@/lib/types";
 
 interface SidebarProps {
@@ -57,8 +65,21 @@ export function Sidebar({
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
 
-  const { view, setView, search, setSearch, setMobilePane, laterTab, setLaterTab } =
-    useReaderState();
+  const {
+    view,
+    setView,
+    search,
+    setSearch,
+    setMobilePane,
+    laterTab,
+    setLaterTab,
+    searchScope,
+    setSearchScope,
+    searchSince,
+    setSearchSince,
+  } = useReaderState();
+  const savedSearches = useSavedSearches();
+  const pinned = search.trim() ? savedSearches.isSaved(search, searchScope) : false;
   const { t } = useT();
   const { feeds, isLoading: feedsLoading, mutate: mutateFeeds } = useFeeds();
   const { categories, isLoading: categoriesLoading, mutate: mutateCategories } = useCategories();
@@ -187,6 +208,33 @@ export function Sidebar({
             </button>
           )}
         </div>
+        {search.trim() && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn("h-8 w-8 shrink-0", pinned && "text-primary")}
+            onClick={() => {
+              const query = search.trim();
+              if (pinned) {
+                const found = savedSearches.searches.find(
+                  (s) => s.query.trim() === query && s.scope === searchScope
+                );
+                if (found) savedSearches.remove(found.id);
+              } else {
+                savedSearches.save({
+                  label: query,
+                  query,
+                  scope: searchScope,
+                  since: searchSince,
+                });
+              }
+            }}
+            aria-label={pinned ? "Unpin this search" : "Pin this search"}
+            title={pinned ? "Unpin this search" : "Pin this search to the sidebar"}
+          >
+            {pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon"
@@ -273,6 +321,31 @@ export function Sidebar({
           />
         </div>
 
+        {savedSearches.searches.length > 0 && (
+          <div>
+            <p className="px-2.5 pb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("Saved searches")}
+            </p>
+            <div className="space-y-0.5">
+              {savedSearches.searches.map((saved) => (
+                <SavedSearchItem
+                  key={saved.id}
+                  saved={saved}
+                  active={search.trim() === saved.query.trim() && searchScope === saved.scope}
+                  onOpen={() => {
+                    setSearchScope(saved.scope);
+                    setSearchSince(saved.since ?? "any");
+                    setSearchDraft(saved.query);
+                    setSearch(saved.query);
+                    setMobilePane("list");
+                  }}
+                  onRemove={() => savedSearches.remove(saved.id)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         <div>
           <p className="px-2.5 pb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {t("Library")}
@@ -346,5 +419,50 @@ export function Sidebar({
         onShowShortcuts={onShowShortcuts}
       />
     </aside>
+  );
+}
+
+/** A pinned search in the sidebar: its unread count, and a pin-off on hover to drop it. */
+function SavedSearchItem({
+  saved,
+  active,
+  onOpen,
+  onRemove,
+}: {
+  saved: SavedSearch;
+  active: boolean;
+  onOpen: () => void;
+  onRemove: () => void;
+}) {
+  const count = useSavedSearchCount(saved);
+  return (
+    <NavItem
+      icon={<Search className="h-4 w-4" />}
+      label={saved.label || saved.query}
+      count={count}
+      active={active}
+      onClick={onOpen}
+      trailing={
+        <span
+          role="button"
+          tabIndex={0}
+          aria-label={`Unpin ${saved.label || saved.query}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onRemove();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              event.stopPropagation();
+              onRemove();
+            }
+          }}
+          className="hidden rounded p-0.5 text-muted-foreground hover:text-foreground group-hover:inline-flex"
+        >
+          <PinOff className="h-3 w-3" />
+        </span>
+      }
+    />
   );
 }

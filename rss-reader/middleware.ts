@@ -26,6 +26,8 @@ export async function middleware(request: NextRequest) {
   }
 
   if (PUBLIC_PATHS.includes(pathname)) return NextResponse.next();
+  // Published collections are for anyone with the link.
+  if (pathname.startsWith("/c/")) return NextResponse.next();
 
   if (pathname === "/api/refresh" && (await isCronRequest(request))) {
     return NextResponse.next();

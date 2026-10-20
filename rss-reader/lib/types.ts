@@ -119,7 +119,7 @@ export interface FilterRuleSummary {
   value: string;
 }
 
-export type LaterTab = "queue" | "snoozed" | "archive" | "highlights";
+export type LaterTab = "queue" | "snoozed" | "archive" | "highlights" | "collections";
 
 export type HighlightColor = "yellow" | "green" | "blue" | "pink";
 
@@ -199,6 +199,8 @@ export interface ArticleListParams {
   later?: LaterTab;
   feedId?: string;
   categoryId?: string;
+  /** One collection's articles. */
+  collectionId?: string;
   saved?: boolean;
   today?: boolean;
   unread?: boolean;

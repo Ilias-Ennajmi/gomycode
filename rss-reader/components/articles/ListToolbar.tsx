@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   ArrowDownUp,
   Bell,
+  BookDown,
   CheckCheck,
   Grid2x2,
   Headphones,
@@ -204,6 +205,7 @@ export function ListToolbar(props: ListToolbarProps) {
                   : []),
                 ["archive", t("Archive")],
                 ["highlights", t("Highlights")],
+                ["collections", t("Collections")],
               ] as [LaterTab, string][]
             ).map(([id, label]) => (
               <Chip
@@ -397,8 +399,20 @@ function OptionsMenu(props: ListToolbarProps) {
             </DropdownMenuItem>
           )}
           {props.isLater && laterTab === "queue" && (
-            <DropdownMenuItem onSelect={props.onSaveLink} className="gap-2">
-              <Plus className="h-4 w-4" /> {t("Save a link")}
+            <>
+              <DropdownMenuItem onSelect={props.onSaveLink} className="gap-2">
+                <Plus className="h-4 w-4" /> {t("Save a link")}
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="gap-2">
+                <a href="/api/later/epub" download>
+                  <BookDown className="h-4 w-4" /> {t("Download as EPUB")}
+                </a>
+              </DropdownMenuItem>
+            </>
+          )}
+          {view.type === "podcasts" && (
+            <DropdownMenuItem onSelect={() => requestAppEvent("find-episodes")} className="gap-2">
+              <Search className="h-4 w-4" /> {t("Find episodes")}
             </DropdownMenuItem>
           )}
           {view.type === "podcasts" && (

@@ -40,6 +40,7 @@ import { ForYouGreeting } from "@/components/articles/ForYouGreeting";
 import { StoryBubbles } from "@/components/stories/StoryBubbles";
 import { usePersonal } from "@/lib/hooks/usePersonal";
 import { HighlightsList } from "@/components/highlights/HighlightsList";
+import { CollectionsView } from "@/components/collections/CollectionsView";
 import { requestAppEvent, useAppEvent } from "@/lib/app-events";
 import { useListLayout } from "@/lib/hooks/useListLayout";
 import { copySignupAddress, openUnsubscribe } from "@/lib/hooks/useNewsletter";
@@ -348,6 +349,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
       ? articles.findIndex((a) => new Date(a.createdAt).getTime() <= lastVisit)
       : -1;
   const showHighlights = isLater && laterTab === "highlights";
+  const showCollections = isLater && laterTab === "collections";
   const showVideoKinds = view.type === "youtube" && !searching;
   const shortsGrid = showVideoKinds && videoKind === "short";
   // A source's own list gets its page header (who it is, settings, unfollow).
@@ -426,6 +428,8 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
                   `${total} coming back later`
                 ) : laterTab === "highlights" ? (
                   "Passages and notes from your reading"
+                ) : laterTab === "collections" ? (
+                  "Your saved articles, in named sets"
                 ) : (
                   `${total} to read${minutes ? ` · ${formatMinutes(minutes)}` : ""}`
                 )
@@ -533,6 +537,8 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
         )}
         {showHighlights ? (
           <HighlightsList />
+        ) : showCollections ? (
+          <CollectionsView />
         ) : isLoading ? (
           <ArticleSkeletonList />
         ) : articles.length === 0 ? (
@@ -711,6 +717,7 @@ const LATER_TITLES: Record<LaterTab, string> = {
   snoozed: "Snoozed",
   archive: "Archive",
   highlights: "Highlights",
+  collections: "Collections",
 };
 
 /** "45 min", "2 h", "2 h 15 min" */

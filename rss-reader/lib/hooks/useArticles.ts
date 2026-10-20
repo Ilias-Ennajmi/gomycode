@@ -27,6 +27,7 @@ function toSearchParams(params: ArticleListParams) {
   if (params.later) search.set("later", params.later);
   if (params.feedId) search.set("feedId", params.feedId);
   if (params.categoryId) search.set("categoryId", params.categoryId);
+  if (params.collectionId) search.set("collectionId", params.collectionId);
   if (params.saved) search.set("saved", "true");
   if (params.today) search.set("today", "true");
   if (params.unread) search.set("unread", "true");
