@@ -55,6 +55,7 @@ const FR: Record<string, string> = {
   Collections: "Collections",
   "Add to collection": "Ajouter à une collection",
   "Download as EPUB": "Télécharger en EPUB",
+  "Listen to Later": "Écouter À lire",
   "Saved searches": "Recherches enregistrées",
   "From your shows": "Dans vos émissions",
   Everywhere: "Partout",
