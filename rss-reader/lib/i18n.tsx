@@ -52,6 +52,8 @@ const FR: Record<string, string> = {
   Grid: "Grille",
   "Daily goal": "Objectif du jour",
   "Find episodes": "Trouver des épisodes",
+  More: "Plus",
+  Letters: "Lettres",
   Collections: "Collections",
   "Add to collection": "Ajouter à une collection",
   "Download as EPUB": "Télécharger en EPUB",

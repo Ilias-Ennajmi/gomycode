@@ -23,6 +23,10 @@ export interface Episode {
   imageUrl: string | null;
   audioUrl: string;
   durationSeconds: number | null;
+  /** Where it stopped last time (for the player before it plays). */
+  watchedSeconds?: number | null;
+  /** Catalogue episodes: the show's feed, to follow it. */
+  feedUrl?: string | null;
 }
 
 export function episodeOf(article: ArticleSummary): Episode | null {
@@ -35,6 +39,7 @@ export function episodeOf(article: ArticleSummary): Episode | null {
     imageUrl: article.imageUrl,
     audioUrl: article.audioUrl,
     durationSeconds: article.durationSeconds ?? null,
+    watchedSeconds: article.watchedSeconds ?? null,
   };
 }
 
@@ -87,6 +92,10 @@ interface AudioContextValue {
   /** The full-screen player is open. */
   expanded: boolean;
   setExpanded: (open: boolean) => void;
+  /** An episode shown in the full-screen player without playing yet (tapped in a list). */
+  viewing: Episode | null;
+  /** Opens the full-screen player on an episode: the playing one, or another to look at. */
+  openPlayer: (episode: Episode) => void;
   enqueue: (episode: Episode, where: "next" | "last") => void;
   dequeue: (id: string) => void;
   moveInQueue: (from: number, to: number) => void;
@@ -146,7 +155,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [sleep, setSleepState] = React.useState<SleepTimer>(null);
   const [buffered, setBuffered] = React.useState(0);
   const [queue, setQueue] = React.useState<Episode[]>([]);
-  const [expanded, setExpanded] = React.useState(false);
+  const [expanded, setExpandedState] = React.useState(false);
+  const [viewing, setViewing] = React.useState<Episode | null>(null);
+  const setExpanded = React.useCallback((open: boolean) => {
+    setExpandedState(open);
+    if (!open) setViewing(null);
+  }, []);
   const [prefsVersion, setPrefsVersion] = React.useState(0);
   const time = React.useMemo(() => createTimeStore(), []);
   const pausedAt = React.useRef<number | null>(null);
@@ -223,7 +237,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       if (autoplay) {
         audio.play().catch((error: Error) => {
           // The browser wants a tap first (autoplay rules): the play button is right there.
-          if (error.name !== "NotAllowedError") toast.error("Couldn't play this episode");
+          // A seek or a pause right after Play interrupts the request (AbortError): not a failure.
+          if (error.name !== "NotAllowedError" && error.name !== "AbortError") {
+            toast.error("Couldn't play this episode");
+          }
         });
       }
     },
@@ -264,7 +281,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         audio.currentTime -= REWIND_SECONDS;
         time.set(audio.currentTime);
       }
-      audio.play().catch(() => toast.error("Couldn't play this episode"));
+      audio.play().catch((error: Error) => {
+        if (error.name !== "AbortError") toast.error("Couldn't play this episode");
+      });
     } else {
       audio.pause();
     }
@@ -547,6 +566,15 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const openPlayer = React.useCallback((next: Episode) => {
+    setViewing(episodeRef.current?.id === next.id ? null : next);
+    setExpandedState(true);
+  }, []);
+  // Once the episode being looked at plays, it is simply the playing one.
+  React.useEffect(() => {
+    if (viewing && episode?.id === viewing.id) setViewing(null);
+  }, [episode?.id, viewing]);
+
   const value: AudioContextValue = {
     episode,
     playing,
@@ -558,6 +586,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     queue,
     expanded,
     setExpanded,
+    viewing,
+    openPlayer,
     enqueue,
     dequeue,
     moveInQueue,

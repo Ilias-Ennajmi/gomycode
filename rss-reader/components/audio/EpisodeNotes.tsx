@@ -126,7 +126,7 @@ function mark(text: string, query: string) {
   );
 }
 
-function SnipCard({
+export function SnipCard({
   snip,
   article,
   onSeek,

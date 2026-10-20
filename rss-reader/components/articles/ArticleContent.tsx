@@ -32,7 +32,7 @@ type Purifier = typeof import("dompurify").default;
 let purifierPromise: Promise<Purifier> | null = null;
 
 // DOMPurify hooks are global and additive, so configure the instance once.
-function getPurifier(): Promise<Purifier> {
+export function getPurifier(): Promise<Purifier> {
   purifierPromise ??= import("dompurify").then(({ default: DOMPurify }) => {
     DOMPurify.addHook("afterSanitizeAttributes", (node) => {
       if (node.tagName === "A") {

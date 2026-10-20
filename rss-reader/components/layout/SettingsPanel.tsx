@@ -471,9 +471,11 @@ function TabEditor({
   const unpinned = categories.filter((c) => !personal.pinnedCategories.includes(c.id));
   return (
     <div className="px-4 py-3">
-      <p className="text-sm font-medium">{t("Top tabs")}</p>
+      <p className="text-sm font-medium">{t("Tabs")}</p>
       <p className="text-xs text-muted-foreground">
-        {t("Order them, hide the ones you don't use, pin a category.")}
+        {t(
+          "Order them, hide the ones you don't use, pin a category. On phones the first four (five if that's all) sit in the bottom bar; the rest are under More."
+        )}
       </p>
       <ol className="mt-2 divide-y rounded-lg border">
         {personal.tabs.map((type, i) => {

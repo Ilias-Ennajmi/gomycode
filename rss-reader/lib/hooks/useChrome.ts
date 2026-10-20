@@ -7,11 +7,15 @@ import * as React from "react";
 // (which scrolls) and the app shell (which owns the bars).
 
 let hidden = false;
+let lastToggle = 0;
 const listeners = new Set<() => void>();
+// The bars take this long to slide; the list resizing meanwhile is not the user scrolling.
+const SETTLE_MS = 350;
 
 function set(next: boolean) {
   if (hidden === next) return;
   hidden = next;
+  lastToggle = performance.now();
   listeners.forEach((listener) => listener());
 }
 
@@ -65,6 +69,15 @@ export function useHideOnScroll() {
       const scrollable = node.scrollHeight - node.clientHeight > MIN_SCROLL * 2;
       if (top < MIN_SCROLL || !scrollable) {
         set(false);
+        lastTop = top;
+        return;
+      }
+      // Hiding or showing the bars resizes the list. At the end of a list that resize moves
+      // the position by itself (the browser clamps it), which looked like scrolling back up,
+      // showed the bars, shrank the list, and so on: the bars shook. Moves while the bars
+      // settle, and upward moves pinned to the very end, don't count.
+      const atEnd = top + node.clientHeight >= node.scrollHeight - 4;
+      if (performance.now() - lastToggle < SETTLE_MS || (atEnd && delta < 0)) {
         lastTop = top;
         return;
       }

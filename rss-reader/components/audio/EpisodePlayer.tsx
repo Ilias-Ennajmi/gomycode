@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Headphones, Play } from "lucide-react";
+import { Headphones, Maximize2, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { clock, durationLabel } from "@/lib/hooks/useVideo";
 import type { ArticleSummary } from "@/lib/types";
@@ -66,6 +66,15 @@ export function EpisodePlayer({
             {!current && resumeAt > 0 && ` · ${clock(resumeAt)} listened`}
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => audio.openPlayer(episode)}
+          aria-label="Open the full-screen player"
+          title="Full-screen player"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <Maximize2 className="h-4 w-4" />
+        </button>
         {!current && (
           <button
             type="button"

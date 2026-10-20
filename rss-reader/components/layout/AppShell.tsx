@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { ArticleList } from "@/components/articles/ArticleList";
 import { TopBar } from "@/components/layout/TopBar";
+import { BottomNav } from "@/components/layout/BottomNav";
 import { useAppEvent } from "@/lib/app-events";
 import { X } from "lucide-react";
 import { ReaderStateProvider, useReaderState } from "@/lib/hooks/useReaderState";
@@ -302,6 +303,7 @@ function AppShellInner() {
       <OfflineSupport />
       <ChromeCollapse className={cn("md:hidden", hideTopBarOnPhone && "hidden")}>
         <TopBar
+          phone
           onSaveLink={() => setSaveLinkOpen(true)}
           onAddFeed={dialogActions.onAddFeed}
           onManageNews={() => setNewsSources({ open: true, setup: false })}
@@ -422,6 +424,7 @@ function AppShellInner() {
         )}
       </div>
       <NowPlayingBar />
+      <BottomNav />
       <NowPlayingSheet />
       <WhatsNew />
 
