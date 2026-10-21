@@ -64,6 +64,7 @@ lib/
   newsletters.ts         platform detection, Kill the Newsletter inboxes, unsubscribe links, paywall previews
   refresh.ts             refreshFeeds() shared by /api/refresh and /api/refresh/tick
   recap.ts, snooze.ts, saved-links.ts, db.ts (sqlName for raw SQL)
+  sponsors.ts            sponsor segments: SponsorBlock for videos, chapters/transcript for episodes
   youtube.ts, extract.ts, reader.ts, clean-html.ts, favicon.ts, opml.ts, filters.ts
   discover/              catalog (curated sources), search providers (Feedly, YouTube), topics (Bing News RSS)
   news/                  news catalog, desks (+ MOROCCO_PATTERN), front-page builder, prefs

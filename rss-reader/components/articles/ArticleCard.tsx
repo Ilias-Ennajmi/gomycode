@@ -10,7 +10,10 @@ import {
   Bookmark,
   Check,
   ChevronDown,
+  BookOpen,
+  Eye,
   EyeOff,
+  Info,
   ExternalLink,
   FolderPlus,
   Highlighter,
@@ -35,6 +38,7 @@ import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { Highlight } from "@/components/shared/Highlight";
 import type { ArticleSummary } from "@/lib/types";
 import { haptic } from "@/lib/native";
+import { cardSwipeActions } from "@/lib/hooks/usePersonal";
 import { SnoozeMenu, isSnoozed } from "@/components/articles/SnoozeMenu";
 import { formatSnooze } from "@/lib/snooze";
 import { clock, durationLabel } from "@/lib/hooks/useVideo";
@@ -52,6 +56,7 @@ import { ActionSheet } from "@/components/ui/sheet";
 import { CollectionPicker } from "@/components/collections/CollectionPicker";
 import { preload } from "swr";
 import { needsFullArticle } from "@/lib/reader";
+import { requestSourceSheet } from "@/lib/app-events";
 
 interface ArticleCardProps {
   article: ArticleSummary;
@@ -173,7 +178,9 @@ export function ArticleCard({
     const mx = t.clientX - d.x;
     const my = t.clientY - d.y;
     if (d.horizontal === null && (Math.abs(mx) > 10 || Math.abs(my) > 10)) {
-      d.horizontal = Math.abs(mx) > Math.abs(my) * 1.3;
+      // A sideways swipe is the card's only when cards are set to swipe for Later / read;
+      // otherwise it moves between tabs.
+      d.horizontal = Math.abs(mx) > Math.abs(my) * 1.3 && cardSwipeActions();
       cancelHold();
     }
     if (!d.horizontal) return;
@@ -208,7 +215,7 @@ export function ArticleCard({
           data-article-id={article.id}
           // Cards far off screen aren't laid out or painted until they're near.
           className={cn(
-            "relative overflow-hidden [contain-intrinsic-size:auto_104px] [content-visibility:auto]",
+            "relative overflow-hidden [contain-intrinsic-size:auto_128px] [content-visibility:auto]",
             enterDelay !== undefined && "animate-rise-in motion-reduce:animate-none"
           )}
           style={{
@@ -258,8 +265,9 @@ export function ArticleCard({
               onClick();
             }}
             style={dx ? { transform: `translateX(${dx}px)` } : undefined}
+            data-card-body
             className={cn(
-              "group relative flex w-full cursor-pointer border-b border-border/60 bg-background px-4 py-4 text-left md:px-5",
+              "group relative flex w-full cursor-pointer border-b border-border/60 bg-background px-4 py-[18px] text-left md:px-5",
               big ? "flex-col gap-3" : "gap-4",
               !dx && "transition-transform duration-300 ease-spring",
               active ? "bg-accent" : "hover:bg-accent/60"
@@ -270,20 +278,21 @@ export function ArticleCard({
             )}
 
             <div
+              data-card-thumb={big ? undefined : ""}
               className={cn(
                 "relative shrink-0",
                 big
                   ? "aspect-video w-full"
                   : article.audioUrl && !article.isVideo
-                    ? "mt-0.5 h-[72px] w-[72px] md:h-20 md:w-20"
-                    : "mt-0.5 h-14 w-14 md:h-16 md:w-16"
+                    ? "mt-0.5 h-[84px] w-[84px] md:h-[88px] md:w-[88px]"
+                    : "mt-0.5 h-[76px] w-[76px] md:h-20 md:w-20"
               )}
             >
               <div
                 className={cn(
                   "flex items-center justify-center overflow-hidden bg-muted ring-1 ring-border/60",
                   // Pinned to the 16:9 box, or the picture's own height would stretch it.
-                  big ? "absolute inset-0 rounded-xl" : "h-full w-full rounded-lg"
+                  big ? "absolute inset-0 rounded-xl" : "h-full w-full rounded-xl"
                 )}
               >
                 {showImage ? (
@@ -360,7 +369,7 @@ export function ArticleCard({
                     "line-clamp-2 flex-1 leading-snug tracking-tight",
                     editorial && (big || lead)
                       ? "font-serif text-[22px] leading-[1.2] md:text-[24px]"
-                      : "text-[15px]",
+                      : "text-[16.5px] leading-[1.35]",
                     article.isRead
                       ? "font-medium text-muted-foreground"
                       : "font-semibold text-foreground"
@@ -388,12 +397,15 @@ export function ArticleCard({
               </div>
 
               {summary && (
-                <p className="mt-1 line-clamp-1 text-[13px] text-muted-foreground">
+                <p
+                  data-card-summary
+                  className="mt-1.5 line-clamp-2 text-[14px] leading-snug text-muted-foreground"
+                >
                   <Highlight text={summary} query={searchQuery} />
                 </p>
               )}
 
-              <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+              <div className="mt-2 flex min-w-0 items-center gap-1.5 text-[12.5px] text-muted-foreground">
                 <FeedFavicon title={source.name} faviconUrl={source.faviconUrl} size={14} />
                 {/* Keeps a few letters of a long name visible; a short one keeps its own width. */}
                 <span className={cn("truncate", source.name.length > 6 && "min-w-[3.5rem]")}>
@@ -514,6 +526,15 @@ export function ArticleCard({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-56">
+        <ContextMenuItem onSelect={() => setSheetOpen(true)} className="gap-2">
+          <Eye className="h-4 w-4" /> {t("Quick look")}
+        </ContextMenuItem>
+        {article.feed.type !== "manual" && (
+          <ContextMenuItem onSelect={() => requestSourceSheet(article.feedId)} className="gap-2">
+            <Info className="h-4 w-4" /> {t("About")} {source.name}
+          </ContextMenuItem>
+        )}
+        <ContextMenuSeparator />
         <ContextMenuItem
           onSelect={() => {
             haptic();
@@ -605,10 +626,22 @@ export function ArticleCard({
       <ActionSheet
         open={sheetOpen}
         onOpenChange={setSheetOpen}
-        title={<span className="line-clamp-1">{article.title}</span>}
+        title={<span className="line-clamp-2 text-base leading-snug">{article.title}</span>}
+        header={<QuickLook article={article} sourceName={source.name} />}
         sections={[
           {
             actions: [
+              {
+                id: "read-now",
+                label:
+                  article.audioUrl && !article.isVideo
+                    ? "Play"
+                    : article.isVideo
+                      ? "Watch"
+                      : "Read",
+                icon: article.audioUrl || article.isVideo ? <Play /> : <BookOpen />,
+                onSelect: onClick,
+              },
               {
                 id: "save",
                 label: article.isSaved ? "Remove from Later" : "Read later",
@@ -673,17 +706,27 @@ export function ArticleCard({
               },
             ],
           },
-          ...(onMuteSource && article.feed.type !== "manual"
+          ...(article.feed.type !== "manual"
             ? [
                 {
                   actions: [
                     {
-                      id: "mute",
-                      label: `Mute ${article.feed.title}`,
-                      icon: <EyeOff />,
-                      destructive: true,
-                      onSelect: onMuteSource,
+                      id: "about",
+                      label: `About ${source.name}`,
+                      icon: <Info />,
+                      onSelect: () => requestSourceSheet(article.feedId),
                     },
+                    ...(onMuteSource
+                      ? [
+                          {
+                            id: "mute",
+                            label: `Mute ${article.feed.title}`,
+                            icon: <EyeOff />,
+                            destructive: true,
+                            onSelect: onMuteSource,
+                          },
+                        ]
+                      : []),
                   ],
                 },
               ]
@@ -850,5 +893,49 @@ function VideoBadge({ article, big }: { article: ArticleSummary; big: boolean })
     >
       {label}
     </span>
+  );
+}
+
+/** The top of the long-press sheet: enough of the piece to decide without opening it. */
+function QuickLook({ article, sourceName }: { article: ArticleSummary; sourceName: string }) {
+  const [broken, setBroken] = React.useState(false);
+  const text = (article.aiSummary || stripHtml(article.summary || article.content || "")).slice(
+    0,
+    480
+  );
+  const length = article.durationSeconds
+    ? durationLabel(article.durationSeconds)
+    : article.audioUrl || article.isVideo
+      ? null
+      : article.readingMinutes
+        ? `${article.readingMinutes} min`
+        : readingTime(article.content || article.summary);
+  return (
+    <div className="mb-2 border-b px-3 pb-3">
+      {article.imageUrl && !broken && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={article.imageUrl}
+          alt=""
+          referrerPolicy="no-referrer"
+          onError={() => setBroken(true)}
+          className="dim-dark mb-3 aspect-[16/9] w-full rounded-xl bg-muted object-cover"
+        />
+      )}
+      <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground/80">{sourceName}</span>
+        <span aria-hidden>·</span>
+        <span>{formatRelativeTime(article.publishedAt)}</span>
+        {length && (
+          <>
+            <span aria-hidden>·</span>
+            <span>{length}</span>
+          </>
+        )}
+      </p>
+      {text && (
+        <p className="mt-1.5 line-clamp-5 text-[14px] leading-relaxed text-foreground/85">{text}</p>
+      )}
+    </div>
   );
 }

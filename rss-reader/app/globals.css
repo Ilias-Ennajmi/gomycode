@@ -146,12 +146,19 @@
 }
 
 /* Compact density (Settings → Personalise): tighter cards and rows. */
-[data-density="compact"] [data-article-id] > [role="button"] {
+[data-density="compact"] [data-card-body] {
   padding-top: 0.625rem;
   padding-bottom: 0.625rem;
 }
-[data-density="compact"] [data-article-id] h2 {
-  font-size: 14px;
+[data-density="compact"] [data-card-body] h2 {
+  font-size: 14.5px;
+}
+[data-density="compact"] [data-card-thumb] {
+  height: 3.5rem;
+  width: 3.5rem;
+}
+[data-density="compact"] [data-card-summary] {
+  -webkit-line-clamp: 1;
 }
 
 @layer base {

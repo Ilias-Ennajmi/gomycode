@@ -8,6 +8,8 @@ import { saveVideoProgress } from "@/lib/hooks/useVideo";
 import { clockLabel, createSnip } from "@/lib/snips";
 import { haptic } from "@/lib/native";
 import { toggleArticleRead } from "@/lib/hooks/useArticles";
+import { useSponsorSegments, useSponsorSkipper } from "@/lib/hooks/useSponsors";
+import type { SponsorSegment } from "@/lib/sponsors";
 import type { ArticleSummary, VideoExtras } from "@/lib/types";
 
 // One audio player for the whole app, like a podcast app: an episode keeps playing while
@@ -110,6 +112,8 @@ interface AudioContextValue {
   snip: () => Promise<void>;
   /** The position, without re-rendering everything that uses the player every second. */
   time: TimeStore;
+  /** The playing episode's sponsor reads (skipped unless turned off). */
+  sponsors: SponsorSegment[];
   play: (episode: Episode, startAt?: number) => void;
   toggle: () => void;
   seek: (seconds: number) => void;
@@ -575,6 +579,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     if (viewing && episode?.id === viewing.id) setViewing(null);
   }, [episode?.id, viewing]);
 
+  const sponsors = useSponsorSegments(episode?.id ?? null);
+  const skipSponsor = useSponsorSkipper(episode?.id ?? null, sponsors, seek);
+
   const value: AudioContextValue = {
     episode,
     playing,
@@ -598,6 +605,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     shareMoment,
     snip,
     time,
+    sponsors,
     play,
     toggle,
     seek,
@@ -626,6 +634,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         }}
         onTimeUpdate={(event) => {
           time.set(event.currentTarget.currentTime);
+          if (!event.currentTarget.paused) skipSponsor(event.currentTarget.currentTime);
           if (Date.now() - lastSave.current > SAVE_EVERY_MS && !event.currentTarget.paused) {
             save();
             updatePositionState();

@@ -40,12 +40,15 @@ export function SourcePreview({
   pending,
   onFollow,
   onClose,
+  manage,
 }: {
   result: DiscoverResult;
   following: boolean;
   pending: boolean;
   onFollow: () => void;
   onClose: () => void;
+  /** For a source already followed: its own buttons (open, mute, unfollow…). */
+  manage?: React.ReactNode;
 }) {
   const { data, error, isLoading } = useSWR<Preview>(
     `/api/discover/preview?url=${encodeURIComponent(result.url)}&kind=${result.kind}`,
@@ -161,6 +164,7 @@ export function SourcePreview({
                     </a>
                   )}
                 </div>
+                {manage && <div className="mt-3 w-full">{manage}</div>}
               </div>
             </div>
 

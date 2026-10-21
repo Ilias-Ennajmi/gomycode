@@ -94,6 +94,15 @@ const config: Config = {
           from: { transform: "translateX(-100%)" },
           to: { transform: "translateX(100%)" },
         },
+        // A tab reached by swiping slides in from the side it came from.
+        "tab-in-right": {
+          from: { transform: "translateX(36px)", opacity: "0.4" },
+          to: { transform: "translateX(0)", opacity: "1" },
+        },
+        "tab-in-left": {
+          from: { transform: "translateX(-36px)", opacity: "0.4" },
+          to: { transform: "translateX(0)", opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -104,6 +113,8 @@ const config: Config = {
         "sheet-in": "sheet-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1)",
         equalize: "equalize 900ms ease-in-out infinite",
         shimmer: "shimmer 1.6s ease-in-out infinite",
+        "tab-in-right": "tab-in-right 240ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+        "tab-in-left": "tab-in-left 240ms cubic-bezier(0.2, 0.8, 0.2, 1)",
       },
       fontFamily: {
         sans: [

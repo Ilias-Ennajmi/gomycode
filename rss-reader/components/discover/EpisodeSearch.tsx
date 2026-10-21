@@ -13,6 +13,7 @@ import { useFeeds } from "@/lib/hooks/useFeeds";
 import { useT } from "@/lib/i18n";
 import { useAudio } from "@/components/audio/AudioProvider";
 import type { AppleEpisode } from "@/lib/podcast";
+import { SourcePreview } from "@/components/discover/SourcePreview";
 
 interface MineEpisode {
   id: string;
@@ -54,6 +55,8 @@ export function EpisodeSearch({
   const { feeds, mutate: mutateFeeds } = useFeeds();
   const followed = React.useMemo(() => new Set(feeds.map((f) => f.url)), [feeds]);
   const [following, setFollowing] = React.useState<string | null>(null);
+  // The show of a catalogue episode, looked inside before following.
+  const [preview, setPreview] = React.useState<AppleEpisode | null>(null);
 
   async function follow(episode: AppleEpisode) {
     if (!episode.feedUrl) return;
@@ -188,13 +191,34 @@ export function EpisodeSearch({
                   const isFollowed = Boolean(episode.feedUrl && followed.has(episode.feedUrl));
                   return (
                     <li key={episode.id} className="flex items-center gap-3 px-4 py-2.5">
-                      <Art src={episode.imageUrl} title={episode.show} />
+                      {episode.feedUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => setPreview(episode)}
+                          aria-label={`About ${episode.show}`}
+                          className="shrink-0 rounded-lg transition-transform active:scale-95"
+                        >
+                          <Art src={episode.imageUrl} title={episode.show} />
+                        </button>
+                      ) : (
+                        <Art src={episode.imageUrl} title={episode.show} />
+                      )}
                       <span className="min-w-0 flex-1">
                         <span className="line-clamp-2 text-sm font-semibold leading-snug">
                           {episode.title}
                         </span>
                         <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                          {episode.show}
+                          {episode.feedUrl ? (
+                            <button
+                              type="button"
+                              onClick={() => setPreview(episode)}
+                              className="font-medium underline-offset-2 hover:text-foreground hover:underline"
+                            >
+                              {episode.show}
+                            </button>
+                          ) : (
+                            episode.show
+                          )}
                           {episode.publishedAt
                             ? ` · ${formatRelativeTime(episode.publishedAt)}`
                             : ""}
@@ -242,6 +266,21 @@ export function EpisodeSearch({
             </section>
           )}
         </div>
+        {preview?.feedUrl && (
+          <SourcePreview
+            result={{
+              url: preview.feedUrl,
+              name: preview.show,
+              kind: "podcast",
+              imageUrl: preview.imageUrl ?? undefined,
+              provider: "apple",
+            }}
+            following={followed.has(preview.feedUrl)}
+            pending={following === preview.feedUrl}
+            onFollow={() => void follow(preview)}
+            onClose={() => setPreview(null)}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

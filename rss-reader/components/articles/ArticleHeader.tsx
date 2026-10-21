@@ -15,7 +15,7 @@ import { cn, readingTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { articleSource } from "@/components/articles/ArticleCard";
-import { useReaderState } from "@/lib/hooks/useReaderState";
+import { requestSourceSheet } from "@/lib/app-events";
 import { SnoozeMenu, isSnoozed } from "@/components/articles/SnoozeMenu";
 import { formatSnooze } from "@/lib/snooze";
 import type { ArticleSummary } from "@/lib/types";
@@ -36,7 +36,6 @@ export function ArticleHeader({
   onToggleArchive,
   onCollect,
 }: ArticleHeaderProps) {
-  const { setView } = useReaderState();
   const source = articleSource(article);
   const isSavedLink = article.feed.type === "manual";
 
@@ -52,7 +51,8 @@ export function ArticleHeader({
       <button
         type="button"
         disabled={isSavedLink}
-        onClick={() => setView({ type: "feed", id: article.feedId, label: article.feed.title })}
+        onClick={() => requestSourceSheet(article.feedId)}
+        title={`About ${source.name}`}
         className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
       >
         <FeedFavicon title={source.name} faviconUrl={source.faviconUrl} size={18} />

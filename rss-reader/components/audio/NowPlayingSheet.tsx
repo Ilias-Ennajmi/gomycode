@@ -60,8 +60,10 @@ import {
   usePlayerTime,
 } from "@/components/audio/PlayerControls";
 import { SNIP_WINDOWS, useSnipWindow } from "@/lib/snips";
+import { useSkipSponsors } from "@/lib/hooks/useSponsors";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -86,6 +88,17 @@ export function NowPlayingSheet() {
   const isCurrent = Boolean(shown && episode && shown.id === episode.id);
   const close = React.useCallback(() => setExpanded(false), [setExpanded]);
   useBackToClose(expanded && Boolean(shown), close);
+  // Escape closes it too, unless a menu or pop-up is open over it (Escape is theirs).
+  React.useEffect(() => {
+    if (!expanded) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (document.querySelector('[role="menu"], [role="dialog"][data-state="open"]')) return;
+      close();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [expanded, close]);
   const { setSelectedArticleId, setMobilePane } = useReaderState();
 
   const external = shown?.id.startsWith("ext:") ?? false;
@@ -655,7 +668,7 @@ function Artwork({ episode, current }: { episode: Episode; current: boolean }) {
 
 /** The scrubber with chapter marks along it and the loaded stretch shown lighter. */
 function ChapterScrubber({ chapters }: { chapters: { t: number; title: string }[] }) {
-  const { duration, buffered, seek } = useAudio();
+  const { duration, buffered, seek, sponsors } = useAudio();
   const current = usePlayerTime();
   const [dragging, setDragging] = React.useState<number | null>(null);
   const shown = dragging ?? current;
@@ -669,6 +682,18 @@ function ChapterScrubber({ chapters }: { chapters: { t: number; title: string }[
           className="pointer-events-none absolute left-0 top-1/2 h-[0.3rem] -translate-y-1/2 rounded-full bg-foreground/15"
           style={{ width: `${pct(buffered)}%` }}
         />
+        {/* Sponsor reads, which the player jumps over. */}
+        {sponsors.map((segment) => (
+          <span
+            key={segment.start}
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 z-[1] h-[0.3rem] -translate-y-1/2 rounded-full bg-amber-400/80"
+            style={{
+              left: `${pct(segment.start)}%`,
+              width: `${Math.max(0.6, pct(segment.end) - pct(segment.start))}%`,
+            }}
+          />
+        ))}
         <input
           type="range"
           min={0}
@@ -841,6 +866,7 @@ function PlayerMenu({
   const { shareMoment, showPrefs, setShowPrefs } = useAudio();
   const prefs = showPrefs(episode.feedId);
   const [snipWindow, setSnipWindow] = useSnipWindow();
+  const [skipSponsors, setSkipSponsors] = useSkipSponsors();
   const catalogue = episode.id.startsWith("ext:");
   return (
     <DropdownMenu>
@@ -864,6 +890,9 @@ function PlayerMenu({
             <Text className="h-4 w-4" /> Episode page
           </DropdownMenuItem>
         )}
+        <DropdownMenuCheckboxItem checked={skipSponsors} onCheckedChange={setSkipSponsors}>
+          Skip sponsors
+        </DropdownMenuCheckboxItem>
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-xs">A snip keeps the last</DropdownMenuLabel>
         <DropdownMenuRadioGroup

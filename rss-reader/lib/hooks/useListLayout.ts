@@ -6,12 +6,11 @@ import { readPref, usePref, writePref } from "@/lib/prefs";
 export type ListLayout = "list" | "cards" | "magazine" | "grid";
 const LAYOUTS: ListLayout[] = ["list", "cards", "magazine", "grid"];
 
-// For You and News open as a magazine; YouTube as a wall of thumbnails; Podcasts as tiles.
+// Articles open as rows with the picture on the left; YouTube as a wall of thumbnails;
+// Podcasts as tiles. Magazine stays one tap away in the chip row.
 const DEFAULTS: Record<string, ListLayout> = {
   youtube: "cards",
   podcasts: "grid",
-  foryou: "magazine",
-  news: "magazine",
 };
 
 const KEY = "layouts";

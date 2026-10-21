@@ -9,6 +9,7 @@ import { CATALOG, CATALOG_CATEGORIES, type CatalogEntry } from "@/lib/discover/c
 import { useFeeds } from "@/lib/hooks/useFeeds";
 import { useT } from "@/lib/i18n";
 import { haptic } from "@/lib/native";
+import { SourcePreview } from "@/components/discover/SourcePreview";
 
 const PACK_SIZE = 6;
 const EMOJI: Record<string, string> = {
@@ -55,6 +56,9 @@ export function StarterPacks({
   const [lang, setLang] = React.useState<"en" | "fr">(locale);
   const [picked, setPicked] = React.useState<Set<string>>(new Set());
   const [busy, setBusy] = React.useState(false);
+  // A source of a picked pack, looked inside before following the lot.
+  const [preview, setPreview] = React.useState<(CatalogEntry & { pack: string }) | null>(null);
+  const [previewPending, setPreviewPending] = React.useState(false);
   const { feeds, mutate } = useFeeds();
   const followed = React.useMemo(() => new Set(feeds.map((f) => f.url)), [feeds]);
 
@@ -69,6 +73,28 @@ export function StarterPacks({
   const toFollow = chosen.flatMap((p) =>
     p.entries.filter((e) => !followed.has(e.url)).map((e) => ({ ...e, pack: p.name }))
   );
+
+  async function followOne(entry: CatalogEntry & { pack: string }) {
+    setPreviewPending(true);
+    try {
+      const res = await fetch("/api/feeds/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: [{ url: entry.url, categoryName: entry.pack, language: entry.lang }],
+        }),
+      });
+      const body = (await res.json().catch(() => ({}))) as { followed?: number };
+      if (!res.ok || !body.followed) throw new Error(`Couldn't follow ${entry.name}`);
+      await mutate();
+      haptic("success");
+      toast.success(`Following ${entry.name}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't follow");
+    } finally {
+      setPreviewPending(false);
+    }
+  }
 
   async function follow() {
     if (toFollow.length === 0) return;
@@ -180,7 +206,54 @@ export function StarterPacks({
               );
             })}
           </ul>
+          {chosen.length > 0 && (
+            <div className="mt-5 space-y-4">
+              {chosen.map((pack) => (
+                <section key={pack.id} aria-label={pack.name}>
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t("In")} {pack.name}
+                  </h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {pack.entries.map((entry) => {
+                      const isFollowed = followed.has(entry.url);
+                      return (
+                        <button
+                          key={entry.id}
+                          type="button"
+                          onClick={() => setPreview({ ...entry, pack: pack.name })}
+                          className="inline-flex h-8 max-w-full items-center gap-1 rounded-full bg-muted px-3 text-xs font-medium transition-colors hover:bg-accent"
+                        >
+                          {isFollowed && <Check className="h-3 w-3 text-primary" />}
+                          <span className="truncate">{entry.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+              <p className="text-[11px] text-muted-foreground">
+                {t("Tap a source to look inside before following.")}
+              </p>
+            </div>
+          )}
         </div>
+        {preview && (
+          <SourcePreview
+            result={{
+              url: preview.url,
+              name: preview.name,
+              kind: preview.kind,
+              lang: preview.lang,
+              description: preview.description,
+              provider: "catalog",
+              category: preview.pack,
+            }}
+            following={followed.has(preview.url)}
+            pending={previewPending}
+            onFollow={() => void followOne(preview)}
+            onClose={() => setPreview(null)}
+          />
+        )}
         <div className="flex items-center gap-3 border-t p-3 pb-safe">
           {firstRun && (
             <button

@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Bell, BookOpenCheck, Headphones, Inbox } from "lucide-react";
+import dynamic from "next/dynamic";
+import { Bell, BookOpenCheck, Headphones, Inbox, Timer } from "lucide-react";
 import { useCounts } from "@/lib/hooks/useArticles";
 import { Ticker } from "@/components/ui/ticker";
 import { GoalRing } from "@/components/shared/GoalRing";
@@ -9,6 +10,10 @@ import { usePersonal } from "@/lib/hooks/usePersonal";
 import { useReviewStatus } from "@/lib/hooks/useReview";
 import { useReaderState, type ViewState } from "@/lib/hooks/useReaderState";
 import { useT } from "@/lib/i18n";
+
+const TimePile = dynamic(() => import("@/components/articles/TimePile").then((m) => m.TimePile), {
+  ssr: false,
+});
 
 function greeting(date = new Date()) {
   const hour = date.getHours();
@@ -29,6 +34,7 @@ export function ForYouGreeting() {
   const { unread, alerts, listening } = useCounts();
   const { data: review } = useReviewStatus();
   const reviewCount = review?.highlights.length ?? 0;
+  const [pileOpen, setPileOpen] = React.useState(false);
 
   // Rendered on the client only: the time of day isn't known on the server.
   const [text, setText] = React.useState<string | null>(null);
@@ -79,8 +85,17 @@ export function ForYouGreeting() {
         </div>
         {personal.ring && <GoalRing size={52} />}
       </div>
-      {items.length > 0 && (
+      {(items.length > 0 || unread > 0) && (
         <div className="mt-3 flex flex-wrap gap-2">
+          {unread > 0 && (
+            <button
+              type="button"
+              onClick={() => setPileOpen(true)}
+              className="inline-flex h-8 items-center gap-1.5 rounded-full bg-muted px-3 text-xs font-semibold text-foreground/80 transition-colors hover:bg-accent"
+            >
+              <Timer className="h-3.5 w-3.5" /> {t("Got 5 minutes?")}
+            </button>
+          )}
           {items.map((item) => (
             <button
               key={item.key}
@@ -94,6 +109,7 @@ export function ForYouGreeting() {
           ))}
         </div>
       )}
+      {pileOpen && <TimePile open onOpenChange={setPileOpen} />}
     </div>
   );
 }

@@ -75,6 +75,7 @@ import { isPaidPreview } from "@/lib/newsletters";
 import { ReaderSettings } from "@/components/articles/ReaderSettings";
 import { ListenBar, ListenButton, useSpeech } from "@/components/articles/ListenButton";
 import { useArticleHighlights } from "@/lib/hooks/useHighlights";
+import { useSponsorSegments, useSponsorSkipper } from "@/lib/hooks/useSponsors";
 import { ReaderHighlights } from "@/components/highlights/ReaderHighlights";
 import { ArticleHighlights } from "@/components/highlights/ArticleHighlights";
 import { SnoozeMenu, isSnoozed } from "@/components/articles/SnoozeMenu";
@@ -185,6 +186,17 @@ export function ArticleReader() {
   const seekVideo = React.useCallback((seconds: number) => {
     videoControls.current?.seek(seconds);
   }, []);
+  // Sponsor reads in videos (SponsorBlock), skipped as the video reaches them.
+  const videoSponsors = useSponsorSegments(article?.isVideo ? article.id : null);
+  const skipVideoSponsor = useSponsorSkipper(
+    article?.isVideo ? article.id : null,
+    videoSponsors,
+    seekVideo
+  );
+  React.useEffect(() => {
+    if (videoSponsors.length === 0) return;
+    return timeStore.subscribe(() => skipVideoSponsor(timeStore.get()));
+  }, [timeStore, videoSponsors, skipVideoSponsor]);
 
   const { highlights } = useArticleHighlights(article?.id);
   const bodyRef = React.useRef<HTMLDivElement | null>(null);

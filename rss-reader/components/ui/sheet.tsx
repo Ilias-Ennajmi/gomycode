@@ -93,15 +93,19 @@ export function ActionSheet({
   open,
   onOpenChange,
   title,
+  header,
   sections,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title?: React.ReactNode;
+  /** Above the rows, e.g. a preview of what the actions apply to. */
+  header?: React.ReactNode;
   sections: { title?: React.ReactNode; actions: SheetAction[] }[];
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title={title}>
+      {header}
       {sections.map((section, i) => (
         <div key={i} className={cn(i > 0 && "mt-2 border-t pt-2")}>
           {section.title && (

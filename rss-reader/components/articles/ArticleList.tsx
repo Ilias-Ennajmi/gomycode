@@ -38,6 +38,7 @@ import { ArticleSkeletonList } from "@/components/articles/ArticleSkeleton";
 import { DailyBriefing } from "@/components/articles/DailyBriefing";
 import { ForYouGreeting } from "@/components/articles/ForYouGreeting";
 import { StoryBubbles } from "@/components/stories/StoryBubbles";
+import { ContinueListening } from "@/components/audio/ContinueListening";
 import { episodeOf, useAudio } from "@/components/audio/AudioProvider";
 import { usePersonal } from "@/lib/hooks/usePersonal";
 import dynamic from "next/dynamic";
@@ -53,6 +54,10 @@ const CollectionsView = dynamic(
 
 const ShortsPlayer = dynamic(
   () => import("@/components/video/ShortsPlayer").then((m) => m.ShortsPlayer),
+  { ssr: false }
+);
+const TriageMode = dynamic(
+  () => import("@/components/articles/TriageMode").then((m) => m.TriageMode),
   { ssr: false }
 );
 const ListenLater = dynamic(
@@ -380,6 +385,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   const [shortsAt, setShortsAt] = React.useState<number | null>(null);
   const [listening, setListening] = React.useState(false);
   React.useEffect(() => setListening(false), [view.type, laterTab]);
+  const [triaging, setTriaging] = React.useState(false);
   const showVideoKinds = view.type === "youtube" && !searching;
   const shortsGrid = showVideoKinds && videoKind === "short";
   // A source's own list gets its page header (who it is, settings, unfollow).
@@ -538,6 +544,9 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
               refreshing={refreshing}
               onRefresh={handleRefresh}
               onListen={isLater && laterTab === "queue" ? () => setListening(true) : undefined}
+              onTriage={
+                !isLater && articles.some((a) => !a.isRead) ? () => setTriaging(true) : undefined
+              }
               canMarkAllRead={articles.length > 0}
               markingAllRead={markingAllRead}
               onMarkAllRead={handleMarkAllRead}
@@ -569,6 +578,12 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
         {isSourceTab(view.type) && !searching && filterTab === "all" && (
           <StoryBubbles scope={view.type} />
         )}
+        {view.type === "podcasts" &&
+          !searching &&
+          filterTab === "all" &&
+          podcastKind === "latest" && (
+            <ContinueListening onSeeAll={() => setPodcastKind("progress")} />
+          )}
         {showHighlights ? (
           <HighlightsList />
         ) : showCollections ? (
@@ -627,11 +642,11 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
               const dateLabel = formatDateSeparator(article.publishedAt);
               const showSeparator = !ranked && !isLater && dateLabel !== lastDateLabel;
               lastDateLabel = dateLabel;
-              // Magazine: the first story of a day (or every fifth) is a big picture card,
-              // the rest are rows, so the page has a rhythm instead of a wall.
+              // Magazine: the first story of a day is a big picture card, the rest are rows
+              // with the picture on the left.
               const cardLayout =
                 layout === "magazine"
-                  ? showSeparator || index % 5 === 0 || (ranked && index === 0)
+                  ? showSeparator || (ranked && index === 0)
                     ? "cards"
                     : "list"
                   : layout;
@@ -691,6 +706,20 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
           </>
         )}
       </div>
+      {triaging && (
+        <TriageMode
+          articles={articles}
+          onOpen={(article) => {
+            setTriaging(false);
+            mutate();
+            handleSelect(article);
+          }}
+          onClose={() => {
+            setTriaging(false);
+            globalMutate((key) => typeof key === "string" && key.startsWith("/api/articles"));
+          }}
+        />
+      )}
       {listening && isLater && (
         <ListenLater articles={articles} onClose={() => setListening(false)} />
       )}
