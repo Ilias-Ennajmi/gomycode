@@ -18,6 +18,8 @@ import { clock, durationLabel } from "@/lib/hooks/useVideo";
 import { useBackToClose } from "@/lib/hooks/useHistorySync";
 import { getPurifier } from "@/components/articles/ArticleContent";
 import type { TimeStore } from "@/components/video/VideoGuide";
+import { PhraseScroller } from "@/components/media/ReadAlong";
+import { toPhrases, type Phrase } from "@/lib/phrases";
 import type { ArticleSummary, TimedText } from "@/lib/types";
 import type { DiscussionThread } from "@/app/api/articles/[id]/discussion/route";
 
@@ -176,25 +178,24 @@ function activeIndex(items: { t: number }[], current: number) {
 }
 
 /**
- * Read along: the transcript in big type, the line being said lit and the rest faded, a
- * few lines at a time in the card; the expand button opens all of it full screen, with a
- * search box. Tap any line to jump there.
+ * Read along: the transcript as short timed phrases in a small box that follows the voice,
+ * like synced lyrics (components/media/ReadAlong). The expand button opens it full screen,
+ * with a search box over what's said. Tap any phrase to jump there.
  */
 export function ReadAlongCard({
   transcript,
   store,
   onSeek,
+  duration,
 }: {
   transcript: TimedText[];
   store: TimeStore;
   onSeek: (seconds: number) => void;
+  duration?: number | null;
 }) {
-  const current = useTimeOf(store);
   const [full, setFull] = React.useState(false);
-  if (transcript.length === 0) return null;
-  const active = activeIndex(transcript, current);
-  const from = Math.max(0, active - 1);
-  const lines = transcript.slice(from, from + 5);
+  const phrases = React.useMemo(() => toPhrases(transcript, duration), [transcript, duration]);
+  if (phrases.length === 0) return null;
   return (
     <>
       <MediaCard
@@ -207,29 +208,17 @@ export function ReadAlongCard({
           </CardAction>
         }
       >
-        <ol className="space-y-1.5">
-          {lines.map((line, i) => {
-            const index = from + i;
-            return (
-              <li key={`${line.t}-${index}`}>
-                <button
-                  type="button"
-                  onClick={() => onSeek(line.t)}
-                  className={cn(
-                    "text-left text-[20px] font-bold leading-snug tracking-tight transition-opacity",
-                    index === active ? "opacity-100" : index < active ? "opacity-45" : "opacity-70"
-                  )}
-                >
-                  {line.text}
-                </button>
-              </li>
-            );
-          })}
-        </ol>
+        <PhraseScroller
+          phrases={phrases}
+          store={store}
+          onSeek={onSeek}
+          size="card"
+          className="-mx-1 h-52"
+        />
       </MediaCard>
       {full && (
         <TranscriptOverlay
-          transcript={transcript}
+          phrases={phrases}
           store={store}
           onSeek={onSeek}
           onClose={() => setFull(false)}
@@ -240,30 +229,20 @@ export function ReadAlongCard({
 }
 
 function TranscriptOverlay({
-  transcript,
+  phrases,
   store,
   onSeek,
   onClose,
 }: {
-  transcript: TimedText[];
+  phrases: Phrase[];
   store: TimeStore;
   onSeek: (seconds: number) => void;
   onClose: () => void;
 }) {
   useBackToClose(true, onClose);
-  const current = useTimeOf(store);
-  const active = activeIndex(transcript, current);
   const [query, setQuery] = React.useState("");
-  const list = React.useRef<HTMLOListElement>(null);
-  const userScrolled = React.useRef(0);
   const q = query.trim().toLowerCase();
-  const shown = q.length >= 2 ? transcript.filter((l) => l.text.toLowerCase().includes(q)) : null;
-  React.useEffect(() => {
-    if (shown || active < 0 || Date.now() - userScrolled.current < 4000) return;
-    list.current
-      ?.querySelector<HTMLElement>(`[data-index="${active}"]`)
-      ?.scrollIntoView({ block: "center", behavior: "smooth" });
-  }, [active, shown]);
+  const found = q.length >= 2 ? phrases.filter((p) => p.text.toLowerCase().includes(q)) : null;
   return (
     <div
       role="dialog"
@@ -291,45 +270,38 @@ function TranscriptOverlay({
           <X className="h-5 w-5" />
         </button>
       </div>
-      <ol
-        ref={list}
-        className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pb-safe pt-2"
-        onWheel={() => (userScrolled.current = Date.now())}
-        onTouchMove={() => (userScrolled.current = Date.now())}
-      >
-        {shown && shown.length === 0 && (
-          <li className="py-10 text-center text-sm opacity-80">Not said in this episode.</li>
-        )}
-        {(shown ?? transcript).map((line) => {
-          const index = transcript.indexOf(line);
-          return (
-            <li key={`${line.t}-${index}`} data-index={index}>
+      {found ? (
+        <ol className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pb-safe pt-2">
+          {found.length === 0 && (
+            <li className="py-10 text-center text-sm opacity-80">Not said in this one.</li>
+          )}
+          {found.map((phrase) => (
+            <li key={phrase.t}>
               <button
                 type="button"
                 onClick={() => {
-                  onSeek(line.t);
-                  if (shown) setQuery("");
+                  onSeek(phrase.t);
+                  setQuery("");
                 }}
-                className={cn(
-                  "text-left text-[22px] font-bold leading-snug tracking-tight transition-opacity",
-                  shown
-                    ? "opacity-100"
-                    : index === active
-                      ? "opacity-100"
-                      : index < active
-                        ? "opacity-45"
-                        : "opacity-70"
-                )}
+                className="text-left text-[20px] font-bold leading-snug tracking-tight"
               >
                 <span className="mr-2 align-middle font-mono text-[11px] font-medium opacity-70">
-                  {clock(line.t)}
+                  {clock(phrase.t)}
                 </span>
-                {line.text}
+                {phrase.text}
               </button>
             </li>
-          );
-        })}
-      </ol>
+          ))}
+        </ol>
+      ) : (
+        <PhraseScroller
+          phrases={phrases}
+          store={store}
+          onSeek={onSeek}
+          size="full"
+          className="min-h-0 flex-1 px-5 pb-safe"
+        />
+      )}
     </div>
   );
 }

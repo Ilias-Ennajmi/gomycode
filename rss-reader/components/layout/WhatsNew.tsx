@@ -6,10 +6,22 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.10.22c";
+export const WHATS_NEW_VERSION = "2026.10.23";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "Read along, like lyrics",
+    text: 'The transcript of a podcast or video now comes in short phrases in a small box that follows the voice: the phrase being said is bright and its words light up as they\'re spoken. Scroll back to reread; "Back to now" rejoins. Tap any phrase to jump there. The expand button shows it full screen, with search.',
+  },
+  {
+    title: "5 minutes, done right",
+    text: 'Tap "5 min" next to the greeting on For You: your pile shows as cards (5, 10, 20 or 30 minutes), swap any card or shuffle, then Start. Read, then swipe (or tap the big next card) to the next one; leave whenever you like and a pill brings you back to where you were.',
+  },
+  {
+    title: "Calmer For You header and smarter triage",
+    text: "Unread, alerts and the review are one quiet line under the greeting instead of a row of buttons. In triage, opening an article no longer ends it: come back and you're on the next card.",
+  },
   {
     title: "Swipe between tabs",
     text: 'On a phone, swipe a list or a front page sideways to move to the next or previous tab, in the bottom bar\'s order. Stories, chips, the news slider and the scrubber keep their own swipe. Prefer swiping cards for Later and read? Settings → Personalise → "Swipe cards for Later and read". On a keyboard, [ and ] do the same.',

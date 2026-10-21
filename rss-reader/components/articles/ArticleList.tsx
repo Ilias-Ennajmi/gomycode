@@ -13,6 +13,7 @@ import {
   Headphones,
   Hourglass,
   Inbox,
+  Layers,
   Loader2,
   Mail,
   MonitorPlay,
@@ -115,6 +116,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
     podcastKind,
     setPodcastKind,
     listParams,
+    mobilePane,
     setMobilePane,
     laterTab,
     setLaterTab,
@@ -386,6 +388,18 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
   const [listening, setListening] = React.useState(false);
   React.useEffect(() => setListening(false), [view.type, laterTab]);
   const [triaging, setTriaging] = React.useState(false);
+  // An article opened from triage: triage waits behind it and comes back where it was.
+  const [triagePaused, setTriagePaused] = React.useState(false);
+  // Phones: back from the article (or the player, for an episode) returns to triage.
+  const lastPane = React.useRef(mobilePane);
+  const lastExpanded = React.useRef(audio.expanded);
+  React.useEffect(() => {
+    const leftReader = lastPane.current === "reader" && mobilePane === "list";
+    const closedPlayer = lastExpanded.current && !audio.expanded;
+    lastPane.current = mobilePane;
+    lastExpanded.current = audio.expanded;
+    if (triagePaused && (leftReader || closedPlayer)) setTriagePaused(false);
+  }, [mobilePane, audio.expanded, triagePaused]);
   const showVideoKinds = view.type === "youtube" && !searching;
   const shortsGrid = showVideoKinds && videoKind === "short";
   // A source's own list gets its page header (who it is, settings, unfollow).
@@ -709,16 +723,26 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
       {triaging && (
         <TriageMode
           articles={articles}
+          hidden={triagePaused}
           onOpen={(article) => {
-            setTriaging(false);
-            mutate();
+            setTriagePaused(true);
             handleSelect(article);
           }}
           onClose={() => {
             setTriaging(false);
+            setTriagePaused(false);
             globalMutate((key) => typeof key === "string" && key.startsWith("/api/articles"));
           }}
         />
+      )}
+      {triaging && triagePaused && (
+        <button
+          type="button"
+          onClick={() => setTriagePaused(false)}
+          className="fixed bottom-24 left-1/2 z-30 hidden -translate-x-1/2 items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background shadow-xl md:flex"
+        >
+          <Layers className="h-4 w-4" /> Back to triage
+        </button>
       )}
       {listening && isLater && (
         <ListenLater articles={articles} onClose={() => setListening(false)} />

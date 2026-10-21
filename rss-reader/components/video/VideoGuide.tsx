@@ -258,7 +258,8 @@ export function createTimeStore(): TimeStore {
   return {
     get: () => time,
     set: (seconds) => {
-      if (Math.floor(seconds) === Math.floor(time)) return;
+      // Quarter seconds: enough for read along to light words as they're said.
+      if (Math.floor(seconds * 4) === Math.floor(time * 4)) return;
       time = seconds;
       listeners.forEach((listener) => listener());
     },

@@ -65,6 +65,8 @@ lib/
   refresh.ts             refreshFeeds() shared by /api/refresh and /api/refresh/tick
   recap.ts, snooze.ts, saved-links.ts, db.ts (sqlName for raw SQL)
   sponsors.ts            sponsor segments: SponsorBlock for videos, chapters/transcript for episodes
+  phrases.ts             transcript lines → short timed phrases for read along
+  session.ts             reading sessions ("5 min"): the pile the reader steps through, minutes left
   youtube.ts, extract.ts, reader.ts, clean-html.ts, favicon.ts, opml.ts, filters.ts
   discover/              catalog (curated sources), search providers (Feedly, YouTube), topics (Bing News RSS)
   news/                  news catalog, desks (+ MOROCCO_PATTERN), front-page builder, prefs
