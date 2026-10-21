@@ -59,6 +59,9 @@ const FR: Record<string, string> = {
   "Download as EPUB": "Télécharger en EPUB",
   "Listen to Later": "Écouter À lire",
   "Quick look": "Aperçu",
+  "Swipe cards for Later and read": "Balayer les cartes pour À lire et Lu",
+  "Off: swiping sideways on a list moves to the next or previous tab":
+    "Désactivé : balayer une liste passe à l'onglet suivant ou précédent",
   About: "À propos de",
   "Triage unread": "Trier les non lus",
   "Got 5 minutes?": "5 minutes devant vous ?",

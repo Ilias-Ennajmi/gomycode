@@ -17,6 +17,7 @@ const SHORTCUTS: Array<[string, string]> = [
   ["s / b", "Toggle save / bookmark"],
   ["m", "Toggle read / unread"],
   ["h", "Highlight the selected text"],
+  ["[ / ]", "Previous / next tab"],
   ["r", "Refresh feeds"],
   ["?", "Show shortcuts help"],
   ["/", "Focus search"],

@@ -642,11 +642,11 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
               const dateLabel = formatDateSeparator(article.publishedAt);
               const showSeparator = !ranked && !isLater && dateLabel !== lastDateLabel;
               lastDateLabel = dateLabel;
-              // Magazine: the first story of a day (or every fifth) is a big picture card,
-              // the rest are rows, so the page has a rhythm instead of a wall.
+              // Magazine: the first story of a day is a big picture card, the rest are rows
+              // with the picture on the left.
               const cardLayout =
                 layout === "magazine"
-                  ? showSeparator || index % 5 === 0 || (ranked && index === 0)
+                  ? showSeparator || (ranked && index === 0)
                     ? "cards"
                     : "list"
                   : layout;

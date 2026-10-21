@@ -11,6 +11,14 @@ const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
   {
+    title: "Swipe between tabs",
+    text: 'On a phone, swipe a list or a front page sideways to move to the next or previous tab, in the bottom bar\'s order. Stories, chips, the news slider and the scrubber keep their own swipe. Prefer swiping cards for Later and read? Settings → Personalise → "Swipe cards for Later and read". On a keyboard, [ and ] do the same.',
+  },
+  {
+    title: "Roomier lists",
+    text: "Every list now opens as rows with a bigger picture on the left, a touch more space, slightly larger headlines and two lines of summary. Magazine is still in the chip row, now with one big picture per day. Compact density in Settings tightens it back up.",
+  },
+  {
     title: "Sponsors skipped",
     text: "YouTube videos jump over sponsor reads marked by the SponsorBlock community, and episodes over chapters named like ads or the transcript's \"brought to you by…\" stretches. A note says how long was skipped, with Undo. They show in amber on the player's scrubber. Turn it off in Settings → Personalise or the player's ⋯.",
   },

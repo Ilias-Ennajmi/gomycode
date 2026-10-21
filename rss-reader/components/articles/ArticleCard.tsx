@@ -38,6 +38,7 @@ import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { Highlight } from "@/components/shared/Highlight";
 import type { ArticleSummary } from "@/lib/types";
 import { haptic } from "@/lib/native";
+import { cardSwipeActions } from "@/lib/hooks/usePersonal";
 import { SnoozeMenu, isSnoozed } from "@/components/articles/SnoozeMenu";
 import { formatSnooze } from "@/lib/snooze";
 import { clock, durationLabel } from "@/lib/hooks/useVideo";
@@ -177,7 +178,9 @@ export function ArticleCard({
     const mx = t.clientX - d.x;
     const my = t.clientY - d.y;
     if (d.horizontal === null && (Math.abs(mx) > 10 || Math.abs(my) > 10)) {
-      d.horizontal = Math.abs(mx) > Math.abs(my) * 1.3;
+      // A sideways swipe is the card's only when cards are set to swipe for Later / read;
+      // otherwise it moves between tabs.
+      d.horizontal = Math.abs(mx) > Math.abs(my) * 1.3 && cardSwipeActions();
       cancelHold();
     }
     if (!d.horizontal) return;
@@ -212,7 +215,7 @@ export function ArticleCard({
           data-article-id={article.id}
           // Cards far off screen aren't laid out or painted until they're near.
           className={cn(
-            "relative overflow-hidden [contain-intrinsic-size:auto_104px] [content-visibility:auto]",
+            "relative overflow-hidden [contain-intrinsic-size:auto_128px] [content-visibility:auto]",
             enterDelay !== undefined && "animate-rise-in motion-reduce:animate-none"
           )}
           style={{
@@ -262,8 +265,9 @@ export function ArticleCard({
               onClick();
             }}
             style={dx ? { transform: `translateX(${dx}px)` } : undefined}
+            data-card-body
             className={cn(
-              "group relative flex w-full cursor-pointer border-b border-border/60 bg-background px-4 py-4 text-left md:px-5",
+              "group relative flex w-full cursor-pointer border-b border-border/60 bg-background px-4 py-[18px] text-left md:px-5",
               big ? "flex-col gap-3" : "gap-4",
               !dx && "transition-transform duration-300 ease-spring",
               active ? "bg-accent" : "hover:bg-accent/60"
@@ -274,20 +278,21 @@ export function ArticleCard({
             )}
 
             <div
+              data-card-thumb={big ? undefined : ""}
               className={cn(
                 "relative shrink-0",
                 big
                   ? "aspect-video w-full"
                   : article.audioUrl && !article.isVideo
-                    ? "mt-0.5 h-[72px] w-[72px] md:h-20 md:w-20"
-                    : "mt-0.5 h-14 w-14 md:h-16 md:w-16"
+                    ? "mt-0.5 h-[84px] w-[84px] md:h-[88px] md:w-[88px]"
+                    : "mt-0.5 h-[76px] w-[76px] md:h-20 md:w-20"
               )}
             >
               <div
                 className={cn(
                   "flex items-center justify-center overflow-hidden bg-muted ring-1 ring-border/60",
                   // Pinned to the 16:9 box, or the picture's own height would stretch it.
-                  big ? "absolute inset-0 rounded-xl" : "h-full w-full rounded-lg"
+                  big ? "absolute inset-0 rounded-xl" : "h-full w-full rounded-xl"
                 )}
               >
                 {showImage ? (
@@ -364,7 +369,7 @@ export function ArticleCard({
                     "line-clamp-2 flex-1 leading-snug tracking-tight",
                     editorial && (big || lead)
                       ? "font-serif text-[22px] leading-[1.2] md:text-[24px]"
-                      : "text-[15px]",
+                      : "text-[16.5px] leading-[1.35]",
                     article.isRead
                       ? "font-medium text-muted-foreground"
                       : "font-semibold text-foreground"
@@ -392,12 +397,15 @@ export function ArticleCard({
               </div>
 
               {summary && (
-                <p className="mt-1 line-clamp-1 text-[13px] text-muted-foreground">
+                <p
+                  data-card-summary
+                  className="mt-1.5 line-clamp-2 text-[14px] leading-snug text-muted-foreground"
+                >
                   <Highlight text={summary} query={searchQuery} />
                 </p>
               )}
 
-              <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+              <div className="mt-2 flex min-w-0 items-center gap-1.5 text-[12.5px] text-muted-foreground">
                 <FeedFavicon title={source.name} faviconUrl={source.faviconUrl} size={14} />
                 {/* Keeps a few letters of a long name visible; a short one keeps its own width. */}
                 <span className={cn("truncate", source.name.length > 6 && "min-w-[3.5rem]")}>

@@ -231,6 +231,12 @@ export function SettingsPanel({
             onChange={(on) => update({ haptics: on })}
           />
           <Switch
+            label={t("Swipe cards for Later and read")}
+            hint={t("Off: swiping sideways on a list moves to the next or previous tab")}
+            on={personal.listSwipe === "actions"}
+            onChange={(on) => update({ listSwipe: on ? "actions" : "tabs" })}
+          />
+          <Switch
             label={t("Skip sponsors")}
             hint={t("Jump over sponsor reads in videos and episodes, with Undo")}
             on={skipSponsors}

@@ -26,6 +26,8 @@ export interface Personal {
   briefingCard: boolean;
   density: "comfortable" | "compact";
   haptics: boolean;
+  /** A sideways swipe on a list: move to the next tab, or act on the card (Later / read). */
+  listSwipe: "tabs" | "actions";
   /** The top tabs in order; hidden ones are left out of the bar. */
   tabs: ViewType[];
   hiddenTabs: ViewType[];
@@ -41,6 +43,7 @@ export const DEFAULT_PERSONAL: Personal = {
   briefingCard: true,
   density: "comfortable",
   haptics: true,
+  listSwipe: "tabs",
   tabs: TAB_TYPES,
   hiddenTabs: [],
   pinnedCategories: [],
@@ -89,6 +92,11 @@ export function usePersonal() {
 }
 
 /** Haptics switch, readable without React (lib/native). */
+/** Cards act on a sideways swipe (Later / read) instead of it moving between tabs. */
+export function cardSwipeActions() {
+  return load().listSwipe === "actions";
+}
+
 export function hapticsEnabled() {
   try {
     return load().haptics;

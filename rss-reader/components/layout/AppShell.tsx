@@ -9,6 +9,8 @@ import { ArticleList } from "@/components/articles/ArticleList";
 import { TopBar } from "@/components/layout/TopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useAppEvent, useSourceSheetRequest } from "@/lib/app-events";
+import { useTabSwipe } from "@/lib/hooks/useTabSwipe";
+import { useIsPhone } from "@/components/ui/sheet";
 import { X } from "lucide-react";
 import { ReaderStateProvider, useReaderState } from "@/lib/hooks/useReaderState";
 import { useBackToClose } from "@/lib/hooks/useHistorySync";
@@ -232,6 +234,8 @@ function AppShellInner() {
       });
   }, [globalMutate]);
 
+  // Read by the keyboard handler below, which is set up once.
+  const stepTab = React.useRef<(delta: -1 | 1) => void>(() => undefined);
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       // ⌘K / Ctrl+K works from anywhere, even while typing.
@@ -258,6 +262,8 @@ function AppShellInner() {
         document.getElementById("sidebar-search")?.focus();
       } else if (event.key === "?") {
         setShortcutsOpen((v) => !v);
+      } else if (event.key === "[" || event.key === "]") {
+        stepTab.current(event.key === "[" ? -1 : 1);
       } else if (event.key.toLowerCase() === "r") {
         refreshNow();
       } else if (event.key === "Escape") {
@@ -300,6 +306,10 @@ function AppShellInner() {
   // Focus mode: with an article open, only the article (desktop loses the sidebar and list).
   const { prefs: readerPrefs } = useReaderPrefs();
   const focus = readerPrefs.focus && Boolean(selectedArticleId);
+  // Phones: swipe sideways on a list or front page for the next or previous tab.
+  const phone = useIsPhone();
+  const tabSwipe = useTabSwipe(phone && mobilePane === "list");
+  stepTab.current = tabSwipe.step;
   // Coming back to a list (or another pane), the bars are there.
   React.useEffect(() => showChrome(), [mobilePane, view]);
 
@@ -344,8 +354,11 @@ function AppShellInner() {
           {fullPage ? (
             <div className="relative flex min-h-0 flex-1">
               <div
+                {...tabSwipe.handlers}
+                style={tabSwipe.style}
                 className={cn(
                   "h-full min-w-0 flex-1",
+                  tabSwipe.className,
                   mobilePane === "reader" && "hidden md:block"
                 )}
               >
@@ -395,8 +408,11 @@ function AppShellInner() {
           ) : (
             <div className="flex min-h-0 flex-1">
               <div
+                {...tabSwipe.handlers}
+                style={tabSwipe.style}
                 className={cn(
                   "h-full w-full shrink-0 md:w-[420px] md:border-r",
+                  tabSwipe.className,
                   mobilePane !== "list" && "hidden md:block",
                   focus && "md:hidden"
                 )}
@@ -429,6 +445,7 @@ function AppShellInner() {
           </div>
         )}
       </div>
+      {tabSwipe.hint}
       <NowPlayingBar />
       <BottomNav />
       <NowPlayingSheet />
