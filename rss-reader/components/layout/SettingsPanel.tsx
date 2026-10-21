@@ -38,6 +38,7 @@ import { ACCENTS, useAccent } from "@/lib/hooks/useAccent";
 import { GOALS, useReadingGoal } from "@/lib/hooks/useReadingGoal";
 import { TAB_TYPES, usePersonal, type Personal } from "@/lib/hooks/usePersonal";
 import { useComfort } from "@/lib/hooks/useComfort";
+import { useSkipSponsors } from "@/lib/hooks/useSponsors";
 import { StarterPacks } from "@/components/onboarding/StarterPacks";
 import { useCategories } from "@/lib/hooks/useFeeds";
 import { usePref } from "@/lib/prefs";
@@ -97,6 +98,7 @@ export function SettingsPanel({
   const { personal, update } = usePersonal();
   const { categories } = useCategories();
   const { comfort, update: updateComfort } = useComfort();
+  const [skipSponsors, setSkipSponsors] = useSkipSponsors();
   const [packsOpen, setPacksOpen] = React.useState(false);
 
   return (
@@ -227,6 +229,12 @@ export function SettingsPanel({
             hint={t("A tap you can feel on saves, swipes and goals")}
             on={personal.haptics}
             onChange={(on) => update({ haptics: on })}
+          />
+          <Switch
+            label={t("Skip sponsors")}
+            hint={t("Jump over sponsor reads in videos and episodes, with Undo")}
+            on={skipSponsors}
+            onChange={setSkipSponsors}
           />
           <TabEditor personal={personal} update={update} categories={categories} />
         </Section>

@@ -6,10 +6,26 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.10.22b";
+export const WHATS_NEW_VERSION = "2026.10.22c";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "Sponsors skipped",
+    text: "YouTube videos jump over sponsor reads marked by the SponsorBlock community, and episodes over chapters named like ads or the transcript's \"brought to you by…\" stretches. A note says how long was skipped, with Undo. They show in amber on the player's scrubber. Turn it off in Settings → Personalise or the player's ⋯.",
+  },
+  {
+    title: "Quick look and source pop-ups",
+    text: "Long-press a card (or right-click it) for a quick look: the picture, the length and a few lines of the piece, with every action under it. Tap a source's name in an article, or About in that menu, for its pop-up: cover, rhythm, latest items, and Open, Mute or Unfollow.",
+  },
+  {
+    title: 'Triage and "Got 5 minutes?"',
+    text: '⋯ → Triage unread shows a list\'s unread one at a time: swipe right to keep it for Later, left to skip it (marked read), Undo for the last one. On For You, "Got 5 minutes?" builds a pile that fits 5, 10, 20 or 30 minutes from Later and your best unread.',
+  },
+  {
+    title: "Continue listening, and previews everywhere",
+    text: "The Podcasts tab opens on the episodes you started, with the time left. In Find episodes, tap a show's name or cover to look inside it; in Starter packs, tap any source of a picked pack.",
+  },
   {
     title: "Look inside before you follow",
     text: "In Discover, tap a podcast, channel or site (not the Follow button) to open a preview: the cover, what it's about, how often it publishes and its latest episodes, videos or posts. Play an episode as a sample, then follow from the preview or close it and keep browsing.",

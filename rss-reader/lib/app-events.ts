@@ -24,3 +24,18 @@ export function useAppEvent(event: AppEvent, handler: () => void) {
     return () => window.removeEventListener(`reader:${event}`, listener);
   }, [event]);
 }
+
+/** Opens the pop-up about a followed source (picture, latest items, mute, unfollow). */
+export function requestSourceSheet(feedId: string) {
+  window.dispatchEvent(new CustomEvent("reader:source-sheet", { detail: feedId }));
+}
+
+export function useSourceSheetRequest(handler: (feedId: string) => void) {
+  const ref = React.useRef(handler);
+  ref.current = handler;
+  React.useEffect(() => {
+    const listener = (event: Event) => ref.current((event as CustomEvent<string>).detail);
+    window.addEventListener("reader:source-sheet", listener);
+    return () => window.removeEventListener("reader:source-sheet", listener);
+  }, []);
+}

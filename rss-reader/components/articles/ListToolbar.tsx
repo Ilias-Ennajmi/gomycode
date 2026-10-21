@@ -11,6 +11,7 @@ import {
   Search,
   Hourglass,
   LayoutGrid,
+  Layers,
   ListTree,
   MoreHorizontal,
   Newspaper,
@@ -111,6 +112,8 @@ function Divider() {
 export interface ListToolbarProps {
   /** Later: read the queue aloud as a playlist. */
   onListen?: () => void;
+  /** Sort the unread one at a time (skip or keep). */
+  onTriage?: () => void;
   isLater: boolean;
   ranked: boolean;
   total: number;
@@ -452,6 +455,11 @@ function OptionsMenu(props: ListToolbarProps) {
           >
             <RefreshCw className="h-4 w-4" /> {t("Refresh feeds")}
           </DropdownMenuItem>
+          {props.onTriage && (
+            <DropdownMenuItem onSelect={props.onTriage} className="gap-2">
+              <Layers className="h-4 w-4" /> {t("Triage unread")}
+            </DropdownMenuItem>
+          )}
           {canCatchUp && (
             <DropdownMenuItem onSelect={() => setCatchUp(true)} className="gap-2">
               <Sparkles className="h-4 w-4 text-primary" /> {t("Catch me up")}

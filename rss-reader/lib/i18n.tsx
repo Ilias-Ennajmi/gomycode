@@ -58,6 +58,16 @@ const FR: Record<string, string> = {
   "Add to collection": "Ajouter à une collection",
   "Download as EPUB": "Télécharger en EPUB",
   "Listen to Later": "Écouter À lire",
+  "Quick look": "Aperçu",
+  About: "À propos de",
+  "Triage unread": "Trier les non lus",
+  "Got 5 minutes?": "5 minutes devant vous ?",
+  "Skip sponsors": "Passer les sponsors",
+  "Jump over sponsor reads in videos and episodes, with Undo":
+    "Saute les passages sponsorisés des vidéos et épisodes, avec Annuler",
+  In: "Dans",
+  "Tap a source to look inside before following.":
+    "Touchez une source pour la découvrir avant de la suivre.",
   "Reading comfort": "Confort de lecture",
   "Bionic reading": "Lecture bionique",
   "Larger tap targets": "Boutons plus grands",

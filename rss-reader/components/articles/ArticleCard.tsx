@@ -10,7 +10,10 @@ import {
   Bookmark,
   Check,
   ChevronDown,
+  BookOpen,
+  Eye,
   EyeOff,
+  Info,
   ExternalLink,
   FolderPlus,
   Highlighter,
@@ -52,6 +55,7 @@ import { ActionSheet } from "@/components/ui/sheet";
 import { CollectionPicker } from "@/components/collections/CollectionPicker";
 import { preload } from "swr";
 import { needsFullArticle } from "@/lib/reader";
+import { requestSourceSheet } from "@/lib/app-events";
 
 interface ArticleCardProps {
   article: ArticleSummary;
@@ -514,6 +518,15 @@ export function ArticleCard({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-56">
+        <ContextMenuItem onSelect={() => setSheetOpen(true)} className="gap-2">
+          <Eye className="h-4 w-4" /> {t("Quick look")}
+        </ContextMenuItem>
+        {article.feed.type !== "manual" && (
+          <ContextMenuItem onSelect={() => requestSourceSheet(article.feedId)} className="gap-2">
+            <Info className="h-4 w-4" /> {t("About")} {source.name}
+          </ContextMenuItem>
+        )}
+        <ContextMenuSeparator />
         <ContextMenuItem
           onSelect={() => {
             haptic();
@@ -605,10 +618,22 @@ export function ArticleCard({
       <ActionSheet
         open={sheetOpen}
         onOpenChange={setSheetOpen}
-        title={<span className="line-clamp-1">{article.title}</span>}
+        title={<span className="line-clamp-2 text-base leading-snug">{article.title}</span>}
+        header={<QuickLook article={article} sourceName={source.name} />}
         sections={[
           {
             actions: [
+              {
+                id: "read-now",
+                label:
+                  article.audioUrl && !article.isVideo
+                    ? "Play"
+                    : article.isVideo
+                      ? "Watch"
+                      : "Read",
+                icon: article.audioUrl || article.isVideo ? <Play /> : <BookOpen />,
+                onSelect: onClick,
+              },
               {
                 id: "save",
                 label: article.isSaved ? "Remove from Later" : "Read later",
@@ -673,17 +698,27 @@ export function ArticleCard({
               },
             ],
           },
-          ...(onMuteSource && article.feed.type !== "manual"
+          ...(article.feed.type !== "manual"
             ? [
                 {
                   actions: [
                     {
-                      id: "mute",
-                      label: `Mute ${article.feed.title}`,
-                      icon: <EyeOff />,
-                      destructive: true,
-                      onSelect: onMuteSource,
+                      id: "about",
+                      label: `About ${source.name}`,
+                      icon: <Info />,
+                      onSelect: () => requestSourceSheet(article.feedId),
                     },
+                    ...(onMuteSource
+                      ? [
+                          {
+                            id: "mute",
+                            label: `Mute ${article.feed.title}`,
+                            icon: <EyeOff />,
+                            destructive: true,
+                            onSelect: onMuteSource,
+                          },
+                        ]
+                      : []),
                   ],
                 },
               ]
@@ -850,5 +885,49 @@ function VideoBadge({ article, big }: { article: ArticleSummary; big: boolean })
     >
       {label}
     </span>
+  );
+}
+
+/** The top of the long-press sheet: enough of the piece to decide without opening it. */
+function QuickLook({ article, sourceName }: { article: ArticleSummary; sourceName: string }) {
+  const [broken, setBroken] = React.useState(false);
+  const text = (article.aiSummary || stripHtml(article.summary || article.content || "")).slice(
+    0,
+    480
+  );
+  const length = article.durationSeconds
+    ? durationLabel(article.durationSeconds)
+    : article.audioUrl || article.isVideo
+      ? null
+      : article.readingMinutes
+        ? `${article.readingMinutes} min`
+        : readingTime(article.content || article.summary);
+  return (
+    <div className="mb-2 border-b px-3 pb-3">
+      {article.imageUrl && !broken && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={article.imageUrl}
+          alt=""
+          referrerPolicy="no-referrer"
+          onError={() => setBroken(true)}
+          className="dim-dark mb-3 aspect-[16/9] w-full rounded-xl bg-muted object-cover"
+        />
+      )}
+      <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground/80">{sourceName}</span>
+        <span aria-hidden>·</span>
+        <span>{formatRelativeTime(article.publishedAt)}</span>
+        {length && (
+          <>
+            <span aria-hidden>·</span>
+            <span>{length}</span>
+          </>
+        )}
+      </p>
+      {text && (
+        <p className="mt-1.5 line-clamp-5 text-[14px] leading-relaxed text-foreground/85">{text}</p>
+      )}
+    </div>
   );
 }
