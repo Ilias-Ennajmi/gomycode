@@ -1,3 +1,4 @@
+import { salvageJson } from "@/lib/json-salvage";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AiError, cosine, embedTexts, generateText, isAiEnabled } from "@/lib/ai";
@@ -30,9 +31,8 @@ function parseJson<T>(raw: string): T {
   try {
     return JSON.parse(raw) as T;
   } catch {
-    const start = raw.indexOf("{");
-    const end = raw.lastIndexOf("}");
-    return JSON.parse(raw.slice(start, end + 1)) as T;
+    // Wrapped in prose, or cut off by the length limit: keep what's complete.
+    return salvageJson(raw) as T;
   }
 }
 
@@ -180,7 +180,8 @@ export async function catchUp(where: Prisma.ArticleWhereInput, label: string) {
       "lists the numbers of the articles it draws on. Write in the articles' main language. " +
       'Reply with JSON: {"bullets": [{"text": "...", "articles": [numbers]}]}',
     json: true,
-    maxTokens: 900,
+    // French runs longer than English; room for six full bullets.
+    maxTokens: 1600,
   });
   const data = parseJson<{ bullets?: { text?: string; articles?: number[] }[] }>(raw);
   const bullets = (data.bullets ?? [])
