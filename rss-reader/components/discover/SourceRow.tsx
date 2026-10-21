@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import {
   Check,
   ChevronDown,
@@ -69,6 +70,8 @@ interface SourceRowProps {
   added?: { categoryId: string | null };
   categories?: CategoryOption[];
   onMove?: (categoryId: string | null) => void;
+  /** Opens a look inside the source (cover, description, latest items). */
+  onOpen?: () => void;
 }
 
 export function SourceRow({
@@ -79,6 +82,7 @@ export function SourceRow({
   added,
   categories = [],
   onMove,
+  onOpen,
 }: SourceRowProps) {
   const topic = result.provider === "topic";
   const { icon: KindIcon, label } = topic
@@ -88,70 +92,72 @@ export function SourceRow({
 
   return (
     <li className="flex items-start gap-3 py-3">
-      <div className="relative mt-0.5 shrink-0">
-        {topic && !sourceImage(result) ? (
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-border/60">
-            <Newspaper className="h-5 w-5" />
-          </span>
-        ) : (
-          <FeedFavicon
-            title={result.name}
-            faviconUrl={sourceImage(result)}
-            size={40}
-            className="rounded-xl ring-1 ring-border/60"
-          />
-        )}
-        {!topic && (
-          <span
-            className={cn(
-              "absolute -bottom-1 -right-1 flex h-[18px] w-[18px] items-center justify-center rounded-full ring-2 ring-background",
-              result.kind === "youtube"
-                ? "bg-red-600 text-white"
-                : result.kind === "podcast"
-                  ? "bg-violet-600 text-white"
-                  : "bg-muted text-muted-foreground"
-            )}
-            aria-hidden
-          >
-            <KindIcon className="h-2.5 w-2.5" />
-          </span>
-        )}
-      </div>
+      <OpenArea onOpen={onOpen} name={result.name}>
+        <div className="relative mt-0.5 shrink-0">
+          {topic && !sourceImage(result) ? (
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-border/60">
+              <Newspaper className="h-5 w-5" />
+            </span>
+          ) : (
+            <FeedFavicon
+              title={result.name}
+              faviconUrl={sourceImage(result)}
+              size={40}
+              className="rounded-xl ring-1 ring-border/60"
+            />
+          )}
+          {!topic && (
+            <span
+              className={cn(
+                "absolute -bottom-1 -right-1 flex h-[18px] w-[18px] items-center justify-center rounded-full ring-2 ring-background",
+                result.kind === "youtube"
+                  ? "bg-red-600 text-white"
+                  : result.kind === "podcast"
+                    ? "bg-violet-600 text-white"
+                    : "bg-muted text-muted-foreground"
+              )}
+              aria-hidden
+            >
+              <KindIcon className="h-2.5 w-2.5" />
+            </span>
+          )}
+        </div>
 
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[14.5px] font-semibold leading-snug">{result.name}</p>
-        {(result.reason || result.description) && (
-          <p className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-muted-foreground">
-            {result.reason ? (
-              <>
-                <Sparkles className="mr-1 inline h-3 w-3 -translate-y-px text-primary" />
-                {result.reason}
-              </>
-            ) : (
-              result.description
-            )}
-          </p>
-        )}
-        {added && onMove ? (
-          <AddedTo categories={categories} categoryId={added.categoryId} onMove={onMove} />
-        ) : (
-          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11.5px] text-muted-foreground">
-            <span>{label}</span>
-            {result.lang && (
-              <>
-                <span aria-hidden>·</span>
-                <span className="uppercase">{result.lang}</span>
-              </>
-            )}
-            {followers && (
-              <>
-                <span aria-hidden>·</span>
-                <span>{followers}</span>
-              </>
-            )}
-          </p>
-        )}
-      </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[14.5px] font-semibold leading-snug">{result.name}</p>
+          {(result.reason || result.description) && (
+            <p className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-muted-foreground">
+              {result.reason ? (
+                <>
+                  <Sparkles className="mr-1 inline h-3 w-3 -translate-y-px text-primary" />
+                  {result.reason}
+                </>
+              ) : (
+                result.description
+              )}
+            </p>
+          )}
+          {added && onMove ? (
+            <AddedTo categories={categories} categoryId={added.categoryId} onMove={onMove} />
+          ) : (
+            <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11.5px] text-muted-foreground">
+              <span>{label}</span>
+              {result.lang && (
+                <>
+                  <span aria-hidden>·</span>
+                  <span className="uppercase">{result.lang}</span>
+                </>
+              )}
+              {followers && (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>{followers}</span>
+                </>
+              )}
+            </p>
+          )}
+        </div>
+      </OpenArea>
 
       <button
         type="button"
@@ -175,6 +181,41 @@ export function SourceRow({
         {following ? "Following" : "Follow"}
       </button>
     </li>
+  );
+}
+
+/** The picture and text of a row: a button that opens the preview, when there is one. */
+function OpenArea({
+  onOpen,
+  name,
+  children,
+}: {
+  onOpen?: () => void;
+  name: string;
+  children: React.ReactNode;
+}) {
+  if (!onOpen) return <div className="flex min-w-0 flex-1 items-start gap-3">{children}</div>;
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={`Look inside ${name}`}
+      onClick={(event) => {
+        // The "Added to … · Change" menu inside keeps its own clicks.
+        if ((event.target as HTMLElement).closest("[data-radix-collection-item], button")) return;
+        onOpen();
+      }}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+      className="-m-1.5 flex min-w-0 flex-1 cursor-pointer items-start gap-3 rounded-xl p-1.5 transition-colors hover:bg-accent/60"
+    >
+      {children}
+    </div>
   );
 }
 

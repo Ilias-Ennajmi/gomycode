@@ -6,10 +6,14 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.10.22";
+export const WHATS_NEW_VERSION = "2026.10.22b";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "Look inside before you follow",
+    text: "In Discover, tap a podcast, channel or site (not the Follow button) to open a preview: the cover, what it's about, how often it publishes and its latest episodes, videos or posts. Play an episode as a sample, then follow from the preview or close it and keep browsing.",
+  },
   {
     title: "A real podcast player",
     text: "Tap an episode and it opens full screen: artwork, a scrubber with the chapter playing, Skip ahead to the next chapter, snip, share. Scroll for Read along (the transcript following the voice, full screen with search), chapters, key moments, your snips, the show notes, the show, up next, more from the show and similar episodes. Every card folds shut with its chevron and stays that way.",
