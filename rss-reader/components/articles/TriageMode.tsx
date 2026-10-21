@@ -17,16 +17,19 @@ import type { ArticleSummary } from "@/lib/types";
 // (or ←) to skip it, marked read; right (or →) to keep it for Later; Enter to open it.
 // Each choice is saved as it's made, and Undo takes back the last one.
 
-type Choice = "skip" | "keep";
+type Choice = "skip" | "keep" | "open";
 
 const THRESHOLD = 110;
 
 export function TriageMode({
   articles,
+  hidden = false,
   onOpen,
   onClose,
 }: {
   articles: ArticleSummary[];
+  /** Out of the way while an article opened from it is read; it stays where it was. */
+  hidden?: boolean;
   onOpen: (article: ArticleSummary) => void;
   onClose: () => void;
 }) {
@@ -37,11 +40,13 @@ export function TriageMode({
   const [dx, setDx] = React.useState(0);
   const [leaving, setLeaving] = React.useState<Choice | null>(null);
   const drag = React.useRef<{ x: number; y: number; horizontal: boolean | null } | null>(null);
+  // Its history entry stays while an opened article is read on top: back leaves the
+  // article first (back to triage), then a second back closes triage.
   useBackToClose(true, onClose);
 
   const article = pile[index] ?? null;
   const kept = history.filter((h) => h.choice === "keep").length;
-  const skipped = history.length - kept;
+  const skipped = history.filter((h) => h.choice === "skip").length;
 
   const choose = React.useCallback(
     (choice: Choice) => {
@@ -70,33 +75,46 @@ export function TriageMode({
     if (!last || leaving) return;
     haptic();
     const request =
-      last.choice === "keep"
-        ? last.article.isSaved
-          ? Promise.resolve()
-          : toggleArticleSaved(last.article.id, false)
-        : toggleArticleRead(last.article.id, false);
+      last.choice === "open"
+        ? Promise.resolve()
+        : last.choice === "keep"
+          ? last.article.isSaved
+            ? Promise.resolve()
+            : toggleArticleSaved(last.article.id, false)
+          : toggleArticleRead(last.article.id, false);
     request.catch(() => toast.error("Couldn't undo"));
     setHistory((h) => h.slice(0, -1));
     setIndex((i) => Math.max(0, i - 1));
   }, [history, leaving]);
 
+  // Opening one reads it: the pile moves on, so coming back lands on the next card.
+  const open = React.useCallback(
+    (target: ArticleSummary) => {
+      setHistory((h) => [...h, { article: target, choice: "open" }]);
+      setIndex((i) => i + 1);
+      onOpen(target);
+    },
+    [onOpen]
+  );
+
   React.useEffect(() => {
+    if (hidden) return;
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "ArrowLeft") choose("skip");
       else if (event.key === "ArrowRight") choose("keep");
-      else if (event.key === "Enter" && article) onOpen(article);
+      else if (event.key === "Enter" && article) open(article);
       else if (event.key === "Backspace" || event.key.toLowerCase() === "z") undo();
       else return;
       event.preventDefault();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [choose, undo, article, onOpen]);
+  }, [choose, undo, article, open, hidden]);
 
   const offset = leaving === "keep" ? 600 : leaving === "skip" ? -600 : dx;
 
   return (
-    <DialogPrimitive.Root open onOpenChange={(open) => !open && onClose()}>
+    <DialogPrimitive.Root open={!hidden} onOpenChange={(next) => !next && onClose()}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Content
           aria-describedby={undefined}
@@ -208,7 +226,7 @@ export function TriageMode({
                 <RoundButton label="Keep for Later" onClick={() => choose("keep")} primary>
                   <Bookmark className="h-6 w-6" />
                 </RoundButton>
-                <RoundButton label="Open" onClick={() => onOpen(article)} small>
+                <RoundButton label="Open" onClick={() => open(article)} small>
                   <BookOpen className="h-5 w-5" />
                 </RoundButton>
               </div>

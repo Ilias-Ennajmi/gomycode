@@ -9,7 +9,9 @@ type AppEvent =
   | "content-filters"
   | "scroll-top"
   | "sources-unused"
-  | "find-episodes";
+  | "find-episodes"
+  /** "Got 5 minutes?": the picker for a reading session. */
+  | "time-pile";
 
 export function requestAppEvent(event: AppEvent) {
   window.dispatchEvent(new CustomEvent(`reader:${event}`));

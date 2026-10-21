@@ -342,7 +342,12 @@ export function NowPlayingSheet() {
                 the episode.
               </p>
             )}
-            <ReadAlongCard transcript={extras?.transcript ?? []} store={store} onSeek={seek} />
+            <ReadAlongCard
+              transcript={extras?.transcript ?? []}
+              duration={shown.durationSeconds}
+              store={store}
+              onSeek={seek}
+            />
             <TimeListCard
               id="chapters"
               title="Chapters"

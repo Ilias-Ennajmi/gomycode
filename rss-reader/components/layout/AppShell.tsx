@@ -10,6 +10,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useAppEvent, useSourceSheetRequest } from "@/lib/app-events";
 import { useTabSwipe } from "@/lib/hooks/useTabSwipe";
+import { ResumeSessionPill } from "@/components/articles/SessionParts";
 import { useIsPhone } from "@/components/ui/sheet";
 import { X } from "lucide-react";
 import { ReaderStateProvider, useReaderState } from "@/lib/hooks/useReaderState";
@@ -64,6 +65,9 @@ const CommandPalette = dynamic(
   () => import("@/components/dialogs/CommandPalette").then((m) => m.CommandPalette),
   { ssr: false }
 );
+const TimePile = dynamic(() => import("@/components/articles/TimePile").then((m) => m.TimePile), {
+  ssr: false,
+});
 const SourceSheet = dynamic(
   () => import("@/components/sources/SourceSheet").then((m) => m.SourceSheet),
   { ssr: false }
@@ -172,6 +176,8 @@ function AppShellInner() {
   useAppEvent("find-episodes", () => setEpisodeSearchOpen(true));
   const [sourceSheetId, setSourceSheetId] = React.useState<string | null>(null);
   useSourceSheetRequest(setSourceSheetId);
+  const [pileOpen, setPileOpen] = React.useState(false);
+  useAppEvent("time-pile", () => setPileOpen(true));
   useAppEvent("sources-unused", () => {
     setSourcesChannel("unused");
     setSourcesOpen(true);
@@ -446,6 +452,9 @@ function AppShellInner() {
         )}
       </div>
       {tabSwipe.hint}
+      <div className="relative h-0">
+        <ResumeSessionPill />
+      </div>
       <NowPlayingBar />
       <BottomNav />
       <NowPlayingSheet />
@@ -454,6 +463,7 @@ function AppShellInner() {
       <SaveLinkDialog open={saveLinkOpen} onOpenChange={setSaveLinkOpen} />
       {packsOpen && <StarterPacks open firstRun onOpenChange={setPacksOpen} />}
       {episodeSearchOpen && <EpisodeSearch open onOpenChange={setEpisodeSearchOpen} />}
+      {pileOpen && <TimePile open onOpenChange={setPileOpen} />}
       {sourceSheetId && (
         <SourceSheet
           key={sourceSheetId}

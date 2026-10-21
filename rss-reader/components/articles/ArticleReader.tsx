@@ -28,6 +28,7 @@ import {
   MediaRow,
   ReadAlongCard,
   TimeListCard,
+  staticTime,
 } from "@/components/media/MediaCards";
 import { CollectionPicker } from "@/components/collections/CollectionPicker";
 import { ReaderMenu } from "@/components/articles/ReaderMenu";
@@ -58,7 +59,7 @@ import { READER_WIDTHS, useReaderPrefs } from "@/lib/hooks/useReaderPrefs";
 import { needsFullArticle, wordCount } from "@/lib/reader";
 import { youTubeVideoId } from "@/lib/youtube";
 import { VideoPlayer, type VideoControls } from "@/components/video/VideoPlayer";
-import { episodeOf, useAudio } from "@/components/audio/AudioProvider";
+import { episodeOf, resumePoint, useAudio } from "@/components/audio/AudioProvider";
 import { EpisodePlayer } from "@/components/audio/EpisodePlayer";
 import { EpisodeNotes } from "@/components/audio/EpisodeNotes";
 import { isSnip } from "@/lib/snips";
@@ -76,6 +77,8 @@ import { ReaderSettings } from "@/components/articles/ReaderSettings";
 import { ListenBar, ListenButton, useSpeech } from "@/components/articles/ListenButton";
 import { useArticleHighlights } from "@/lib/hooks/useHighlights";
 import { useSponsorSegments, useSponsorSkipper } from "@/lib/hooks/useSponsors";
+import { sessionAt, useSession } from "@/lib/session";
+import { SessionBanner, SessionNext } from "@/components/articles/SessionParts";
 import { ReaderHighlights } from "@/components/highlights/ReaderHighlights";
 import { ArticleHighlights } from "@/components/highlights/ArticleHighlights";
 import { SnoozeMenu, isSnoozed } from "@/components/articles/SnoozeMenu";
@@ -85,10 +88,12 @@ export function ArticleReader() {
   const { view, selectedArticleId, setSelectedArticleId, setMobilePane, listParams, sort } =
     useReaderState();
   const { articles, mutate: mutateList } = useArticles(listParams, sort);
+  const session = useSession();
 
   // Grouped stories and briefing links can point outside the loaded list.
   const listed =
     articles.find((a) => a.id === selectedArticleId) ??
+    session?.items.find((a) => a.id === selectedArticleId) ??
     articles.flatMap((a) => a.topic?.related ?? []).find((a) => a.id === selectedArticleId) ??
     null;
   const { article: fetched, mutate: mutateSingle } = useArticle(listed ? null : selectedArticleId);
@@ -112,9 +117,21 @@ export function ArticleReader() {
   // front page or the briefing, whose order isn't a list).
   const inList =
     view.type !== "briefing" && view.type !== "recap" && !(view.type === "news" && !view.id);
-  const index = inList && article ? articles.findIndex((a) => a.id === article.id) : -1;
-  const previous = index > 0 ? articles[index - 1] : null;
-  const next = index >= 0 ? (articles[index + 1] ?? null) : null;
+  // In a reading session ("Got 5 minutes?") they go through its pile instead.
+  const sessionIndex =
+    session && article ? session.items.findIndex((a) => a.id === article.id) : -1;
+  const inSession = sessionIndex >= 0;
+  const sequence = inSession ? session!.items : articles;
+  const index = inSession
+    ? sessionIndex
+    : inList && article
+      ? articles.findIndex((a) => a.id === article.id)
+      : -1;
+  const previous = index > 0 ? sequence[index - 1] : null;
+  const next = index >= 0 ? (sequence[index + 1] ?? null) : null;
+  React.useEffect(() => {
+    if (inSession && article) sessionAt(article.id);
+  }, [inSession, article]);
   const goTo = React.useCallback(
     (target: ArticleSummary | null) => {
       if (target) setSelectedArticleId(target.id);
@@ -132,7 +149,9 @@ export function ArticleReader() {
   const media = Boolean(videoId || episode);
   const audio = useAudio();
   const { extras, mutate: mutateExtras } = useVideoExtras(media ? (article?.id ?? null) : null);
-  const idleTime = React.useMemo(() => createTimeStore(), []);
+  // Before it plays, the cards (read along, chapters) sit where it will resume.
+  const idleAt = episode ? resumePoint(episode) : 0;
+  const idleTime = React.useMemo(() => staticTime(idleAt), [idleAt]);
   const episodeTime = episode && audio.episode?.id === episode.id ? audio.time : idleTime;
   const seekEpisode = React.useCallback(
     (seconds: number) => {
@@ -553,6 +572,7 @@ export function ArticleReader() {
           className="mx-auto animate-fade-in px-5 py-6 md:px-8 md:py-10"
           style={{ maxWidth: READER_WIDTHS[prefs.width] + 64 }}
         >
+          {inSession && <SessionBanner session={session!} />}
           {showHero && (
             <div className="relative mb-6">
               {/* Double-tap the picture to save, like a like. */}
@@ -643,6 +663,7 @@ export function ArticleReader() {
             <div className="mt-6 space-y-3">
               <ReadAlongCard
                 transcript={extras.transcript}
+                duration={article.durationSeconds}
                 store={videoId ? timeStore : episodeTime}
                 onSeek={videoId ? seekVideo : seekEpisode}
               />
@@ -768,7 +789,11 @@ export function ArticleReader() {
           {!media && <StoryTimeline articleId={article.id} onOpen={goTo} />}
           {!media && <MoreLikeThis articleId={article.id} onOpen={goTo} />}
           {!media && <Discussion articleId={article.id} />}
-          {(previous || next) && <UpNext previous={previous} next={next} onGo={goTo} />}
+          {inSession ? (
+            <SessionNext session={session!} next={next} onGo={goTo} />
+          ) : (
+            (previous || next) && <UpNext previous={previous} next={next} onGo={goTo} />
+          )}
         </div>
       </div>
     </div>
