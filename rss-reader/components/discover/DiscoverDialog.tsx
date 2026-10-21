@@ -43,6 +43,7 @@ import type { DiscoverKind, Language, SourceKind } from "@/lib/discover/catalog"
 import { requestAppEvent } from "@/lib/app-events";
 import { siteTopic, topicResult } from "@/lib/discover/topics";
 import { KIND_META, SourceRow } from "@/components/discover/SourceRow";
+import { SourcePreview } from "@/components/discover/SourcePreview";
 
 interface DiscoverDialogProps {
   open: boolean;
@@ -116,6 +117,8 @@ export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: Disc
   const unfollow = useUnfollow();
   const moveFeed = useMoveFeed();
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  // The source being looked inside (cover, description, latest items) before following.
+  const [preview, setPreview] = React.useState<DiscoverResult | null>(null);
 
   const firstRun = feeds.length === 0 && followed.size === 0;
 
@@ -284,6 +287,7 @@ export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: Disc
       added: added.get(key),
       categories: categoryOptions,
       onMove: (categoryId: string | null) => handleMove(key, categoryId),
+      onOpen: () => setPreview(result),
     };
   };
 
@@ -533,6 +537,15 @@ export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: Disc
               </Button>
             </footer>
           ) : null}
+          {preview && (
+            <SourcePreview
+              result={preview}
+              following={isFollowing(preview)}
+              pending={pending.has(sourceKey(preview.url))}
+              onFollow={() => handleFollow([preview])}
+              onClose={() => setPreview(null)}
+            />
+          )}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
