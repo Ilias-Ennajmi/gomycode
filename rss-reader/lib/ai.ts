@@ -256,20 +256,28 @@ const MAX_AUDIO_BYTES = 250 * 1024 * 1024;
  * Gemini can't fetch it from the podcast's server itself. Returns the file to refer to.
  */
 async function uploadAudio(audioUrl: string, audioType: string | null, deadline: number) {
+  // No caching anywhere here: Next's fetch cache can't key (or hold) a whole episode.
   const download = await fetch(audioUrl, {
+    cache: "no-store",
     redirect: "follow",
     headers: { "User-Agent": "Mozilla/5.0 (compatible; Reader podcast player)" },
     signal: AbortSignal.timeout(Math.max(5_000, deadline - Date.now())),
   });
   if (!download.ok) throw new AiError(`The episode's audio didn't load (${download.status})`);
+  // Some hosts answer with a web page (a player, a consent wall) instead of the file.
+  if (/text\/html|application\/json/.test(download.headers.get("content-type") ?? "")) {
+    throw new AiError("The episode's link gave a web page, not audio");
+  }
   const size = Number(download.headers.get("content-length") ?? 0);
   if (size > MAX_AUDIO_BYTES) throw new AiError("The episode is too large to analyze");
   const bytes = new Uint8Array(await download.arrayBuffer());
   if (bytes.byteLength > MAX_AUDIO_BYTES) throw new AiError("The episode is too large to analyze");
+  if (bytes.byteLength < 1024) throw new AiError("The episode's audio is empty");
   const mimeType = geminiAudioType(audioType, download.url || audioUrl);
   const key = process.env.GEMINI_API_KEY ?? "";
 
   const start = await fetch(`${BASE_URL}/upload/v1beta/files`, {
+    cache: "no-store",
     method: "POST",
     headers: {
       "x-goog-api-key": key,
@@ -284,9 +292,13 @@ async function uploadAudio(audioUrl: string, audioType: string | null, deadline:
   });
   const uploadUrl = start.headers.get("x-goog-upload-url");
   if (!start.ok || !uploadUrl) {
-    throw new AiError(`Gemini file upload failed (${start.status})`, start.status);
+    throw new AiError(
+      `Gemini file upload failed to start (${start.status}${await reason(start)})`,
+      start.status
+    );
   }
   const finish = await fetch(uploadUrl, {
+    cache: "no-store",
     method: "POST",
     headers: {
       "Content-Length": String(bytes.byteLength),
@@ -296,7 +308,12 @@ async function uploadAudio(audioUrl: string, audioType: string | null, deadline:
     body: bytes,
     signal: AbortSignal.timeout(Math.max(10_000, deadline - Date.now())),
   });
-  if (!finish.ok) throw new AiError(`Gemini file upload failed (${finish.status})`, finish.status);
+  if (!finish.ok) {
+    throw new AiError(
+      `Gemini file upload failed (${finish.status}${await reason(finish)}, ${mimeType}, ${bytes.byteLength} bytes)`,
+      finish.status
+    );
+  }
   let file = ((await finish.json()) as { file?: GeminiFile }).file;
   if (!file?.name || !file.uri) throw new AiError("Gemini didn't keep the file");
 
@@ -311,6 +328,16 @@ async function uploadAudio(audioUrl: string, audioType: string | null, deadline:
   }
   if (file.state === "FAILED") throw new AiError("Gemini couldn't read this audio");
   return { name: file.name, uri: file.uri, mimeType: file.mimeType || mimeType };
+}
+
+/** Gemini's own words on a refused request, short, for the error log. */
+async function reason(res: Response) {
+  try {
+    const body = (await res.json()) as { error?: { message?: string } };
+    return body.error?.message ? `: ${body.error.message.slice(0, 160)}` : "";
+  } catch {
+    return "";
+  }
 }
 
 interface GeminiFile {
