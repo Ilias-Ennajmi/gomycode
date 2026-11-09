@@ -11,6 +11,9 @@ import { toggleArticleRead } from "@/lib/hooks/useArticles";
 import { useSponsorSegments, useSponsorSkipper } from "@/lib/hooks/useSponsors";
 import type { SponsorSegment } from "@/lib/sponsors";
 import type { ArticleSummary, VideoExtras } from "@/lib/types";
+import { isDownloaded, removeDownload, sourceOf } from "@/lib/downloads";
+import { attachFx, type AudioFx } from "@/lib/audio-fx";
+import { usePref } from "@/lib/prefs";
 
 // One audio player for the whole app, like a podcast app: an episode keeps playing while
 // you read something else, the bar at the bottom controls it, and the phone's lock screen
@@ -114,6 +117,17 @@ interface AudioContextValue {
   time: TimeStore;
   /** The playing episode's sponsor reads (skipped unless turned off). */
   sponsors: SponsorSegment[];
+  /** Voice boost and silence trimming (downloaded episodes only: see lib/audio-fx.ts). */
+  fx: {
+    boost: boolean;
+    trim: boolean;
+    setBoost: (on: boolean) => void;
+    setTrim: (on: boolean) => void;
+    /** Applying right now (a downloaded episode is loaded). */
+    active: boolean;
+    /** Seconds of silence skipped this session. */
+    saved: () => number;
+  };
   play: (episode: Episode, startAt?: number) => void;
   toggle: () => void;
   seek: (seconds: number) => void;
@@ -180,6 +194,35 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const markedDone = React.useRef<string | null>(null);
   // A position to jump to once the new file has loaded enough to seek.
   const pendingSeek = React.useRef<number | null>(null);
+  /** A downloaded episode listened to the end: removed when it ends or another one loads. */
+  const finishedDownload = React.useRef<string | null>(null);
+  // Effects (lib/audio-fx.ts): attached to the element once, from a tap, on a downloaded
+  // episode. Streaming anything else needs a fresh element, hence the key.
+  const [boost, setBoost] = usePref<boolean>("audio-voice-boost", false);
+  const [trim, setTrim] = usePref<boolean>("audio-trim-silence", false);
+  const fxRef = React.useRef<AudioFx | null>(null);
+  const [elementKey, setElementKey] = React.useState(0);
+  const pendingLoad = React.useRef<{ next: Episode; startAt: number; autoplay: boolean } | null>(
+    null
+  );
+  const [fxActive, setFxActive] = React.useState(false);
+  const fxWanted = React.useRef({ boost, trim });
+  fxWanted.current = { boost, trim };
+  /** Attaches the effects if they're wanted and a downloaded episode is loaded. From a tap. */
+  const ensureFx = React.useCallback(() => {
+    const audio = audioRef.current;
+    const { boost: b, trim: t } = fxWanted.current;
+    if (!audio || fxRef.current || !(b || t)) return;
+    if (!audio.getAttribute("src")?.startsWith("/offline-audio/")) return;
+    fxRef.current = attachFx(audio, audio.playbackRate);
+    fxRef.current?.setBoost(b);
+    fxRef.current?.setTrim(t);
+    setFxActive(Boolean(fxRef.current));
+  }, []);
+  React.useEffect(() => {
+    fxRef.current?.setBoost(boost);
+    fxRef.current?.setTrim(trim);
+  }, [boost, trim]);
 
   const refreshLists = React.useCallback(
     () => mutate((key) => typeof key === "string" && key.startsWith("/api/articles")),
@@ -202,6 +245,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     saveVideoProgress(current.id, seconds, percent).catch(() => undefined);
     if (percent >= DONE_PERCENT && markedDone.current !== current.id) {
       markedDone.current = current.id;
+      // Listened to: its download goes once it stops playing (podcast apps do the same).
+      if (isDownloaded(current.id)) finishedDownload.current = current.id;
       toggleArticleRead(current.id, true)
         .then(refreshLists)
         .catch(() => undefined);
@@ -212,7 +257,21 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     (next: Episode, startAt: number, autoplay: boolean) => {
       const audio = audioRef.current;
       if (!audio) return;
+      // The element goes through Web Audio: a streamed file might come out silent, so it
+      // gets a fresh element first (the load runs again once it's mounted).
+      if (fxRef.current && !sourceOf(next).startsWith("/offline-audio/")) {
+        fxRef.current = null;
+        setFxActive(false);
+        audio.pause();
+        pendingLoad.current = { next, startAt, autoplay };
+        setElementKey((k) => k + 1);
+        return;
+      }
       if (episodeRef.current && episodeRef.current.id !== next.id) save();
+      if (finishedDownload.current && finishedDownload.current !== next.id) {
+        void removeDownload(finishedDownload.current);
+        finishedDownload.current = null;
+      }
       setEpisode(next);
       episodeRef.current = next;
       markedDone.current = null;
@@ -222,8 +281,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         // Restored on start: nothing is downloaded until play is pressed.
         audio.removeAttribute("src");
         pendingSeek.current = startAt > 0 ? startAt : null;
-      } else if (audio.getAttribute("src") !== next.audioUrl) {
-        audio.src = next.audioUrl;
+      } else if (audio.getAttribute("src") !== sourceOf(next)) {
+        audio.src = sourceOf(next);
         pendingSeek.current = startAt > 0 ? startAt : null;
       } else if (startAt >= 0) {
         audio.currentTime = startAt;
@@ -257,24 +316,26 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       const audio = audioRef.current;
       if (current?.id === next.id && audio) {
         if (!audio.getAttribute("src")) {
-          audio.src = next.audioUrl;
+          audio.src = sourceOf(next);
           if (startAt !== undefined) pendingSeek.current = startAt;
         } else if (startAt !== undefined) {
           audio.currentTime = startAt;
         }
+        ensureFx();
         audio.play().catch(() => undefined);
         return;
       }
       load(next, startAt ?? 0, true);
+      ensureFx();
     },
-    [load]
+    [load, ensureFx]
   );
 
   const toggle = React.useCallback(() => {
     const audio = audioRef.current;
     const current = episodeRef.current;
     if (!audio || !current) return;
-    if (!audio.getAttribute("src")) audio.src = current.audioUrl;
+    if (!audio.getAttribute("src")) audio.src = sourceOf(current);
     if (audio.paused) {
       // Back up a little after a long pause, so the thread is easy to pick up again.
       if (
@@ -285,13 +346,14 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         audio.currentTime -= REWIND_SECONDS;
         time.set(audio.currentTime);
       }
+      ensureFx();
       audio.play().catch((error: Error) => {
         if (error.name !== "AbortError") toast.error("Couldn't play this episode");
       });
     } else {
       audio.pause();
     }
-  }, [time]);
+  }, [time, ensureFx]);
 
   const seek = React.useCallback(
     (seconds: number) => {
@@ -331,6 +393,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       remember(RATE_KEY, next);
     }
     if (audioRef.current) audioRef.current.playbackRate = next;
+    fxRef.current?.setBaseRate(next);
   }, []);
 
   const showPrefs = React.useCallback(
@@ -579,10 +642,39 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     if (viewing && episode?.id === viewing.id) setViewing(null);
   }, [episode?.id, viewing]);
 
+  // After a fresh element mounts, the load that asked for it runs.
+  React.useEffect(() => {
+    const pending = pendingLoad.current;
+    if (!pending) return;
+    pendingLoad.current = null;
+    load(pending.next, pending.startAt, pending.autoplay);
+  }, [elementKey, load]);
+
+  const fx = React.useMemo(
+    () => ({
+      boost,
+      trim,
+      active: fxActive,
+      saved: () => fxRef.current?.saved() ?? 0,
+      setBoost: (on: boolean) => {
+        fxWanted.current = { ...fxWanted.current, boost: on };
+        setBoost(on);
+        if (on && audioRef.current && !audioRef.current.paused) ensureFx();
+      },
+      setTrim: (on: boolean) => {
+        fxWanted.current = { ...fxWanted.current, trim: on };
+        setTrim(on);
+        if (on && audioRef.current && !audioRef.current.paused) ensureFx();
+      },
+    }),
+    [boost, trim, fxActive, setBoost, setTrim, ensureFx]
+  );
+
   const sponsors = useSponsorSegments(episode?.id ?? null);
   const skipSponsor = useSponsorSkipper(episode?.id ?? null, sponsors, seek);
 
   const value: AudioContextValue = {
+    fx,
     episode,
     playing,
     buffering,
@@ -619,6 +711,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     <AudioContext.Provider value={value}>
       {children}
       <audio
+        key={elementKey}
         ref={audioRef}
         preload="metadata"
         className="hidden"
@@ -669,6 +762,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         onSeeked={updatePositionState}
         onEnded={() => {
           save();
+          if (finishedDownload.current) {
+            void removeDownload(finishedDownload.current);
+            finishedDownload.current = null;
+          }
           if (sleepRef.current?.kind === "end") {
             setSleepState(null);
             return;
@@ -676,7 +773,26 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           void playNext();
         }}
         onError={() => {
-          if (!episodeRef.current) return;
+          const current = episodeRef.current;
+          if (!current) return;
+          const audio = audioRef.current;
+          // The saved copy is gone (storage cleared): stream it instead.
+          if (audio && audio.getAttribute("src")?.startsWith("/offline-audio/")) {
+            const at = audio.currentTime;
+            void removeDownload(current.id);
+            if (fxRef.current) {
+              // Through Web Audio: stream it on a fresh element.
+              fxRef.current = null;
+              setFxActive(false);
+              pendingLoad.current = { next: current, startAt: at, autoplay: true };
+              setElementKey((k) => k + 1);
+              return;
+            }
+            audio.src = current.audioUrl;
+            pendingSeek.current = at > 0 ? at : null;
+            void audio.play().catch(() => undefined);
+            return;
+          }
           setPlaying(false);
           setBuffering(false);
           toast.error("This episode didn't load", {

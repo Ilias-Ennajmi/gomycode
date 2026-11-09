@@ -68,6 +68,8 @@ export interface ArticleSummary {
   feedId: string;
   feed: ArticleFeedRef;
   title: string;
+  /** A video's own title, when DeArrow's plain one is shown instead (lib/dearrow.ts). */
+  originalTitle?: string | null;
   link: string;
   summary: string | null;
   content: string | null;

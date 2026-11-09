@@ -113,6 +113,12 @@ model Article {
   liveStatus        String?
   /// When the video page (full description, chapters) was read.
   videoCheckedAt    DateTime?
+  /// DeArrow (lib/dearrow.ts): the community's plain title, and the creator's own, kept so
+  /// the switch in Settings can put either back. `title` holds whichever is shown.
+  altTitle          String?
+  originalTitle     String?
+  /// When DeArrow was last asked.
+  brandingAt        DateTime?
   /// [{ t: seconds, title }] from the creator's chapters.
   chapters          Json?
   /// [{ t: seconds, text }] from Gemini: what's said, in chunks of about half a minute.

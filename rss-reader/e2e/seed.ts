@@ -122,7 +122,11 @@ export async function seed() {
       data: {
         id: IDS.video,
         feedId: channel.id,
+        // As DeArrow left it: the plain title shown, the creator's kept.
         title: "A long video",
+        altTitle: "A long video",
+        originalTitle: "You WON'T BELIEVE this video",
+        brandingAt: ago(1),
         link: "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
         isVideo: true,
         durationSeconds: 900,

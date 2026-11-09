@@ -20,6 +20,7 @@ import { SnoozeMenu, isSnoozed } from "@/components/articles/SnoozeMenu";
 import { formatSnooze } from "@/lib/snooze";
 import type { ArticleSummary } from "@/lib/types";
 import { durationLabel } from "@/lib/hooks/useVideo";
+import { useT } from "@/lib/i18n";
 
 interface ArticleHeaderProps {
   article: ArticleSummary;
@@ -36,6 +37,7 @@ export function ArticleHeader({
   onToggleArchive,
   onCollect,
 }: ArticleHeaderProps) {
+  const { t } = useT();
   const source = articleSource(article);
   const isSavedLink = article.feed.type === "manual";
 
@@ -62,6 +64,11 @@ export function ArticleHeader({
       <h1 className="text-balance tracking-tight text-[28px] font-bold leading-tight text-foreground md:text-[34px]">
         {article.title}
       </h1>
+      {article.originalTitle && article.originalTitle !== article.title && (
+        <p className="-mt-1 text-sm text-muted-foreground">
+          <span className="font-medium">{t("Creator's title")}:</span> {article.originalTitle}
+        </p>
+      )}
 
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
         {article.author && <span>{article.author}</span>}

@@ -6,10 +6,26 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.11.09";
+export const WHATS_NEW_VERSION = "2026.11.09b";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "Download episodes",
+    text: "The arrow in the full-screen player keeps an episode on your phone, to listen with no connection (seeking works too). Podcasts → ⋯ → Downloads lists them; each one goes away by itself once you've listened to the end. A few shows' servers don't allow browsers to save files: the app tells you when that's the case.",
+  },
+  {
+    title: "Car mode",
+    text: "The car in the player opens huge buttons (back 15, play, ahead 30, next episode) on a black screen that stays on while you drive.",
+  },
+  {
+    title: "Voice boost and shorter silences",
+    text: "In the player's ⋯: Voice boost evens out quiet and loud voices and makes speech clearer; Trim silences speeds through pauses and shows how much time it saved. They work on downloaded episodes.",
+  },
+  {
+    title: "YouTube titles without the bait",
+    text: 'Videos take the plain title written by the DeArrow community when there is one; the creator\'s own title is still shown under it in the reader. Settings → Personalise → "Plain YouTube titles" switches it off.',
+  },
   {
     title: "Read along, in step",
     text: "New transcripts come sentence by sentence, each with the second it starts, so the lit phrase stays with the voice instead of drifting through a paragraph. Episodes and videos you've played or saved get theirs first, and their older transcripts are redone the same way in the background.",

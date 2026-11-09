@@ -11,7 +11,11 @@ type AppEvent =
   | "sources-unused"
   | "find-episodes"
   /** "Got 5 minutes?": the picker for a reading session. */
-  | "time-pile";
+  | "time-pile"
+  /** Downloaded episodes (Podcasts → ⋯). */
+  | "downloads"
+  /** The big-button player for driving. */
+  | "car-mode";
 
 /** `detail` says more about the request (the time pile's "later": only from Later). */
 export function requestAppEvent(event: AppEvent, detail?: string) {

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import {
+  ArrowDownToLine,
   ArrowDownUp,
   Bell,
   BookDown,
@@ -441,9 +442,14 @@ function OptionsMenu(props: ListToolbarProps) {
             </>
           )}
           {view.type === "podcasts" && (
-            <DropdownMenuItem onSelect={() => requestAppEvent("find-episodes")} className="gap-2">
-              <Search className="h-4 w-4" /> {t("Find episodes")}
-            </DropdownMenuItem>
+            <>
+              <DropdownMenuItem onSelect={() => requestAppEvent("find-episodes")} className="gap-2">
+                <Search className="h-4 w-4" /> {t("Find episodes")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => requestAppEvent("downloads")} className="gap-2">
+                <ArrowDownToLine className="h-4 w-4" /> {t("Downloads")}
+              </DropdownMenuItem>
+            </>
           )}
           {add && (
             <DropdownMenuItem

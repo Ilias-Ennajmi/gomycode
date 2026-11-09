@@ -11,6 +11,7 @@ import {
   ListMusic,
   ListStart,
   ListVideo,
+  Car,
   MoreHorizontal,
   Play,
   Scissors,
@@ -73,6 +74,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useT } from "@/lib/i18n";
+import { DownloadButton } from "@/components/audio/Downloads";
+import { requestAppEvent } from "@/lib/app-events";
 
 /**
  * The full-screen player, laid out like a podcast app's: the artwork, the title, a scrubber
@@ -309,8 +312,14 @@ export function NowPlayingSheet() {
                   </ActionButton>
                 )}
                 {!external && <CollectButton articleId={shown.id} />}
+                <DownloadButton episode={shown} />
               </div>
               <div className="flex items-center gap-1">
+                {isCurrent && (
+                  <ActionButton label="Car mode" onClick={() => requestAppEvent("car-mode")}>
+                    <Car className="h-5 w-5" />
+                  </ActionButton>
+                )}
                 {isCurrent && <SnipButton />}
                 <ActionButton
                   label="Share"
@@ -870,11 +879,12 @@ function PlayerMenu({
   current: boolean;
   onEpisodePage: () => void;
 }) {
-  const { shareMoment, showPrefs, setShowPrefs } = useAudio();
+  const { shareMoment, showPrefs, setShowPrefs, fx } = useAudio();
   const prefs = showPrefs(episode.feedId);
   const [snipWindow, setSnipWindow] = useSnipWindow();
   const [skipSponsors, setSkipSponsors] = useSkipSponsors();
   const catalogue = episode.id.startsWith("ext:");
+  const { t } = useT();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -889,7 +899,12 @@ function PlayerMenu({
       <DropdownMenuContent align="end" className="w-64">
         {current && (
           <DropdownMenuItem onSelect={() => void shareMoment()} className="gap-2">
-            <Share className="h-4 w-4" /> Share this moment
+            <Share className="h-4 w-4" /> {t("Share this moment")}
+          </DropdownMenuItem>
+        )}
+        {current && (
+          <DropdownMenuItem onSelect={() => requestAppEvent("car-mode")} className="gap-2">
+            <Car className="h-4 w-4" /> {t("Car mode")}
           </DropdownMenuItem>
         )}
         {!catalogue && (
@@ -898,7 +913,24 @@ function PlayerMenu({
           </DropdownMenuItem>
         )}
         <DropdownMenuCheckboxItem checked={skipSponsors} onCheckedChange={setSkipSponsors}>
-          Skip sponsors
+          {t("Skip sponsors")}
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-xs">
+          {t("Sound")}
+          <span className="block font-normal text-muted-foreground">
+            {fx.active
+              ? fx.trim && fx.saved() >= 1
+                ? `${t("Silences trimmed")}: ${clock(fx.saved())}`
+                : t("On for this episode")
+              : t("Applies to downloaded episodes")}
+          </span>
+        </DropdownMenuLabel>
+        <DropdownMenuCheckboxItem checked={fx.boost} onCheckedChange={fx.setBoost}>
+          {t("Voice boost")}
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem checked={fx.trim} onCheckedChange={fx.setTrim}>
+          {t("Trim silences")}
         </DropdownMenuCheckboxItem>
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-xs">A snip keeps the last</DropdownMenuLabel>

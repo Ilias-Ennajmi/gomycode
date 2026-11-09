@@ -23,7 +23,15 @@ async function openEpisode(page: import("@playwright/test").Page, id: string, ph
     .getByRole("button", { name: /^(Play|Resume at)/ })
     .first()
     .click();
-  await expect.poll(() => page.evaluate(() => !document.querySelector("audio")?.paused)).toBe(true);
+  // Playing and its length known: before that, the resume point would undo a test's seek.
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const audio = document.querySelector("audio");
+        return Boolean(audio && !audio.paused && audio.readyState >= 1);
+      })
+    )
+    .toBe(true);
   return sheet;
 }
 
@@ -62,5 +70,58 @@ test("a sponsor chapter is skipped, with Undo", async ({ page }, info) => {
   await expect(page.getByText(/Skipped a sponsor/)).toBeVisible({ timeout: 20_000 });
   const position = await page.evaluate(() => document.querySelector("audio")!.currentTime);
   expect(position).toBeGreaterThanOrEqual(99);
+  await page.evaluate(() => document.querySelector("audio")?.pause());
+});
+
+test("car mode: big controls, and back out", async ({ page }, info) => {
+  const sheet = await openEpisode(page, IDS.sleep, isPhone(info));
+  await sheet.getByRole("button", { name: "Car mode" }).click();
+  const car = page.getByRole("dialog", { name: "Car mode" });
+  await expect(car.getByText("The Science of Sleep")).toBeVisible();
+  await car.getByRole("button", { name: "Pause" }).click();
+  await expect.poll(() => page.evaluate(() => document.querySelector("audio")?.paused)).toBe(true);
+  await car.getByRole("button", { name: "Play" }).click();
+  await expect.poll(() => page.evaluate(() => document.querySelector("audio")?.paused)).toBe(false);
+  await car.getByRole("button", { name: "Leave car mode" }).click();
+  await expect(car).toHaveCount(0);
+  await page.evaluate(() => document.querySelector("audio")?.pause());
+});
+
+test("download an episode, then it plays from the device, seeking included", async ({
+  page,
+}, info) => {
+  // The service worker only registers itself in production builds: here it's done by hand.
+  await openApp(page);
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.register("/sw.js");
+    await navigator.serviceWorker.ready;
+  });
+  await page.reload();
+  await expect
+    .poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller)))
+    .toBe(true);
+
+  const sheet = await openEpisode(page, IDS.sleep, isPhone(info));
+  await page.evaluate(() => document.querySelector("audio")?.pause());
+  await sheet.getByRole("button", { name: "Download for offline" }).click();
+  await expect(sheet.getByRole("button", { name: /^Downloaded/ })).toBeVisible();
+
+  // Podcasts → ⋯ → Downloads lists it; playing it uses the saved copy.
+  await page.goto("/reader");
+  await goToTab(page, "Podcasts");
+  await page.getByRole("button", { name: "List options" }).first().click();
+  await page.getByRole("menuitem", { name: "Downloads" }).click();
+  const downloads = page.getByRole("dialog", { name: "Downloads" });
+  await downloads.getByRole("button", { name: /^The Science of Sleep/ }).click();
+  await expect
+    .poll(() => page.evaluate(() => document.querySelector("audio")?.getAttribute("src")))
+    .toMatch(/^\/offline-audio\//);
+  await expect.poll(() => page.evaluate(() => !document.querySelector("audio")?.paused)).toBe(true);
+  await page.evaluate(() => {
+    document.querySelector("audio")!.currentTime = 40;
+  });
+  await expect
+    .poll(() => page.evaluate(() => document.querySelector("audio")!.currentTime))
+    .toBeGreaterThan(40);
   await page.evaluate(() => document.querySelector("audio")?.pause());
 });
