@@ -32,6 +32,8 @@ const headers = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // End-to-end tests run their own server next to the dev one (playwright.config.ts).
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   async headers() {
     return [
       { source: "/(.*)", headers },
