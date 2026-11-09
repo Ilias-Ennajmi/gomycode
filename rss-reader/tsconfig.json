@@ -19,14 +19,15 @@
     ],
     "paths": {
       "@/*": ["./*"]
-    }
+    },
+    "target": "ES2017"
   },
   "include": [
-    "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
+    ".next-e2e/types/**/*.ts",
     ".next/types/**/*.ts",
-    ".next-e2e/types/**/*.ts"
+    "next-env.d.ts"
   ],
   "exclude": ["node_modules"]
 }

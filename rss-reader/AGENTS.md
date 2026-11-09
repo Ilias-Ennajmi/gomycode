@@ -391,6 +391,12 @@ bundle on first run and from Settings.
 
 ## Gotchas learned the hard way
 
+- **Next.js 15.** Route `params` are promises (`props: { params: Promise<{ id: string }> }`,
+  then `await props.params`), `fetch` isn't cached unless asked, and React 19 refs include
+  `null` (`RefObject<HTMLElement | null>`). Read request bodies with `readJson` from
+  `lib/http.ts`: a cut-off body throws `BadRequest`, which routes answer with 400
+  (`if (error instanceof BadRequest) return badRequest(error)`), not a 500 and an alert.
+
 - Vercel Hobby allows 100 deployments a day across the team. Every project linked to this
   repo has the Ignored Build Step `git diff --quiet HEAD^ HEAD -- .` (only builds when its
   own folder changed), so a Reader push builds Reader alone. Three projects (ps-planning,

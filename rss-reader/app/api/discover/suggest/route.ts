@@ -3,6 +3,7 @@ import { AiError, isAiEnabled } from "@/lib/ai";
 import { parseKind, parseLangs } from "@/lib/discover/langs";
 import { suggestForFeed, suggestForYou, suggestFromDescription } from "@/lib/discover/suggest";
 import { reportProblem } from "@/lib/errlog";
+import { BadRequest, badRequest, readJson } from "@/lib/http";
 
 export const maxDuration = 60;
 
@@ -18,6 +19,7 @@ export async function GET(request: NextRequest) {
       : await suggestForYou(langs, kind);
     return NextResponse.json({ results });
   } catch (error) {
+    if (error instanceof BadRequest) return badRequest(error);
     await reportProblem("GET /api/discover/suggest", error);
     return NextResponse.json({ results: [] });
   }
@@ -29,7 +31,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "AI suggestions need a Gemini key" }, { status: 503 });
   }
   try {
-    const { description, langs, kind } = (await request.json()) as {
+    const { description, langs, kind } = (await readJson(request)) as {
       description?: string;
       langs?: string;
       kind?: string;
@@ -44,6 +46,7 @@ export async function POST(request: NextRequest) {
     );
     return NextResponse.json({ results });
   } catch (error) {
+    if (error instanceof BadRequest) return badRequest(error);
     await reportProblem("POST /api/discover/suggest", error);
     const message =
       error instanceof AiError && error.status === 429

@@ -54,7 +54,8 @@ async function titleAndNote(text: string, episode: string, show: string) {
  * POST { at: seconds, window: 30 | 60 }: saves the last half-minute (or minute) of the
  * episode as a snip: its transcript, a title and a one-line summary, and where to replay it.
  */
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const body = (await request.json().catch(() => ({}))) as { at?: unknown; window?: unknown };
   const at = Math.max(0, Math.floor(Number(body.at) || 0));
   const window = WINDOWS.includes(body.window as (typeof WINDOWS)[number])

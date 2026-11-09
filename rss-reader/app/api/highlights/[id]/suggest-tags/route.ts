@@ -6,7 +6,8 @@ import { reportProblem } from "@/lib/errlog";
 export const maxDuration = 30;
 
 /** Two or three tags Gemini would file this highlight under. */
-export async function POST(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     return NextResponse.json({ tags: await suggestTags(params.id) });
   } catch (error) {

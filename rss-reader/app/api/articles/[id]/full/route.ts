@@ -13,7 +13,8 @@ const MIN_GAIN = 1.2;
  * Fetches and caches the full article for feeds that only send excerpts.
  * "limited" means the page itself is a teaser (paywall, sign-in wall).
  */
-export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const article = await prisma.article.findUnique({
     where: { id: params.id },
     select: {

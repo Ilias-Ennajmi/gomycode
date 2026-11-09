@@ -4,6 +4,7 @@ import { mapWithConcurrency } from "@/lib/ingest";
 import { FollowError, followSource, type FollowInput } from "@/lib/follow";
 import { isDesk } from "@/lib/news/desks";
 import { reportProblem } from "@/lib/errlog";
+import { BadRequest, badRequest, readJson } from "@/lib/http";
 
 export const maxDuration = 60;
 
@@ -21,7 +22,7 @@ interface FollowItem {
 // already followed counts as success.
 export async function POST(request: NextRequest) {
   try {
-    const { items } = (await request.json()) as { items?: FollowItem[] };
+    const { items } = (await readJson(request)) as { items?: FollowItem[] };
     const valid = (items ?? []).filter((i) => typeof i?.url === "string").slice(0, 30);
     if (valid.length === 0) {
       return NextResponse.json({ error: "Nothing to follow" }, { status: 400 });
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
     if (results.some((r) => r.ok && !r.existed)) await runAiPipeline();
     return NextResponse.json({ results });
   } catch (error) {
+    if (error instanceof BadRequest) return badRequest(error);
     await reportProblem("POST /api/discover/follow", error);
     return NextResponse.json({ error: "Could not follow" }, { status: 500 });
   }

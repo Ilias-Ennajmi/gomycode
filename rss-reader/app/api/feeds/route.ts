@@ -4,6 +4,7 @@ import { FollowError, followSource, type FollowInput } from "@/lib/follow";
 import { runAiPipeline } from "@/lib/enrich";
 import { getFilterRules, hiddenKeywordClauses, mutedFeedIds } from "@/lib/filters";
 import { reportProblem } from "@/lib/errlog";
+import { BadRequest, badRequest, readJson } from "@/lib/http";
 
 export async function GET() {
   try {
@@ -57,6 +58,7 @@ export async function GET() {
 
     return NextResponse.json({ feeds: result });
   } catch (error) {
+    if (error instanceof BadRequest) return badRequest(error);
     await reportProblem("GET /api/feeds", error);
     return NextResponse.json({ error: "Failed to load feeds" }, { status: 500 });
   }
@@ -64,8 +66,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { url, categoryId, categoryName, language, kind } = body as FollowInput;
+    const { url, categoryId, categoryName, language, kind } = await readJson<FollowInput>(request);
 
     if (!url || typeof url !== "string") {
       return NextResponse.json({ error: "URL is required" }, { status: 400 });

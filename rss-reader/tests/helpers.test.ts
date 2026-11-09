@@ -75,3 +75,14 @@ test("episode sponsors come from ad chapters and sponsor reads", () => {
   assert.equal(fromTranscript[0].start, 10);
   assert.equal(fromTranscript[0].end, 55);
 });
+
+test("a body that isn't JSON is a bad request, not a server error", async () => {
+  const { readJson, BadRequest } = await import("@/lib/http");
+  await assert.rejects(
+    readJson(new Request("http://x/", { method: "POST", body: "" })),
+    (error) => error instanceof BadRequest
+  );
+  assert.deepEqual(await readJson(new Request("http://x/", { method: "POST", body: '{"a":1}' })), {
+    a: 1,
+  });
+});

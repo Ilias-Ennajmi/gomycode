@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isDesk } from "@/lib/news/desks";
 import { readNewsPrefs, writeNewsPrefs, type WeatherLocation } from "@/lib/news/prefs";
 import { reportProblem } from "@/lib/errlog";
+import { BadRequest, badRequest, readJson } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export async function GET() {
 // PUT { hidden?: string[], weather?: {name, lat, lon} | null }
 export async function PUT(request: NextRequest) {
   try {
-    const body = (await request.json()) as { hidden?: unknown; weather?: unknown };
+    const body = (await readJson(request)) as { hidden?: unknown; weather?: unknown };
     const update: Parameters<typeof writeNewsPrefs>[0] = {};
     if (Array.isArray(body.hidden)) update.hidden = body.hidden.filter(isDesk);
     if (body.weather === null) update.weather = null;
@@ -32,6 +33,7 @@ export async function PUT(request: NextRequest) {
     }
     return NextResponse.json(await writeNewsPrefs(update));
   } catch (error) {
+    if (error instanceof BadRequest) return badRequest(error);
     await reportProblem("PUT /api/news/prefs", error);
     return NextResponse.json({ error: "Could not save" }, { status: 500 });
   }

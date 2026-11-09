@@ -6,7 +6,8 @@ import { reportProblem } from "@/lib/errlog";
 export const maxDuration = 120;
 
 /** The article in another language (?to=en|fr|…), made once and kept. */
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const to = request.nextUrl.searchParams.get("to") ?? "en";
   if (!LANGUAGE_NAMES[to]) return NextResponse.json({ error: "Unknown language" }, { status: 400 });
   try {

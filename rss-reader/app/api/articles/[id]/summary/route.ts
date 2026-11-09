@@ -10,7 +10,8 @@ export const maxDuration = 30;
 const MIN_LENGTH = 400;
 
 /** Returns the cached AI summary, generating it the first time an article is opened. */
-export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const article = await prisma.article.findUnique({
     where: { id: params.id },
     select: {

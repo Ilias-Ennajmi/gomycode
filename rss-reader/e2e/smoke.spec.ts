@@ -45,6 +45,13 @@ test("the API answers and refuses without a session", async ({ page, playwright 
     storageState: { cookies: [], origins: [] },
   });
   expect((await anonymous.get("/api/articles")).status()).toBe(401);
+  // A save cut off mid-way (a page closed) is the client's problem: 400, not 500.
+  const id = (await res.json()).articles[0].id;
+  const broken = await page.request.patch(`/api/articles/${id}`, {
+    headers: { "Content-Type": "application/json" },
+    data: Buffer.from("{"),
+  });
+  expect(broken.status()).toBe(400);
   await anonymous.dispose();
 });
 

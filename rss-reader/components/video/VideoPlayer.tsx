@@ -22,7 +22,7 @@ interface VideoPlayerProps {
   /** Where to start (resume). */
   startSeconds?: number;
   /** The reader's scroll area: scrolling the player out of it turns it into a mini player. */
-  scrollRef: React.RefObject<HTMLElement>;
+  scrollRef: React.RefObject<HTMLElement | null>;
   onReady?: (controls: VideoControls) => void;
   /** Every second while playing: position and length, for chapters and progress. */
   onTime?: (seconds: number, duration: number) => void;

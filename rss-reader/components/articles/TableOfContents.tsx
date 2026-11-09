@@ -39,7 +39,7 @@ export function TableOfContents({
   className,
 }: {
   headings: Heading[];
-  scrollRef: React.RefObject<HTMLElement>;
+  scrollRef: React.RefObject<HTMLElement | null>;
   className?: string;
 }) {
   const [open, setOpen] = React.useState(false);

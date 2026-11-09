@@ -63,7 +63,7 @@ interface ReaderHighlightsProps {
   article: ArticleSummary;
   bodyRef: React.MutableRefObject<HTMLDivElement | null>;
   /** The scrolling element, to keep the toolbar next to the selection. */
-  scrollRef: React.RefObject<HTMLElement>;
+  scrollRef: React.RefObject<HTMLElement | null>;
   highlights: HighlightSummary[];
 }
 

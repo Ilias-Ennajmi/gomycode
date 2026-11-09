@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ARTICLE_FEED_INCLUDE, serializeArticle } from "@/lib/articles";
 import { reportProblem } from "@/lib/errlog";
+import { BadRequest, badRequest, readJson } from "@/lib/http";
 
-export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const article = await prisma.article.findUnique({
     where: { id: params.id },
     include: ARTICLE_FEED_INCLUDE,
@@ -14,9 +16,10 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
   return NextResponse.json({ article: serializeArticle(article) });
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
-    const body = await request.json();
+    const body = await readJson(request);
     const { isRead, isSaved, isArchived, readProgress, watchedSeconds, snoozedUntil } = body as {
       isRead?: boolean;
       isSaved?: boolean;
@@ -92,6 +95,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     return NextResponse.json({ article: serializeArticle(updated) });
   } catch (error) {
+    if (error instanceof BadRequest) return badRequest(error);
     await reportProblem("PATCH /api/articles/[id]", error);
     return NextResponse.json({ error: "Failed to update article" }, { status: 500 });
   }

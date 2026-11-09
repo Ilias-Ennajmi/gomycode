@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getFilterRules, hiddenKeywordClauses, mutedFeedIds } from "@/lib/filters";
 import { reportProblem } from "@/lib/errlog";
+import { BadRequest, badRequest, readJson } from "@/lib/http";
 
 export async function GET() {
   try {
@@ -47,6 +48,7 @@ export async function GET() {
 
     return NextResponse.json({ categories: result });
   } catch (error) {
+    if (error instanceof BadRequest) return badRequest(error);
     await reportProblem("GET /api/categories", error);
     return NextResponse.json({ error: "Failed to load categories" }, { status: 500 });
   }
@@ -54,7 +56,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = await readJson(request);
     const { name, color, icon } = body as {
       name?: string;
       color?: string;
@@ -78,6 +80,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ category }, { status: 201 });
   } catch (error) {
+    if (error instanceof BadRequest) return badRequest(error);
     await reportProblem("POST /api/categories", error);
     return NextResponse.json({ error: "Failed to create category" }, { status: 500 });
   }

@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 /** POST { articleId }: puts the article in the collection (and saves it to Later). */
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const body = (await request.json().catch(() => ({}))) as { articleId?: unknown };
   const articleId = typeof body.articleId === "string" ? body.articleId : "";
   if (!articleId) return NextResponse.json({ error: "Which article?" }, { status: 400 });
@@ -34,7 +35,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 }
 
 /** DELETE ?articleId=: takes the article out of the collection. */
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const articleId = request.nextUrl.searchParams.get("articleId") ?? "";
   if (!articleId) return NextResponse.json({ error: "Which article?" }, { status: 400 });
   await prisma.collectionItem

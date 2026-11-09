@@ -10,7 +10,8 @@ const CACHE_MS = 60 * 60 * 1000;
 const cache = new Map<string, { at: number; segments: SponsorSegment[] }>();
 
 /** The sponsor segments of a video or episode, so the player can skip them. */
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const hit = cache.get(params.id);
   if (hit && Date.now() - hit.at < CACHE_MS) return NextResponse.json({ segments: hit.segments });
 

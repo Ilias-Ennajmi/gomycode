@@ -11,7 +11,8 @@ const MIN_SIMILARITY = 0.6;
 const COUNT = 3;
 
 /** "More like this": the closest recent articles from your own feeds, by embedding. */
-export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const article = await prisma.article.findUnique({
     where: { id: params.id },
     select: { id: true, embedding: true, topicId: true },

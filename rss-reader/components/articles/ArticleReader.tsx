@@ -990,7 +990,7 @@ function ResumeReading({
 }: {
   startProgress: number;
   progress: number;
-  scrollRef: React.RefObject<HTMLDivElement>;
+  scrollRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const [visible, setVisible] = React.useState(startProgress >= 10 && startProgress <= 90);
   React.useEffect(() => {

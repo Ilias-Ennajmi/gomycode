@@ -11,7 +11,7 @@ import { haptic } from "@/lib/native";
 const GAP = 48;
 
 export function usePagedLayout(
-  containerRef: React.RefObject<HTMLElement>,
+  containerRef: React.RefObject<HTMLElement | null>,
   enabled: boolean,
   resetKey: string | undefined
 ) {

@@ -52,7 +52,7 @@ Google Gemini's free tier.
 
 ## Stack
 
-Next.js 14 (App Router) · TypeScript (strict) · Tailwind + shadcn/Radix · SWR ·
+Next.js 15 (App Router, React 19) · TypeScript (strict) · Tailwind + shadcn/Radix · SWR ·
 Prisma 5 on Postgres (Supabase) · Gemini API (optional) · Vercel hosting.
 
 ## Run it locally

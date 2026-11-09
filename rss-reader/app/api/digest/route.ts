@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOrCreateBriefing, moreStories, refreshBriefing } from "@/lib/digest";
 import { isAiEnabled } from "@/lib/ai";
 import { reportProblem } from "@/lib/errlog";
+import { BadRequest, badRequest, readJson } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -11,6 +12,7 @@ export async function GET() {
     const briefing = await getOrCreateBriefing();
     return NextResponse.json({ enabled: isAiEnabled(), briefing });
   } catch (error) {
+    if (error instanceof BadRequest) return badRequest(error);
     await reportProblem("Daily briefing", error);
     return NextResponse.json({ enabled: isAiEnabled(), briefing: null });
   }
@@ -20,7 +22,7 @@ export async function GET() {
 // POST { action: "more", mode: "next" | "shuffle", exclude: articleIds } writes more stories.
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as { action?: string; mode?: string; exclude?: unknown };
+    const body = (await readJson(request)) as { action?: string; mode?: string; exclude?: unknown };
     if (body.action === "refresh") {
       return NextResponse.json(await refreshBriefing());
     }
@@ -33,6 +35,7 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (error) {
+    if (error instanceof BadRequest) return badRequest(error);
     await reportProblem("POST /api/digest", error);
     return NextResponse.json({ error: "Could not update the briefing" }, { status: 500 });
   }

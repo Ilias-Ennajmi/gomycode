@@ -32,11 +32,10 @@ async function load(slug: string) {
   });
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { slug: string };
+export async function generateMetadata(props: {
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
+  const params = await props.params;
   const collection = await load(params.slug);
   if (!collection) return { title: "Collection" };
   return {
@@ -55,7 +54,8 @@ function excerpt(text: string | null, max = 180) {
   return plain.length > max ? `${plain.slice(0, max).replace(/\s+\S*$/, "")}…` : plain;
 }
 
-export default async function CollectionPage({ params }: { params: { slug: string } }) {
+export default async function CollectionPage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const collection = await load(params.slug);
   if (!collection) notFound();
   const dates = new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" });
