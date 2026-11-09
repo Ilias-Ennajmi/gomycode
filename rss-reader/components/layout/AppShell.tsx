@@ -65,6 +65,13 @@ const CommandPalette = dynamic(
   () => import("@/components/dialogs/CommandPalette").then((m) => m.CommandPalette),
   { ssr: false }
 );
+const CarMode = dynamic(() => import("@/components/audio/CarMode").then((m) => m.CarMode), {
+  ssr: false,
+});
+const DownloadsSheet = dynamic(
+  () => import("@/components/audio/Downloads").then((m) => m.DownloadsSheet),
+  { ssr: false }
+);
 const TimePile = dynamic(() => import("@/components/articles/TimePile").then((m) => m.TimePile), {
   ssr: false,
 });
@@ -176,6 +183,11 @@ function AppShellInner() {
   useAppEvent("find-episodes", () => setEpisodeSearchOpen(true));
   const [sourceSheetId, setSourceSheetId] = React.useState<string | null>(null);
   useSourceSheetRequest(setSourceSheetId);
+  const [carMode, setCarMode] = React.useState(false);
+  useAppEvent("car-mode", () => setCarMode(true));
+  const closeCarMode = React.useCallback(() => setCarMode(false), []);
+  const [downloadsOpen, setDownloadsOpen] = React.useState(false);
+  useAppEvent("downloads", () => setDownloadsOpen(true));
   const [pileOpen, setPileOpen] = React.useState(false);
   const [pileFrom, setPileFrom] = React.useState<"all" | "later">("all");
   useAppEvent("time-pile", (from) => {
@@ -468,6 +480,8 @@ function AppShellInner() {
       {packsOpen && <StarterPacks open firstRun onOpenChange={setPacksOpen} />}
       {episodeSearchOpen && <EpisodeSearch open onOpenChange={setEpisodeSearchOpen} />}
       {pileOpen && <TimePile open onOpenChange={setPileOpen} from={pileFrom} />}
+      {downloadsOpen && <DownloadsSheet open onOpenChange={setDownloadsOpen} />}
+      {carMode && <CarMode onClose={closeCarMode} />}
       {sourceSheetId && (
         <SourceSheet
           key={sourceSheetId}

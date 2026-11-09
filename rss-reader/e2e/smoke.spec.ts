@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { goToTab, isPhone, openApp, phoneTitle, reset } from "./helpers";
+import { IDS } from "./seed";
 
 test.beforeAll(async ({ browser }) => {
   const page = await browser.newPage();
@@ -70,4 +71,16 @@ test("the health check is public and says what's wrong", async ({ playwright }) 
     ["database", "lastRefreshMinutesAgo", "ok", "refreshing"].sort()
   );
   await anonymous.dispose();
+});
+
+test("plain YouTube titles switch off and back on, everywhere at once", async ({ page }) => {
+  await openApp(page);
+  const put = (on: boolean) => page.request.put("/api/videos/dearrow", { data: { on } });
+  expect((await put(false)).ok()).toBe(true);
+  expect(await (await page.request.get("/api/videos/dearrow")).json()).toEqual({ on: false });
+  const video = await (await page.request.get(`/api/articles/${IDS.video}`)).json();
+  expect(JSON.stringify(video)).toContain("You WON'T BELIEVE this video");
+  expect((await put(true)).ok()).toBe(true);
+  const again = await (await page.request.get(`/api/articles/${IDS.video}`)).json();
+  expect(JSON.stringify(again)).toContain('"title":"A long video"');
 });

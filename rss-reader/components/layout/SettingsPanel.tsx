@@ -39,6 +39,8 @@ import { GOALS, useReadingGoal } from "@/lib/hooks/useReadingGoal";
 import { TAB_TYPES, usePersonal, type Personal } from "@/lib/hooks/usePersonal";
 import { useComfort } from "@/lib/hooks/useComfort";
 import { useSkipSponsors } from "@/lib/hooks/useSponsors";
+import useSWR from "swr";
+import { toast } from "sonner";
 import { StarterPacks } from "@/components/onboarding/StarterPacks";
 import { useCategories } from "@/lib/hooks/useFeeds";
 import { usePref } from "@/lib/prefs";
@@ -99,6 +101,19 @@ export function SettingsPanel({
   const { categories } = useCategories();
   const { comfort, update: updateComfort } = useComfort();
   const [skipSponsors, setSkipSponsors] = useSkipSponsors();
+  const deArrow = useSWR<{ on: boolean }>("/api/videos/dearrow");
+  const setDeArrow = async (on: boolean) => {
+    deArrow.mutate({ on }, { revalidate: false });
+    const res = await fetch("/api/videos/dearrow", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ on }),
+    }).catch(() => null);
+    if (!res?.ok) {
+      toast.error(t("Couldn't change titles"));
+      deArrow.mutate();
+    }
+  };
   const [packsOpen, setPacksOpen] = React.useState(false);
 
   return (
@@ -241,6 +256,12 @@ export function SettingsPanel({
             hint={t("Jump over sponsor reads in videos and episodes, with Undo")}
             on={skipSponsors}
             onChange={setSkipSponsors}
+          />
+          <Switch
+            label={t("Plain YouTube titles")}
+            hint={t("Clickbait-free titles written by the DeArrow community, when there is one")}
+            on={deArrow.data?.on ?? true}
+            onChange={(on) => void setDeArrow(on)}
           />
           <TabEditor personal={personal} update={update} categories={categories} />
         </Section>

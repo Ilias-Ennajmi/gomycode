@@ -4,14 +4,17 @@
 // - Lists and articles are fetched from the network first and cached; offline, the last
 //   copy is used. Articles in Later are cached ahead of time (see "cache-later" below).
 // - Images are served from cache when possible and refreshed in the background.
+// - Downloaded podcast episodes (lib/downloads.ts) live in their own cache, which survives
+//   version bumps, and are served at /offline-audio/<id> with byte ranges, so seeking works.
 // Bump VERSION when this file's caching rules change.
 
-const VERSION = "v3";
+const VERSION = "v4";
 const APP_CACHE = `reader-app-${VERSION}`;
 const DATA_CACHE = `reader-data-${VERSION}`;
 const IMAGE_CACHE = `reader-images-${VERSION}`;
 const MAX_IMAGES = 300;
 const MAX_DATA = 400;
+const EPISODE_CACHE = "episodes-offline";
 // Next.js sends "Vary: RSC, Next-Router-…" on every response; those headers don't change
 // what our data looks like, so they mustn't make an offline lookup miss.
 const MATCH = { ignoreVary: true };
@@ -96,6 +99,53 @@ async function cacheFirst(request, cacheName) {
   return response;
 }
 
+// Downloading an episode: the page asks for /episode-download?url=… (its own content policy
+// only lets it talk to this site) and the worker fetches the show's file, streaming it back.
+async function episodeDownload(request) {
+  const target = new URL(request.url).searchParams.get("url");
+  if (!target || !/^https?:\/\//.test(target)) return new Response("Bad URL", { status: 400 });
+  let res;
+  try {
+    res = await fetch(target, { mode: "cors" });
+  } catch {
+    // The show's server doesn't allow it (no CORS), or it's unreachable.
+    return new Response("Blocked", { status: 502 });
+  }
+  const headers = { "Content-Type": res.headers.get("content-type") || "audio/mpeg" };
+  const length = res.headers.get("content-length");
+  if (length) headers["Content-Length"] = length;
+  return new Response(res.body, { status: res.status, headers });
+}
+
+// A downloaded episode, whole or the byte range the player asks for.
+async function offlineAudio(request) {
+  const cache = await caches.open(EPISODE_CACHE);
+  const cached = await cache.match(new URL(request.url).pathname);
+  if (!cached) return new Response("Not downloaded", { status: 404 });
+  const range = /bytes=(\d*)-(\d*)/.exec(request.headers.get("range") || "");
+  const blob = await cached.blob();
+  const type = cached.headers.get("content-type") || "audio/mpeg";
+  const size = blob.size;
+  if (!range) {
+    return new Response(blob, {
+      headers: { "Content-Type": type, "Content-Length": String(size), "Accept-Ranges": "bytes" },
+    });
+  }
+  let start = range[1] ? Number(range[1]) : size - Number(range[2] || 0);
+  let end = range[1] && range[2] ? Number(range[2]) : size - 1;
+  start = Math.max(0, Math.min(start, size - 1));
+  end = Math.min(end, size - 1);
+  return new Response(blob.slice(start, end + 1), {
+    status: 206,
+    headers: {
+      "Content-Type": type,
+      "Content-Length": String(end - start + 1),
+      "Content-Range": `bytes ${start}-${end}/${size}`,
+      "Accept-Ranges": "bytes",
+    },
+  });
+}
+
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(IMAGE_CACHE);
   const cached = await cache.match(request);
@@ -122,6 +172,15 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (url.origin !== self.location.origin) return;
+
+  if (url.pathname === "/episode-download") {
+    event.respondWith(episodeDownload(request));
+    return;
+  }
+  if (url.pathname.startsWith("/offline-audio/")) {
+    event.respondWith(offlineAudio(request));
+    return;
+  }
 
   if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/")) {
     event.respondWith(cacheFirst(request, APP_CACHE));

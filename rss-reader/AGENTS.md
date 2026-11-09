@@ -161,6 +161,12 @@ bot" and caption/transcript endpoints refuse, but its pages still load:
   queue, then the channel). Times in descriptions and transcripts are `a[data-t]` links
   the reader turns into seeks. The transcript is part of the article body, so highlights
   work on it, and the search trigger indexes it (weight D).
+- _DeArrow_ (`lib/dearrow.ts`): community titles from `sponsor.ajay.app/api/branding`,
+  asked after each refresh for videos under 3 days old (every 6 h until one exists);
+  `title` holds what's shown, `altTitle`/`originalTitle` both kept, and the Settings switch
+  (`PUT /api/videos/dearrow`, Setting `dearrow`) swaps every row at once. The reader shows
+  the creator's title under a plain one. Thumbnails aren't replaced (DeArrow renders them
+  on demand and they're often missing).
 - Lists: `?video=long|short` (the YouTube tab's Videos/Shorts), `?length=short|medium|long`,
   and the `video-prefs` Setting (`hideShorts`) removes Shorts everywhere else.
 
@@ -183,6 +189,21 @@ followed podcast stores only its newest 20 episodes.
   (resumable upload, deleted after use). Same runs, tries and tick as videos
   (`VIDEO_AI_CANDIDATE` covers both); transcripts for episodes up to an hour, summaries and
   key moments up to 2 h 15 (32 tokens per second of audio vs. the free per-minute limit).
+- _Downloads_ (`lib/downloads.ts`, `components/audio/Downloads.tsx`): the page asks the
+  service worker for `/episode-download?url=…` (the page's CSP only allows its own origin;
+  the worker's allows any host), streams it into the `episodes-offline` cache (kept across
+  `VERSION` bumps) under `/offline-audio/<id>`, which the worker serves with byte ranges.
+  `sourceOf(episode)` gives the player that path when downloaded and a worker is in
+  charge. Needs CORS on the show's server; a 502 from the worker means it isn't allowed.
+  Downloads are listed in localStorage `episode-downloads` and removed once played to the
+  end (on `ended` or the next load). Podcasts → ⋯ → Downloads lists them.
+- _Car mode_ (`components/audio/CarMode.tsx`, app event `car-mode`): huge controls, Wake
+  Lock while open.
+- _Voice boost and silence trimming_ (`lib/audio-fx.ts`): Web Audio (high-pass, presence
+  EQ, compressor, make-up gain; a ScriptProcessor meter speeds silences to 3×). Routing an
+  element through Web Audio is permanent and silences non-CORS streams, so effects attach
+  only to downloaded episodes, only from a tap (a context made without one is suspended),
+  and `AudioProvider` swaps in a fresh `<audio>` (its `key`) before streaming anything else.
 - Discover's Podcasts channel searches Apple (`searchApplePodcasts`) and shows Apple's charts
   (`/api/discover/podcasts`, US and French stores by language).
 
@@ -532,6 +553,7 @@ Built in this order (see `git log -- rss-reader`):
 27. Foundations: unit + end-to-end tests and CI, error triage with alerts, health check,
     Next.js 15. Then: sentence-level transcripts (exact read along), transcript queue
     by what you play, old transcripts redone, "5 min" from Later, more of the app in French.
+    Then: DeArrow titles, episode downloads, car mode, voice boost and silence trimming.
 
 ## Open ideas (not built yet)
 
