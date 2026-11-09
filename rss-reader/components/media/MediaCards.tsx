@@ -22,6 +22,7 @@ import { PhraseScroller } from "@/components/media/ReadAlong";
 import { toPhrases, type Phrase } from "@/lib/phrases";
 import type { ArticleSummary, TimedText } from "@/lib/types";
 import type { DiscussionThread } from "@/app/api/articles/[id]/discussion/route";
+import { useT } from "@/lib/i18n";
 
 // The cards under a player (podcast or video), the way music and podcast apps lay out an
 // episode: each one a titled block that folds shut with its chevron, remembered (and synced)
@@ -97,7 +98,9 @@ export function MediaCard({
   children: React.ReactNode;
   className?: string;
 }) {
+  const { t } = useT();
   const [folded, setFolded] = usePref<Record<string, boolean>>(CARDS_KEY, NONE);
+  if (typeof title === "string") title = t(title);
   const collapsed = Boolean(folded?.[id]);
   const bodyId = `card-${id}`;
   const accent = tone === "accent";
@@ -122,7 +125,7 @@ export function MediaCard({
           onClick={() => setFolded((prev) => ({ ...(prev ?? {}), [id]: !collapsed }))}
           aria-expanded={!collapsed}
           aria-controls={bodyId}
-          aria-label={collapsed ? "Expand" : "Collapse"}
+          aria-label={collapsed ? t("Expand") : t("Collapse")}
           className={cn(
             "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors",
             accent ? "hover:bg-white/15" : "text-muted-foreground hover:bg-accent"
@@ -154,11 +157,12 @@ export function CardAction({
   accent?: boolean;
   label?: string;
 }) {
+  const { t } = useT();
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={label}
+      aria-label={label && t(label)}
       className={cn(
         "flex h-8 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-semibold transition-colors",
         accent ? "hover:bg-white/15" : "text-primary hover:bg-primary/10"
@@ -240,6 +244,7 @@ function TranscriptOverlay({
   onClose: () => void;
 }) {
   useBackToClose(true, onClose);
+  const { t } = useT();
   const [query, setQuery] = React.useState("");
   const q = query.trim().toLowerCase();
   const found = q.length >= 2 ? phrases.filter((p) => p.text.toLowerCase().includes(q)) : null;
@@ -247,7 +252,7 @@ function TranscriptOverlay({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Transcript"
+      aria-label={t("Transcript")}
       className="fixed inset-0 z-[70] flex flex-col bg-primary text-primary-foreground animate-fade-in"
     >
       <div className="flex items-center gap-2 px-3 pb-2 pt-safe">
@@ -256,15 +261,15 @@ function TranscriptOverlay({
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search what's said…"
-            aria-label="Search the transcript"
+            placeholder={t("Search what's said…")}
+            aria-label={t("Search the transcript")}
             className="h-10 w-full rounded-full bg-white/15 pl-9 pr-3 text-sm text-primary-foreground outline-none placeholder:text-primary-foreground/60 focus:bg-white/20"
           />
         </div>
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close the transcript"
+          aria-label={t("Close the transcript")}
           className="mt-2 flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/15"
         >
           <X className="h-5 w-5" />
@@ -273,7 +278,7 @@ function TranscriptOverlay({
       {found ? (
         <ol className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pb-safe pt-2">
           {found.length === 0 && (
-            <li className="py-10 text-center text-sm opacity-80">Not said in this one.</li>
+            <li className="py-10 text-center text-sm opacity-80">{t("Not said in this one.")}</li>
           )}
           {found.map((phrase) => (
             <li key={phrase.t}>
@@ -325,6 +330,7 @@ export function TimeListCard({
   artwork?: string | null;
 }) {
   const current = useTimeOf(store);
+  const { t } = useT();
   const [all, setAll] = React.useState(false);
   if (items.length === 0) return null;
   const active = activeIndex(items, current);
@@ -338,7 +344,7 @@ export function TimeListCard({
       action={
         items.length > 3 ? (
           <CardAction onClick={() => setAll((v) => !v)}>
-            {all ? "Show less" : `Show all (${items.length})`}
+            {all ? t("Show less") : `${t("Show all")} (${items.length})`}
           </CardAction>
         ) : undefined
       }

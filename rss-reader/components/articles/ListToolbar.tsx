@@ -20,6 +20,7 @@ import {
   Rows3,
   Smartphone,
   Sparkles,
+  Timer,
 } from "lucide-react";
 import { CatchUpSheet } from "@/components/articles/CatchUpSheet";
 import { useT } from "@/lib/i18n";
@@ -202,6 +203,17 @@ export function ListToolbar(props: ListToolbarProps) {
       >
         {props.isLater ? (
           <>
+            {laterTab === "queue" && props.total > 0 && (
+              <button
+                type="button"
+                onClick={() => requestAppEvent("time-pile", "later")}
+                aria-label={t("Got 5 minutes?")}
+                title={t("Got 5 minutes?")}
+                className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+              >
+                <Timer className="h-3.5 w-3.5" /> 5 min
+              </button>
+            )}
             {(
               [
                 ["queue", t("Later")],
@@ -360,21 +372,21 @@ function OptionsMenu(props: ListToolbarProps) {
     !props.ranked && !(props.isLater && laterTab !== "queue" && laterTab !== "archive");
   const info = props.isLater
     ? laterTab === "queue"
-      ? `${props.total} to read${props.minutes ? ` · ${props.formatMinutes(props.minutes)}` : ""}`
+      ? `${props.total} ${t("to read")}${props.minutes ? ` · ${props.formatMinutes(props.minutes)}` : ""}`
       : laterTab === "archive"
-        ? `${props.total} finished`
+        ? `${props.total} ${t("finished")}`
         : laterTab === "snoozed"
-          ? `${props.total} coming back later`
+          ? `${props.total} ${t("coming back later")}`
           : null
     : [
         props.ranked
           ? props.learnedFrom
-            ? `Learned from ${props.learnedFrom} articles`
-            : "Ranked for you"
+            ? t("Learned from {n} articles").replace("{n}", String(props.learnedFrom))
+            : t("Ranked for you")
           : null,
         props.lastFetched
-          ? `Updated ${formatRelativeTime(props.lastFetched)}`
-          : "Not refreshed yet",
+          ? `${t("Updated")} ${formatRelativeTime(props.lastFetched)}`
+          : t("Not refreshed yet"),
       ]
         .filter(Boolean)
         .join(" · ");
@@ -386,7 +398,7 @@ function OptionsMenu(props: ListToolbarProps) {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            aria-label="List options"
+            aria-label={t("List options")}
             className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground data-[state=open]:bg-accent"
           >
             <MoreHorizontal className="h-5 w-5" />
@@ -408,6 +420,14 @@ function OptionsMenu(props: ListToolbarProps) {
               <DropdownMenuItem onSelect={props.onSaveLink} className="gap-2">
                 <Plus className="h-4 w-4" /> {t("Save a link")}
               </DropdownMenuItem>
+              {props.total > 0 && (
+                <DropdownMenuItem
+                  onSelect={() => requestAppEvent("time-pile", "later")}
+                  className="gap-2"
+                >
+                  <Timer className="h-4 w-4" /> {t("Got 5 minutes?")}
+                </DropdownMenuItem>
+              )}
               {props.onListen && (
                 <DropdownMenuItem onSelect={props.onListen} className="gap-2">
                   <Headphones className="h-4 w-4" /> {t("Listen to Later")}

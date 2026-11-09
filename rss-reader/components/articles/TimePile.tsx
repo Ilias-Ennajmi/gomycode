@@ -10,10 +10,12 @@ import { articleSource } from "@/components/articles/ArticleCard";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import { haptic } from "@/lib/native";
 import { fillBudget, startSession } from "@/lib/session";
+import { useT } from "@/lib/i18n";
 import type { ArticleSummary } from "@/lib/types";
 
 // "Got 5 minutes?": pick the time, see the pile as cards (from what you saved for Later
-// first, then the best of For You), swap any card or shuffle the lot, then Start. The pile
+// first, then the best of For You; or Later alone, opened from the Later tab), swap any card
+// or shuffle the lot, then Start. The pile
 // becomes a reading session: read, swipe to the next, leave and come back to where you
 // were (lib/session.ts).
 
@@ -33,11 +35,16 @@ function shuffled<T>(items: T[]) {
 export function TimePile({
   open,
   onOpenChange,
+  from: initialFrom = "all",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** "later": only what's saved for Later. */
+  from?: "all" | "later";
 }) {
+  const { t } = useT();
   const [budget, setBudget] = React.useState<number>(5);
+  const [from, setFrom] = React.useState(initialFrom);
   const [order, setOrder] = React.useState<ArticleSummary[] | null>(null);
   const [skipped, setSkipped] = React.useState<Set<string>>(new Set());
   const { setSelectedArticleId, setMobilePane } = useReaderState();
@@ -45,13 +52,16 @@ export function TimePile({
     revalidateOnFocus: false,
   });
   const forYou = useSWR<ArticlesPage>(
-    open ? "/api/articles?view=foryou&unread=true&page=1&limit=60" : null,
+    open && from === "all" ? "/api/articles?view=foryou&unread=true&page=1&limit=60" : null,
     { revalidateOnFocus: false }
   );
-  const loading = !later.data && !forYou.data;
+  const loading = from === "later" ? !later.data : !later.data && !forYou.data;
   const candidates = React.useMemo(
-    () => [...(later.data?.articles ?? []), ...(forYou.data?.articles ?? [])],
-    [later.data, forYou.data]
+    () => [
+      ...(later.data?.articles ?? []),
+      ...(from === "all" ? (forYou.data?.articles ?? []) : []),
+    ],
+    [later.data, forYou.data, from]
   );
   const { picks, total } = React.useMemo(
     () =>
@@ -66,7 +76,7 @@ export function TimePile({
     if (picks.length === 0) return;
     haptic("success");
     startSession({
-      title: `Your ${budget} minutes`,
+      title: t("Your {n} minutes").replace("{n}", String(budget)),
       minutes: budget,
       items: picks.map((p) => p.article),
       index: at,
@@ -77,8 +87,8 @@ export function TimePile({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title="How much time do you have?">
-      <div className="flex gap-2 px-3 pb-3 pt-1" role="radiogroup" aria-label="Time">
+    <Sheet open={open} onOpenChange={onOpenChange} title={t("How much time do you have?")}>
+      <div className="flex gap-2 px-3 pb-2 pt-1" role="radiogroup" aria-label={t("Time")}>
         {BUDGETS.map((minutes) => (
           <button
             key={minutes}
@@ -97,13 +107,45 @@ export function TimePile({
           </button>
         ))}
       </div>
+      <div
+        className="mx-3 mb-3 flex rounded-full bg-muted p-0.5 text-xs font-medium"
+        role="radiogroup"
+        aria-label={t("From")}
+      >
+        {(
+          [
+            ["all", t("Later and For You")],
+            ["later", t("Later only")],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={from === id}
+            onClick={() => {
+              setFrom(id);
+              setOrder(null);
+              setSkipped(new Set());
+            }}
+            className={cn(
+              "h-8 flex-1 rounded-full transition-colors",
+              from === id ? "bg-background shadow-sm" : "text-muted-foreground"
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       {loading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : picks.length === 0 ? (
         <p className="px-4 py-12 text-center text-sm text-muted-foreground">
-          Nothing short enough right now. Try more time.
+          {from === "later" && later.data?.articles.length === 0
+            ? t("Nothing saved for Later yet.")
+            : t("Nothing short enough right now. Try more time.")}
         </p>
       ) : (
         <>
@@ -133,8 +175,8 @@ export function TimePile({
                 setSkipped(new Set());
                 setOrder(shuffled(candidates));
               }}
-              aria-label="Shuffle"
-              title="Shuffle"
+              aria-label={t("Shuffle")}
+              title={t("Shuffle")}
               className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full ring-1 ring-border hover:bg-accent"
             >
               <Shuffle className="h-5 w-5" />
@@ -145,12 +187,12 @@ export function TimePile({
               className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-primary text-[15px] font-semibold text-primary-foreground transition-transform active:scale-[0.98]"
             >
               <Play className="h-4 w-4 fill-current" />
-              Start · {picks.length} {picks.length === 1 ? "piece" : "pieces"}, {Math.round(total)}{" "}
-              min
+              {t("Start")} · {picks.length} {t(picks.length === 1 ? "piece" : "pieces")},{" "}
+              {Math.round(total)} min
             </button>
           </div>
           <p className="px-4 pb-1 text-center text-[11px] text-muted-foreground">
-            Read, then swipe to the next. Leave any time: a pill brings you back.
+            {t("Read, then swipe to the next. Leave any time: a pill brings you back.")}
           </p>
         </>
       )}
@@ -171,6 +213,7 @@ function PileCard({
   onOpen: () => void;
   onSwap: () => void;
 }) {
+  const { t } = useT();
   const source = articleSource(article);
   const [broken, setBroken] = React.useState(false);
   const episode = article.audioUrl && !article.isVideo;
@@ -219,15 +262,15 @@ function PileCard({
           </span>
           <span className="mt-auto truncate pt-1.5 text-[11.5px] text-muted-foreground">
             {source.name}
-            {article.isSaved && " · Later"}
+            {article.isSaved && ` · ${t("Later")}`}
           </span>
         </span>
       </button>
       <button
         type="button"
         onClick={onSwap}
-        aria-label={`Swap out ${article.title}`}
-        title="Swap for another"
+        aria-label={`${t("Swap out")} ${article.title}`}
+        title={t("Swap for another")}
         className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur hover:bg-black/75"
       >
         <RefreshCw className="h-3.5 w-3.5" />

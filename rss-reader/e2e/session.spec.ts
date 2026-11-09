@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { isPhone, openApp, reset } from "./helpers";
+import { goToTab, isPhone, openApp, reset } from "./helpers";
 
 test.beforeAll(async ({ browser }) => {
   const page = await browser.newPage();
@@ -46,4 +46,26 @@ test("5 min: pick, swap, shuffle, read through, leave and come back", async ({ p
   }
   await page.getByRole("button", { name: "End this session" }).first().click();
   await expect(page.getByRole("button", { name: /Your 10 minutes ·/ })).toHaveCount(0);
+});
+
+test("5 min from Later: only what's saved, and you can widen it", async ({ page }) => {
+  await openApp(page);
+  await goToTab(page, "Later");
+  await page.getByRole("button", { name: "Got 5 minutes?" }).click();
+  const picker = page.getByRole("dialog", { name: /How much time/ });
+  await expect(picker.getByRole("radio", { name: "Later only" })).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
+  await picker.getByRole("radio", { name: "30 min" }).click();
+  const sources = picker.locator("button span.truncate");
+  await expect(sources.first()).toBeVisible();
+  for (const text of await sources.allInnerTexts()) expect(text).toContain("· Later");
+
+  await picker.getByRole("radio", { name: "Later and For You" }).click();
+  await expect(picker.getByRole("radio", { name: "Later and For You" })).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
+  await expect(sources.first()).toBeVisible();
 });

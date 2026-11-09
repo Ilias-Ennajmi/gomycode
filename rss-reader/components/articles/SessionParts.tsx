@@ -8,6 +8,7 @@ import { useReaderState } from "@/lib/hooks/useReaderState";
 import { useIsPhone } from "@/components/ui/sheet";
 import { requestAppEvent } from "@/lib/app-events";
 import type { ArticleSummary } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 // The pieces of a reading session around the reader: a thin bar on top (where you are,
 // end it), a big "next" card at the end of each piece (or "done" after the last), and,
@@ -34,18 +35,19 @@ function Dots({ session }: { session: ReadingSession }) {
 }
 
 export function SessionBanner({ session }: { session: ReadingSession }) {
+  const { t } = useT();
   return (
     <div className="mb-5 flex items-center gap-3 rounded-full bg-primary/10 py-1.5 pl-3.5 pr-1.5 text-xs font-semibold text-primary">
       <Timer className="h-3.5 w-3.5 shrink-0" />
       <span className="truncate">{session.title}</span>
       <Dots session={session} />
       <span className="ml-auto shrink-0 tabular-nums">
-        {session.index + 1} of {session.items.length}
+        {session.index + 1} {t("of")} {session.items.length}
       </span>
       <button
         type="button"
         onClick={endSession}
-        aria-label="End this session"
+        aria-label={t("End this session")}
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full hover:bg-primary/15"
       >
         <X className="h-3.5 w-3.5" />
@@ -65,13 +67,18 @@ export function SessionNext({
   onGo: (article: ArticleSummary) => void;
 }) {
   const { setSelectedArticleId, setMobilePane } = useReaderState();
+  const { t } = useT();
   if (!next) {
     return (
       <section className="mt-12 flex flex-col items-center rounded-3xl bg-primary/10 px-6 py-8 text-center">
         <PartyPopper className="h-8 w-8 text-primary" />
-        <p className="mt-2 text-lg font-semibold">That&rsquo;s your {session.minutes} minutes</p>
+        <p className="mt-2 text-lg font-semibold">
+          {t("That's your {n} minutes").replace("{n}", String(session.minutes))}
+        </p>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          {session.seen.length} of {session.items.length} opened.
+          {t("{a} of {b} opened.")
+            .replace("{a}", String(session.seen.length))
+            .replace("{b}", String(session.items.length))}
         </p>
         <div className="mt-4 flex gap-2">
           <button
@@ -82,7 +89,7 @@ export function SessionNext({
             }}
             className="h-10 rounded-full px-4 text-sm font-semibold ring-1 ring-border hover:bg-accent"
           >
-            Another round
+            {t("Another round")}
           </button>
           <button
             type="button"
@@ -93,7 +100,7 @@ export function SessionNext({
             }}
             className="h-10 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground"
           >
-            Done
+            {t("Done")}
           </button>
         </div>
       </section>
@@ -101,11 +108,11 @@ export function SessionNext({
   }
   const minutes = minutesLeft(next);
   return (
-    <nav aria-label="Next in this session" className="mt-12">
+    <nav aria-label={t("Next in this session")} className="mt-12">
       <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary">
-        <Timer className="h-3.5 w-3.5" /> Next in {session.title.toLowerCase()}
+        <Timer className="h-3.5 w-3.5" /> {t("Next")} · {session.title}
         <span className="ml-auto normal-case tracking-normal text-muted-foreground">
-          {session.index + 2} of {session.items.length}
+          {session.index + 2} {t("of")} {session.items.length}
         </span>
       </p>
       <button
@@ -140,7 +147,7 @@ export function SessionNext({
         </span>
       </button>
       <p className="mt-3 text-center text-xs text-muted-foreground md:hidden">
-        Or swipe left for the next one
+        {t("Or swipe left for the next one")}
       </p>
     </nav>
   );
@@ -149,6 +156,7 @@ export function SessionNext({
 /** Outside the reader: back to the piece you were on. */
 export function ResumeSessionPill() {
   const session = useSession();
+  const { t } = useT();
   const { selectedArticleId, setSelectedArticleId, setMobilePane, mobilePane } = useReaderState();
   const current = session?.items[session.index];
   const phone = useIsPhone();
@@ -184,7 +192,7 @@ export function ResumeSessionPill() {
         <button
           type="button"
           onClick={endSession}
-          aria-label="End this session"
+          aria-label={t("End this session")}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full hover:bg-background/15"
         >
           <X className="h-4 w-4" />

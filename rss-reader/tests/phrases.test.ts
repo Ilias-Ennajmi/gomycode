@@ -45,3 +45,20 @@ test("phraseAt finds the phrase being said", () => {
   assert.equal(phraseAt(phrases, -1), -1);
   assert.equal(phrases[phraseAt(phrases, 5.2)].text, "Three.");
 });
+
+test("sentence-level transcripts keep each sentence's own start", () => {
+  const phrases = toPhrases(
+    [
+      { t: 0, text: "Welcome back." },
+      { t: 2, text: "Today it's sleep." },
+      { t: 5, text: "Let's start with a story." },
+    ],
+    9
+  );
+  assert.deepEqual(
+    phrases.map((p) => p.t),
+    [0, 2, 5]
+  );
+  assert.equal(phraseAt(phrases, 4.5), 1);
+  assert.equal(phraseAt(phrases, 5), 2);
+});

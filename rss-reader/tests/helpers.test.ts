@@ -86,3 +86,15 @@ test("a body that isn't JSON is a bad request, not a server error", async () => 
     a: 1,
   });
 });
+
+test("a transcript cut off at the length limit keeps its complete lines", () => {
+  const raw =
+    '{"summary": "About sleep.", "keyMoments": [{"t": "0:00", "text": "Intro"}], ' +
+    '"transcript": [{"t": "0:00", "text": "Welcome back."}, {"t": "0:02", "text": "Today it\'s sl';
+  const data = salvageJson(raw) as { summary: string; transcript: { text: string }[] };
+  assert.equal(data.summary, "About sleep.");
+  assert.deepEqual(
+    data.transcript.map((line) => line.text),
+    ["Welcome back."]
+  );
+});

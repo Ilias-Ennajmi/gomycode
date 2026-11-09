@@ -10,7 +10,7 @@ import { readPref, usePref } from "@/lib/prefs";
 export type Locale = "en" | "fr";
 const KEY = "locale";
 
-const FR: Record<string, string> = {
+export const FR: Record<string, string> = {
   // Tabs and navigation
   "For You": "Pour vous",
   News: "Actus",
@@ -173,6 +173,108 @@ const FR: Record<string, string> = {
   Share: "Partager",
   "Open original": "Ouvrir l'original",
   "Save offline": "Garder hors ligne",
+  // Reading sessions, triage, player, snooze, media cards
+  "A scroll": "Un défilement",
+  "All clear": "Tout est trié",
+  "Another round": "Encore un tour",
+  "Back in Later": "De retour dans À lire",
+  "Bigger buttons and rows": "Boutons et lignes plus grands",
+  "Close the transcript": "Fermer la transcription",
+  Collapse: "Replier",
+  "Could not snooze": "Impossible de reporter",
+  "Couldn't undo": "Impossible d'annuler",
+  Done: "Terminé",
+  "End of episode": "Fin de l'épisode",
+  "End this session": "Terminer cette session",
+  "Episodes about… (a topic, a guest, a question)":
+    "Des épisodes sur… (un sujet, un invité, une question)",
+  Expand: "Déplier",
+  "Focus mode": "Mode concentration",
+  "Follow a curated bundle for an interest in one tap":
+    "Suivez une sélection sur un centre d'intérêt en un geste",
+  From: "Depuis",
+  "How much time do you have?": "Combien de temps avez-vous ?",
+  "It will come back to Later, with a notification.":
+    "Il reviendra dans À lire, avec une notification.",
+  Keep: "Garder",
+  "Later and For You": "À lire et Pour vous",
+  "Later only": "À lire seulement",
+  "Learned from {n} articles": "Appris de {n} articles",
+  "Light by day, dark by night, by the clock (and your location when shared)":
+    "Clair le jour, sombre la nuit, selon l'heure (et votre position si partagée)",
+  "List options": "Options de la liste",
+  "More options": "Plus d'options",
+  Next: "Suivant",
+  "Next in this session": "Suivant dans cette session",
+  "Not refreshed yet": "Pas encore actualisé",
+  "Not said in this one.": "Pas dit dans celui-ci.",
+  "Nothing saved for Later yet.": "Rien dans À lire pour l'instant.",
+  "Nothing short enough right now. Try more time.":
+    "Rien d'assez court pour l'instant. Essayez plus de temps.",
+  "Nothing unread here.": "Rien de non lu ici.",
+  "Or swipe left for the next one": "Ou balayez vers la gauche pour le suivant",
+  "Pages, like a book": "Des pages, comme un livre",
+  "Ranked for you": "Classé pour vous",
+  "Read as": "Lire en",
+  "Read, then swipe to the next. Leave any time: a pill brings you back.":
+    "Lisez, puis balayez vers le suivant. Partez quand vous voulez : une pastille vous ramène.",
+  "Search the transcript": "Rechercher dans la transcription",
+  "Search what's said…": "Chercher ce qui est dit…",
+  Shuffle: "Mélanger",
+  Skip: "Passer",
+  "Sleep timer": "Minuteur de sommeil",
+  Snip: "Extrait",
+  "Snip the last half-minute": "Garder les 30 dernières secondes",
+  "Snooze until…": "Reporter jusqu'à…",
+  "Snoozed until": "Reporté jusqu'à",
+  Start: "Commencer",
+  "Stop playing in…": "Arrêter la lecture dans…",
+  "Swap for another": "Échanger contre un autre",
+  "Swap out": "Échanger",
+  Tabs: "Onglets",
+  "That one didn't save": "Celui-ci n'a pas été enregistré",
+  "That's your {n} minutes": "Vos {n} minutes sont écoulées",
+  "The start of each word in bold, to carry the eye":
+    "Le début de chaque mot en gras, pour guider l'œil",
+  Time: "Durée",
+  Tomorrow: "Demain",
+  Transcript: "Transcription",
+  Triage: "Tri",
+  "Turn off": "Désactiver",
+  Undo: "Annuler",
+  "Unsnooze now": "Ne plus reporter",
+  Updated: "Mis à jour",
+  "Your {n} minutes": "Vos {n} minutes",
+  "coming back later": "reviendront plus tard",
+  finished: "terminés",
+  minutes: "minutes",
+  of: "sur",
+  "to read": "à lire",
+  "{a} of {b} opened.": "{a} sur {b} ouverts.",
+  "{kept} kept for Later, {skipped} skipped.": "{kept} gardés pour À lire, {skipped} passés.",
+  piece: "lecture",
+  pieces: "lectures",
+  "Show less": "Voir moins",
+  "Show all": "Tout voir",
+  "Read along": "Lecture synchronisée",
+  "Open the full transcript": "Ouvrir toute la transcription",
+  Discussion: "Discussion",
+  Chapters: "Chapitres",
+  "Key moments": "Moments clés",
+  "About the episode": "À propos de l'épisode",
+  "Up next": "À suivre",
+  "You might also like": "Vous aimerez aussi",
+  "About the podcast": "À propos du podcast",
+  "Episode page": "Page de l'épisode",
+  "Skip, mark read": "Passer, marquer comme lu",
+  "Keep for Later": "Garder pour À lire",
+  Open: "Ouvrir",
+  Details: "Détails",
+  "Open on YouTube": "Ouvrir sur YouTube",
+  "This evening": "Ce soir",
+  "Tomorrow morning": "Demain matin",
+  "This weekend": "Ce week-end",
+  "Next week": "La semaine prochaine",
 };
 
 const LocaleContext = React.createContext<{
@@ -183,6 +285,11 @@ const LocaleContext = React.createContext<{
 
 export function readLocale(): Locale {
   return readPref<string>(KEY, "en") === "fr" ? "fr" : "en";
+}
+
+/** Outside components (toasts, helpers): the same lookup, read from the saved locale. */
+export function tr(text: string) {
+  return readLocale() === "fr" ? (FR[text] ?? text) : text;
 }
 
 export function LocaleProvider({ children }: { children: React.ReactNode }) {

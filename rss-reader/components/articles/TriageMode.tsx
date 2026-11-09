@@ -12,6 +12,7 @@ import { haptic } from "@/lib/native";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { articleSource } from "@/components/articles/ArticleCard";
 import type { ArticleSummary } from "@/lib/types";
+import { tr, useT } from "@/lib/i18n";
 
 // Triage: the unread of a list, one at a time, sorted in a few seconds each. Swipe left
 // (or ←) to skip it, marked read; right (or →) to keep it for Later; Enter to open it.
@@ -33,6 +34,7 @@ export function TriageMode({
   onOpen: (article: ArticleSummary) => void;
   onClose: () => void;
 }) {
+  const { t } = useT();
   // Taken once: the list changing underneath (marked read) mustn't move the pile.
   const [pile] = React.useState(() => articles.filter((a) => !a.isRead));
   const [index, setIndex] = React.useState(0);
@@ -59,7 +61,7 @@ export function TriageMode({
             ? Promise.resolve()
             : toggleArticleSaved(article.id, true)
           : toggleArticleRead(article.id, true);
-      request.catch(() => toast.error("That one didn't save"));
+      request.catch(() => toast.error(tr("That one didn't save")));
       setHistory((h) => [...h, { article, choice }]);
       window.setTimeout(() => {
         setLeaving(null);
@@ -82,7 +84,7 @@ export function TriageMode({
             ? Promise.resolve()
             : toggleArticleSaved(last.article.id, false)
           : toggleArticleRead(last.article.id, false);
-    request.catch(() => toast.error("Couldn't undo"));
+    request.catch(() => toast.error(tr("Couldn't undo")));
     setHistory((h) => h.slice(0, -1));
     setIndex((i) => Math.max(0, i - 1));
   }, [history, leaving]);
@@ -130,7 +132,7 @@ export function TriageMode({
               <X className="h-5 w-5" />
             </button>
             <DialogPrimitive.Title className="mt-2 flex-1 text-center text-[15px] font-semibold">
-              Triage
+              {t("Triage")}
             </DialogPrimitive.Title>
             <span className="mt-2 w-11 text-right text-xs tabular-nums text-muted-foreground">
               {Math.min(index + 1, pile.length)}/{pile.length}
@@ -184,31 +186,33 @@ export function TriageMode({
                 >
                   <TriageCard article={article} />
                   <Stamp show={offset >= 40} className="left-4 border-primary text-primary">
-                    Keep
+                    {t("Keep")}
                   </Stamp>
                   <Stamp
                     show={offset <= -40}
                     className="right-4 border-muted-foreground text-muted-foreground"
                   >
-                    Skip
+                    {t("Skip")}
                   </Stamp>
                 </div>
               </>
             ) : (
               <div className="flex max-w-xs flex-col items-center text-center">
                 <PartyPopper className="h-10 w-10 text-primary" />
-                <p className="mt-3 text-lg font-semibold">All clear</p>
+                <p className="mt-3 text-lg font-semibold">{t("All clear")}</p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {pile.length === 0
-                    ? "Nothing unread here."
-                    : `${kept} kept for Later, ${skipped} skipped.`}
+                    ? t("Nothing unread here.")
+                    : t("{kept} kept for Later, {skipped} skipped.")
+                        .replace("{kept}", String(kept))
+                        .replace("{skipped}", String(skipped))}
                 </p>
                 <button
                   type="button"
                   onClick={onClose}
                   className="mt-5 h-11 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground"
                 >
-                  Done
+                  {t("Done")}
                 </button>
               </div>
             )}
@@ -327,11 +331,12 @@ function RoundButton({
   small?: boolean;
   children: React.ReactNode;
 }) {
+  const { t } = useT();
   return (
     <button
       type="button"
-      aria-label={label}
-      title={label}
+      aria-label={t(label)}
+      title={t(label)}
       onClick={onClick}
       disabled={disabled}
       className={cn(

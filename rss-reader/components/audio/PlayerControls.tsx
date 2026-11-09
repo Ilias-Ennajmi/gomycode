@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { tr, useT } from "@/lib/i18n";
 
 /** The playing position, re-rendering only this component every second. */
 export function usePlayerTime() {
@@ -160,12 +161,13 @@ export function SpeedButton({ className }: { className?: string }) {
 
 function sleepLabel(sleep: SleepTimer, now: number) {
   if (!sleep) return null;
-  if (sleep.kind === "end") return "End of episode";
+  if (sleep.kind === "end") return tr("End of episode");
   return `${Math.max(1, Math.ceil((sleep.until - now) / 60_000))} min`;
 }
 
 export function SleepButton({ className }: { className?: string }) {
   const { sleep, setSleep } = useAudio();
+  const { t } = useT();
   const [now, setNow] = React.useState(() => Date.now());
   React.useEffect(() => {
     if (sleep?.kind !== "minutes") return;
@@ -178,7 +180,7 @@ export function SleepButton({ className }: { className?: string }) {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label={label ? `Sleep timer: ${label}` : "Sleep timer"}
+          aria-label={label ? `${t("Sleep timer")}: ${label}` : t("Sleep timer")}
           className={cn(
             "flex h-9 items-center justify-center gap-1.5 rounded-full border px-3 text-[13px] font-medium hover:bg-accent",
             sleep && "border-primary/50 text-primary",
@@ -190,17 +192,17 @@ export function SleepButton({ className }: { className?: string }) {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Stop playing in…</DropdownMenuLabel>
+        <DropdownMenuLabel>{t("Stop playing in…")}</DropdownMenuLabel>
         {[15, 30, 45, 60].map((minutes) => (
           <DropdownMenuItem key={minutes} onSelect={() => setSleep(minutes)}>
-            {minutes} minutes
+            {minutes} {t("minutes")}
           </DropdownMenuItem>
         ))}
-        <DropdownMenuItem onSelect={() => setSleep("end")}>End of episode</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => setSleep("end")}>{t("End of episode")}</DropdownMenuItem>
         {sleep && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => setSleep(null)}>Turn off</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setSleep(null)}>{t("Turn off")}</DropdownMenuItem>
           </>
         )}
       </DropdownMenuContent>
@@ -218,13 +220,14 @@ export function SnipButton({
   label?: boolean;
 }) {
   const { snip, episode } = useAudio();
+  const { t } = useT();
   if (!episode) return null;
   return (
     <button
       type="button"
       onClick={() => void snip()}
-      aria-label="Snip the last half-minute"
-      title="Snip the last half-minute"
+      aria-label={t("Snip the last half-minute")}
+      title={t("Snip the last half-minute")}
       className={cn(
         "flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95",
         label ? "px-3 text-xs font-semibold" : "w-10",
@@ -232,7 +235,7 @@ export function SnipButton({
       )}
     >
       <Scissors className="h-[18px] w-[18px]" strokeWidth={1.9} />
-      {label && "Snip"}
+      {label && t("Snip")}
     </button>
   );
 }

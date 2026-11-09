@@ -1,9 +1,10 @@
 import type { TimedText } from "@/lib/types";
 
-// Read along, the way lyrics apps do it: a transcript's lines (often whole paragraphs,
-// with one start time each) cut into short phrases a reader can follow, each with its own
-// start and end. Inside a line, time is shared out by length, which tracks speech closely
-// enough; the line's own start keeps every phrase anchored to the audio.
+// Read along, the way lyrics apps do it: a transcript's lines (one sentence each in new
+// transcripts, whole paragraphs in older ones, each with its own start) cut into short
+// phrases a reader can follow, each with its own start and end. Inside a line, time is
+// shared out by length, which tracks speech closely enough; the line's own start keeps
+// every phrase anchored to the audio.
 
 export interface Phrase {
   t: number;

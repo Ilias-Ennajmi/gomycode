@@ -11,6 +11,7 @@ import { toggleArticleRead, toggleArticleSaved } from "@/lib/hooks/useArticles";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import { useBackToClose } from "@/lib/hooks/useHistorySync";
 import type { ArticleSummary } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 interface VerticalPlayer extends YTPlayer {
   loadVideoById(videoId: string): void;
@@ -348,6 +349,7 @@ function Action({
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  const { t } = useT();
   return (
     <button
       type="button"
@@ -355,8 +357,8 @@ function Action({
         event.stopPropagation();
         onClick();
       }}
-      aria-label={label}
-      title={label}
+      aria-label={t(label)}
+      title={t(label)}
       className={cn(
         "flex h-12 w-12 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur transition-transform active:scale-90",
         active && "text-primary"

@@ -177,7 +177,11 @@ function AppShellInner() {
   const [sourceSheetId, setSourceSheetId] = React.useState<string | null>(null);
   useSourceSheetRequest(setSourceSheetId);
   const [pileOpen, setPileOpen] = React.useState(false);
-  useAppEvent("time-pile", () => setPileOpen(true));
+  const [pileFrom, setPileFrom] = React.useState<"all" | "later">("all");
+  useAppEvent("time-pile", (from) => {
+    setPileFrom(from === "later" ? "later" : "all");
+    setPileOpen(true);
+  });
   useAppEvent("sources-unused", () => {
     setSourcesChannel("unused");
     setSourcesOpen(true);
@@ -463,7 +467,7 @@ function AppShellInner() {
       <SaveLinkDialog open={saveLinkOpen} onOpenChange={setSaveLinkOpen} />
       {packsOpen && <StarterPacks open firstRun onOpenChange={setPacksOpen} />}
       {episodeSearchOpen && <EpisodeSearch open onOpenChange={setEpisodeSearchOpen} />}
-      {pileOpen && <TimePile open onOpenChange={setPileOpen} />}
+      {pileOpen && <TimePile open onOpenChange={setPileOpen} from={pileFrom} />}
       {sourceSheetId && (
         <SourceSheet
           key={sourceSheetId}
