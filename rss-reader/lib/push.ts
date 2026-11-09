@@ -6,11 +6,13 @@ import { getOrCreateBriefing } from "@/lib/digest";
 // we send to it with the VAPID keys. Notifications are shown by public/sw.js.
 
 export interface NotifyPrefs {
-  /** The morning briefing, sent by the daily cron refresh. */
+  /** The morning digest: the briefing's top stories and what's waiting, at `digestHour`. */
   briefing: boolean;
+  /** When the morning digest goes out (local hour, 5–11). */
+  digestHour: number;
   /** A story suddenly covered by many news outlets. */
   breaking: boolean;
-  /** The weekly recap, Sunday evening. */
+  /** The weekly recap, Sunday evening (and the month in review on the 1st). */
   recap: boolean;
   /** Something broke in the app (once a day per kind of problem). */
   problems: boolean;
@@ -18,7 +20,27 @@ export interface NotifyPrefs {
 
 const PREFS_KEY = "notify-prefs";
 const SENT_KEY = "push-sent";
-const DEFAULT_PREFS: NotifyPrefs = { briefing: true, breaking: true, recap: true, problems: true };
+const DEFAULT_PREFS: NotifyPrefs = {
+  briefing: true,
+  digestHour: 7,
+  breaking: true,
+  recap: true,
+  problems: true,
+};
+
+/**
+ * The morning digest's text: the top headlines, then what's waiting for you. Notification
+ * bodies are short on a lock screen, so three headlines at most. Exported for tests.
+ */
+export function digestBody(headlines: string[], waiting: { later: number; episodes: number }) {
+  const lines = headlines.slice(0, 3).map((h) => `• ${h}`);
+  const extra = [
+    waiting.later ? `${waiting.later} in Later` : "",
+    waiting.episodes ? `${waiting.episodes} new episode${waiting.episodes === 1 ? "" : "s"}` : "",
+  ].filter(Boolean);
+  if (extra.length) lines.push(extra.join(" · "));
+  return lines.join("\n");
+}
 
 // Breaking: this many different news outlets on one story within the window.
 const BREAKING_MIN_SOURCES = 4;
@@ -117,6 +139,8 @@ interface SentLog {
   briefingDate: string | null;
   /** The week (its Monday) whose recap was announced. */
   recapWeek?: string | null;
+  /** The month ("YYYY-MM") whose review was announced. */
+  recapMonth?: string | null;
   /**
    * Articles already announced. Story groups are rebuilt on each refresh (new ids), so a
    * story counts as sent when it contains any of these.
@@ -128,11 +152,12 @@ function todayKey() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: TIMEZONE }).format(new Date());
 }
 
-/** Weekday (0 = Sunday) and hour in the app's time zone. */
+/** Weekday (0 = Sunday), day of the month and hour in the app's time zone. */
 function localClock(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: TIMEZONE,
     weekday: "short",
+    day: "numeric",
     hour: "numeric",
     hourCycle: "h23",
   }).formatToParts(date);
@@ -140,7 +165,8 @@ function localClock(date = new Date()) {
     parts.find((p) => p.type === "weekday")?.value ?? ""
   );
   const hour = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
-  return { weekday, hour };
+  const day = Number(parts.find((p) => p.type === "day")?.value ?? 0);
+  return { weekday, hour, day };
 }
 
 /**
@@ -178,26 +204,58 @@ export async function sendScheduledPushes({ morning }: { morning: boolean }) {
   const prefs = await getNotifyPrefs();
   const log = await readSetting<SentLog>(SENT_KEY, { briefingDate: null, articles: [] });
   let changed = false;
+  const clock = localClock();
 
-  if (morning && prefs.briefing && log.briefingDate !== todayKey()) {
-    const briefing = await getOrCreateBriefing().catch(() => null);
-    const lead = briefing?.top[0];
-    if (briefing && lead) {
-      const more = briefing.top.length - 1;
-      await sendToAll({
-        title: "Your morning briefing",
-        body: more > 0 ? `${lead.headline} · and ${more} more stories` : lead.headline,
-        url: "/reader?view=briefing",
-        tag: "briefing",
-        image: lead.imageUrl,
-      });
-      log.briefingDate = todayKey();
-      changed = true;
+  // The morning digest, from the first refresh at or after the chosen hour (the hourly tick;
+  // the daily cron's morning run counts too), and not past late morning if refreshes stalled.
+  const digestTime =
+    clock.hour >= prefs.digestHour && clock.hour < Math.max(prefs.digestHour + 4, 12);
+  if ((digestTime || (morning && clock.hour < 12)) && prefs.briefing) {
+    if (log.briefingDate !== todayKey()) {
+      const briefing = await getOrCreateBriefing().catch(() => null);
+      const lead = briefing?.top[0];
+      if (briefing && lead) {
+        const [later, episodes] = await Promise.all([
+          prisma.article.count({ where: { isSaved: true, archivedAt: null, isRead: false } }),
+          prisma.article.count({
+            where: {
+              audioUrl: { not: null },
+              isVideo: false,
+              isRead: false,
+              createdAt: { gte: new Date(Date.now() - 24 * 3600 * 1000) },
+            },
+          }),
+        ]);
+        await sendToAll({
+          title: "Your morning digest",
+          body: digestBody(
+            briefing.top.map((story) => story.headline),
+            { later, episodes }
+          ),
+          url: "/reader?view=briefing",
+          tag: "briefing",
+          image: lead.imageUrl,
+        });
+        log.briefingDate = todayKey();
+        changed = true;
+      }
     }
   }
 
+  // The month in review: the 1st from 9:00, once.
+  const month = todayKey().slice(0, 7);
+  if (prefs.recap && clock.day === 1 && clock.hour >= 9 && log.recapMonth !== month) {
+    await sendToAll({
+      title: "Your month in reading",
+      body: "The month's big stories, what you read, highlighted and listened to",
+      url: "/reader?view=recap&period=month",
+      tag: "recap-month",
+    });
+    log.recapMonth = month;
+    changed = true;
+  }
+
   // The weekly recap: Sunday from 18:00, once.
-  const clock = localClock();
   const week = weekKey();
   if (prefs.recap && clock.weekday === 0 && clock.hour >= 18 && log.recapWeek !== week) {
     await sendToAll({

@@ -7,7 +7,7 @@ import { readSetting, writeSetting } from "@/lib/push";
 // for what you ask for. When Google says the quota is gone anyway, calls of that kind
 // pause until it resets instead of failing every hour.
 
-export type AiBucket = "embed" | "text" | "video";
+export type AiBucket = "embed" | "text" | "video" | "voice";
 export type AiPriority = "background" | "user";
 
 function limit(name: string, fallback: number) {
@@ -20,6 +20,8 @@ export const DAILY_LIMITS: Record<AiBucket, number> = {
   embed: limit("GEMINI_EMBED_DAILY", 800),
   text: limit("GEMINI_TEXT_DAILY", 400),
   video: limit("GEMINI_VIDEO_DAILY", 40),
+  /** Natural-voice Listen: one per minute of speech (lib/ai.ts narrate). */
+  voice: limit("GEMINI_VOICE_DAILY", 60),
 };
 /** What background work may use; the rest waits for things you open. */
 export const BACKGROUND_SHARE = 0.75;

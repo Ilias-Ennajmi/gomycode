@@ -137,6 +137,9 @@ export async function seed() {
         ],
       },
     });
+    await prisma.highlight.create({
+      data: { articleId: IDS.video, text: "Focus is a muscle you train.", note: "Try it daily" },
+    });
 
     const episode = (data: {
       id: string;

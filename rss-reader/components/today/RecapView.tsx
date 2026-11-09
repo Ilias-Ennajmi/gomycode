@@ -21,6 +21,7 @@ import { useReaderState } from "@/lib/hooks/useReaderState";
 import type { HighlightSummary } from "@/lib/types";
 
 interface Recap {
+  period: "week" | "month";
   week: string;
   from: string;
   to: string;
@@ -65,10 +66,20 @@ function formatMinutes(minutes: number) {
   return m ? `${h} h ${m}` : `${h} h`;
 }
 
-/** The weekly recap: your week in news and reading. */
+/** The recap: your week (or month) in news and reading. */
 export function RecapView() {
-  const { data, isLoading } = useSWR<{ recap: Recap }>("/api/recap", { revalidateOnFocus: false });
+  const [period, setPeriod] = React.useState<"week" | "month">(() =>
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("period") === "month"
+      ? "month"
+      : "week"
+  );
+  const month = period === "month";
+  const { data, isLoading } = useSWR<{ recap: Recap }>(`/api/recap?period=${period}`, {
+    revalidateOnFocus: false,
+  });
   const recap = data?.recap;
+  const length = recap?.days.length ?? (month ? 30 : 7);
   const { setSelectedArticleId, setMobilePane } = useReaderState();
   const open = (articleId: string) => {
     setSelectedArticleId(articleId);
@@ -80,17 +91,49 @@ export function RecapView() {
       <div className="mx-auto max-w-3xl px-4 pb-24 pt-5 md:px-8 md:pt-8">
         <header>
           <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-            <CalendarRange className="h-4 w-4" /> Weekly recap
+            <CalendarRange className="h-4 w-4" /> {month ? "Month in review" : "Weekly recap"}
           </p>
-          <h1 className="mt-1 font-serif text-4xl font-semibold leading-tight tracking-tight md:text-5xl">
-            Your week
-          </h1>
+          <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
+            <h1 className="font-serif text-4xl font-semibold leading-tight tracking-tight md:text-5xl">
+              {month ? "Your month" : "Your week"}
+            </h1>
+            <div
+              role="radiogroup"
+              aria-label="Period"
+              className="flex rounded-full bg-muted p-0.5 text-xs font-medium"
+            >
+              {(
+                [
+                  ["week", "Week"],
+                  ["month", "Month"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="radio"
+                  aria-checked={period === id}
+                  onClick={() => setPeriod(id)}
+                  className={cn(
+                    "h-8 rounded-full px-4 transition-colors",
+                    period === id ? "bg-background shadow-sm" : "text-muted-foreground"
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            {recap ? formatRange(recap.from, recap.to) : "The last seven days"}
+            {recap && recap.period === period
+              ? formatRange(recap.from, recap.to)
+              : month
+                ? "The last thirty days"
+                : "The last seven days"}
           </p>
         </header>
 
-        {isLoading || !recap ? (
+        {isLoading || !recap || recap.period !== period ? (
           <RecapSkeleton />
         ) : (
           <div className="mt-8 space-y-12">
@@ -127,11 +170,11 @@ export function RecapView() {
                 />
                 <Stat
                   icon={<TrendingUp className="h-4 w-4" />}
-                  value={`${recap.stats.activeDays}/7`}
+                  value={`${recap.stats.activeDays}/${length}`}
                   label="days you read"
                 />
               </div>
-              <DayBars days={recap.days} />
+              <DayBars days={recap.days} month={month} />
               <p className="mt-3 text-sm text-muted-foreground">
                 {recap.stats.saved} saved for later · {recap.stats.finished} finished from Later
               </p>
@@ -140,7 +183,7 @@ export function RecapView() {
             {recap.stories.length > 0 && (
               <section>
                 <SectionTitle icon={<Newspaper className="h-5 w-5 text-primary" />}>
-                  The stories of the week
+                  {month ? "The stories of the month" : "The stories of the week"}
                 </SectionTitle>
                 <ol className="divide-y">
                   {recap.stories.map((story) => (
@@ -152,7 +195,12 @@ export function RecapView() {
                       >
                         <div className="min-w-0 flex-1">
                           <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                            {day(story.date).toLocaleDateString(undefined, { weekday: "long" })}
+                            {day(story.date).toLocaleDateString(
+                              undefined,
+                              month
+                                ? { weekday: "long", day: "numeric", month: "long" }
+                                : { weekday: "long" }
+                            )}
                           </p>
                           <h3 className="mt-0.5 text-balance font-serif text-xl font-semibold leading-snug group-hover:underline">
                             {story.headline}
@@ -242,12 +290,15 @@ export function RecapView() {
 
             {recap.stats.read === 0 && recap.stories.length === 0 && (
               <p className="py-10 text-center text-sm text-muted-foreground">
-                A quiet week. Read a few articles and your recap fills up here.
+                {month ? "A quiet month." : "A quiet week."} Read a few articles and your recap
+                fills up here.
               </p>
             )}
 
             <footer className="border-t pt-8 text-center text-sm text-muted-foreground">
-              A new recap every Sunday evening.
+              {month
+                ? "The month in review is always the last thirty days."
+                : "A new recap every Sunday evening."}
             </footer>
           </div>
         )}
@@ -274,21 +325,30 @@ function Stat({
   );
 }
 
-/** Seven small bars: articles read per day. */
-function DayBars({ days }: { days: { date: string; read: number }[] }) {
+/** Small bars: articles read per day (thirty thin ones for a month, labelled weekly). */
+function DayBars({ days, month }: { days: { date: string; read: number }[]; month?: boolean }) {
   const max = Math.max(1, ...days.map((d) => d.read));
   return (
-    <div className="mt-5 flex h-24 items-end gap-2" aria-label="Articles read per day">
-      {days.map((d) => (
-        <div key={d.date} className="flex flex-1 flex-col items-center gap-1.5">
-          <span className="text-[10.5px] tabular-nums text-muted-foreground">{d.read || ""}</span>
+    <div
+      className={cn("mt-5 flex h-24 items-end", month ? "gap-[3px]" : "gap-2")}
+      aria-label="Articles read per day"
+    >
+      {days.map((d, i) => (
+        <div key={d.date} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+          {!month && (
+            <span className="text-[10.5px] tabular-nums text-muted-foreground">{d.read || ""}</span>
+          )}
           <div
             className={cn("w-full rounded-md", d.read ? "bg-primary/70" : "bg-muted")}
             style={{ height: `${Math.max(6, (d.read / max) * 56)}px` }}
             title={`${d.read} read`}
           />
-          <span className="text-[10.5px] text-muted-foreground">
-            {day(d.date).toLocaleDateString(undefined, { weekday: "short" })}
+          <span className="h-4 whitespace-nowrap text-[10.5px] text-muted-foreground">
+            {month
+              ? i % 7 === 0
+                ? day(d.date).toLocaleDateString(undefined, { day: "numeric", month: "short" })
+                : ""
+              : day(d.date).toLocaleDateString(undefined, { weekday: "short" })}
           </span>
         </div>
       ))}

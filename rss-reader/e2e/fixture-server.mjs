@@ -58,9 +58,52 @@ function send(res, status, type, body, extra = {}) {
   res.end(body);
 }
 
+// Stand-ins for Readwise and Notion: they check the token, keep what they're sent, and
+// /_received hands it to the test.
+const received = [];
+const readBody = (req) =>
+  new Promise((resolve) => {
+    let data = "";
+    req.on("data", (chunk) => (data += chunk));
+    req.on("end", () => resolve(data ? JSON.parse(data) : null));
+  });
+
+async function exportApis(req, res, url) {
+  const auth = req.headers.authorization ?? "";
+  const json = (status, body) => send(res, status, "application/json", JSON.stringify(body));
+  if (url.pathname.startsWith("/readwise/")) {
+    if (auth !== "Token good-readwise") return json(401, { detail: "Invalid token" });
+    if (url.pathname === "/readwise/auth/") return send(res, 204, "text/plain", "");
+    if (url.pathname === "/readwise/highlights/" && req.method === "POST") {
+      received.push({ service: "readwise", body: await readBody(req) });
+      return json(200, []);
+    }
+  }
+  if (url.pathname.startsWith("/notion/")) {
+    if (auth !== "Bearer good-notion") return json(401, { message: "API token is invalid." });
+    if (/^\/notion\/databases\/[0-9a-f]{32}$/.test(url.pathname)) {
+      return json(200, {
+        properties: { Title: { type: "title" }, Tags: { type: "multi_select" } },
+      });
+    }
+    if (url.pathname === "/notion/pages" && req.method === "POST") {
+      received.push({ service: "notion", body: await readBody(req) });
+      return json(200, { id: `page-${received.length}` });
+    }
+    const children = url.pathname.match(/^\/notion\/blocks\/([\w-]+)\/children$/);
+    if (children && req.method === "PATCH") {
+      received.push({ service: "notion-append", page: children[1], body: await readBody(req) });
+      return json(200, {});
+    }
+  }
+  if (url.pathname === "/_received") return json(200, received);
+  return false;
+}
+
 http
-  .createServer((req, res) => {
+  .createServer(async (req, res) => {
     const url = new URL(req.url, base);
+    if ((await exportApis(req, res, url)) !== false) return;
     const audio = url.pathname.match(/^\/audio\/(\d+)\.wav$/);
     if (audio) {
       const seconds = Number(audio[1]);

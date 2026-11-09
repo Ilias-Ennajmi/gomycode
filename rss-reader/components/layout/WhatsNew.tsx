@@ -6,10 +6,30 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.11.09b";
+export const WHATS_NEW_VERSION = "2026.11.09c";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "A natural voice for Listen",
+    text: "In the reader, Listen and tap \"AI\" in the bar at the bottom: the article is read by a natural AI voice instead of the phone's robot one, a minute at a time. What it has read stays on your device, so listening again is instant. When the AI is busy it carries on with the phone's voice.",
+  },
+  {
+    title: "Search by meaning",
+    text: 'Searching? Tap "By meaning" to find articles about what you typed even when they use other words ("sleep and memory" finds "why naps help you learn").',
+  },
+  {
+    title: "Your month in review",
+    text: "The recap has a Month side: thirty days of reading, the month's biggest stories and your highlights, with a notification on the 1st.",
+  },
+  {
+    title: "Morning digest, at your time",
+    text: "The morning notification now lists the top three stories and what's waiting (Later, new episodes). Choose when it comes in Settings → Notifications.",
+  },
+  {
+    title: "Highlights to Readwise and Notion",
+    text: "Highlights → Send to…: paste your Readwise token or a Notion integration secret and database, and your highlights go there, new ones every hour after that.",
+  },
   {
     title: "Download episodes",
     text: "The arrow in the full-screen player keeps an episode on your phone, to listen with no connection (seeking works too). Podcasts → ⋯ → Downloads lists them; each one goes away by itself once you've listened to the end. A few shows' servers don't allow browsers to save files: the app tells you when that's the case.",

@@ -195,6 +195,8 @@ export type ArticleSort = "newest" | "oldest";
 
 export interface ArticleListParams {
   view?: "foryou";
+  /** With `search`: by meaning (embeddings) instead of the words. */
+  meaning?: boolean;
   /** News sources: "all" or one section id. */
   news?: string;
   source?: FeedType;

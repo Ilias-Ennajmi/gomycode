@@ -12,10 +12,12 @@ import {
   Play,
   Scissors,
   Search,
+  Send,
   Share2,
   Trash2,
   X,
 } from "lucide-react";
+import { SendHighlightsSheet } from "@/components/highlights/SendHighlights";
 import { toast } from "sonner";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -36,6 +38,7 @@ const COLORS = Object.keys(HIGHLIGHT_SWATCH) as HighlightColor[];
 
 /** Later → Highlights: every passage and note, newest first, searchable and exportable. */
 export function HighlightsList() {
+  const [sendOpen, setSendOpen] = React.useState(false);
   const [draft, setDraft] = React.useState("");
   const [search, setSearch] = React.useState("");
   const [color, setColor] = React.useState<HighlightColor | null>(null);
@@ -95,6 +98,15 @@ export function HighlightsList() {
               <Download className="h-3.5 w-3.5" /> Export
             </a>
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => setSendOpen(true)}
+          >
+            <Send className="h-3.5 w-3.5" /> Send to…
+          </Button>
+          {sendOpen && <SendHighlightsSheet open onOpenChange={setSendOpen} />}
         </div>
         <div className="flex items-center gap-1.5" role="toolbar" aria-label="Filter by colour">
           {COLORS.map((c) => (
