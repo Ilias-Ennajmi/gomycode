@@ -78,6 +78,9 @@ interface ReaderStateValue {
   setSearchScope: React.Dispatch<React.SetStateAction<SearchScope>>;
   searchSince: SearchSince;
   setSearchSince: React.Dispatch<React.SetStateAction<SearchSince>>;
+  /** Search by meaning (embeddings) rather than by the words. */
+  searchMeaning: boolean;
+  setSearchMeaning: React.Dispatch<React.SetStateAction<boolean>>;
   /** Newsletters sub-tab: all, web (Substack & co) or email. */
   newsletterKind: NewsletterKind | null;
   setNewsletterKind: (kind: NewsletterKind | null) => void;
@@ -158,6 +161,7 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
   const [search, setSearch] = React.useState("");
   const [searchScope, setSearchScope] = React.useState<SearchScope>("all");
   const [searchSince, setSearchSince] = React.useState<SearchSince>("any");
+  const [searchMeaning, setSearchMeaning] = React.useState(false);
   const [newsletterKind, setNewsletterKindState] = React.useState<NewsletterKind | null>(null);
   const setNewsletterKind = React.useCallback((kind: NewsletterKind | null) => {
     setNewsletterKindState(kind);
@@ -255,7 +259,12 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
   const listParams = React.useMemo<ArticleListParams>(() => {
     // Searching looks across everything, narrowed only by the search's own filters.
     if (search.trim()) {
-      return { search: search.trim(), since: searchSince, ...SCOPE_PARAMS[searchScope] };
+      return {
+        search: search.trim(),
+        since: searchSince,
+        ...(searchMeaning ? { meaning: true } : {}),
+        ...SCOPE_PARAMS[searchScope],
+      };
     }
     const params: ArticleListParams = {};
     // The briefing and the recap open stories from For You's pool.
@@ -300,6 +309,7 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     tabCategory,
     searchScope,
     searchSince,
+    searchMeaning,
     newsletterKind,
     videoKind,
     videoLength,
@@ -323,6 +333,8 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
     setSearchScope,
     searchSince,
     setSearchSince,
+    searchMeaning,
+    setSearchMeaning,
     newsletterKind,
     setNewsletterKind,
     videoKind,

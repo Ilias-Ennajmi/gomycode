@@ -61,6 +61,9 @@ export default defineConfig({
         // No outside AI or push in tests.
         GEMINI_API_KEY: "",
         VAPID_PRIVATE_KEY: "",
+        // Highlight exports go to the fixtures' stand-ins (e2e/fixture-server.mjs).
+        READWISE_API_URL: `${process.env.FIXTURES_URL}/readwise`,
+        NOTION_API_URL: `${process.env.FIXTURES_URL}/notion`,
       },
     },
   ],

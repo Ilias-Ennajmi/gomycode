@@ -32,6 +32,7 @@ function toSearchParams(params: ArticleListParams) {
   if (params.today) search.set("today", "true");
   if (params.unread) search.set("unread", "true");
   if (params.search) search.set("search", params.search);
+  if (params.search && params.meaning) search.set("meaning", "1");
   if (params.newsletter) search.set("newsletter", params.newsletter);
   if (params.inProgress) search.set("progress", "1");
   if (params.alerts) search.set("alerts", "1");

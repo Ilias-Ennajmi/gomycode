@@ -66,7 +66,10 @@ export function NotificationSettings() {
     }
   }
 
-  async function setPref(key: "briefing" | "breaking" | "recap" | "problems", value: boolean) {
+  async function setPref(
+    key: "briefing" | "breaking" | "recap" | "problems" | "digestHour",
+    value: boolean | number
+  ) {
     if (!status) return;
     setStatus({ ...status, prefs: { ...status.prefs, [key]: value } });
     const res = await fetch("/api/push", {
@@ -121,9 +124,9 @@ export function NotificationSettings() {
         <>
           <label className="flex items-center gap-3 px-3 py-2.5">
             <span className="flex-1">
-              <span className="block text-sm">Morning briefing</span>
+              <span className="block text-sm">Morning digest</span>
               <span className="block text-xs text-muted-foreground">
-                Around 7:00, the day’s top stories
+                The day’s top stories and what’s waiting for you
               </span>
             </span>
             <Switch
@@ -131,6 +134,23 @@ export function NotificationSettings() {
               onCheckedChange={(value) => setPref("briefing", value)}
             />
           </label>
+          {status.prefs.briefing && (
+            <label className="flex items-center gap-3 px-3 pb-2.5 pl-6">
+              <span className="flex-1 text-xs text-muted-foreground">At</span>
+              <select
+                value={status.prefs.digestHour ?? 7}
+                onChange={(event) => setPref("digestHour", Number(event.target.value))}
+                aria-label="Morning digest time"
+                className="h-8 rounded-md border bg-background px-2 text-sm"
+              >
+                {[5, 6, 7, 8, 9, 10, 11].map((hour) => (
+                  <option key={hour} value={hour}>
+                    {hour}:00
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="flex items-center gap-3 px-3 py-2.5">
             <span className="flex-1">
               <span className="block text-sm">Breaking news</span>
@@ -147,7 +167,7 @@ export function NotificationSettings() {
             <span className="flex-1">
               <span className="block text-sm">Weekly recap</span>
               <span className="block text-xs text-muted-foreground">
-                Sunday evening, your week in reading
+                Sunday evening, your week in reading; the 1st, your month
               </span>
             </span>
             <Switch

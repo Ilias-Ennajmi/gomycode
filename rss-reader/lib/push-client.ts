@@ -5,7 +5,13 @@
 export interface PushStatus {
   configured: boolean;
   publicKey: string | null;
-  prefs: { briefing: boolean; breaking: boolean; recap: boolean; problems?: boolean };
+  prefs: {
+    briefing: boolean;
+    digestHour?: number;
+    breaking: boolean;
+    recap: boolean;
+    problems?: boolean;
+  };
   subscribed: boolean;
 }
 

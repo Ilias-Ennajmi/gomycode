@@ -47,3 +47,30 @@ export function voiceFor(lang: string) {
     .getVoices()
     .find((v) => v.lang.toLowerCase().startsWith(lang.slice(0, 2)));
 }
+
+/** Passages of about a minute (under 900 characters) for the natural voice, by sentence. */
+export function narrationParts(text: string, max = 900) {
+  const out: string[] = [];
+  let current = "";
+  for (const sentence of chunks(text)) {
+    if ((current + " " + sentence).length > max && current) {
+      out.push(current.trim());
+      current = "";
+    }
+    current += " " + sentence;
+  }
+  if (current.trim()) out.push(current.trim());
+  // A single sentence longer than the limit is cut at a word.
+  return out.flatMap((part) => {
+    if (part.length <= max) return [part];
+    const pieces: string[] = [];
+    let rest = part;
+    while (rest.length > max) {
+      const cut = rest.lastIndexOf(" ", max);
+      pieces.push(rest.slice(0, cut > 0 ? cut : max).trim());
+      rest = rest.slice(cut > 0 ? cut : max);
+    }
+    if (rest.trim()) pieces.push(rest.trim());
+    return pieces;
+  });
+}

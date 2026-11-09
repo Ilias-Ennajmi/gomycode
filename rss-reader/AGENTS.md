@@ -118,6 +118,10 @@ Android app they appear as the app's own notifications.
   before and after), found again with whitespace-normalised matching and drawn as
   `<mark data-hl>`. `ArticleContent` memoises its `__html` object: a new object each
   render makes React reset innerHTML and wipes the marks.
+- _Search by meaning_: the "By meaning" chip (only when AI is on) adds `meaning=1`;
+  `searchByMeaning` embeds the query once (cached 10 min per instance), ranks the newest
+  1,500 embedded articles by cosine (≥ 0.55, top 60), then appends word matches; out of
+  quota it falls back to the words.
 - _Search_: `Article.search` is a `tsvector` kept by the trigger `Article_search_update`
   (migration `v2_library`; `reader_fold()` strips accents). Prisma sees it as
   `Unsupported`, and search runs as raw SQL in `lib/search.ts`, which also matches
@@ -127,6 +131,12 @@ Android app they appear as the app's own notifications.
   header); its Atom feed is then followed like any other.
 - _Snooze_: `Article.snoozedUntil` hides an article from lists until
   `wakeSnoozedArticles()` (every refresh) brings it back to the top of Later with a push.
+- _Month in review_: `buildRecap("month")` (`/api/recap?period=month`, the Week/Month
+  switch in `RecapView`): 30 days, the 8 most-covered daily leads (`monthStories`), its own
+  cached summary; a push on the 1st from 9:00 (`recapMonth` in the `push-sent` log).
+- _Morning digest_: `sendScheduledPushes` sends the briefing's top three headlines plus
+  what's waiting (Later, new episodes; `digestBody`) from the first refresh at or after
+  `NotifyPrefs.digestHour` (5–11, chosen in Notifications), not past late morning.
 - _Weekly recap_: rolling 7 days; each day's lead story comes from `DailyDigest`
   (topics are rebuilt every refresh). The AI summary is cached per week in `Setting`, and a
   Sunday-evening push goes out once per week.
@@ -396,6 +406,23 @@ title) and Reddit (often 403 server side); `Discussion` renders under the articl
 Pinned searches are the `saved-searches` pref, shown in the sidebar with a count from
 `/api/articles?search=…&unread=true&limit=1`.
 
+**Natural voice.** The Listen bar's "AI" switch (pref `listen-voice`) reads the article
+with Gemini text-to-speech: `narrationParts` cuts it into passages under 900 characters
+(about a minute, ~3 MB of WAV, under Vercel's 4.5 MB response limit), each posted to
+`/api/narrate` (`narrate()` in `lib/ai.ts`, `GEMINI_TTS_MODEL` or the preview TTS models,
+budget bucket `voice`, `GEMINI_VOICE_DAILY`, default 60), kept in the `narration` cache on
+the device, the next fetched while one plays. Busy or out of quota, it carries on with the
+device's voice from that passage.
+
+**Highlight exports** (`lib/exports.ts`, `/api/highlights/send`, Highlights → Send to…).
+Readwise (token checked at `/auth/`, highlights posted in hundreds) and a Notion database
+(integration secret + database link; one page per article in the database's title
+property, quotes and notes as blocks; later highlights appended, page ids in the
+`notion-pages` Setting). Tokens live in the `highlight-exports` Setting and never go back to
+the browser. New highlights are sent after each hourly refresh (`runHighlightExports` in
+maintenance). `READWISE_API_URL` / `NOTION_API_URL` point the calls elsewhere (the e2e
+fixtures stand in for both and record what they get at `/_received`).
+
 **Shorts and Listen to Later.** `ShortsPlayer` reuses one YouTube IFrame player
 (`loadVideoById`) with swipe/keys/wheel; `ListenLater` reads the Later queue with the browser
 voice (`lib/speech.ts` helpers shared with the reader's Listen button) and marks each article
@@ -554,9 +581,10 @@ Built in this order (see `git log -- rss-reader`):
     Next.js 15. Then: sentence-level transcripts (exact read along), transcript queue
     by what you play, old transcripts redone, "5 min" from Later, more of the app in French.
     Then: DeArrow titles, episode downloads, car mode, voice boost and silence trimming.
+    Then: natural AI voice for Listen, search by meaning, month in review, morning digest at
+    a chosen hour, highlights to Readwise and Notion.
 
 ## Open ideas (not built yet)
 
 - "Mark read when scrolled past" in lists.
-- Highlights export to Readwise / Notion.
 - Android shortcuts for Search, Highlights and Snoozed (needs a new APK).

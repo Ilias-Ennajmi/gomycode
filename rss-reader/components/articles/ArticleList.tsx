@@ -20,7 +20,9 @@ import {
   Rss,
   SearchX,
   X,
+  Sparkles,
 } from "lucide-react";
+import { useAiStatus } from "@/lib/hooks/useAi";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { cn, formatDateSeparator, formatRelativeTime } from "@/lib/utils";
@@ -111,6 +113,8 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
     setSearchScope,
     searchSince,
     setSearchSince,
+    searchMeaning,
+    setSearchMeaning,
     newsletterKind,
     videoKind,
     podcastKind,
@@ -518,6 +522,8 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
             onScope={setSearchScope}
             since={searchSince}
             onSince={setSearchSince}
+            meaning={searchMeaning}
+            onMeaning={setSearchMeaning}
           />
         ) : (
           <>
@@ -771,12 +777,17 @@ function SearchFilters({
   onScope,
   since,
   onSince,
+  meaning,
+  onMeaning,
 }: {
   scope: SearchScope;
   onScope: (scope: SearchScope) => void;
   since: SearchSince;
   onSince: (since: SearchSince) => void;
+  meaning: boolean;
+  onMeaning: (on: boolean) => void;
 }) {
+  const ai = useAiStatus();
   return (
     <div className="flex items-center gap-2 border-b px-3 py-2">
       <div
@@ -784,6 +795,11 @@ function SearchFilters({
         aria-label="Search in"
         className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto scrollbar-none"
       >
+        {ai?.enabled && (
+          <Chip active={meaning} quiet onClick={() => onMeaning(!meaning)} className="gap-1">
+            <Sparkles className="h-3.5 w-3.5" /> By meaning
+          </Chip>
+        )}
         {SCOPES.map((option) => (
           <Chip
             key={option.id}

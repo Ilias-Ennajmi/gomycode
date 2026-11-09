@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getNotifyPrefs, pushConfigured, setNotifyPrefs, vapidPublicKey } from "@/lib/push";
+import {
+  getNotifyPrefs,
+  pushConfigured,
+  setNotifyPrefs,
+  vapidPublicKey,
+  type NotifyPrefs,
+} from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +56,10 @@ export async function DELETE(request: NextRequest) {
 /** Which notifications to send. */
 export async function PATCH(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
-  const prefs: { briefing?: boolean; breaking?: boolean; recap?: boolean; problems?: boolean } = {};
+  const prefs: Partial<NotifyPrefs> = {};
+  if (Number.isInteger(body.digestHour) && body.digestHour >= 5 && body.digestHour <= 11) {
+    prefs.digestHour = body.digestHour;
+  }
   if (typeof body.briefing === "boolean") prefs.briefing = body.briefing;
   if (typeof body.breaking === "boolean") prefs.breaking = body.breaking;
   if (typeof body.recap === "boolean") prefs.recap = body.recap;

@@ -6,8 +6,14 @@ import { readSetting, weekKey, writeSetting } from "@/lib/push";
 import type { Briefing } from "@/lib/digest";
 import { reportProblem } from "@/lib/errlog";
 
-// The weekly recap: the last seven days of reading, the week's lead stories (from the stored
-// daily briefings; story groups themselves only cover two days), and a short AI summary.
+// The recap: the last seven (or thirty) days of reading, the period's lead stories (from the
+// stored daily briefings; story groups themselves only cover two days), and a short AI
+// summary. Weekly by default; "month" is the month in review.
+
+export type RecapPeriod = "week" | "month";
+const PERIOD_DAYS: Record<RecapPeriod, number> = { week: 7, month: 30 };
+/** A month has 30 daily leads: the review keeps the ones most outlets covered. */
+const MONTH_STORIES = 8;
 
 const TIMEZONE = process.env.APP_TIMEZONE || "Africa/Casablanca";
 const DAY_MS = 24 * 3600 * 1000;
@@ -23,6 +29,8 @@ export interface RecapStory {
 }
 
 export interface WeeklyRecap {
+  period: RecapPeriod;
+  /** The ISO week, or "YYYY-MM" of the period's end for a month. */
   week: string;
   from: string;
   to: string;
@@ -33,7 +41,7 @@ export interface WeeklyRecap {
     finished: number;
     highlights: number;
     notes: number;
-    /** Days (of the seven) with at least one article read. */
+    /** Days (of the period) with at least one article read. */
     activeDays: number;
   };
   days: { date: string; read: number }[];
@@ -47,20 +55,21 @@ function localDate(date: Date) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: TIMEZONE }).format(date);
 }
 
-function recentHighlights(since: Date) {
+function recentHighlights(since: Date, take: number) {
   return prisma.highlight.findMany({
     where: { createdAt: { gte: since } },
     orderBy: { createdAt: "desc" },
-    take: 4,
+    take,
     include: HIGHLIGHT_ARTICLE_INCLUDE,
   });
 }
 
-export async function buildRecap(): Promise<WeeklyRecap> {
+export async function buildRecap(period: RecapPeriod = "week"): Promise<WeeklyRecap> {
   const now = new Date();
-  const since = new Date(now.getTime() - 7 * DAY_MS);
-  const dayKeys = Array.from({ length: 7 }, (_, i) =>
-    localDate(new Date(now.getTime() - (6 - i) * DAY_MS))
+  const length = PERIOD_DAYS[period];
+  const since = new Date(now.getTime() - length * DAY_MS);
+  const dayKeys = Array.from({ length }, (_, i) =>
+    localDate(new Date(now.getTime() - (length - 1 - i) * DAY_MS))
   );
 
   const [read, saved, finished, highlights, notes, digests, topHighlights] = await Promise.all([
@@ -81,7 +90,7 @@ export async function buildRecap(): Promise<WeeklyRecap> {
     prisma.highlight.count({ where: { createdAt: { gte: since } } }),
     prisma.highlight.count({ where: { createdAt: { gte: since }, note: { not: null } } }),
     prisma.dailyDigest.findMany({ where: { date: { in: dayKeys } }, orderBy: { date: "desc" } }),
-    recentHighlights(since),
+    recentHighlights(since, period === "month" ? 6 : 4),
   ]);
 
   // Time read: an article opened and read to the end counts in full, one skimmed in part.
@@ -124,9 +133,10 @@ export async function buildRecap(): Promise<WeeklyRecap> {
   }
 
   const recap: WeeklyRecap = {
-    week: weekKey(now),
+    period,
+    week: period === "month" ? dayKeys[length - 1].slice(0, 7) : weekKey(now),
     from: dayKeys[0],
-    to: dayKeys[6],
+    to: dayKeys[length - 1],
     stats: {
       read: read.length,
       minutes: Math.round(minutes),
@@ -140,7 +150,7 @@ export async function buildRecap(): Promise<WeeklyRecap> {
     topSources: Array.from(perSource.values())
       .sort((a, b) => b.read - a.read)
       .slice(0, 5),
-    stories,
+    stories: period === "month" ? monthStories(stories) : stories,
     highlights: topHighlights,
     summary: null,
   };
@@ -151,16 +161,27 @@ export async function buildRecap(): Promise<WeeklyRecap> {
   return recap;
 }
 
-/** Two or three sentences on the week, cached for a few hours to spare the free AI quota. */
+/** The month's biggest leads (most outlets), back in date order. Exported for tests. */
+export function monthStories(stories: RecapStory[]) {
+  return [...stories]
+    .sort((a, b) => b.sources.length - a.sources.length || b.date.localeCompare(a.date))
+    .slice(0, MONTH_STORIES)
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+/** Two or three sentences on the period, cached for a few hours to spare the free AI quota. */
 async function recapSummary(recap: WeeklyRecap) {
   if (!isAiEnabled() || recap.stories.length === 0) return null;
-  const key = `recap-summary-${recap.week}`;
+  const key = `recap-summary-${recap.period === "month" ? "m" : ""}${recap.week}`;
+  const noun = recap.period === "month" ? "month" : "week";
   const cached = await readSetting<{ at: number; text: string | null }>(key, { at: 0, text: null });
   if (cached.text && Date.now() - cached.at < SUMMARY_MAX_AGE_MS) return cached.text;
 
   const text = await generateText(
     [
-      "The week's lead stories, one per day:",
+      recap.period === "month"
+        ? "The month's biggest lead stories:"
+        : "The week's lead stories, one per day:",
       ...recap.stories.map((s) => `- ${s.date}: ${s.headline} (${s.why})`),
       "",
       `The reader read ${recap.stats.read} articles (about ${recap.stats.minutes} minutes), ` +
@@ -171,7 +192,7 @@ async function recapSummary(recap: WeeklyRecap) {
     ].join("\n"),
     {
       system:
-        "Write a warm, plain two- or three-sentence recap of the week for this reader: the big " +
+        `Write a warm, plain two- or three-sentence recap of the ${noun} for this reader: the big ` +
         "themes in the news, then one line about their reading. No lists, no emoji, no greeting. " +
         "Answer in English.",
       maxTokens: 220,

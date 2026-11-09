@@ -407,3 +407,89 @@ export async function findPromotions(items: { id: string; title: string; summary
     numbers.map((n) => items[Number(n) - 1]?.id).filter((id): id is string => Boolean(id))
   );
 }
+
+// Natural voices for Listen: Gemini's speech models read a passage (about a minute) and
+// answer raw 24 kHz 16-bit mono PCM, wrapped here into a WAV the browser plays.
+const TTS_MODELS = [
+  process.env.GEMINI_TTS_MODEL,
+  "gemini-2.5-flash-preview-tts",
+  "gemini-2.5-flash-tts",
+].filter(Boolean) as string[];
+const VOICES = { en: "Kore", fr: "Aoede" } as const;
+// About a minute of speech: ~3 MB of WAV, under the 4.5 MB a Vercel function may answer.
+export const NARRATE_MAX_CHARS = 1000;
+
+/** A WAV file around raw PCM samples. Exported for tests. */
+export function wavFromPcm(pcm: Uint8Array, sampleRate = 24_000, channels = 1, bits = 16) {
+  const header = new ArrayBuffer(44);
+  const view = new DataView(header);
+  const write = (offset: number, text: string) =>
+    [...text].forEach((ch, i) => view.setUint8(offset + i, ch.charCodeAt(0)));
+  const byteRate = (sampleRate * channels * bits) / 8;
+  write(0, "RIFF");
+  view.setUint32(4, 36 + pcm.length, true);
+  write(8, "WAVE");
+  write(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, channels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, (channels * bits) / 8, true);
+  view.setUint16(34, bits, true);
+  write(36, "data");
+  view.setUint32(40, pcm.length, true);
+  const out = new Uint8Array(44 + pcm.length);
+  out.set(new Uint8Array(header), 0);
+  out.set(pcm, 44);
+  return out;
+}
+
+/** Reads a passage aloud in a natural voice; a WAV file. Throws AiError (429 when out). */
+export async function narrate(text: string, lang: "en" | "fr") {
+  const passage = text.slice(0, NARRATE_MAX_CHARS);
+  let lastError: unknown;
+  for (const model of TTS_MODELS) {
+    try {
+      const data = await callGemini(
+        model,
+        "generateContent",
+        {
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  text:
+                    (lang === "fr"
+                      ? "Lis ce texte à voix haute, d'un ton posé et naturel :\n\n"
+                      : "Read this aloud in a calm, natural voice:\n\n") + passage,
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICES[lang] } },
+            },
+          },
+        },
+        { bucket: "voice", priority: "user" },
+        60_000
+      );
+      const part = (
+        data.candidates?.[0]?.content?.parts as
+          | { inlineData?: { data?: string; mimeType?: string } }[]
+          | undefined
+      )?.find((p) => p.inlineData?.data);
+      if (!part?.inlineData?.data) throw new AiError("Gemini returned no audio");
+      const rate = Number(part.inlineData.mimeType?.match(/rate=(\d+)/)?.[1]) || 24_000;
+      return wavFromPcm(new Uint8Array(Buffer.from(part.inlineData.data, "base64")), rate);
+    } catch (error) {
+      lastError = error;
+      if (!(error instanceof AiError && error.status === 404)) throw error;
+    }
+  }
+  throw lastError;
+}

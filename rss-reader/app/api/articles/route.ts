@@ -15,7 +15,8 @@ import {
   sinceDate,
   sourceFilter,
 } from "@/lib/articles";
-import { searchArticleIds } from "@/lib/search";
+import { searchArticleIds, searchByMeaning } from "@/lib/search";
+import { isAiEnabled } from "@/lib/ai";
 import { parseSearchQuery } from "@/lib/search-query";
 import { sqlName } from "@/lib/db";
 import { getVideoPrefs } from "@/lib/video-prefs";
@@ -102,7 +103,11 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       // Ranked by relevance: the matching ids come back best first, the filters narrow them.
-      const ranked = await searchArticleIds(search);
+      // By meaning when asked (and AI is on); out of quota, it falls back to the words.
+      const ranked =
+        searchParams.get("meaning") === "1" && isAiEnabled()
+          ? await searchByMeaning(search).catch(() => searchArticleIds(search))
+          : await searchArticleIds(search);
       const matches = await prisma.article.findMany({
         where: { ...where, id: { in: ranked } },
         include: ARTICLE_FEED_INCLUDE,
