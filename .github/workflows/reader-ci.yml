@@ -1,0 +1,97 @@
+# Checks the Reader web app (rss-reader/) on every pull request and push that touches it:
+# types, lint, unit tests, a production build, then end-to-end tests on a phone and a desktop
+# screen against a seeded Postgres and a fake outside world (rss-reader/e2e). Nothing here
+# needs a secret: the app runs with a test password and no AI or push keys.
+name: Reader CI
+
+on:
+  pull_request:
+    paths:
+      - "rss-reader/**"
+      - "!rss-reader/android/**"
+      - ".github/workflows/reader-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "rss-reader/**"
+      - "!rss-reader/android/**"
+      - ".github/workflows/reader-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reader-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # Playwright 1.56 supports Ubuntu up to 24.04.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: rss-reader
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: rss
+          POSTGRES_PASSWORD: rss
+          POSTGRES_DB: rss_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rss -d rss_e2e" --health-interval 5s --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: "1"
+      DATABASE_URL: postgresql://rss:rss@localhost:5432/rss_e2e
+      DIRECT_URL: postgresql://rss:rss@localhost:5432/rss_e2e
+      E2E_DATABASE_URL: postgresql://rss:rss@localhost:5432/rss_e2e
+      APP_PASSWORD: e2e-password
+      E2E_PASSWORD: e2e-password
+      AUTH_SECRET: e2e-secret
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: rss-reader/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Database
+        run: npx prisma migrate deploy
+
+      - name: Types
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Browser
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: npm run test:e2e
+
+      - name: Test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            rss-reader/playwright-report
+            rss-reader/test-results
+          retention-days: 7

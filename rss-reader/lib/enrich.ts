@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { cosine, embedTexts, findPromotions, isAiEnabled, isQuotaError } from "@/lib/ai";
 import { stripHtml } from "@/lib/utils";
+import { reportProblem } from "@/lib/errlog";
 
 const BATCH_SIZE = 50; // Keeps each refresh well inside Gemini's free-tier rate limits.
 const ENRICH_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
@@ -48,10 +49,10 @@ export async function runAiPipeline() {
   } catch (error) {
     // Out of quota is expected on the free tier: the next runs pick up where this stopped.
     if (isQuotaError(error)) console.warn(`AI enrichment paused: ${(error as Error).message}`);
-    else console.error("AI enrichment skipped", error);
+    else await reportProblem("AI enrichment skipped", error);
   }
-  const topics = await clusterRecentArticles().catch((error) => {
-    console.error("Story clustering skipped", error);
+  const topics = await clusterRecentArticles().catch(async (error) => {
+    await reportProblem("Story clustering skipped", error);
     return 0;
   });
   return { enriched, topics };
@@ -75,8 +76,8 @@ async function enrichArticles() {
     pending
       .filter((a) => !a.isVideo)
       .map((a) => ({ id: a.id, title: a.title, summary: stripHtml(a.summary || a.content) }))
-  ).catch((error) => {
-    if (!isQuotaError(error)) console.error("Promotion screening skipped", error);
+  ).catch(async (error) => {
+    await reportProblem("Promotion screening skipped", error);
     return new Set<string>();
   });
 
@@ -89,7 +90,7 @@ async function enrichArticles() {
     )
   );
   await markDuplicates(pending.map((a, i) => ({ ...a, embedding: embeddings[i] }))).catch((error) =>
-    console.error("Duplicate check skipped", error)
+    reportProblem("Duplicate check skipped", error)
   );
   return pending.length;
 }

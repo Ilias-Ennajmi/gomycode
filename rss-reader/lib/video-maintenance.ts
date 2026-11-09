@@ -30,7 +30,7 @@ export async function scanVideoChannels(deadline: number) {
     const channelId = channelIdFromFeedUrl(feed.url);
     if (!channelId) continue;
     const info = await scanChannel(channelId).catch((error) => {
-      console.error(`Channel scan failed for ${feed.url}`, error);
+      console.warn(`Channel scan failed for ${feed.url}`, error);
       return null;
     });
     await prisma.feed.update({ where: { id: feed.id }, data: { videosScannedAt: new Date() } });

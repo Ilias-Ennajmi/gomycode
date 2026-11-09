@@ -3,6 +3,7 @@ import { fetchAndParseFeed } from "@/lib/rss";
 import { insertNewArticles, mapWithConcurrency } from "@/lib/ingest";
 import { runAiPipeline } from "@/lib/enrich";
 import { applyArrivalRules } from "@/lib/rules";
+import { reportProblem } from "@/lib/errlog";
 
 const MAX_ERROR_COUNT = 5;
 const CONCURRENCY = 6;
@@ -73,7 +74,8 @@ export async function refreshFeeds(feedId?: string): Promise<RefreshResult | nul
       });
       return created.length;
     } catch (error) {
-      console.error(`Failed to refresh feed ${feed.title}`, error);
+      // A feed that fails shows in Sources → Needs attention; not an app error.
+      console.warn(`Failed to refresh feed ${feed.title}`, error);
       errors.push(`${feed.title}: could not fetch feed`);
       await prisma.feed.update({
         where: { id: feed.id },
@@ -87,7 +89,7 @@ export async function refreshFeeds(feedId?: string): Promise<RefreshResult | nul
   });
 
   // Alerts and auto-save, before the AI work so a slow Gemini can't delay them.
-  await applyArrivalRules(arrived).catch((error) => console.error("Rules failed", error));
+  await applyArrivalRules(arrived).catch((error) => reportProblem("Rules", error));
   await runAiPipeline();
   return {
     updated: feeds.length - errors.length,

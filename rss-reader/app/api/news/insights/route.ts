@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { AiError, generateText, isAiEnabled } from "@/lib/ai";
 import { buildFrontPage } from "@/lib/news/front-page";
 import { readNewsPrefs } from "@/lib/news/prefs";
+import { reportProblem } from "@/lib/errlog";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -63,7 +64,7 @@ export async function GET() {
     // An older summary beats none when the free quota runs out.
     if (cached) return NextResponse.json({ ...cached, stale: true });
     const quota = error instanceof AiError && error.status === 429;
-    if (!quota) console.error("GET /api/news/insights failed", error);
+    if (!quota) await reportProblem("GET /api/news/insights", error);
     return NextResponse.json({ bullets: [], error: quota ? "quota" : "failed" });
   }
 }

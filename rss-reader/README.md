@@ -52,7 +52,7 @@ Google Gemini's free tier.
 
 ## Stack
 
-Next.js 14 (App Router) · TypeScript (strict) · Tailwind + shadcn/Radix · SWR ·
+Next.js 15 (App Router, React 19) · TypeScript (strict) · Tailwind + shadcn/Radix · SWR ·
 Prisma 5 on Postgres (Supabase) · Gemini API (optional) · Vercel hosting.
 
 ## Run it locally
@@ -110,3 +110,7 @@ refreshes stale feeds when opened.
 
 `npm run dev` · `npm run build` · `npm run lint` · `npx tsc --noEmit` ·
 `npm run db:migrate` (create a migration in development) · `npm run db:seed`
+
+Tests: `npm test` (unit) · `npm run test:e2e` (Playwright end-to-end on phone and desktop
+sizes, against a local test database; see AGENTS.md → Testing). GitHub Actions runs all of
+it on every pull request that touches the app. `GET /api/health` is the uptime check.

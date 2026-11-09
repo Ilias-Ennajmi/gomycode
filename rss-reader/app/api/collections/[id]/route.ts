@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 /** PATCH { name?, description?, public? }: rename, describe, publish (a link) or unpublish. */
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const data: { name?: string; description?: string | null; slug?: string | null } = {};
   if (typeof body.name === "string" && body.name.trim()) data.name = body.name.trim().slice(0, 80);
@@ -25,7 +26,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   return NextResponse.json({ collection });
 }
 
-export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   await prisma.collection.delete({ where: { id: params.id } }).catch(() => undefined);
   return NextResponse.json({ ok: true });
 }

@@ -2,11 +2,10 @@ import { ShareSave } from "./ShareSave";
 
 // Target of "Share → Reader" on Android (manifest share_target and the app's SEND intent).
 // Apps put the link in `url`, or only in `text` next to a headline, so both are checked.
-export default function SharePage({
-  searchParams,
-}: {
-  searchParams: { url?: string; text?: string; title?: string };
+export default async function SharePage(props: {
+  searchParams: Promise<{ url?: string; text?: string; title?: string }>;
 }) {
+  const searchParams = await props.searchParams;
   const link = findLink(searchParams.url) ?? findLink(searchParams.text);
   return (
     <main className="flex min-h-dvh items-center justify-center bg-background px-6">

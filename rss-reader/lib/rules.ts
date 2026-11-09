@@ -2,6 +2,7 @@ import type { FilterRule } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getFilterRules, mutedFeedIds } from "@/lib/filters";
 import { sendToAll, type PushMessage } from "@/lib/push";
+import { reportProblem } from "@/lib/errlog";
 
 // Rules that act on new articles as they arrive (after each refresh):
 // - alert: a notification when an article mentions a word, or for everything from a source,
@@ -128,7 +129,7 @@ export async function applyArrivalRules(articleIds: string[]) {
     try {
       if ((await sendToAll(alertMessage(rule, found))) > 0) result.notified++;
     } catch (error) {
-      console.error("Alert notification failed", error);
+      await reportProblem("Alert notification", error);
     }
   }
   return result;

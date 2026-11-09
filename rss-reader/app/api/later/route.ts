@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   }
 
   const page = await extractPage(url).catch((error) => {
-    console.error("Could not extract", url, error);
+    console.warn("Could not extract", url, error);
     return null;
   });
   const videoId = isYouTubeUrl(url) ? youTubeVideoId(url) : null;

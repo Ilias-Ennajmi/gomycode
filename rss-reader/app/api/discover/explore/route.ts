@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { CATALOG_CATEGORIES, type CatalogCategoryId } from "@/lib/discover/catalog";
 import { exploreCategory } from "@/lib/discover/explore";
 import { parseKind, parseLangs } from "@/lib/discover/langs";
+import { reportProblem } from "@/lib/errlog";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 20;
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
       )
     );
   } catch (error) {
-    console.error("GET /api/discover/explore failed", error);
+    await reportProblem("GET /api/discover/explore", error);
     return NextResponse.json({ results: [], hasMore: false });
   }
 }

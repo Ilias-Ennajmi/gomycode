@@ -24,7 +24,8 @@ const UP_NEXT_EPISODE: Prisma.ArticleWhereInput = {
  * whether Gemini is still working on them, and what's next (the Later queue first, then the
  * same channel or show).
  */
-export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const article = await prisma.article.findUnique({
     where: { id: params.id },
     select: {
@@ -77,7 +78,8 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
 }
 
 /** Opened a video or episode without a summary yet: ask Gemini now, not at the next tick. */
-export async function POST(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const candidate = await prisma.article.findFirst({
     where: { id: params.id, ...VIDEO_AI_CANDIDATE },
     select: { videoAiAt: true },

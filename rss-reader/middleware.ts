@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, isAuthConfigured, safeEqual, verifySessionToken } from "@/lib/auth";
 
 // /api/refresh/tick is the hourly scheduler's; it's rate-limited, so it needs no secret.
-const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/refresh/tick", "/api/videos/tick"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/api/auth/login",
+  "/api/refresh/tick",
+  "/api/videos/tick",
+  "/api/health",
+];
 
 function isApi(pathname: string) {
   return pathname.startsWith("/api/");

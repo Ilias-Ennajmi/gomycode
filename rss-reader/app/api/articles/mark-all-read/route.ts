@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { categoryFilter, parseSource, sourceFilter } from "@/lib/articles";
+import { reportProblem } from "@/lib/errlog";
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ updated: result.count });
   } catch (error) {
-    console.error("POST /api/articles/mark-all-read failed", error);
+    await reportProblem("POST /api/articles/mark-all-read", error);
     return NextResponse.json({ error: "Failed to mark articles read" }, { status: 500 });
   }
 }

@@ -5,6 +5,7 @@ import { getFilterRules, hiddenArticleClauses } from "@/lib/filters";
 import { buildReadingProfile, scoreArticle, type ReadingProfile } from "@/lib/ranking";
 import { deskName } from "@/lib/news/desks";
 import { stripHtml } from "@/lib/utils";
+import { reportProblem } from "@/lib/errlog";
 
 // The Today briefing, in the spirit of Axios' "Smart Brevity" and Apple News
 // Today: the big picture, a handful of top stories with bullets and why they
@@ -226,7 +227,7 @@ async function writeStories(stories: Story[]): Promise<BriefStory[]> {
     return stories.map((s, i) => toBriefStory(s, byNumber.get(i + 1)));
   } catch (error) {
     if (!(error instanceof AiError && error.status === 429))
-      console.error("Briefing entries failed", error);
+      await reportProblem("Briefing entries", error);
     return stories.map((s) => toBriefStory(s));
   }
 }
@@ -277,7 +278,7 @@ async function buildBriefing(date: string): Promise<Briefing | null> {
       });
     } catch (error) {
       if (!(error instanceof AiError && error.status === 429))
-        console.error("Briefing failed", error);
+        await reportProblem("Briefing", error);
     }
   }
   // Without the AI (or if it fails), the briefing still lists the top stories.

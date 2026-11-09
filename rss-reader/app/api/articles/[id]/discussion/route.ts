@@ -126,7 +126,8 @@ async function reddit(link: string): Promise<DiscussionThread[]> {
     }));
 }
 
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const article = await prisma.article.findUnique({
     where: { id: params.id },
     select: { link: true, title: true },

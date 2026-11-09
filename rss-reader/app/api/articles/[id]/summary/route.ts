@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isAiEnabled, isQuotaError, summarizeArticle } from "@/lib/ai";
 import { stripHtml } from "@/lib/utils";
+import { reportProblem } from "@/lib/errlog";
 
 export const maxDuration = 30;
 
@@ -9,7 +10,8 @@ export const maxDuration = 30;
 const MIN_LENGTH = 400;
 
 /** Returns the cached AI summary, generating it the first time an article is opened. */
-export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const article = await prisma.article.findUnique({
     where: { id: params.id },
     select: {
@@ -34,7 +36,7 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
     return NextResponse.json({ summary });
   } catch (error) {
     const limited = isQuotaError(error);
-    if (!limited) console.error("Summary failed", error);
+    if (!limited) await reportProblem("Summary", error);
     return NextResponse.json(
       { summary: null, reason: limited ? "rate-limited" : "failed" },
       { status: limited ? 429 : 502 }

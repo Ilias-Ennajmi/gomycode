@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { keepSavedArticles } from "@/lib/saved-links";
 import { isDesk } from "@/lib/news/desks";
+import { reportProblem } from "@/lib/errlog";
+import { BadRequest, badRequest, readJson } from "@/lib/http";
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
-    const body = await request.json();
+    const body = await readJson(request);
     const { title, categoryId, newsDesk, inForYou, fullPage } = body as {
       title?: string;
       categoryId?: string | null;
@@ -43,12 +46,14 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     return NextResponse.json({ feed: updated });
   } catch (error) {
-    console.error("PATCH /api/feeds/[id] failed", error);
+    if (error instanceof BadRequest) return badRequest(error);
+    await reportProblem("PATCH /api/feeds/[id]", error);
     return NextResponse.json({ error: "Failed to update feed" }, { status: 500 });
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const feed = await prisma.feed.findUnique({ where: { id: params.id } });
     if (!feed) {
@@ -61,7 +66,8 @@ export async function DELETE(_request: NextRequest, { params }: { params: { id: 
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("DELETE /api/feeds/[id] failed", error);
+    if (error instanceof BadRequest) return badRequest(error);
+    await reportProblem("DELETE /api/feeds/[id]", error);
     return NextResponse.json({ error: "Failed to delete feed" }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { buildFrontPage } from "@/lib/news/front-page";
 import { readNewsPrefs } from "@/lib/news/prefs";
+import { reportProblem } from "@/lib/errlog";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export async function GET() {
     const { headlines, ...rest } = page;
     return NextResponse.json({ ...rest, hidden: prefs.hidden });
   } catch (error) {
-    console.error("GET /api/news failed", error);
+    await reportProblem("GET /api/news", error);
     return NextResponse.json({ error: "Could not load the news" }, { status: 500 });
   }
 }

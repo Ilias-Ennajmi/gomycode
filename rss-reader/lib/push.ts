@@ -12,11 +12,13 @@ export interface NotifyPrefs {
   breaking: boolean;
   /** The weekly recap, Sunday evening. */
   recap: boolean;
+  /** Something broke in the app (once a day per kind of problem). */
+  problems: boolean;
 }
 
 const PREFS_KEY = "notify-prefs";
 const SENT_KEY = "push-sent";
-const DEFAULT_PREFS: NotifyPrefs = { briefing: true, breaking: true, recap: true };
+const DEFAULT_PREFS: NotifyPrefs = { briefing: true, breaking: true, recap: true, problems: true };
 
 // Breaking: this many different news outlets on one story within the window.
 const BREAKING_MIN_SOURCES = 4;
@@ -163,7 +165,7 @@ export async function wakeSnoozedArticles() {
     url: due.length === 1 ? `/reader?view=later&article=${first.id}` : "/reader?view=later",
     tag: "snooze",
     image: first.imageUrl,
-  }).catch((error) => console.error("Snooze notification failed", error));
+  }).catch((error) => console.warn("Snooze notification failed", error));
   return due.length;
 }
 

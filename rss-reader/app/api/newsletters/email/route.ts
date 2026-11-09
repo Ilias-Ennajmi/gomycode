@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { createEmailInbox } from "@/lib/newsletters";
 import { fetchAndParseFeed } from "@/lib/rss";
 import { insertNewArticles } from "@/lib/ingest";
+import { reportProblem } from "@/lib/errlog";
 
 export const maxDuration = 30;
 
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
   try {
     inbox = await createEmailInbox(title);
   } catch (error) {
-    console.error("Creating an email inbox failed", error);
+    await reportProblem("Creating an email inbox", error);
     return NextResponse.json(
       { error: "Couldn't create an address right now. Try again in a minute." },
       { status: 502 }

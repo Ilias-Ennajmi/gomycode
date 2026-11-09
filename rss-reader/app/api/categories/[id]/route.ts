@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { reportProblem } from "@/lib/errlog";
+import { BadRequest, badRequest, readJson } from "@/lib/http";
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
-    const body = await request.json();
+    const body = await readJson(request);
     const { name, color, icon, order } = body as {
       name?: string;
       color?: string;
@@ -31,15 +31,14 @@ export async function PATCH(
 
     return NextResponse.json({ category: updated });
   } catch (error) {
-    console.error("PATCH /api/categories/[id] failed", error);
+    if (error instanceof BadRequest) return badRequest(error);
+    await reportProblem("PATCH /api/categories/[id]", error);
     return NextResponse.json({ error: "Failed to update category" }, { status: 500 });
   }
 }
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const category = await prisma.category.findUnique({ where: { id: params.id } });
     if (!category) {
@@ -50,7 +49,8 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("DELETE /api/categories/[id] failed", error);
+    if (error instanceof BadRequest) return badRequest(error);
+    await reportProblem("DELETE /api/categories/[id]", error);
     return NextResponse.json({ error: "Failed to delete category" }, { status: 500 });
   }
 }

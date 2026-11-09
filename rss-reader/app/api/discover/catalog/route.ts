@@ -3,6 +3,7 @@ import { CATALOG, CATALOG_CATEGORIES, inScope } from "@/lib/discover/catalog";
 import { hiddenCatalogIds } from "@/lib/discover/health";
 import { parseKind, parseLangs } from "@/lib/discover/langs";
 import { catalogResult, followedKeys, markFollowing } from "@/lib/discover/search";
+import { reportProblem } from "@/lib/errlog";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
     );
     return NextResponse.json({ categories: CATALOG_CATEGORIES, entries: results });
   } catch (error) {
-    console.error("GET /api/discover/catalog failed", error);
+    await reportProblem("GET /api/discover/catalog", error);
     return NextResponse.json({ error: "Could not load suggestions" }, { status: 500 });
   }
 }

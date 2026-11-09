@@ -13,7 +13,8 @@ function cleanTags(value: unknown) {
 }
 
 /** Changes a highlight's note, colour or tags. */
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const body = await request.json().catch(() => ({}));
   const data: { note?: string | null; color?: string; tags?: string[] } = {};
   const tags = cleanTags(body.tags);
@@ -32,7 +33,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   await prisma.highlight.deleteMany({ where: { id: params.id } });
   return NextResponse.json({ success: true });
 }

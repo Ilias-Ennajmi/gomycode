@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AiError, isQuotaError } from "@/lib/ai";
 import { askReader, suggestedQuestions, type AskTurn } from "@/lib/smart";
+import { reportProblem } from "@/lib/errlog";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
         { status: 429 }
       );
     }
-    console.error("POST /api/ask failed", error);
+    await reportProblem("POST /api/ask", error);
     const status = error instanceof AiError && error.status === 503 ? 503 : 500;
     return NextResponse.json(
       { error: status === 503 ? "AI is off or busy right now" : "Couldn't answer that" },

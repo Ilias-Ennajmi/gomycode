@@ -4,6 +4,7 @@ import { HIGHLIGHT_ARTICLE_INCLUDE } from "@/lib/highlights";
 import { generateText, isAiEnabled } from "@/lib/ai";
 import { readSetting, weekKey, writeSetting } from "@/lib/push";
 import type { Briefing } from "@/lib/digest";
+import { reportProblem } from "@/lib/errlog";
 
 // The weekly recap: the last seven days of reading, the week's lead stories (from the stored
 // daily briefings; story groups themselves only cover two days), and a short AI summary.
@@ -143,8 +144,8 @@ export async function buildRecap(): Promise<WeeklyRecap> {
     highlights: topHighlights,
     summary: null,
   };
-  recap.summary = await recapSummary(recap).catch((error) => {
-    console.error("Recap summary failed", error);
+  recap.summary = await recapSummary(recap).catch(async (error) => {
+    await reportProblem("Recap summary", error);
     return null;
   });
   return recap;
