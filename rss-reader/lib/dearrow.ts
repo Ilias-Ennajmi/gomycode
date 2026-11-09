@@ -1,4 +1,6 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { sqlName } from "@/lib/db";
 import { readSetting, writeSetting } from "@/lib/push";
 import { youTubeVideoId } from "@/lib/youtube";
 
@@ -44,11 +46,11 @@ export async function deArrowOn() {
 /** Turns plain titles on or off: every video that has one switches at once. */
 export async function setDeArrow(on: boolean) {
   await writeSetting(KEY, { on });
-  if (on) {
-    await prisma.$executeRaw`UPDATE "Article" SET "title" = "altTitle" WHERE "altTitle" IS NOT NULL`;
-  } else {
-    await prisma.$executeRaw`UPDATE "Article" SET "title" = "originalTitle" WHERE "originalTitle" IS NOT NULL`;
-  }
+  // Raw SQL names the table with its schema: Supabase's pooler doesn't keep the search path.
+  const from = on ? Prisma.raw('"altTitle"') : Prisma.raw('"originalTitle"');
+  await prisma.$executeRaw(
+    Prisma.sql`UPDATE ${sqlName("Article")} SET "title" = ${from} WHERE ${from} IS NOT NULL`
+  );
 }
 
 const HOUR = 60 * 60 * 1000;
