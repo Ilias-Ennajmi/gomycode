@@ -17,6 +17,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { ActionSheet, useIsPhone } from "@/components/ui/sheet";
 import { formatSnooze, snoozeOptions } from "@/lib/snooze";
 import type { ArticleSummary } from "@/lib/types";
+import { tr } from "@/lib/i18n";
 
 function refreshLists() {
   return globalMutate((key) => typeof key === "string" && key.startsWith("/api/articles"));
@@ -32,18 +33,18 @@ export async function snooze(article: ArticleSummary, until: Date | null) {
     await snoozeArticle(article.id, until);
     await refreshLists();
     if (until) {
-      toast.success(`Snoozed until ${formatSnooze(until)}`, {
-        description: "It will come back to Later, with a notification.",
+      toast.success(`${tr("Snoozed until")} ${formatSnooze(until)}`, {
+        description: tr("It will come back to Later, with a notification."),
         action: {
-          label: "Undo",
+          label: tr("Undo"),
           onClick: () => snoozeArticle(article.id, null).then(refreshLists),
         },
       });
     } else {
-      toast.success("Back in Later");
+      toast.success(tr("Back in Later"));
     }
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : "Could not snooze");
+    toast.error(error instanceof Error ? error.message : tr("Could not snooze"));
   }
 }
 
@@ -76,13 +77,17 @@ export function SnoozeMenu({
         <ActionSheet
           open={sheetOpen}
           onOpenChange={setSheetOpen}
-          title={snoozed ? `Snoozed until ${formatSnooze(article.snoozedUntil!)}` : "Snooze until…"}
+          title={
+            snoozed
+              ? `${tr("Snoozed until")} ${formatSnooze(article.snoozedUntil!)}`
+              : tr("Snooze until…")
+          }
           sections={[
             {
               actions: [
                 ...options.map((option) => ({
                   id: option.id,
-                  label: option.label,
+                  label: tr(option.label),
                   hint: formatSnooze(option.until),
                   onSelect: () => void snooze(article, option.until),
                 })),
@@ -90,7 +95,7 @@ export function SnoozeMenu({
                   ? [
                       {
                         id: "unsnooze",
-                        label: "Unsnooze now",
+                        label: tr("Unsnooze now"),
                         icon: <AlarmClockOff />,
                         onSelect: () => void snooze(article, null),
                       },
@@ -108,7 +113,9 @@ export function SnoozeMenu({
       <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
       <DropdownMenuContent align={align} className="w-72" onClick={(e) => e.stopPropagation()}>
         <DropdownMenuLabel className="text-xs text-muted-foreground">
-          {snoozed ? `Snoozed until ${formatSnooze(article.snoozedUntil!)}` : "Snooze until…"}
+          {snoozed
+            ? `${tr("Snoozed until")} ${formatSnooze(article.snoozedUntil!)}`
+            : tr("Snooze until…")}
         </DropdownMenuLabel>
         {options.map((option) => (
           <DropdownMenuItem
@@ -116,7 +123,7 @@ export function SnoozeMenu({
             onSelect={() => snooze(article, option.until)}
             className="justify-between gap-3"
           >
-            <span>{option.label}</span>
+            <span>{tr(option.label)}</span>
             <span className="whitespace-nowrap text-xs text-muted-foreground">
               {formatSnooze(option.until)}
             </span>
@@ -126,7 +133,7 @@ export function SnoozeMenu({
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => snooze(article, null)} className="gap-2">
-              <AlarmClockOff className="h-4 w-4" /> Unsnooze now
+              <AlarmClockOff className="h-4 w-4" /> {tr("Unsnooze now")}
             </DropdownMenuItem>
           </>
         )}

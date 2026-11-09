@@ -1,3 +1,5 @@
+import { tr } from "@/lib/i18n";
+
 /** Snooze choices, in the reader's own time zone. */
 export interface SnoozeOption {
   id: string;
@@ -43,8 +45,8 @@ export function formatSnooze(date: Date | string, now = new Date()) {
       new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) /
       86400000
   );
-  if (days === 0) return `Today ${time}`;
-  if (days === 1) return `Tomorrow ${time}`;
+  if (days === 0) return `${tr("Today")} ${time}`;
+  if (days === 1) return `${tr("Tomorrow")} ${time}`;
   if (days < 7) return `${d.toLocaleDateString(undefined, { weekday: "short" })} ${time}`;
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }

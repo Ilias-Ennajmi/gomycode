@@ -67,6 +67,8 @@ lib/
   sponsors.ts            sponsor segments: SponsorBlock for videos, chapters/transcript for episodes
   phrases.ts             transcript lines → short timed phrases for read along
   session.ts             reading sessions ("5 min"): the pile the reader steps through, minutes left
+                         (TimePile: For You's "5 min" pill draws on Later + For You; Later's pill
+                         and ⋯ open it on Later only, via requestAppEvent("time-pile", "later"))
   youtube.ts, extract.ts, reader.ts, clean-html.ts, favicon.ts, opml.ts, filters.ts
   discover/              catalog (curated sources), search providers (Feedly, YouTube), topics (Bing News RSS)
   news/                  news catalog, desks (+ MOROCCO_PATTERN), front-page builder, prefs
@@ -146,6 +148,13 @@ bot" and caption/transcript endpoints refuse, but its pages still load:
   (`POST /api/articles/[id]/video`) and from `/api/videos/tick` (public, 20-minute rate
   limit, Supabase pg_cron `reader-video-ai` at :47). Busy answers don't use up a video's
   4 tries. An empty transcript array means "done, none" (videos over 45 minutes).
+  Transcripts are one line per sentence with its own start (read along stays exact); an
+  answer cut off at the token limit is salvaged up to the last complete line
+  (`salvageJson`). The background queue (`videoAiQueue`) goes: saved or started items
+  (any age), then the last 30 days of shows and channels you play, then the newest two
+  weeks. A spare slot redoes one old paragraph-style transcript (`isCoarseTranscript`,
+  median gap ≥ 12 s) of something played or saved, once (`refineQueue`,
+  `runVideoAi(..., { refine: true })`, no try used; made before 2026-11-10).
 - The reader plays videos through the IFrame API (`lib/youtube-player.ts`,
   `components/video/VideoPlayer.tsx`): resume from `watchedSeconds`, speed remembered per
   device, marked read at 90% (not on open), mini player when scrolled away, up next (Later
@@ -260,8 +269,12 @@ Under the hood, `GET /api/system`): build, database size and counts, last tick s
 (`last-tick` Setting), offline state, the error log. _Backup_: `GET /api/backup` downloads
 sources, categories, rules, highlights, saved articles and preferences as JSON. _French_:
 `lib/i18n.tsx` (`useT`, `LocaleProvider`, localStorage `locale`) covers the chrome (tabs,
-sidebar, settings, list menus, common actions); strings not in the table fall back to
-English. _Android_ 1.2.0 adds Podcasts and Review shortcuts (needs signing, see
+sidebar, settings, list menus, common actions, reading sessions, triage, the player's
+controls and cards, snooze); strings not in the table fall back to English. `tr()` is the
+same lookup outside components (toasts, helpers). `tests/i18n.test.ts` fails when a
+`t("…")`/`tr("…")` literal has no French entry; labels passed through props
+(`MediaCard` titles, `ActionButton`/`RoundButton` labels) are translated where they're
+drawn, so add those keys by hand. _Android_ 1.2.0 adds Podcasts and Review shortcuts (needs signing, see
 `android/README.md`).
 
 **Delight.** _Stories_ (`lib/stories.ts`, `components/stories/`): `StoryBubbles` lists
@@ -516,6 +529,9 @@ Built in this order (see `git log -- rss-reader`):
     nested controls, contrast).
 26. Full-screen podcast player with folding cards (also on video pages), bottom tab bar on
     phones, hide-on-scroll no longer shakes at the end of short lists.
+27. Foundations: unit + end-to-end tests and CI, error triage with alerts, health check,
+    Next.js 15. Then: sentence-level transcripts (exact read along), transcript queue
+    by what you play, old transcripts redone, "5 min" from Later, more of the app in French.
 
 ## Open ideas (not built yet)
 

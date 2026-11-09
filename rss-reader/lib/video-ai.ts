@@ -5,6 +5,7 @@ import type { AiPriority } from "@/lib/ai-budget";
 import { formatClock, parseClock } from "@/lib/youtube-video";
 import { youTubeVideoId } from "@/lib/youtube";
 import { reportProblem } from "@/lib/errlog";
+import { salvageJson } from "@/lib/json-salvage";
 
 // What a video says, from Gemini: a summary, the moments worth jumping to, and a transcript
 // (searchable, highlightable, each part a link to that moment). Gemini's free tier is often
@@ -55,27 +56,8 @@ function timed(items: unknown, duration: number | null): TimedText[] {
   return parsed;
 }
 
-// Gemini often answers sentence by sentence; paragraphs of about half a minute read better
-// and keep the time links useful.
-const PARAGRAPH_SECONDS = 25;
-const PARAGRAPH_MAX_CHARS = 600;
-
-function paragraphs(parts: TimedText[]): TimedText[] {
-  const merged: TimedText[] = [];
-  for (const part of parts) {
-    const current = merged.at(-1);
-    if (
-      current &&
-      part.t - current.t < PARAGRAPH_SECONDS &&
-      current.text.length + part.text.length < PARAGRAPH_MAX_CHARS
-    ) {
-      current.text = `${current.text} ${part.text}`;
-    } else {
-      merged.push({ ...part });
-    }
-  }
-  return merged;
-}
+// Transcripts are kept sentence by sentence, each with its own start: read along follows
+// the voice phrase by phrase and snips cut where the words are.
 
 export interface VideoAnalysis {
   summary: string;
@@ -106,7 +88,8 @@ export async function analyzeVideo(
     '"keyMoments": [{"t": "M:SS", "text": "under 12 words"}] (5-8, in order, where each part starts)' +
     (withTranscript
       ? ', "transcript": [{"t": "M:SS", "text": "what is said, word for word"}] (everything ' +
-        "spoken, in order, in chunks of about 30 seconds)"
+        "spoken, in order, one entry per sentence with the second it starts; split sentences " +
+        "longer than about 15 words where the speaker pauses)"
       : "") +
     "}";
 
@@ -123,11 +106,10 @@ export async function analyzeVideo(
   try {
     data = JSON.parse(raw);
   } catch {
-    // Now and then the JSON comes wrapped in a code fence or a sentence: keep the object.
-    const start = raw.indexOf("{");
-    const end = raw.lastIndexOf("}");
+    // Wrapped in a code fence or a sentence, or cut off at the length limit (a long
+    // transcript): keep everything up to the last complete entry.
     try {
-      data = JSON.parse(raw.slice(start, end + 1));
+      data = salvageJson(raw) as typeof data;
     } catch {
       throw new AiError("Gemini returned something that isn't JSON");
     }
@@ -137,7 +119,7 @@ export async function analyzeVideo(
   return {
     summary,
     keyMoments: timed(data.keyMoments, durationSeconds).slice(0, 10),
-    transcript: withTranscript ? paragraphs(timed(data.transcript, durationSeconds)) : [],
+    transcript: withTranscript ? timed(data.transcript, durationSeconds) : [],
   };
 }
 
@@ -165,17 +147,59 @@ export const VIDEO_AI_CANDIDATE: Prisma.ArticleWhereInput = {
 
 export type VideoAiResult = "done" | "busy" | "failed" | "skipped";
 
-/** Runs Gemini on one video and stores the result. "busy" means try again later. */
+// Transcripts made before this were ~25-second paragraphs; later ones go sentence by
+// sentence. Played or saved episodes and videos with an old one are redone once.
+const SENTENCE_TRANSCRIPTS_SINCE = new Date("2026-11-10T00:00:00Z");
+
+const REFINE_CANDIDATE: Prisma.ArticleWhereInput = {
+  NOT: { transcript: { equals: Prisma.DbNull } },
+  OR: [{ videoAiAt: null }, { videoAiAt: { lt: SENTENCE_TRANSCRIPTS_SINCE } }],
+  AND: [
+    { OR: [{ isSaved: true }, { watchedSeconds: { gt: 0 } }, { readProgress: { gt: 0 } }] },
+    { OR: [{ isVideo: true }, { audioUrl: { not: null } }] },
+  ],
+};
+
+/** Paragraph-sized lines (a median of 12 s or more between starts): too coarse to follow. */
+export function isCoarseTranscript(transcript: unknown) {
+  if (!Array.isArray(transcript) || transcript.length < 3) return false;
+  const gaps = transcript
+    .slice(1)
+    .map((line, i) => (line as TimedText).t - (transcript[i] as TimedText).t)
+    .sort((a, b) => a - b);
+  return gaps[Math.floor(gaps.length / 2)] >= 12;
+}
+
+/** Played or saved episodes and videos whose transcript is still the old, coarse kind. */
+export async function refineQueue(limit: number) {
+  const found = await prisma.article.findMany({
+    where: REFINE_CANDIDATE,
+    orderBy: [{ isSaved: "desc" }, { publishedAt: "desc" }],
+    take: 30,
+    select: { id: true, transcript: true },
+  });
+  return found
+    .filter((a) => isCoarseTranscript(a.transcript))
+    .slice(0, limit)
+    .map((a) => a.id);
+}
+
+/**
+ * Runs Gemini on one video and stores the result. "busy" means try again later. With
+ * `refine`, redoes an old coarse transcript instead (once: it doesn't use up a try).
+ */
 export async function runVideoAi(
   articleId: string,
   timeoutMs: number,
-  priority: AiPriority = "user"
+  priority: AiPriority = "user",
+  { refine = false } = {}
 ): Promise<VideoAiResult> {
   if (!isAiEnabled()) return "skipped";
   const article = await prisma.article.findFirst({
-    where: { id: articleId, ...VIDEO_AI_CANDIDATE },
+    where: { id: articleId, ...(refine ? REFINE_CANDIDATE : VIDEO_AI_CANDIDATE) },
     select: {
       id: true,
+      videoAiAt: true,
       link: true,
       durationSeconds: true,
       aiSummary: true,
@@ -196,10 +220,14 @@ export async function runVideoAi(
   // Counted first, so a run that times out still counts.
   await prisma.article.update({
     where: { id: article.id },
-    data: { videoAiAt: new Date(), videoAiAttempts: { increment: 1 } },
+    data: refine
+      ? { videoAiAt: new Date() }
+      : { videoAiAt: new Date(), videoAiAttempts: { increment: 1 } },
   });
   try {
     const analysis = await analyzeVideo(media, article.durationSeconds, timeoutMs, priority);
+    // A redo that came back without a transcript keeps the old one.
+    if (refine && analysis.transcript.length === 0) return "failed";
     await prisma.article.update({
       where: { id: article.id },
       data: {
@@ -220,33 +248,77 @@ export async function runVideoAi(
     if (busy) {
       await prisma.article.update({
         where: { id: article.id },
-        data: { videoAiAttempts: { decrement: 1 } },
+        // A refine that couldn't run stays due.
+        data: refine ? { videoAiAt: article.videoAiAt } : { videoAiAttempts: { decrement: 1 } },
       });
     }
     return busy ? "busy" : "failed";
   }
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 /**
- * Background runs (the hourly video tick): newest videos first, each waiting a bit between
- * attempts. Stops starting new runs past the deadline.
+ * What the background runs work on, best first: what you've started or saved (whatever its
+ * age), then new episodes and videos from shows and channels you play, then the newest of
+ * the rest. The free quota goes where it's used.
+ */
+export async function videoAiQueue(limit: number) {
+  const retryAfter = new Date(Date.now() - 45 * 60 * 1000);
+  const ready = {
+    AND: [VIDEO_AI_CANDIDATE, { OR: [{ videoAiAt: null }, { videoAiAt: { lt: retryAfter } }] }],
+  };
+  const played = await prisma.article.findMany({
+    where: {
+      OR: [{ watchedSeconds: { gt: 0 } }, { readProgress: { gt: 0 } }],
+      publishedAt: { gte: new Date(Date.now() - 60 * DAY_MS) },
+    },
+    distinct: ["feedId"],
+    select: { feedId: true },
+  });
+  const tiers = [
+    {
+      ...ready,
+      OR: [{ isSaved: true }, { watchedSeconds: { gt: 0 } }, { readProgress: { gt: 0 } }],
+    },
+    {
+      ...ready,
+      feedId: { in: played.map((p) => p.feedId) },
+      createdAt: { gte: new Date(Date.now() - 30 * DAY_MS) },
+    },
+    { ...ready, createdAt: { gte: new Date(Date.now() - 14 * DAY_MS) } },
+  ];
+  const ids: string[] = [];
+  for (const where of tiers) {
+    if (ids.length >= limit) break;
+    const found = await prisma.article.findMany({
+      where: { ...where, id: { notIn: ids } },
+      orderBy: { publishedAt: "desc" },
+      take: limit - ids.length,
+      select: { id: true },
+    });
+    ids.push(...found.map((f) => f.id));
+  }
+  return ids;
+}
+
+/**
+ * Background runs (the hourly video tick), in videoAiQueue's order, each waiting a bit
+ * between attempts. Stops starting new runs past the deadline.
  */
 export async function runVideoAiBatch(deadline: number, limit = 3) {
-  const retryAfter = new Date(Date.now() - 45 * 60 * 1000);
-  const candidates = await prisma.article.findMany({
-    where: {
-      AND: [VIDEO_AI_CANDIDATE, { OR: [{ videoAiAt: null }, { videoAiAt: { lt: retryAfter } }] }],
-      createdAt: { gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) },
-    },
-    orderBy: { publishedAt: "desc" },
-    take: limit,
-    select: { id: true },
-  });
+  const fresh = await videoAiQueue(limit);
+  // A free slot redoes one old coarse transcript (new ones first: they have nothing yet).
+  const refine = fresh.length < limit ? await refineQueue(1) : [];
+  const candidates = [
+    ...fresh.map((id) => ({ id, refine: false })),
+    ...refine.map((id) => ({ id, refine: true })),
+  ];
   const results: VideoAiResult[] = [];
-  for (const { id } of candidates) {
+  for (const { id, refine } of candidates) {
     const left = deadline - Date.now();
     if (left < 30_000) break;
-    const result = await runVideoAi(id, left - 5_000, "background");
+    const result = await runVideoAi(id, left - 5_000, "background", { refine });
     results.push(result);
     // Overloaded: the next one would fail the same way.
     if (result === "busy") break;

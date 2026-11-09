@@ -6,10 +6,22 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.10.23";
+export const WHATS_NEW_VERSION = "2026.11.09";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "Read along, in step",
+    text: "New transcripts come sentence by sentence, each with the second it starts, so the lit phrase stays with the voice instead of drifting through a paragraph. Episodes and videos you've played or saved get theirs first, and their older transcripts are redone the same way in the background.",
+  },
+  {
+    title: "5 minutes from Later",
+    text: 'The Later tab has its own "5 min" pill (also in its ⋯ menu): the pile comes only from what you saved. Switch to "Later and For You" in the sheet to widen it.',
+  },
+  {
+    title: "More of the app in French",
+    text: "Reading sessions, triage, the player's controls and cards, the transcript, snooze and the reader's ⋯ menu now follow Settings → Language.",
+  },
   {
     title: "Read along, like lyrics",
     text: 'The transcript of a podcast or video now comes in short phrases in a small box that follows the voice: the phrase being said is bright and its words light up as they\'re spoken. Scroll back to reread; "Back to now" rejoins. Tap any phrase to jump there. The expand button shows it full screen, with search.',

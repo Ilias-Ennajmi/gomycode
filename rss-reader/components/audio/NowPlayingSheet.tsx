@@ -72,6 +72,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useT } from "@/lib/i18n";
 
 /**
  * The full-screen player, laid out like a podcast app's: the artwork, the title, a scrubber
@@ -443,12 +444,13 @@ function ActionButton({
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  const { t } = useT();
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={label}
-      title={label}
+      aria-label={t(label)}
+      title={t(label)}
       className="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-accent hover:text-foreground"
     >
       {children}

@@ -13,15 +13,16 @@ type AppEvent =
   /** "Got 5 minutes?": the picker for a reading session. */
   | "time-pile";
 
-export function requestAppEvent(event: AppEvent) {
-  window.dispatchEvent(new CustomEvent(`reader:${event}`));
+/** `detail` says more about the request (the time pile's "later": only from Later). */
+export function requestAppEvent(event: AppEvent, detail?: string) {
+  window.dispatchEvent(new CustomEvent(`reader:${event}`, { detail }));
 }
 
-export function useAppEvent(event: AppEvent, handler: () => void) {
+export function useAppEvent(event: AppEvent, handler: (detail?: string) => void) {
   const ref = React.useRef(handler);
   ref.current = handler;
   React.useEffect(() => {
-    const listener = () => ref.current();
+    const listener = (e: Event) => ref.current((e as CustomEvent<string | undefined>).detail);
     window.addEventListener(`reader:${event}`, listener);
     return () => window.removeEventListener(`reader:${event}`, listener);
   }, [event]);
