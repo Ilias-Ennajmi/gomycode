@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getFilterRules } from "@/lib/filters";
+import { reportProblem } from "@/lib/errlog";
 
 const ACTIONS = ["hide", "boost", "alert", "save"] as const;
 const MATCHES = ["keyword", "feed"] as const;
@@ -9,7 +10,7 @@ export async function GET() {
   try {
     return NextResponse.json({ rules: await getFilterRules() });
   } catch (error) {
-    console.error("GET /api/filters failed", error);
+    await reportProblem("GET /api/filters", error);
     return NextResponse.json({ error: "Failed to load filters" }, { status: 500 });
   }
 }
@@ -61,7 +62,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ rules: await getFilterRules() }, { status: 201 });
   } catch (error) {
-    console.error("POST /api/filters failed", error);
+    await reportProblem("POST /api/filters", error);
     return NextResponse.json({ error: "Failed to save filter" }, { status: 500 });
   }
 }

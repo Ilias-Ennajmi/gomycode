@@ -5,6 +5,7 @@ import { fetchAndParseFeed, type ParsedFeed } from "@/lib/rss";
 import { discoverFaviconUrl } from "@/lib/favicon";
 import { feedTypeForUrl } from "@/lib/feed-source";
 import { insertNewArticles, mapWithConcurrency } from "@/lib/ingest";
+import { reportProblem } from "@/lib/errlog";
 
 export const maxDuration = 60;
 
@@ -32,7 +33,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("GET /api/opml failed", error);
+    await reportProblem("GET /api/opml", error);
     return NextResponse.json({ error: "Failed to export feeds" }, { status: 500 });
   }
 }
@@ -82,9 +83,7 @@ export async function POST(request: NextRequest) {
         }
 
         const siteUrl = parsed?.meta.siteUrl || entry.htmlUrl;
-        const faviconUrl = await discoverFaviconUrl(siteUrl || entry.xmlUrl).catch(
-          () => undefined
-        );
+        const faviconUrl = await discoverFaviconUrl(siteUrl || entry.xmlUrl).catch(() => undefined);
 
         const feed = await prisma.feed.create({
           data: {
@@ -102,7 +101,7 @@ export async function POST(request: NextRequest) {
         if (parsed) await insertNewArticles(feed.id, parsed.articles);
         return true;
       } catch (error) {
-        console.error(`Failed to import feed ${entry.xmlUrl}`, error);
+        console.warn(`Failed to import feed ${entry.xmlUrl}`, error);
         errors.push(entry.title);
         return false;
       }
@@ -110,7 +109,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ imported: results.filter(Boolean).length, errors });
   } catch (error) {
-    console.error("POST /api/opml failed", error);
+    await reportProblem("POST /api/opml", error);
     return NextResponse.json({ error: "Failed to import OPML file" }, { status: 500 });
   }
 }

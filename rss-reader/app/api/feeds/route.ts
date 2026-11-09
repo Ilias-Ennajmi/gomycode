@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { FollowError, followSource, type FollowInput } from "@/lib/follow";
 import { runAiPipeline } from "@/lib/enrich";
 import { getFilterRules, hiddenKeywordClauses, mutedFeedIds } from "@/lib/filters";
+import { reportProblem } from "@/lib/errlog";
 
 export async function GET() {
   try {
@@ -56,7 +57,7 @@ export async function GET() {
 
     return NextResponse.json({ feeds: result });
   } catch (error) {
-    console.error("GET /api/feeds failed", error);
+    await reportProblem("GET /api/feeds", error);
     return NextResponse.json({ error: "Failed to load feeds" }, { status: 500 });
   }
 }
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof FollowError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
-    console.error("POST /api/feeds failed", error);
+    await reportProblem("POST /api/feeds", error);
     return NextResponse.json({ error: "Failed to add feed" }, { status: 500 });
   }
 }

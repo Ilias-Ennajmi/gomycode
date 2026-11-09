@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(preview);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    console.error("Source preview failed", url, message);
+    console.warn("Source preview failed", url, message);
     return NextResponse.json(
       {
         error: /No RSS feed/i.test(message)

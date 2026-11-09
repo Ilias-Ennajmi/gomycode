@@ -43,7 +43,7 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
       status = "limited";
     }
   } catch (error) {
-    console.error("Full article fetch failed", article.link, error);
+    console.warn("Full article fetch failed", article.link, error);
   }
 
   await prisma.article.update({

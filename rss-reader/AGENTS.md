@@ -246,9 +246,16 @@ failing) once a day; `skipped` is reported. _Link cleaning_ (`lib/links.ts`): ut
 friends are stripped at ingest (existing articles still match by their old link) and when
 sharing. _Security headers_ in `next.config.mjs` (CSP, HSTS, nosniff, frame-ancestors
 none; the CSP allows YouTube frames and scripts, any image/audio host, api.github.com).
-_Error log_ (`lib/errlog.ts`, `/api/errors`): the hourly tick, the refresh route and the
-client `ErrorBoundary` (around the list, the reader and each full page; `app/error.tsx`
-for a whole page) record errors in the `error-log` Setting. _System sheet_ (Settings →
+_Error log_ (`lib/errlog.ts`, `/api/errors`): server code reports problems with
+`reportProblem(scope, error)`: a busy or unreachable outside service (`isTransient`:
+Gemini 503/429, a site's 429, timeouts, dropped connections) is a `console.warn` and
+nothing more; anything else is a `console.error`, goes in the `error-log` Setting and is
+pushed to the owner once a day per kind (`problemSignature`, `error-alerts` Setting,
+notify pref `problems`). A feed or page that fails to load is a warning (Sources shows
+failing feeds). The client `ErrorBoundary` (around the list, the reader and each full page;
+`app/error.tsx` for a whole page) records errors too. Don't add bare `console.error` in
+server code. _Health_: `GET /api/health` (public, no data) answers 200 when the database
+answers and the hourly refresh ran within 3 hours, else 503, for an uptime monitor. _System sheet_ (Settings →
 Under the hood, `GET /api/system`): build, database size and counts, last tick summary
 (`last-tick` Setting), offline state, the error log. _Backup_: `GET /api/backup` downloads
 sources, categories, rules, highlights, saved articles and preferences as JSON. _French_:
@@ -384,10 +391,12 @@ bundle on first run and from Settings.
 
 ## Gotchas learned the hard way
 
-- Vercel Hobby allows 100 deployments a day across the team, and every push to this repo
-  builds all seven projects in it. Preview + production for each PR burns four or more;
-  after ~12 PRs in a day the rest fail with "Deployment rate limited". Batch pushes, or set
-  an Ignored Build Step per project so only the changed folder builds.
+- Vercel Hobby allows 100 deployments a day across the team. Every project linked to this
+  repo has the Ignored Build Step `git diff --quiet HEAD^ HEAD -- .` (only builds when its
+  own folder changed), so a Reader push builds Reader alone. Three projects (ps-planning,
+  planet-sport-studio, culture-connected) point at folders that no longer exist here and
+  fail on every push until they're unlinked. If a merge isn't picked up, deploy main with
+  the Vercel API (`create_deployment` from the git source).
 - Hide-on-scroll: toggling the bars resizes the list, and at the end of a short list the
   browser then clamps the scroll position, which reads as scrolling up. `useHideOnScroll`
   ignores moves for 350 ms after a toggle and upward moves pinned to the end.
@@ -430,9 +439,20 @@ bundle on first run and from Settings.
 
 ## Testing
 
-- Types and lint: `npx tsc --noEmit && npm run lint`.
-- Run locally against a local Postgres (see README), then check in a browser at phone
-  and desktop sizes. Playwright works well for scripted checks (log in at `/login`).
+- Types and lint: `npm run typecheck && npm run lint`.
+- Unit tests: `npm test` (Node's test runner through tsx, `tests/*.test.ts`) for pure
+  helpers. Add one when you write a pure function worth trusting.
+- End-to-end: `npm run test:e2e` (Playwright, `e2e/`), on a phone (390 px, touch) and a
+  desktop screen. It needs a local Postgres database for tests (`E2E_DATABASE_URL`,
+  default `postgresql://rss:rss@localhost:5432/rss_e2e`; create it and run
+  `prisma migrate deploy` against it once). `e2e/seed.ts` wipes and fills it (it refuses
+  any non-local URL); `e2e/fixture-server.mjs` serves silent audio with Range, feeds and a
+  cover so nothing touches the network; the config starts its own dev server on port 3200
+  with its own build folder (`NEXT_DIST_DIR=.next-e2e`), so it runs next to `next dev`.
+  Every new user-facing flow gets a spec there.
+- CI: `.github/workflows/reader-ci.yml` runs types, lint, unit tests, a production build
+  and the end-to-end suite on every pull request touching `rss-reader/` (no secrets). Keep
+  it green before merging.
 - For anything that reads external feeds, test against the real feed once; many sites
   block default user agents or send odd XML.
 - After a deploy, check the Vercel deployment is READY and the runtime logs have no new errors.

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ARTICLE_FEED_INCLUDE, serializeArticle } from "@/lib/articles";
+import { reportProblem } from "@/lib/errlog";
 
 export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
   const article = await prisma.article.findUnique({
@@ -91,7 +92,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     return NextResponse.json({ article: serializeArticle(updated) });
   } catch (error) {
-    console.error("PATCH /api/articles/[id] failed", error);
+    await reportProblem("PATCH /api/articles/[id]", error);
     return NextResponse.json({ error: "Failed to update article" }, { status: 500 });
   }
 }

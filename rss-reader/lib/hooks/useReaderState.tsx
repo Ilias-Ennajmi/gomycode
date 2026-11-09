@@ -213,6 +213,8 @@ export function ReaderStateProvider({ children }: { children: React.ReactNode })
       setViewState(LINKABLE_VIEWS.later);
       setLaterTab(laterTab);
     }
+    // A problem alert opens Settings (Under the hood has the error log).
+    if (params.get("view") === "settings") setMobilePane("settings");
     const articleId = params.get("article");
     if (articleId) {
       setSelectedArticleId(articleId);

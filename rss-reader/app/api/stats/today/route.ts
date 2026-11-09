@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { todayStats } from "@/lib/stats";
+import { reportProblem } from "@/lib/errlog";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,7 @@ export async function GET() {
   try {
     return NextResponse.json(await todayStats());
   } catch (error) {
-    console.error("GET /api/stats/today failed", error);
+    await reportProblem("GET /api/stats/today", error);
     return NextResponse.json({ minutes: 0, read: 0, streak: 0 });
   }
 }

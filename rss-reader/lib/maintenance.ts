@@ -4,6 +4,7 @@ import { mapWithConcurrency } from "@/lib/ingest";
 import { readSetting, writeSetting } from "@/lib/push";
 import { fillVideoPages, scanVideoChannels } from "@/lib/video-maintenance";
 import { DAY_MS, KEEP_PER_FEED, NEWS_RETENTION_DAYS, RETENTION_DAYS } from "@/lib/retention";
+import { reportProblem } from "@/lib/errlog";
 
 // Housekeeping that runs after each refresh: pictures for articles whose feed has none,
 // once a day the retention cleanup, and removing articles stored twice.
@@ -232,19 +233,19 @@ export async function runMaintenance(deadline: number) {
       await writeSetting("cleanup", { day: today });
     }
   } catch (error) {
-    console.error("Maintenance failed", error);
+    await reportProblem("Maintenance", error);
   }
   // Videos first: a few quick page reads. Picture lookups use whatever time is left.
   try {
     result.videos = await scanVideoChannels(deadline);
     result.videoPages = await fillVideoPages(deadline);
   } catch (error) {
-    console.error("Video maintenance failed", error);
+    await reportProblem("Video maintenance", error);
   }
   try {
     result.images = await fillMissingImages(deadline);
   } catch (error) {
-    console.error("Picture lookup failed", error);
+    await reportProblem("Picture lookup", error);
   }
   return result;
 }

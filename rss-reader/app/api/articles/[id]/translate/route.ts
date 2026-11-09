@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AiError, isQuotaError } from "@/lib/ai";
 import { LANGUAGE_NAMES, translateArticle } from "@/lib/smart";
+import { reportProblem } from "@/lib/errlog";
 
 export const maxDuration = 120;
 
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     if (error instanceof AiError && error.status === 503) {
       return NextResponse.json({ error: "AI is off or busy right now." }, { status: 503 });
     }
-    console.error("Translate failed", error);
+    await reportProblem("Translate", error);
     return NextResponse.json({ error: "Couldn't translate this article" }, { status: 500 });
   }
 }

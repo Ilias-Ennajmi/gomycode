@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { refreshFeeds } from "@/lib/refresh";
 import { runMaintenance } from "@/lib/maintenance";
 import { readSetting, sendScheduledPushes, wakeSnoozedArticles, writeSetting } from "@/lib/push";
-import { recordError } from "@/lib/errlog";
+import { reportProblem } from "@/lib/errlog";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -25,21 +25,18 @@ export async function GET() {
   await writeSetting(LAST_KEY, { at: Date.now() });
 
   const result = await refreshFeeds().catch(async (error) => {
-    console.error("Hourly refresh failed", error);
-    await recordError("tick:refresh", error);
+    await reportProblem("Hourly refresh", error);
     return null;
   });
   const woke = await wakeSnoozedArticles().catch(async (error) => {
-    console.error("Waking snoozes failed", error);
-    await recordError("tick:snooze", error);
+    await reportProblem("Waking snoozes", error);
     return 0;
   });
   await sendScheduledPushes({ morning: false }).catch(async (error) => {
-    console.error("Push notifications failed", error);
-    await recordError("tick:push", error);
+    await reportProblem("Push notifications", error);
   });
   const maintenance = await runMaintenance(started + MAINTENANCE_BUDGET_MS).catch(async (error) => {
-    await recordError("tick:maintenance", error);
+    await reportProblem("Maintenance", error);
     return {};
   });
   const summary = {

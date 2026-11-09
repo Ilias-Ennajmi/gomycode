@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isDesk } from "@/lib/news/desks";
 import { readNewsPrefs, writeNewsPrefs, type WeatherLocation } from "@/lib/news/prefs";
+import { reportProblem } from "@/lib/errlog";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export async function PUT(request: NextRequest) {
     }
     return NextResponse.json(await writeNewsPrefs(update));
   } catch (error) {
-    console.error("PUT /api/news/prefs failed", error);
+    await reportProblem("PUT /api/news/prefs", error);
     return NextResponse.json({ error: "Could not save" }, { status: 500 });
   }
 }

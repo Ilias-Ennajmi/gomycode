@@ -4,6 +4,7 @@ import { AiError, isQuotaError } from "@/lib/ai";
 import { catchUp } from "@/lib/smart";
 import { categoryFilter, newsFilter, parseSource, sourceFilter } from "@/lib/articles";
 import { prisma } from "@/lib/prisma";
+import { reportProblem } from "@/lib/errlog";
 
 export const maxDuration = 60;
 
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof AiError && error.status === 503) {
       return NextResponse.json({ error: "AI is off or busy right now." }, { status: 503 });
     }
-    console.error("POST /api/catchup failed", error);
+    await reportProblem("POST /api/catchup", error);
     return NextResponse.json({ error: "Couldn't write the catch-up" }, { status: 500 });
   }
 }

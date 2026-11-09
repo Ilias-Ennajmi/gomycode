@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getFilterRules, hiddenKeywordClauses, mutedFeedIds } from "@/lib/filters";
+import { reportProblem } from "@/lib/errlog";
 
 export async function GET() {
   try {
@@ -46,7 +47,7 @@ export async function GET() {
 
     return NextResponse.json({ categories: result });
   } catch (error) {
-    console.error("GET /api/categories failed", error);
+    await reportProblem("GET /api/categories", error);
     return NextResponse.json({ error: "Failed to load categories" }, { status: 500 });
   }
 }
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ category }, { status: 201 });
   } catch (error) {
-    console.error("POST /api/categories failed", error);
+    await reportProblem("POST /api/categories", error);
     return NextResponse.json({ error: "Failed to create category" }, { status: 500 });
   }
 }

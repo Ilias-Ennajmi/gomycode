@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readSetting, writeSetting } from "@/lib/push";
 import { runVideoAiBatch } from "@/lib/video-ai";
+import { reportProblem } from "@/lib/errlog";
 
 // Gemini reads a video in 20-60 seconds, so this runs on its own schedule (Supabase pg_cron,
 // hourly at :47), separate from the feed refresh.
@@ -19,8 +20,8 @@ export async function GET() {
   if (started - last.at < MIN_INTERVAL_MS) return NextResponse.json({ skipped: true });
   await writeSetting(LAST_KEY, { at: started });
 
-  const results = await runVideoAiBatch(started + BUDGET_MS).catch((error) => {
-    console.error("Video tick failed", error);
+  const results = await runVideoAiBatch(started + BUDGET_MS).catch(async (error) => {
+    await reportProblem("Video tick", error);
     return [];
   });
   // Counts only.

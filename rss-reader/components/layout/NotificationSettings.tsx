@@ -66,7 +66,7 @@ export function NotificationSettings() {
     }
   }
 
-  async function setPref(key: "briefing" | "breaking" | "recap", value: boolean) {
+  async function setPref(key: "briefing" | "breaking" | "recap" | "problems", value: boolean) {
     if (!status) return;
     setStatus({ ...status, prefs: { ...status.prefs, [key]: value } });
     const res = await fetch("/api/push", {
@@ -153,6 +153,18 @@ export function NotificationSettings() {
             <Switch
               checked={status.prefs.recap}
               onCheckedChange={(value) => setPref("recap", value)}
+            />
+          </label>
+          <label className="flex items-center gap-3 px-3 py-2.5">
+            <span className="flex-1">
+              <span className="block text-sm">Problems</span>
+              <span className="block text-xs text-muted-foreground">
+                If something in the app breaks, once a day per kind of problem
+              </span>
+            </span>
+            <Switch
+              checked={status.prefs.problems !== false}
+              onCheckedChange={(value) => setPref("problems", value)}
             />
           </label>
           <p className="px-3 py-2 text-xs text-muted-foreground">

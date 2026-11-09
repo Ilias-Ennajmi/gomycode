@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { keepSavedArticles } from "@/lib/saved-links";
 import { isDesk } from "@/lib/news/desks";
+import { reportProblem } from "@/lib/errlog";
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -43,7 +44,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     return NextResponse.json({ feed: updated });
   } catch (error) {
-    console.error("PATCH /api/feeds/[id] failed", error);
+    await reportProblem("PATCH /api/feeds/[id]", error);
     return NextResponse.json({ error: "Failed to update feed" }, { status: 500 });
   }
 }
@@ -61,7 +62,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: { id: 
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("DELETE /api/feeds/[id] failed", error);
+    await reportProblem("DELETE /api/feeds/[id]", error);
     return NextResponse.json({ error: "Failed to delete feed" }, { status: 500 });
   }
 }

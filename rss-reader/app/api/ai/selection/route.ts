@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AiError, isQuotaError } from "@/lib/ai";
 import { helpWithSelection, type SelectionAction } from "@/lib/smart";
+import { reportProblem } from "@/lib/errlog";
 
 export const maxDuration = 30;
 
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof AiError && error.status === 503) {
       return NextResponse.json({ error: "AI is off or busy right now." }, { status: 503 });
     }
-    console.error("POST /api/ai/selection failed", error);
+    await reportProblem("POST /api/ai/selection", error);
     return NextResponse.json({ error: "AI couldn't help with that right now" }, { status: 500 });
   }
 }

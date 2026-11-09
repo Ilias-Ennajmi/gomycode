@@ -34,6 +34,9 @@ const headers = [
 const nextConfig = {
   // End-to-end tests run their own server next to the dev one (playwright.config.ts).
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  // The app shows pictures with plain <img> (from any host); next/image isn't used, so its
+  // optimizer endpoint stays off rather than being one more thing exposed.
+  images: { unoptimized: true },
   async headers() {
     return [
       { source: "/(.*)", headers },

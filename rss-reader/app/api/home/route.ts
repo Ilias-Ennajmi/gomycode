@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ARTICLE_FEED_INCLUDE, notSnoozed, serializeArticle } from "@/lib/articles";
 import { getFilterRules, hiddenArticleClauses } from "@/lib/filters";
+import { reportProblem } from "@/lib/errlog";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export async function GET() {
     });
     return NextResponse.json({ continue: started.map(serializeArticle) });
   } catch (error) {
-    console.error("GET /api/home failed", error);
+    await reportProblem("GET /api/home", error);
     return NextResponse.json({ continue: [] });
   }
 }

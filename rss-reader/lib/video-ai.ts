@@ -4,6 +4,7 @@ import { AiError, generateFromAudio, generateFromVideo, isAiEnabled } from "@/li
 import type { AiPriority } from "@/lib/ai-budget";
 import { formatClock, parseClock } from "@/lib/youtube-video";
 import { youTubeVideoId } from "@/lib/youtube";
+import { reportProblem } from "@/lib/errlog";
 
 // What a video says, from Gemini: a summary, the moments worth jumping to, and a transcript
 // (searchable, highlightable, each part a link to that moment). Gemini's free tier is often
@@ -213,7 +214,7 @@ export async function runVideoAi(
     const status = error instanceof AiError ? error.status : undefined;
     const busy = status === 503 || status === 429 || (error as Error)?.name === "TimeoutError";
     if (busy) console.warn(`Video AI postponed for ${articleId}: ${(error as Error).message}`);
-    else console.error(`Video AI failed for ${articleId}`, error);
+    else await reportProblem(`Video AI for ${articleId}`, error);
     // Google being overloaded isn't the video's fault: it doesn't use up a try (the wait
     // before the next run still applies, and background runs only look back two weeks).
     if (busy) {

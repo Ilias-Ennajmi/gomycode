@@ -47,3 +47,20 @@ test("the API answers and refuses without a session", async ({ page, playwright 
   expect((await anonymous.get("/api/articles")).status()).toBe(401);
   await anonymous.dispose();
 });
+
+test("the health check is public and says what's wrong", async ({ playwright }) => {
+  const anonymous = await playwright.request.newContext({
+    baseURL: test.info().project.use.baseURL,
+    storageState: { cookies: [], origins: [] },
+  });
+  const res = await anonymous.get("/api/health");
+  const body = await res.json();
+  expect(body.database).toBe(true);
+  // The seeded world has never run the hourly refresh: not healthy yet, and it says so.
+  expect(body.refreshing).toBe(false);
+  expect(res.status()).toBe(503);
+  expect(Object.keys(body).sort()).toEqual(
+    ["database", "lastRefreshMinutesAgo", "ok", "refreshing"].sort()
+  );
+  await anonymous.dispose();
+});

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AiError, isAiEnabled } from "@/lib/ai";
 import { parseKind, parseLangs } from "@/lib/discover/langs";
 import { suggestForFeed, suggestForYou, suggestFromDescription } from "@/lib/discover/suggest";
+import { reportProblem } from "@/lib/errlog";
 
 export const maxDuration = 60;
 
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
       : await suggestForYou(langs, kind);
     return NextResponse.json({ results });
   } catch (error) {
-    console.error("GET /api/discover/suggest failed", error);
+    await reportProblem("GET /api/discover/suggest", error);
     return NextResponse.json({ results: [] });
   }
 }
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
     );
     return NextResponse.json({ results });
   } catch (error) {
-    console.error("POST /api/discover/suggest failed", error);
+    await reportProblem("POST /api/discover/suggest", error);
     const message =
       error instanceof AiError && error.status === 429
         ? "The free AI quota is used up for now. Try again in a minute."

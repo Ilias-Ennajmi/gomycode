@@ -109,7 +109,7 @@ export function SystemSheet({
         ["Server", `${data.build.region ?? "local"} · Node ${data.build.node}`],
         [
           "Database",
-          `${megabytes(data.database.bytes)} · ${data.database.articles} articles · ${data.database.feeds} sources · ${data.database.highlights} highlights`,
+          `${megabytes(data.database.bytes)} of the free 500 MB (${Math.round(((data.database.bytes ?? 0) / (500 * 1024 * 1024)) * 100)}%) · ${data.database.articles} articles · ${data.database.feeds} sources · ${data.database.highlights} highlights`,
         ],
         [
           "Services",
@@ -118,7 +118,7 @@ export function SystemSheet({
         [
           "Last hourly refresh",
           tickAt
-            ? `${formatRelativeTime(new Date(tickAt))} · ${String(data.lastTick.newArticles ?? 0)} new · ${String(data.lastTick.updated ?? 0)} read · ${String(data.lastTick.skipped ?? 0)} skipped · ${String(data.lastTick.failed ?? 0)} failed · ${Math.round(Number(data.lastTick.ms ?? 0) / 1000)} s`
+            ? `${Date.now() - tickAt > 3 * 3600_000 ? "Late, check the scheduler · " : ""}${formatRelativeTime(new Date(tickAt))} · ${String(data.lastTick.newArticles ?? 0)} new · ${String(data.lastTick.updated ?? 0)} read · ${String(data.lastTick.skipped ?? 0)} skipped · ${String(data.lastTick.failed ?? 0)} failed · ${Math.round(Number(data.lastTick.ms ?? 0) / 1000)} s`
             : "not yet",
         ],
         [

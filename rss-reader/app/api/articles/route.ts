@@ -19,6 +19,7 @@ import { searchArticleIds } from "@/lib/search";
 import { parseSearchQuery } from "@/lib/search-query";
 import { sqlName } from "@/lib/db";
 import { getVideoPrefs } from "@/lib/video-prefs";
+import { reportProblem } from "@/lib/errlog";
 
 export const dynamic = "force-dynamic";
 
@@ -226,7 +227,7 @@ export async function GET(request: NextRequest) {
       hasMore: page * limit < total,
     });
   } catch (error) {
-    console.error("GET /api/articles failed", error);
+    await reportProblem("GET /api/articles", error);
     return NextResponse.json({ error: "Failed to load articles" }, { status: 500 });
   }
 }
