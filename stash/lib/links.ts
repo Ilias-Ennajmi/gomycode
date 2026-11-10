@@ -35,12 +35,38 @@ export function detectPlatform(url: string): Platform {
   return "web";
 }
 
+/** The video id of a YouTube link (watch, youtu.be, /shorts/, /embed/, /live/). Null for channels, playlists, etc. */
+export function youtubeId(url: string): string | null {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  const host = u.hostname.toLowerCase().replace(/^(www|m|music)\./, "");
+  const parts = u.pathname.split("/").filter(Boolean);
+  let id: string | null | undefined;
+  if (host === "youtu.be") id = parts[0];
+  else if (host === "youtube.com" || host === "youtube-nocookie.com") {
+    if (parts[0] === "watch") id = u.searchParams.get("v");
+    else if (parts[0] === "shorts" || parts[0] === "embed" || parts[0] === "live") id = parts[1];
+  }
+  return id && /^[A-Za-z0-9_-]{6,20}$/.test(id) ? id : null;
+}
+
 /** Tracking parameters make the same reel look like two different links. */
 export function cleanUrl(url: string): string {
   try {
     const u = new URL(url);
+    // One YouTube video, one link: youtu.be, /shorts/ and watch?v= with a playlist all save the same thing.
+    const yt = youtubeId(url);
+    if (yt) {
+      const short = /\/shorts\//.test(u.pathname);
+      const t = u.searchParams.get("t");
+      return short ? `https://www.youtube.com/shorts/${yt}` : `https://www.youtube.com/watch?v=${yt}${t && /^\d+s?$/.test(t) ? `&t=${t}` : ""}`;
+    }
     for (const key of [...u.searchParams.keys()]) {
-      if (/^(utm_|igsh|igshid|si$|_r$|_t$|is_from_webapp|sender_device|share_)/i.test(key)) u.searchParams.delete(key);
+      if (/^(utm_|igsh|igshid|si$|_r$|_t$|is_from_webapp|sender_device|share_|fbclid$|gclid$|mc_cid$|mc_eid$|ref_src$)/i.test(key)) u.searchParams.delete(key);
     }
     u.hash = "";
     return u.toString();
@@ -49,35 +75,15 @@ export function cleanUrl(url: string): string {
   }
 }
 
-/** The platform's own embeddable player: the fallback when there's no stored copy. */
-export function embedUrl(url: string): string | null {
-  let u: URL;
-  try {
-    u = new URL(url);
-  } catch {
-    return null;
-  }
-  const host = u.hostname.toLowerCase();
-  const parts = u.pathname.split("/").filter(Boolean);
+// The embed address of a save is written by the worker (saves.embed_url, checked by the
+// database); see lib/playback.ts. Nothing here builds one.
 
-  if (host.endsWith("instagram.com")) {
-    const i = parts.findIndex((p) => p === "reel" || p === "p" || p === "tv" || p === "reels");
-    const code = i >= 0 ? parts[i + 1] : undefined;
-    return code ? `https://www.instagram.com/p/${code}/embed/` : null;
-  }
-  if (host.endsWith("tiktok.com")) {
-    const i = parts.indexOf("video");
-    const id = i >= 0 ? parts[i + 1] : undefined;
-    return id && /^\d+$/.test(id) ? `https://www.tiktok.com/player/v1/${id}?autoplay=1&loop=1&rel=0` : null;
-  }
-  if (host === "youtu.be") {
-    return parts[0] ? `https://www.youtube.com/embed/${parts[0]}?playsinline=1&autoplay=1` : null;
-  }
-  if (host.endsWith("youtube.com")) {
-    const id = parts[0] === "shorts" || parts[0] === "embed" ? parts[1] : u.searchParams.get("v");
-    return id ? `https://www.youtube.com/embed/${id}?playsinline=1&autoplay=1` : null;
-  }
-  return null;
+/** What to call a save's source in a sentence ("an article" rather than "Web"). */
+export function sourceNoun(platform: Platform): string {
+  if (platform === "web") return "article";
+  if (platform === "screenshot") return "screenshot";
+  if (platform === "youtube") return "video";
+  return "reel";
 }
 
 export const PLATFORM_LABEL: Record<Platform, string> = {

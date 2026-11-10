@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 import { IconButton } from "@/components/ui/IconButton";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -24,7 +24,8 @@ function readCache(month: string): Wrapped | null {
 /**
  * You → Saved Wrapped: a month in saves. Saved / watched / applied as bars (neutral,
  * with the accent only on "applied", the step that means acting), top Spaces in their
- * own colours, top creators, and "Share my month" as text through the share sheet.
+ * own colours, top creators, and "Share my month": the month as a picture (PNG, drawn
+ * in the brand's look) through the share sheet, or downloaded where sharing files isn't possible.
  */
 export function WrappedCard() {
   const { toast } = useToast();
@@ -32,6 +33,8 @@ export function WrappedCard() {
   const [month, setMonth] = useState(current);
   const [data, setData] = useState<Wrapped | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "offline">("loading");
+  const [sharing, setSharing] = useState(false);
+  const card = useRef<HTMLElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,16 +79,29 @@ export function WrappedCard() {
     : [];
   const spaceMax = Math.max(1, ...(data?.topSpaces.map((s) => s.count) ?? [1]));
 
-  const share = () => {
-    if (!data) return;
+  const share = async () => {
+    if (!data || !card.current || sharing) return;
     const text = wrappedShareText(data, isCurrent);
-    if (navigator.share) void navigator.share({ title: "My month in Stash", text }).catch(() => {});
-    else void navigator.clipboard?.writeText(text).then(() => toast({ message: "Copied" }));
+    setSharing(true);
+    try {
+      // The drawing code is only fetched when someone shares.
+      const { drawPoster, posterFileName, posterModel, sharePoster } = await import("@/lib/wrappedImage");
+      const canvas = await drawPoster(posterModel(data, isCurrent), card.current);
+      const outcome = await sharePoster(canvas, posterFileName(data.month), text);
+      if (outcome === "downloaded") toast({ message: "Saved as a picture in your downloads" });
+    } catch {
+      // No canvas here: the words still go out.
+      if (navigator.share) void navigator.share({ title: "My month in Stash", text }).catch(() => {});
+      else void navigator.clipboard?.writeText(text).then(() => toast({ message: "Copied" }));
+    } finally {
+      setSharing(false);
+    }
   };
 
   return (
     // Wrapped is a poster: always the deep-ink brand look (dark tokens), whatever the theme.
     <section
+      ref={card}
       data-theme="dark"
       aria-labelledby="wrapped-title"
       className="rise-in relative mx-4 flex flex-col gap-5 overflow-hidden rounded-xl bg-surface p-5 text-fg shadow-raised ring-1 ring-line"
@@ -168,11 +184,12 @@ export function WrappedCard() {
 
           <button
             type="button"
-            onClick={share}
+            onClick={() => void share()}
+            aria-busy={sharing || undefined}
             className="press inline-flex h-12 items-center justify-center gap-2 rounded-full bg-fg px-4 text-label text-background"
           >
             <Share2 size={20} strokeWidth={2} aria-hidden />
-            Share my month
+            {sharing ? "Making the picture…" : "Share my month as a picture"}
           </button>
         </>
       )}

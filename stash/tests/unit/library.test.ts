@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { SaveItem } from "@/lib/data";
 import { reminderTime, mostUsed, nextSpaceColor, type Space } from "@/lib/data";
 import { buildQueue, filterSaves, spaceCounts } from "@/lib/queue";
-import { cleanUrl, detectPlatform, embedUrl, extractUrl } from "@/lib/links";
+import { cleanUrl, detectPlatform, extractUrl, youtubeId } from "@/lib/links";
 
 const base: SaveItem = {
   id: "x",
@@ -65,11 +65,21 @@ describe("links", () => {
     expect(detectPlatform("https://example.com")).toBe("web");
   });
 
-  it("builds official embed URLs", () => {
-    expect(embedUrl("https://www.instagram.com/reel/C1x2/")).toBe("https://www.instagram.com/p/C1x2/embed/");
-    expect(embedUrl("https://www.tiktok.com/@a/video/7312345")).toContain("/player/v1/7312345");
-    expect(embedUrl("https://www.youtube.com/shorts/abc")).toContain("/embed/abc");
-    expect(embedUrl("https://vm.tiktok.com/ZM1/")).toBeNull();
+  it("reads the video id out of every kind of YouTube link", () => {
+    expect(youtubeId("https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL1")).toBe("dQw4w9WgXcQ");
+    expect(youtubeId("https://youtu.be/dQw4w9WgXcQ?si=abc")).toBe("dQw4w9WgXcQ");
+    expect(youtubeId("https://m.youtube.com/shorts/dQw4w9WgXcQ")).toBe("dQw4w9WgXcQ");
+    expect(youtubeId("https://www.youtube.com/@somechannel")).toBeNull();
+    expect(youtubeId("https://example.com/watch?v=dQw4w9WgXcQ")).toBeNull();
+  });
+
+  it("saves one YouTube video as one link, and articles as web", () => {
+    expect(cleanUrl("https://youtu.be/dQw4w9WgXcQ?si=abc&t=42")).toBe("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42");
+    expect(cleanUrl("https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL1&index=3")).toBe("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+    expect(cleanUrl("https://youtube.com/shorts/dQw4w9WgXcQ?feature=share")).toBe("https://www.youtube.com/shorts/dQw4w9WgXcQ");
+    expect(detectPlatform("https://www.youtube.com/shorts/dQw4w9WgXcQ")).toBe("youtube");
+    expect(detectPlatform("https://www.theguardian.com/food/2026/some-article")).toBe("web");
+    expect(cleanUrl("https://example.com/post?utm_campaign=x&fbclid=1&id=7")).toBe("https://example.com/post?id=7");
   });
 });
 

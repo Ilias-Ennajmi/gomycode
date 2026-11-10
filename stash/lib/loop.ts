@@ -379,6 +379,8 @@ export function waitForGrade(cardId: string, jobId: string, since: Date, timeout
 export type SynthesisItem = {
   id: string;
   spaceId: string | null;
+  /** Set for a tag synthesis (then spaceId is null). */
+  tag?: string | null;
   topic: string | null;
   points: string[];
   disagreements: { point: string; saveIds: string[] }[];
@@ -387,16 +389,17 @@ export type SynthesisItem = {
   createdAt: string;
 };
 
-export async function fetchSyntheses(limit = 10): Promise<SynthesisItem[]> {
+export async function fetchSyntheses(limit = 16): Promise<SynthesisItem[]> {
   const { data, error } = await client()
     .from("syntheses")
-    .select("id,space_id,topic,points,disagreements,suggested_action,source_save_ids,created_at")
+    .select("id,space_id,tag,topic,points,disagreements,suggested_action,source_save_ids,created_at")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
   return (data ?? []).map((s) => ({
     id: s.id,
     spaceId: s.space_id,
+    tag: s.tag,
     topic: s.topic,
     points: Array.isArray(s.points) ? s.points.filter((p): p is string => typeof p === "string") : [],
     disagreements: Array.isArray(s.disagreements)

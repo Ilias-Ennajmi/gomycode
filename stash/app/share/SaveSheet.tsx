@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Bell, Check, Image as ImageIcon, Link2 } from "lucide-react";
+import { PlatformBadge } from "@/components/ui/PlatformBadge";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { SpacePicker } from "@/components/save/SpacePicker";
 import { RemindSheet } from "@/components/save/RemindSheet";
 import { VoiceNoteButton } from "@/components/save/VoiceNoteButton";
 import { addReminder, createSpace, fetchSaves, fetchSpaces, mostUsed, nextSpaceColor, reminderLabel, type ReminderChoice, type Space } from "@/lib/data";
-import { cleanUrl, detectPlatform, extractUrl, PLATFORM_LABEL, type Platform } from "@/lib/links";
+import { cleanUrl, detectPlatform, extractUrl, type Platform } from "@/lib/links";
 import { enqueue, flush, screenshotRef, serverIdFor, updateSaveByClientId } from "@/lib/outbox";
 import { compressScreenshot, takeSharedImage } from "@/lib/shareInbox";
 import { getBrowserClient, sessionUser } from "@/lib/supabase/client";
@@ -48,15 +49,21 @@ export function SaveSheet() {
   const { toast } = useToast();
   const motionOK = useMotionOK();
   const sharedTitle = params.get("title");
-  // A screenshot shared to Stash: the service worker kept the image under this id.
-  const imageId = params.get("shared-image");
+  // Screenshots shared to Stash: the service worker kept each image under an id (several at once: id,id,…).
+  const imageParam = params.get("shared-image");
+  const imageIds = useMemo(() => (imageParam ? imageParam.split(",").filter(Boolean).slice(0, 10) : []), [imageParam]);
+  const imageId = imageIds[0] ?? null;
   const raw = imageId ? null : extractUrl(params.get("url"), params.get("text"), params.get("title"));
   const url = raw ? cleanUrl(raw) : null;
   const platform: Platform = imageId ? "screenshot" : url ? detectPlatform(url) : "web";
 
   const clientId = useRef<string>("");
+  // Every save this share made (one per screenshot); the Space applies to all of them.
+  const clientIds = useRef<string[]>([]);
   const [saved, setSaved] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [savedCount, setSavedCount] = useState(0);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const preview = previews[0] ?? null;
   const [imageProblem, setImageProblem] = useState<string | null>(null);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [top, setTop] = useState<Space[]>([]);
@@ -69,6 +76,7 @@ export function SaveSheet() {
   useEffect(() => {
     if (!url || clientId.current) return;
     clientId.current = crypto.randomUUID();
+    clientIds.current = [clientId.current];
     const text = params.get("text");
     const title = sharedTitle || (text && text.replace(url, "").trim()) || null;
     void enqueue({
@@ -89,45 +97,59 @@ export function SaveSheet() {
   useEffect(() => {
     if (!imageId || clientId.current) return;
     clientId.current = crypto.randomUUID();
-    const id = clientId.current;
-    let objectUrl: string | null = null;
+    const objectUrls: string[] = [];
     void (async () => {
       if (imageId === "too-big") {
         setImageProblem("That image is too big to save. Try a screenshot instead.");
         return;
       }
-      const original = await takeSharedImage(imageId);
-      if (!original) {
-        setImageProblem("This screenshot was already saved, or the phone cleared it. Share it again.");
-        return;
-      }
-      let image: Blob;
-      try {
-        image = await compressScreenshot(original);
-      } catch (e) {
-        setImageProblem(e instanceof Error ? e.message : "This image can't be read on this phone.");
-        return;
-      }
-      objectUrl = URL.createObjectURL(image);
-      setPreview(objectUrl);
       const text = [params.get("title"), params.get("text")].filter(Boolean).join(" · ").trim();
-      await enqueue({
-        clientId: id,
-        sourceUrl: screenshotRef(id),
-        platform: "screenshot",
-        spaceId: null,
-        sharedTitle: text ? text.slice(0, 300) : null,
-        savedAt: new Date().toISOString(),
-        image,
-      });
-      setSaved(true);
+      let lastProblem: string | null = null;
+      let done = 0;
+      // One save per screenshot, in the order they were shared. One that can't be read doesn't stop the rest.
+      for (const [i, shared] of imageIds.entries()) {
+        const id = i === 0 ? clientId.current : crypto.randomUUID();
+        const original = await takeSharedImage(shared);
+        if (!original) {
+          lastProblem = "This screenshot was already saved, or the phone cleared it. Share it again.";
+          continue;
+        }
+        let image: Blob;
+        try {
+          image = await compressScreenshot(original);
+        } catch (e) {
+          lastProblem = e instanceof Error ? e.message : "This image can't be read on this phone.";
+          continue;
+        }
+        const objectUrl = URL.createObjectURL(image);
+        objectUrls.push(objectUrl);
+        setPreviews((p) => [...p, objectUrl]);
+        await enqueue({
+          clientId: id,
+          sourceUrl: screenshotRef(id),
+          platform: "screenshot",
+          spaceId: null,
+          sharedTitle: text ? text.slice(0, 300) : null,
+          savedAt: new Date(Date.now() + i).toISOString(),
+          image,
+        });
+        if (done === 0) clientId.current = id; // voice note and reminder go with the first one saved
+        clientIds.current = [...clientIds.current, id];
+        done += 1;
+        setSavedCount(done);
+        setSaved(true);
+      }
+      if (done === 0) {
+        setImageProblem(lastProblem ?? "This image can't be read on this phone.");
+        return;
+      }
       haptic();
       void flush();
     })();
     return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrls.forEach((u) => URL.revokeObjectURL(u));
     };
-  }, [imageId, params]);
+  }, [imageId, imageIds, params]);
 
   // 2 · Then the optional Space row (cached first, fresh when online).
   useEffect(() => {
@@ -147,7 +169,7 @@ export function SaveSheet() {
   const pick = (id: string | null) => {
     setSpaceId(id);
     haptic();
-    void updateSaveByClientId(clientId.current, { space_id: id });
+    for (const c of clientIds.current.length ? clientIds.current : [clientId.current]) void updateSaveByClientId(c, { space_id: id });
   };
 
   const create = async (name: string) => {
@@ -246,7 +268,7 @@ export function SaveSheet() {
               </span>
               <div className="flex min-w-0 flex-1 flex-col">
                 <h1 className="text-title" aria-live="polite">
-                  {saved ? "Saved" : "Saving…"}
+                  {saved ? (savedCount > 1 ? `${savedCount} saved` : "Saved") : "Saving…"}
                 </h1>
                 <p className="text-caption text-fg-muted">Back takes you where you were.</p>
               </div>
@@ -267,11 +289,23 @@ export function SaveSheet() {
                 )}
               </span>
               <div className="flex min-w-0 flex-col gap-1">
-                <span className="line-clamp-2 text-label text-fg">{imageId ? sharedTitle || "Screenshot" : sharedTitle || host}</span>
-                <span className="text-caption text-fg-muted">
-                  {PLATFORM_LABEL[platform]} · <span className="text-insight">AI is reading it…</span>
+                <span className="line-clamp-2 text-label text-fg">
+                  {imageId ? (imageIds.length > 1 ? `${savedCount || imageIds.length} screenshots` : sharedTitle || "Screenshot") : sharedTitle || host}
+                </span>
+                <span className="flex flex-wrap items-center gap-x-1.5 text-caption text-fg-muted">
+                  <PlatformBadge platform={platform} />
+                  <span aria-hidden>·</span>
+                  <span>{platform === "web" ? "Stash reads it for you" : imageIds.length > 1 ? "each one becomes a save" : "Stash watches it for you"}</span>
                 </span>
               </div>
+              {previews.length > 1 && (
+                <span aria-hidden className="ml-auto flex shrink-0 -space-x-3">
+                  {previews.slice(1, 4).map((src) => (
+                    // eslint-disable-next-line @next/next/no-img-element -- local object URL of the shared image
+                    <img key={src} src={src} alt="" className="h-12 w-9 rounded-sm object-cover ring-2 ring-raised" />
+                  ))}
+                </span>
+              )}
             </div>
 
             <div className="flex flex-col gap-1">
@@ -281,7 +315,7 @@ export function SaveSheet() {
               <SpacePicker spaces={shown} selectedId={spaceId} onPick={pick} onCreate={create} />
             </div>
 
-            <div className="grid grid-cols-1 gap-3 xs:grid-cols-2">
+            <div className={imageIds.length > 1 ? "hidden" : "grid grid-cols-1 gap-3 xs:grid-cols-2"}>
               <VoiceNoteButton
                 done={voiceDone}
                 onRecorded={(b, m) => void uploadVoice(b, m)}

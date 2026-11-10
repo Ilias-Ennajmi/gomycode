@@ -27,7 +27,7 @@ import {
 } from "@/lib/loop";
 
 const CACHE = "stash.loop";
-type Cached = { queue: DailyQueue | null; syntheses: SynthesisItem[]; reviews: Review[] };
+type Cached = { queue: DailyQueue | null; syntheses: SynthesisItem[]; reviews: Review[]; cards?: RecallCard[] };
 
 function readCache(): Cached | null {
   try {
@@ -78,7 +78,7 @@ export function useLoop() {
       setSyntheses(sy);
       setReminders(rem);
       try {
-        localStorage.setItem(CACHE, JSON.stringify({ queue: q, syntheses: sy, reviews: r.slice(0, 100) }));
+        localStorage.setItem(CACHE, JSON.stringify({ queue: q, syntheses: sy, reviews: r.slice(0, 100), cards: c.slice(0, 60) }));
       } catch {
         // cache is a convenience only
       }
@@ -97,6 +97,11 @@ export function useLoop() {
       if (cached.queue?.day === localDay()) setQueue(cached.queue);
       setSyntheses(cached.syntheses ?? []);
       setReviews(cached.reviews ?? []);
+      // Due cards too, so Learn opens on a card instead of a placeholder.
+      if (cached.cards?.length) {
+        setCards(cached.cards);
+        setLoaded(true);
+      }
     }
     void load();
     const supabase = getBrowserClient();

@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Bell, CheckCircle2, ChevronLeft, Circle, ExternalLink, MoreVertical, Play, RefreshCw, Share2, Trash2 } from "lucide-react";
+import { Bell, CheckCircle2, ChevronLeft, Circle, ExternalLink, Highlighter, MoreVertical, Play, RefreshCw, Share2, Trash2 } from "lucide-react";
+import { PlatformBadge } from "@/components/ui/PlatformBadge";
+import { AiStateNote, ProcessSteps } from "@/components/save/ProcessSteps";
+import { HighlightList, useHighlights } from "@/components/save/Highlights";
+import { embedAspect, openInLabel, playbackMode, videoNote } from "@/lib/playback";
+import { paragraphs } from "@/lib/highlightText";
 import { AiLabel } from "@/components/ui/AiLabel";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -27,7 +32,7 @@ import {
   fetchSave,
   fetchSaves,
   fetchSpaces,
-  fetchTranscript,
+  fetchTranscriptFull,
   moveToSpace,
   nextSpaceColor,
   reprocess,
@@ -39,7 +44,7 @@ import {
   type Space,
 } from "@/lib/data";
 import { signedUrls } from "@/lib/media";
-import { PLATFORM_LABEL, publicUrl } from "@/lib/links";
+import { publicUrl } from "@/lib/links";
 import { morphName } from "@/lib/morph";
 import { WordReveal } from "@/components/ui/WordReveal";
 import { haptic } from "@/lib/haptics";
@@ -71,6 +76,19 @@ function useDoneActions(saveId: string) {
   return { done, toggle };
 }
 
+/** The copy the Library keeps on the phone: the page paints from it before the network answers. */
+function cachedItem(id: string): { save: SaveItem; spaces: Space[] } | null {
+  try {
+    const c = JSON.parse(localStorage.getItem("stash.library") ?? "null") as { saves?: SaveItem[]; spaces?: Space[] } | null;
+    const save = c?.saves?.find((s) => s.id === id);
+    return save ? { save, spaces: c?.spaces ?? [] } : null;
+  } catch {
+    return null;
+  }
+}
+
+const ARTICLE_PREVIEW = 8;
+
 export function ItemView({ id }: { id: string }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -82,6 +100,8 @@ export function ItemView({ id }: { id: string }) {
   const [missing, setMissing] = useState(false);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [segments, setSegments] = useState<Segment[]>([]);
+  const [fullText, setFullText] = useState("");
+  const [allText, setAllText] = useState(false);
   const [related, setRelated] = useState<SaveItem[]>([]);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [voiceUrl, setVoiceUrl] = useState<string | null>(null);
@@ -106,9 +126,10 @@ export function ItemView({ id }: { id: string }) {
       lastStatus.current = s.status;
       setSave(s);
       setNote(s.userNote ?? "");
-      const [sp, segs, relIds] = await Promise.all([fetchSpaces(), fetchTranscript(id), fetchRelated(id).catch(() => [])]);
+      const [sp, transcript, relIds] = await Promise.all([fetchSpaces(), fetchTranscriptFull(id), fetchRelated(id).catch(() => [])]);
       setSpaces(sp);
-      setSegments(segs);
+      setSegments(transcript.segments);
+      setFullText(transcript.fullText);
       const rel = relIds.length ? await fetchSaves({ ids: relIds }) : [];
       setRelated(relIds.map((r) => rel.find((x) => x.id === r)).filter((x): x is SaveItem => Boolean(x)));
       const paths = [s.thumbPath, ...rel.map((r) => r.thumbPath)].filter((p): p is string => Boolean(p));
@@ -120,8 +141,17 @@ export function ItemView({ id }: { id: string }) {
   }, [id, toast]);
 
   useEffect(() => {
-    // Async fetch: state is only set after the network answers.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // Cache first: the Library's copy on the phone shows at once; the network refreshes it.
+    const cached = cachedItem(id);
+    if (cached) {
+      // localStorage is only readable after mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSave((s) => s ?? cached.save);
+      setSpaces((s) => (s.length ? s : cached.spaces));
+      setNote((n) => n || (cached.save.userNote ?? ""));
+      lastStatus.current ??= cached.save.status;
+      if (cached.save.thumbPath) void signedUrls("stash-thumbs", [cached.save.thumbPath]).then((u) => setThumbs((t) => ({ ...u, ...t })));
+    }
     void load();
     // A save that's still processing fills in live.
     const supabase = getBrowserClient();
@@ -136,6 +166,9 @@ export function ItemView({ id }: { id: string }) {
   }, [id, load]);
 
   const space = useMemo(() => spaces.find((s) => s.id === save?.spaceId), [spaces, save?.spaceId]);
+  const markKept = useCallback(() => setSave((s) => (s ? { ...s, kept: true } : s)), []);
+  const hl = useHighlights(id, save?.aiTitle ?? save?.title ?? null, markKept);
+  const articleText = useMemo(() => paragraphs(fullText), [fullText]);
   const activeSeg = segments.findIndex((s) => now >= s.start && now < Math.max(s.end, s.start + 1));
 
   if (missing) {
@@ -164,6 +197,18 @@ export function ItemView({ id }: { id: string }) {
   }
 
   const processing = save.status === "queued" || save.status === "processing";
+  const { mode, embedUrl: embed } = playbackMode(save);
+  const article = mode === "article";
+  const poster = save.thumbPath ? thumbs[save.thumbPath] : undefined;
+  const original = publicUrl(save.sourceUrl);
+  const whyNoCopy = mode === "embed" || mode === "link" ? videoNote(save.videoState, save.platform) : null;
+  const wide = mode === "embed" && embed !== null && embedAspect(embed, save.sourceUrl) === "landscape";
+  let host = "";
+  try {
+    host = original ? new URL(original).hostname.replace(/^www\./, "") : "";
+  } catch {
+    host = "";
+  }
 
   const onTime = (t: number, d: number) => {
     setNow(t);
@@ -249,31 +294,57 @@ export function ItemView({ id }: { id: string }) {
         />
         <div className="flex items-center gap-1">
           <IconButton label="More" icon={MoreVertical} onClick={() => setMenuOpen(true)} />
-          <Link
-            href={`/play?id=${save.id}`}
-            aria-label="Play full screen"
-            className="press flex h-12 w-12 items-center justify-center rounded-full bg-accent text-on-accent shadow-pop"
-          >
-            <Play size={22} strokeWidth={2} fill="currentColor" aria-hidden />
-          </Link>
+          {!article && (
+            <Link
+              href={`/play?id=${save.id}`}
+              aria-label="Play full screen"
+              className="press flex h-12 w-12 items-center justify-center rounded-full bg-accent text-on-accent shadow-pop"
+            >
+              <Play size={22} strokeWidth={2} fill="currentColor" aria-hidden />
+            </Link>
+          )}
         </div>
       </header>
 
-      <div
-        data-morph-dst={save.id}
-        style={{ viewTransitionName: morphName(save.id) }}
-        className="mx-auto aspect-9/16 max-h-[var(--detail-max-h-lg)] w-full max-w-sm overflow-hidden rounded-xl shadow-raised"
-      >
-        <MediaPlayer
-          ref={player}
-          save={save}
-          poster={save.thumbPath ? thumbs[save.thumbPath] : undefined}
-          controls
-          loop
-          startAt={startAt}
-          onTime={onTime}
-        />
-      </div>
+      {article ? (
+        // An article is read, not played: its picture, where it is from, and the way out to the original.
+        <div className="flex flex-col gap-3 px-4">
+          {poster && (
+            <div data-morph-dst={save.id} style={{ viewTransitionName: morphName(save.id) }} className="aspect-video w-full overflow-hidden rounded-xl bg-raised shadow-raised">
+              {/* eslint-disable-next-line @next/next/no-img-element -- signed Storage URL */}
+              <img src={poster} alt="" className="h-full w-full object-cover" />
+            </div>
+          )}
+          {original && (
+            <a href={original} target="_blank" rel="noreferrer" className="press flex min-h-12 items-center gap-3 rounded-full border border-line bg-raised px-4 text-label text-fg">
+              <ExternalLink size={20} strokeWidth={2} aria-hidden className="shrink-0" />
+              <span className="min-w-0 flex-1 truncate">{openInLabel(save.platform)}</span>
+              <span className="shrink-0 truncate text-caption text-fg-muted">{host}</span>
+            </a>
+          )}
+        </div>
+      ) : (
+        <>
+          <div
+            data-morph-dst={save.id}
+            style={{ viewTransitionName: morphName(save.id) }}
+            className={cx(
+              "mx-auto w-full overflow-hidden rounded-xl shadow-raised",
+              wide ? "aspect-video max-w-xl" : "aspect-9/16 max-h-[var(--detail-max-h-lg)] max-w-sm",
+            )}
+          >
+            <MediaPlayer ref={player} save={save} poster={poster} controls loop startAt={startAt} onTime={onTime} />
+          </div>
+          {mode === "embed" && original && (
+            <div className="mx-auto flex w-full max-w-sm flex-col items-center gap-2 px-4 pt-3">
+              <a href={original} target="_blank" rel="noreferrer" className="press flex h-12 items-center gap-2 rounded-full border border-line bg-raised px-5 text-label text-fg">
+                <ExternalLink size={20} strokeWidth={2} aria-hidden /> {openInLabel(save.platform)}
+              </a>
+              {whyNoCopy && <p className="text-center text-caption text-fg-muted">{whyNoCopy}</p>}
+            </div>
+          )}
+        </>
+      )}
 
       <div className="flex flex-col gap-6 px-4 pt-4">
         {(save.error || save.status === "failed" || save.status === "dead_link") && (
@@ -297,15 +368,14 @@ export function ItemView({ id }: { id: string }) {
                 {space.name}
               </span>
             )}
-            <span>{PLATFORM_LABEL[save.platform]}</span>
+            <PlatformBadge platform={save.platform} />
             {save.creator && <span>· @{save.creator.replace(/^@/, "")}</span>}
             {save.duration ? <span>· {formatDuration(save.duration)}</span> : null}
           </div>
           {processing ? (
-            <div className="flex flex-col gap-2" aria-label="AI is reading it">
-              <AiLabel text="Reading it…" />
-              <Skeleton shape="line" />
-              <Skeleton shape="line" className="w-2/3" />
+            <div className="flex flex-col gap-3">
+              <h1 className="text-title">{cardText(save)}</h1>
+              <ProcessSteps step={save.processStep} platform={save.platform} />
             </div>
           ) : save.keyIdea ? (
             <>
@@ -333,7 +403,10 @@ export function ItemView({ id }: { id: string }) {
               )}
             </>
           ) : (
-            <h1 className="text-title">{cardText(save)}</h1>
+            <>
+              <h1 className="text-title">{cardText(save)}</h1>
+              {save.status === "ready" && <AiStateNote aiState={save.aiState} onRetry={() => void retry()} />}
+            </>
           )}
           <div className="flex flex-wrap gap-2">
             <Button
@@ -383,27 +456,84 @@ export function ItemView({ id }: { id: string }) {
           <SpacePicker spaces={spaces} selectedId={space?.id ?? null} onPick={move} onCreate={newSpace} />
         </section>
 
+        {(hl.list.length > 0 || segments.length > 0 || articleText.length > 0) && (
+          <section aria-labelledby="highlights-title" className="flex flex-col gap-2">
+            <h2 id="highlights-title" className="text-heading">
+              Highlights
+            </h2>
+            {hl.list.length > 0 ? (
+              <HighlightList
+                highlights={hl.list}
+                onSeek={mode === "file" ? (t) => player.current?.seek(t) : undefined}
+                onCard={hl.card}
+                onRemove={hl.remove}
+              />
+            ) : (
+              <p className="flex items-center gap-3 rounded-lg border-2 border-dashed border-line p-4 text-body text-fg-muted">
+                <Highlighter size={20} strokeWidth={2} aria-hidden className="shrink-0" />
+                Tap a line below to keep it. A kept line can become a recall card.
+              </p>
+            )}
+          </section>
+        )}
+
         {segments.length > 0 && (
           <section className="flex flex-col gap-2">
             <h2 className="text-heading">Transcript</h2>
             <ol className="flex flex-col rounded-lg bg-surface p-1 shadow-pop">
-              {segments.map((seg, i) => (
-                <li key={i}>
-                  <button
-                    type="button"
-                    disabled={!save.hasVideo}
-                    onClick={() => player.current?.seek(seg.start)}
-                    className={cx(
-                      "press flex w-full gap-3 rounded-card px-3 py-2 text-left text-body",
-                      i === activeSeg ? "bg-raised text-fg" : "text-fg-muted",
-                    )}
-                  >
-                    <span className="w-10 shrink-0 text-caption tabular-nums">{formatDuration(seg.start)}</span>
-                    <span>{seg.text}</span>
-                  </button>
-                </li>
-              ))}
+              {segments.map((seg, i) => {
+                const on = hl.isOn(seg);
+                return (
+                  <li key={i} className={cx("flex items-stretch rounded-card", i === activeSeg && "bg-raised")}>
+                    <button
+                      type="button"
+                      disabled={mode !== "file"}
+                      onClick={() => player.current?.seek(seg.start)}
+                      aria-label={`Play from ${formatDuration(seg.start)}`}
+                      className="press flex min-h-12 w-14 shrink-0 items-start justify-center pt-3 text-caption tabular-nums text-fg-muted"
+                    >
+                      {formatDuration(seg.start)}
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={on}
+                      aria-label={`${on ? "Remove highlight" : "Highlight"}: ${seg.text}`}
+                      onClick={() => hl.toggle(seg)}
+                      className={cx("press flex min-h-12 min-w-0 flex-1 items-start gap-2 py-2.5 pr-3 text-left text-body", i === activeSeg || on ? "text-fg" : "text-fg-muted")}
+                    >
+                      <span className={cx("min-w-0 flex-1", on && "rounded-sm bg-fg px-1.5 text-background [box-decoration-break:clone]")}>{seg.text}</span>
+                    </button>
+                  </li>
+                );
+              })}
             </ol>
+          </section>
+        )}
+
+        {segments.length === 0 && articleText.length > 0 && (
+          <section className="flex flex-col gap-2">
+            <h2 className="text-heading">{article ? "The article" : "What it says"}</h2>
+            <div className="flex flex-col gap-1 rounded-lg bg-surface p-2 shadow-pop">
+              {(allText ? articleText : articleText.slice(0, ARTICLE_PREVIEW)).map((p, i) => {
+                const on = hl.isOn({ text: p });
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => hl.toggle({ text: p })}
+                    className="press min-h-12 rounded-card px-2 py-2 text-left text-body leading-relaxed text-fg"
+                  >
+                    <span className={cx(on && "rounded-sm bg-fg px-1 text-background [box-decoration-break:clone]")}>{p}</span>
+                  </button>
+                );
+              })}
+              {!allText && articleText.length > ARTICLE_PREVIEW && (
+                <Button variant="secondary" className="m-2 self-start" onClick={() => setAllText(true)}>
+                  Show the rest
+                </Button>
+              )}
+            </div>
           </section>
         )}
 
