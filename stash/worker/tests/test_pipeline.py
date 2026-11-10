@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from stash_worker import ai, media, pipeline, r2
+from stash_worker import ai, geocode, media, pipeline, r2
 from stash_worker.config import Config
 
 OWNER = "u-owner"
@@ -119,6 +119,7 @@ def stub_network(monkeypatch, tmp_path, *, download=None):
         "intent": "learn", "tags": ["pricing"], "language": "en", "suggested_space_id": "mkt",
         "confidence": 0.9, "places": [{"name": "Café", "address": None}],
         "cards": [{"prompt": "q", "answer": "a"}]}, 1000, 200, 0.002))
+    monkeypatch.setattr(geocode, "geocode_save", lambda supa, c, save_id, geocoder=None: 0)
     monkeypatch.setattr(ai, "embed", lambda c, text, input_type="document": ai.Embedding([0.1] * 1024, 50))
 
 

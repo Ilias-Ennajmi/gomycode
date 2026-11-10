@@ -49,6 +49,14 @@ class Config:
     # Optional Netscape cookies file (base64) for Instagram when it asks for a login.
     ig_cookies_b64: str = field(default_factory=lambda: _env("INSTAGRAM_COOKIES_B64"))
 
+    # Stronger model for exports (creative brief text). Prices feed the cost guard.
+    smart_model: str = field(default_factory=lambda: _env("CLAUDE_SMART_MODEL"))
+    smart_usd_in: float = field(default_factory=lambda: _float("CLAUDE_SMART_USD_PER_MTOK_IN", 3.0))
+    smart_usd_out: float = field(default_factory=lambda: _float("CLAUDE_SMART_USD_PER_MTOK_OUT", 15.0))
+
+    # Place names → coordinates through OpenStreetMap Nominatim (free, 1 request/second). "off" disables it.
+    geocode: bool = field(default_factory=lambda: _env("GEOCODE", "on").lower() not in ("off", "0", "false", "no"))
+
     max_video_seconds: int = field(default_factory=lambda: int(_float("MAX_VIDEO_SECONDS", 600)))
     # Stop claiming new jobs after this many seconds inside one /run request.
     run_budget_seconds: int = field(default_factory=lambda: int(_float("RUN_BUDGET_SECONDS", 720)))
@@ -60,6 +68,10 @@ class Config:
     @property
     def has_claude(self) -> bool:
         return bool(self.anthropic_key and self.fast_model)
+
+    @property
+    def has_smart(self) -> bool:
+        return bool(self.anthropic_key and self.smart_model)
 
     def missing_required(self) -> list[str]:
         missing = []

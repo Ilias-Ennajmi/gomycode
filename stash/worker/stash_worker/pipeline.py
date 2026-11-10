@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from . import ai, media, r2
+from . import ai, exports, geocode, media, r2
 from .config import Config
 from .rules import choose_space, detect_platform, embedding_text, is_owner, segments_text
 from .supa import Supa
@@ -63,6 +63,8 @@ def _finish_job(supa: Supa, job: dict[str, Any], state: str, error: str | None =
 
 def process_job(supa: Supa, cfg: Config, job: dict[str, Any]) -> str:
     """Returns a short outcome word for the run summary (never user data)."""
+    if job["type"] == "export":
+        return exports.process_export(supa, cfg, job)
     if job["type"] not in ("ingest", "reprocess"):
         _finish_job(supa, job, "failed", "job type arrives in a later phase")
         return "skipped"
@@ -222,6 +224,10 @@ def _ingest(supa: Supa, cfg: Config, save: dict[str, Any], workdir: Path) -> str
         supa.delete("places", {"save_id": f"eq.{save_id}"})
         if insights["places"]:
             supa.insert("places", [{"save_id": save_id, "user_id": user_id, **p} for p in insights["places"]])
+            try:
+                geocode.geocode_save(supa, cfg, save_id)  # pins for the Map and "nearby" reminders
+            except Exception:  # noqa: BLE001 — a missing pin never fails a save
+                pass
 
         if insights["cards"] and not supa.one("cards", {"select": "id", "save_id": f"eq.{save_id}"}):
             due = (datetime.now(timezone.utc) + timedelta(days=3)).isoformat()
