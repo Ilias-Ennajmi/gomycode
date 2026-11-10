@@ -3,7 +3,7 @@
 // - Network-first with a cached fallback for page navigations and Supabase REST reads.
 // - Stale-while-revalidate for images, with a size cap.
 // Bump VERSION whenever these caching rules change.
-const VERSION = "v2";
+const VERSION = "v3";
 const SHELL = `stash-shell-${VERSION}`;
 const DATA = `stash-data-${VERSION}`;
 const IMAGES = `stash-img-${VERSION}`;
@@ -93,6 +93,9 @@ self.addEventListener("fetch", (event) => {
 
   // Never intercept auth or Next internals that must be fresh.
   if (url.origin === self.location.origin && (url.pathname.startsWith("/auth/") || url.pathname.startsWith("/api/auth"))) return;
+
+  // Map tiles: Leaflet loads hundreds of opaque images; leave them to the browser's HTTP cache.
+  if (url.hostname.endsWith("tile.openstreetmap.org")) return;
 
   if (request.mode === "navigate") {
     event.respondWith(networkFirst(request, SHELL, "/offline.html"));

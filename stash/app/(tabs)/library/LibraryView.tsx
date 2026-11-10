@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, ClipboardPaste, Play, Search, Share2, X } from "lucide-react";
@@ -14,6 +15,8 @@ import { useToast } from "@/components/ui/Toast";
 import { SpacePicker } from "@/components/save/SpacePicker";
 import { PasteLinkSheet } from "@/components/library/PasteLinkSheet";
 import { SpaceColorSheet } from "@/components/space/ColorPicker";
+import { LensToggle, isLens, type Lens } from "@/components/library/LensToggle";
+import { GalaxyView } from "@/components/library/GalaxyView";
 import { SaveGrid, cardText } from "@/components/library/SaveGrid";
 import { SPACE_BG } from "@/components/ui/space";
 import { cx } from "@/components/ui/cx";
@@ -22,6 +25,16 @@ import { useLibrary } from "@/lib/hooks/useLibrary";
 import { createSpace, nextSpaceColor, updateSpace, type SaveItem } from "@/lib/data";
 import { FILTER_LABEL, FILTERS, filterSaves, isFilter, spaceCounts, type Filter } from "@/lib/queue";
 import { formatDuration } from "@/components/ui/Thumbnail";
+
+// Leaflet touches `window` when it loads, so the map is client-only.
+const MapView = dynamic(() => import("@/components/library/MapView"), {
+  ssr: false,
+  loading: () => (
+    <div className="px-4">
+      <Skeleton shape="block" className="h-96" />
+    </div>
+  ),
+});
 
 type Hit = { saveId: string; snippet: string | null; start: number | null };
 
@@ -36,6 +49,7 @@ export function LibraryView() {
   const [filter, setFilter] = useState<Filter>(isFilter(params.get("filter")) ? (params.get("filter") as Filter) : "all");
   const [pasteOpen, setPasteOpen] = useState(false);
   const [colorFor, setColorFor] = useState<string | null>(null);
+  const [lens, setLens] = useState<Lens>(isLens(params.get("lens")) ? (params.get("lens") as Lens) : "grid");
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<Hit[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -63,11 +77,12 @@ export function LibraryView() {
     const q = new URLSearchParams();
     if (space) q.set("space", space);
     if (filter !== "all") q.set("filter", filter);
+    if (lens !== "grid") q.set("lens", lens);
     const next = q.toString();
     if (next !== window.location.search.replace(/^\?/, "")) {
       window.history.replaceState(window.history.state, "", next ? `?${next}` : window.location.pathname);
     }
-  }, [space, filter]);
+  }, [space, filter, lens]);
 
   const playHref = (() => {
     const q = new URLSearchParams();
@@ -153,7 +168,11 @@ export function LibraryView() {
         </div>
       )}
 
-      {empty ? (
+      <div className="px-4">
+        <LensToggle value={lens} onChange={setLens} />
+      </div>
+
+      {empty && lens === "grid" ? (
         <EmptyState
           icon={Share2}
           message="Share a reel to Stash to start: in Instagram or TikTok tap Share, then Stash."
@@ -234,6 +253,10 @@ export function LibraryView() {
                 <p className="py-8 text-center text-body text-fg-muted">Nothing matches yet. Try other words.</p>
               )}
             </section>
+          ) : lens === "map" ? (
+            <MapView saves={visible} spacesById={spacesById} thumbs={lib.thumbs} onOpen={(s) => open(s)} />
+          ) : lens === "galaxy" ? (
+            <GalaxyView />
           ) : lib.loading && lib.saves.length === 0 ? (
             <div className="grid grid-cols-2 gap-3 px-4">
               {Array.from({ length: 4 }, (_, i) => (
