@@ -14,6 +14,8 @@ export type ThumbnailProps = {
   keyIdea?: string;
   /** Processing: shimmer instead of the key idea. */
   loading?: boolean;
+  /** Processing, live: the step's name and how far along it is (1-based of `total`; 0 = waiting). */
+  progress?: { label: string; step: number; total: number };
   /** Fade the key idea in word by word (use when processing just finished). */
   reveal?: boolean;
   /** Image source when one exists; otherwise a raised placeholder. */
@@ -41,6 +43,7 @@ export function Thumbnail({
   unwatched,
   keyIdea,
   loading,
+  progress,
   reveal,
   src,
   label,
@@ -71,7 +74,24 @@ export function Thumbnail({
         </span>
       )}
       <span className="absolute inset-x-0 bottom-0 z-10 flex min-h-1/2 flex-col justify-end p-3" style={BOTTOM_SCRIM}>
-        {loading ? (
+        {loading && progress ? (
+          <span className="flex flex-col gap-2 text-left" style={INK_LIGHT}>
+            {/* The title arrives with the first update, long before the summary. */}
+            {keyIdea && <span className="line-clamp-2 text-label">{keyIdea}</span>}
+            <span className="flex items-center gap-2 text-caption">
+              <span aria-hidden className="flex flex-1 gap-1">
+                {Array.from({ length: progress.total }, (_, i) => (
+                  <span
+                    key={i}
+                    className={cx("h-1.5 flex-1 rounded-full", i + 1 === progress.step && "shimmer")}
+                    style={{ background: i < progress.step ? "var(--ink-light)" : "color-mix(in srgb, var(--ink-light) 30%, transparent)" }}
+                  />
+                ))}
+              </span>
+              <span className="shrink-0">{progress.label}</span>
+            </span>
+          </span>
+        ) : loading ? (
           <span aria-hidden className="flex flex-col gap-2">
             <span className="shimmer h-3 w-full rounded-sm opacity-60" />
             <span className="shimmer h-3 w-2/3 rounded-sm opacity-60" />
@@ -84,7 +104,7 @@ export function Thumbnail({
           )
         )}
       </span>
-      {loading && <span className="sr-only">Processing</span>}
+      {loading && !progress && <span className="sr-only">Processing</span>}
     </>
   );
 

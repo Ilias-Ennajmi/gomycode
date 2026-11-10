@@ -29,6 +29,14 @@ export type SaveItem = {
   spaceId: string | null;
   thumbPath: string | null;
   hasVideo: boolean;
+  /** Storage path of the stored MP4 (bucket stash-video); null when there is none. */
+  videoPath?: string | null;
+  // Written by the worker (contract 0007). Optional: older cached copies don't have them.
+  processStep?: Enums<"process_step">;
+  videoState?: Enums<"video_state">;
+  playback?: Enums<"playback">;
+  embedUrl?: string | null;
+  aiState?: Enums<"ai_state">;
   duration: number | null;
   creator: string | null;
   caption: string | null;
@@ -76,6 +84,11 @@ type SaveRow = {
   space_id: string | null;
   thumb_path: string | null;
   video_path: string | null;
+  process_step?: Enums<"process_step"> | null;
+  video_state?: Enums<"video_state"> | null;
+  playback?: Enums<"playback"> | null;
+  embed_url?: string | null;
+  ai_state?: Enums<"ai_state"> | null;
   duration_s: number | null;
   creator_handle: string | null;
   caption: string | null;
@@ -89,11 +102,13 @@ type SaveRow = {
 };
 
 const SAVE_SELECT =
-  "id,client_id,source_url,platform,status,space_id,thumb_path,video_path,duration_s,creator_handle,caption,title,error,saved_at,user_note,voice_note_path," +
+  "id,client_id,source_url,platform,status,space_id,thumb_path,video_path,process_step,video_state,playback,embed_url,ai_state,duration_s,creator_handle,caption,title,error,saved_at,user_note,voice_note_path," +
   "insights(title,key_idea,takeaways,actions,tags,suggested_space_id),states(watched_at,kept,archived_at,applied_at,skip_count)";
 
 const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
 const strings = (v: Json | undefined): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+
+export type { SaveRow };
 
 export function toSaveItem(row: SaveRow): SaveItem {
   const ins = one(row.insights);
@@ -107,6 +122,12 @@ export function toSaveItem(row: SaveRow): SaveItem {
     spaceId: row.space_id,
     thumbPath: row.thumb_path,
     hasVideo: Boolean(row.video_path),
+    videoPath: row.video_path,
+    processStep: row.process_step ?? (row.status === "queued" ? "queued" : row.status === "processing" ? "fetching" : "ready"),
+    videoState: row.video_state ?? (row.video_path ? "stored" : "none"),
+    playback: row.playback ?? (row.video_path ? "video" : "link"),
+    embedUrl: row.embed_url ?? null,
+    aiState: row.ai_state ?? "pending",
     duration: row.duration_s === null ? null : Number(row.duration_s),
     creator: row.creator_handle,
     caption: row.caption,
@@ -176,13 +197,46 @@ export async function fetchSave(id: string): Promise<SaveItem | null> {
   return data ? toSaveItem(data) : null;
 }
 
-export async function fetchTranscript(saveId: string): Promise<Segment[]> {
-  const { data } = await client().from("transcripts").select("segments").eq("save_id", saveId).maybeSingle();
-  const segs = Array.isArray(data?.segments) ? (data.segments as unknown[]) : [];
+function toSegments(raw: unknown): Segment[] {
+  const segs = Array.isArray(raw) ? (raw as unknown[]) : [];
   return segs
     .map((s) => s as Partial<Segment>)
     .filter((s) => typeof s.text === "string" && typeof s.start === "number")
     .map((s) => ({ start: s.start as number, end: (s.end as number) ?? (s.start as number), text: s.text as string }));
+}
+
+export async function fetchTranscript(saveId: string): Promise<Segment[]> {
+  const { data } = await client().from("transcripts").select("segments").eq("save_id", saveId).maybeSingle();
+  return toSegments(data?.segments);
+}
+
+/** Timed lines (videos) and the whole text (articles have text and no lines). */
+export async function fetchTranscriptFull(saveId: string): Promise<{ segments: Segment[]; fullText: string }> {
+  const { data } = await client().from("transcripts").select("segments,full_text").eq("save_id", saveId).maybeSingle();
+  return { segments: toSegments(data?.segments), fullText: typeof data?.full_text === "string" ? data.full_text : "" };
+}
+
+/** Live changes carry the save's own columns only: fold them into the copy on screen. */
+export function applySaveRow(item: SaveItem, row: Partial<SaveRow>): SaveItem {
+  const next = { ...item };
+  if (row.status !== undefined) next.status = row.status;
+  if (row.title !== undefined) next.title = row.title;
+  if (row.caption !== undefined) next.caption = row.caption;
+  if (row.creator_handle !== undefined) next.creator = row.creator_handle;
+  if (row.thumb_path !== undefined) next.thumbPath = row.thumb_path;
+  if (row.duration_s !== undefined) next.duration = row.duration_s === null ? null : Number(row.duration_s);
+  if (row.error !== undefined) next.error = row.error;
+  if (row.space_id !== undefined) next.spaceId = row.space_id;
+  if (row.video_path !== undefined) {
+    next.videoPath = row.video_path;
+    next.hasVideo = Boolean(row.video_path);
+  }
+  if (row.process_step) next.processStep = row.process_step;
+  if (row.video_state) next.videoState = row.video_state;
+  if (row.playback) next.playback = row.playback;
+  if (row.embed_url !== undefined) next.embedUrl = row.embed_url;
+  if (row.ai_state) next.aiState = row.ai_state;
+  return next;
 }
 
 export async function fetchRelated(saveId: string): Promise<string[]> {

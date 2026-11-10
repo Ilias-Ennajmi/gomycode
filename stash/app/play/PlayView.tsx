@@ -23,6 +23,9 @@ import { localDay } from "@/lib/dailyQueue";
 import { buildForDay, fetchDailyQueue, markQueueDone, readLoopSettings, storeDailyQueue } from "@/lib/loop";
 import { streak } from "@/lib/streak";
 import { publicUrl } from "@/lib/links";
+import { useVideoUrls } from "@/lib/media";
+import { playbackMode } from "@/lib/playback";
+import { searchSaves } from "@/lib/search";
 import { tokenMs } from "@/lib/motionTokens";
 import { Illustration } from "@/components/brand/Illustration";
 
@@ -125,10 +128,13 @@ export function PlayView() {
 
   // Freeze the queue once, so live updates never reshuffle what's playing.
   useEffect(() => {
-    if (order || !lib.synced) return;
+    if (order || lib.loading) return;
+    // Cache first: a queue that can be built from the saves already on the phone starts at once.
+    // Only the network's answer can say "nothing to play", so an empty result waits for it.
+    const fromCache = !lib.synced;
     let cancelled = false;
     const settle = (ids: string[]) => {
-      if (!cancelled) setOrder(ids);
+      if (!cancelled && (ids.length > 0 || !fromCache)) setOrder(ids);
     };
     const ids = (q: Parameters<typeof buildQueue>[1]) => buildQueue(lib.saves, q, inboxId).map((s) => s.id);
 
@@ -138,19 +144,12 @@ export function PlayView() {
       } else if (kind === "item" && arg) {
         settle(ids({ id: arg }));
       } else if (kind === "search" && arg) {
-        try {
-          const r = await fetch("/api/search", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ q: arg }),
-          });
-          const json = (await r.json()) as { results?: { saveId: string }[] };
-          settle(ids({ ids: (json.results ?? []).map((h) => h.saveId).join(",") }));
-        } catch {
-          settle([]);
-        }
+        if (fromCache) return;
+        const found = await searchSaves(arg, { saves: lib.saves });
+        settle(ids({ ids: found.hits.map((h) => h.saveId).join(",") }));
       } else if (isToday) {
         // Today's queue as stored (by the cron or Today), what's left of it first; built here if missing.
+        if (fromCache && navigator.onLine) return; // today's stored queue comes from the network
         const playable = new Set(
           lib.saves.filter((s) => !s.archivedAt && s.status !== "queued" && s.status !== "processing").map((s) => s.id),
         );
@@ -176,7 +175,7 @@ export function PlayView() {
     return () => {
       cancelled = true;
     };
-  }, [order, lib.synced, lib.saves, lib.spaces, params, inboxId, kind, arg, isToday, today]);
+  }, [order, lib.loading, lib.synced, lib.saves, lib.spaces, params, inboxId, kind, arg, isToday, today]);
 
   // Every action on an item of today's queue counts it as done (Today ticks its thumbnail).
   const doneToday = useRef(new Set<string>());
@@ -212,6 +211,12 @@ export function PlayView() {
   );
   const current = items[active] as SaveItem | undefined;
   const finished = order !== null && active >= items.length && items.length > 0;
+  const currentMode = current ? playbackMode(current).mode : null;
+
+  // Signed links for the video on screen and the next two, in one request, so the next
+  // one is already loading when it scrolls in. Embeds are never loaded ahead.
+  const ahead = useMemo(() => items.slice(active, active + 3).map((s) => (playbackMode(s).mode === "file" ? s.videoPath : null)), [items, active]);
+  const videoUrls = useVideoUrls(ahead);
 
   // Which page is on screen.
   useEffect(() => {
@@ -257,6 +262,14 @@ export function PlayView() {
     },
     [lib, markDone],
   );
+
+  // An embed, a link card or an article has no clock to follow: 10 seconds on screen counts as watched.
+  const paused = noteOpen || remindOpen;
+  useEffect(() => {
+    if (!current || finished || paused || currentMode === "file" || currentMode === null) return;
+    const t = setTimeout(() => markWatched(current), 10_000);
+    return () => clearTimeout(t);
+  }, [current, currentMode, finished, paused, markWatched]);
 
   const keep = (s: SaveItem) => {
     haptic();
@@ -438,6 +451,8 @@ export function PlayView() {
                 <MediaPlayer
                   save={s}
                   poster={poster}
+                  src={s.videoPath ? videoUrls[s.videoPath] : undefined}
+                  layout="feed"
                   active={i === active && !finished && !noteOpen && !remindOpen}
                   preload={i === active + 1 || i === active + 2}
                   rate={boost ? 2 : rate}
@@ -650,9 +665,13 @@ export function PlayView() {
                 </Link>
               </div>
             )}
-            <div className="h-1 w-full overflow-hidden rounded-full" style={{ background: "color-mix(in srgb, var(--ink-light) 25%, transparent)" }}>
-              <div className="h-full rounded-full" style={{ width: `${Math.round(progress * 100)}%`, background: "var(--ink-light)" }} />
-            </div>
+            {currentMode === "file" ? (
+              <div className="h-1 w-full overflow-hidden rounded-full" style={{ background: "color-mix(in srgb, var(--ink-light) 25%, transparent)" }}>
+                <div className="h-full rounded-full" style={{ width: `${Math.round(progress * 100)}%`, background: "var(--ink-light)" }} />
+              </div>
+            ) : (
+              <span aria-hidden className="h-1" />
+            )}
           </div>
         </>
       )}

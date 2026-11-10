@@ -6,6 +6,7 @@ import { cx } from "@/components/ui/cx";
 import type { SaveItem, Space } from "@/lib/data";
 import type { OutboxItem } from "@/lib/outbox";
 import { PLATFORM_LABEL } from "@/lib/links";
+import { PROCESS_STEPS, processIndex, processLabel } from "@/lib/playback";
 
 /** What a card says when the AI hasn't (or couldn't) write a key idea. */
 export function cardText(s: SaveItem): string {
@@ -46,6 +47,8 @@ export function SaveGrid({
         const space = s.spaceId ? spacesById.get(s.spaceId) : undefined;
         const processing = s.status === "queued" || s.status === "processing";
         const label = badge?.(s);
+        const early = processing ? (s.title || s.caption || "").split("\n")[0].trim().slice(0, 120) : "";
+        const stepLabel = processLabel(s.processStep, s.platform);
         return (
           <li key={s.id} className="relative" data-morph-src={s.id}>
             <Thumbnail
@@ -53,10 +56,11 @@ export function SaveGrid({
               spaceColor={space?.color}
               duration={s.duration ?? undefined}
               unwatched={!s.watchedAt && !processing}
-              keyIdea={processing ? undefined : cardText(s)}
+              keyIdea={processing ? early || undefined : cardText(s)}
               loading={processing}
+              progress={processing ? { label: stepLabel, step: processIndex(s.processStep), total: PROCESS_STEPS.length } : undefined}
               reveal={justReady?.has(s.id)}
-              label={processing ? "Processing save" : cardText(s)}
+              label={processing ? `${early || "New save"} · ${stepLabel}` : cardText(s)}
               onClick={() => onOpen(s)}
             />
             {label && (
