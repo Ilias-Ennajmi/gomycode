@@ -5,7 +5,7 @@
  * fired reminders and the loop settings. Every call runs as the owner (RLS).
  */
 
-import { getBrowserClient } from "@/lib/supabase/client";
+import { getBrowserClient, sessionUser } from "@/lib/supabase/client";
 import type { Json } from "@/lib/supabase/types";
 import { buildDailyQueue, normalizeMinutes, type QueueCandidate } from "@/lib/dailyQueue";
 import { DEFAULT_QUIET, DEFAULT_TIMEZONE, parseQuiet, type QuietHours } from "@/lib/quietHours";
@@ -69,14 +69,14 @@ export async function saveLoopSettings(patch: Partial<LoopSettings>): Promise<Lo
   const next = { ...readLoopSettings(), ...patch };
   storeLoopSettings(next);
   const supabase = client();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) throw new Error("no session");
+  const user = await sessionUser();
+  if (!user) throw new Error("no session");
   const values: { queue_minutes?: number; queue_time?: string; quiet_hours?: Json; timezone?: string } = {};
   if (patch.queueMinutes !== undefined) values.queue_minutes = normalizeMinutes(patch.queueMinutes);
   if (patch.queueTime !== undefined) values.queue_time = patch.queueTime;
   if (patch.quietHours !== undefined) values.quiet_hours = patch.quietHours;
   if (patch.timezone !== undefined) values.timezone = patch.timezone;
-  const { error } = await supabase.from("settings").update(values).eq("user_id", auth.user.id);
+  const { error } = await supabase.from("settings").update(values).eq("user_id", user.id);
   if (error) throw error;
   return next;
 }
@@ -107,12 +107,12 @@ export async function fetchDailyQueue(day: string): Promise<DailyQueue | null> {
 /** Saves the queue for the day; a rebuild keeps what's already done. */
 export async function storeDailyQueue(day: string, saveIds: string[], minutes: number): Promise<void> {
   const supabase = client();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) throw new Error("no session");
+  const user = await sessionUser();
+  if (!user) throw new Error("no session");
   const { error } = await supabase
     .from("daily_queues")
     .upsert(
-      { user_id: auth.user.id, day, save_ids: saveIds, minutes, built_at: new Date().toISOString() },
+      { user_id: user.id, day, save_ids: saveIds, minutes, built_at: new Date().toISOString() },
       { onConflict: "user_id,day" },
     );
   if (error) throw error;
@@ -229,11 +229,11 @@ const EXT: Record<string, string> = { "audio/webm": "webm", "audio/ogg": "ogg", 
 /** Uploads a spoken answer to the owner's answers folder and asks the worker to grade it. Returns the job id. */
 export async function requestGrade(card: RecallCard, answer: { audio: Blob; mime: string } | { text: string }): Promise<string> {
   const supabase = client();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) throw new Error("no session");
+  const user = await sessionUser();
+  if (!user) throw new Error("no session");
   let payload: { card_id: string; audio_path?: string; text?: string };
   if ("audio" in answer) {
-    const path = `${auth.user.id}/answers/${card.id}-${Date.now()}.${EXT[answer.mime] ?? "webm"}`;
+    const path = `${user.id}/answers/${card.id}-${Date.now()}.${EXT[answer.mime] ?? "webm"}`;
     const { error } = await supabase.storage.from("stash-voice").upload(path, answer.audio, { contentType: answer.mime });
     if (error) throw error;
     payload = { card_id: card.id, audio_path: path };

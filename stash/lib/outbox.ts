@@ -1,6 +1,6 @@
 "use client";
 
-import { getBrowserClient } from "@/lib/supabase/client";
+import { ensureSession, getBrowserClient } from "@/lib/supabase/client";
 import type { Platform } from "@/lib/links";
 
 /*
@@ -109,6 +109,9 @@ export function flush(): Promise<number> {
     const supabase = getBrowserClient();
     if (!supabase || (typeof navigator !== "undefined" && !navigator.onLine)) return 0;
     const items = await pending();
+    if (!items.length) return 0;
+    // No identity yet (first open, offline at boot): the saves wait here, nothing is lost.
+    if (!(await ensureSession())) return 0;
     let sent = 0;
     // Batches keep a big import to a few requests; a single share is a batch of one.
     for (let i = 0; i < items.length; i += FLUSH_BATCH) {

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Copy, Cpu } from "lucide-react";
 import { IconButton } from "@/components/ui/IconButton";
 import { useToast } from "@/components/ui/Toast";
-import { getBrowserClient } from "@/lib/supabase/client";
+import { getBrowserClient, sessionUser } from "@/lib/supabase/client";
 
 /**
  * This phone's private id (an anonymous Supabase identity) and this month's
@@ -20,9 +20,9 @@ export function DeviceCard() {
     if (!supabase) return;
     let cancelled = false;
     void (async () => {
-      const { data } = await supabase.auth.getUser();
-      if (cancelled || !data.user) return;
-      setId(data.user.id);
+      const user = await sessionUser();
+      if (cancelled || !user) return;
+      setId(user.id);
       const start = new Date();
       start.setDate(1);
       start.setHours(0, 0, 0, 0);

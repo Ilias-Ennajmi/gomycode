@@ -1,36 +1,22 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from "@/lib/supabase/env";
+import { isPublicPath } from "@/lib/supabase/session";
 
 /*
- * No login screen: Stash is a personal app. The first time a device opens a
- * page, it silently gets an anonymous Supabase identity (kept in a cookie), and
- * row-level security keeps every row private to that identity. A stranger who
- * opens the URL gets their own empty space, never the owner's saves.
+ * No login screen: Stash is a personal app. Each device gets a silent anonymous
+ * Supabase identity, and row-level security keeps every row private to it.
+ *
+ * The identity is created on the phone, by JavaScript (components/shell/NativeBoot
+ * → ensureSession), never here: Phase 0–3 created one on any GET, so link previews
+ * and crawlers made dozens of empty users. This proxy only keeps an existing
+ * session's cookie fresh.
  */
 
-// Pages that never need an identity. Cron routes authenticate with the Vault secret instead;
-// /c/<slug> is a shared collection: a visitor must never get an identity (or a cookie) for opening a link.
-const PUBLIC_PREFIXES = ["/design", "/offline", "/api/cron", "/c"];
-
-function isPublic(pathname: string) {
-  return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-}
-
-/** Only real page loads create an identity, so parallel prefetches can't create several. */
-function isDocumentRequest(request: NextRequest) {
-  const h = request.headers;
-  return (
-    request.method === "GET" &&
-    !h.has("rsc") &&
-    !h.has("next-router-prefetch") &&
-    h.get("purpose") !== "prefetch" &&
-    h.get("sec-purpose")?.includes("prefetch") !== true
-  );
-}
-
 export async function proxy(request: NextRequest) {
-  if (isPublic(request.nextUrl.pathname) || !isSupabaseConfigured) return NextResponse.next();
+  if (isPublicPath(request.nextUrl.pathname) || !isSupabaseConfigured) return NextResponse.next();
+  // Nothing to refresh without a session cookie: skip the round trip.
+  if (!request.cookies.getAll().some((c) => c.name.startsWith("sb-"))) return NextResponse.next();
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -45,12 +31,7 @@ export async function proxy(request: NextRequest) {
   });
 
   // Verifies the session JWT locally and refreshes the cookie when it's close to expiry.
-  const { data } = await supabase.auth.getClaims();
-  if (!data?.claims && isDocumentRequest(request)) {
-    // If anonymous sign-ins are switched off in Supabase this fails quietly:
-    // the app still works, it just can't sync until they're on.
-    await supabase.auth.signInAnonymously();
-  }
+  await supabase.auth.getClaims();
   return response;
 }
 

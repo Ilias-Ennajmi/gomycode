@@ -12,7 +12,7 @@ import { VoiceNoteButton } from "@/components/save/VoiceNoteButton";
 import { addReminder, createSpace, fetchSaves, fetchSpaces, mostUsed, nextSpaceColor, type ReminderChoice, type Space } from "@/lib/data";
 import { cleanUrl, detectPlatform, extractUrl, PLATFORM_LABEL } from "@/lib/links";
 import { enqueue, flush, serverIdFor, updateSaveByClientId } from "@/lib/outbox";
-import { getBrowserClient } from "@/lib/supabase/client";
+import { getBrowserClient, sessionUser } from "@/lib/supabase/client";
 import { haptic } from "@/lib/haptics";
 import { useMotionOK } from "@/lib/hooks/useMotionOK";
 
@@ -111,13 +111,13 @@ export function SaveSheet() {
 
   const uploadVoice = async (blob: Blob, mime: string) => {
     const supabase = getBrowserClient();
-    const { data } = (await supabase?.auth.getUser()) ?? { data: { user: null } };
-    if (!supabase || !data.user || !navigator.onLine) {
+    const user = await sessionUser();
+    if (!supabase || !user || !navigator.onLine) {
       toast({ message: "Voice notes need a connection.", aboveBar: false });
       return;
     }
     const ext = mime.includes("mp4") ? "m4a" : mime.includes("ogg") ? "ogg" : "webm";
-    const path = `${data.user.id}/${clientId.current}.${ext}`;
+    const path = `${user.id}/${clientId.current}.${ext}`;
     const { error } = await supabase.storage.from("stash-voice").upload(path, blob, { contentType: mime, upsert: true });
     if (error) {
       toast({ message: "Couldn't save the voice note.", aboveBar: false });
