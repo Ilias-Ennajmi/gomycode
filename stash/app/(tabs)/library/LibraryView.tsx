@@ -300,7 +300,8 @@ export function LibraryView() {
         </>
       )}
 
-      {!empty && (
+      {/* The floating search bar would cover the Galaxy map, which has its own pan and zoom. */}
+      {!empty && lens !== "galaxy" && (
         <form
           role="search"
           onSubmit={(e) => {

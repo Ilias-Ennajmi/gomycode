@@ -4,6 +4,9 @@ import { readStored } from "@/lib/theme/appearance";
 export function haptic(ms = 10): void {
   if (typeof navigator === "undefined" || !("vibrate" in navigator)) return;
   if (!readStored().haptics) return;
+  // Before any tap (e.g. the save sheet opened by a share) Chrome blocks vibrate and logs an error.
+  const activation = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+  if (activation && !activation.hasBeenActive) return;
   try {
     navigator.vibrate(ms);
   } catch {

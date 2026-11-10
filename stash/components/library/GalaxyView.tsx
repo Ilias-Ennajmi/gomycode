@@ -234,6 +234,11 @@ export function GalaxyView({
   }
 
   const r = Math.max(5, Math.min(9, 6 * Math.sqrt(view.scale)));
+  const topOf = new Map<number, number>();
+  for (const p of points) {
+    const y = toScreen(view, size, p.x, p.y).y;
+    topOf.set(p.cluster, Math.min(topOf.get(p.cluster) ?? Infinity, y));
+  }
   const focused = focus === null ? null : clusters.find((c) => c.cluster === focus) ?? null;
   const focusSaves = focused
     ? points.filter((p) => p.cluster === focused.cluster).map((p) => byId.get(p.saveId)).filter((s): s is SaveItem => Boolean(s))
@@ -267,6 +272,8 @@ export function GalaxyView({
             })}
             {clusters.map((c) => {
               const s = toScreen(view, size, c.cx, c.cy);
+              // The label sits just above the group's top dot, so it never covers a dot.
+              s.y = Math.min(s.y, topOf.get(c.cluster) ?? s.y);
               const dim = focus !== null && c.cluster !== focus;
               return (
                 <text

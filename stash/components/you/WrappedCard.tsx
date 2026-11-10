@@ -136,15 +136,16 @@ export function WrappedCard() {
               <h3 className="text-label text-fg-muted">Top Spaces</h3>
               <ul className="flex flex-col gap-2">
                 {data.topSpaces.map((s) => (
-                  <li key={s.id} className="grid grid-cols-4 items-center gap-3">
-                    <span className="flex min-w-0 items-center gap-2 text-label text-fg">
+                  <li key={s.id} className="flex flex-col gap-1">
+                    {/* Name on its own line: Space names are too long for a column at 360 px. */}
+                    <span className="flex items-center gap-2 text-label text-fg">
                       <span aria-hidden className={cx("h-2 w-2 shrink-0 rounded-full", SPACE_BG[s.color])} />
-                      <span className="truncate">{s.name}</span>
+                      <span className="min-w-0 flex-1 truncate">{s.name}</span>
+                      <span className="tabular-nums">{s.count}</span>
                     </span>
-                    <span className="col-span-2 h-3 overflow-hidden rounded-full bg-raised" aria-hidden>
+                    <span className="h-3 overflow-hidden rounded-full bg-raised" aria-hidden>
                       <span className={cx("block h-full rounded-full", SPACE_BG[s.color])} style={{ width: `${barPercent(s.count, spaceMax)}%` }} />
                     </span>
-                    <span className="text-right text-label text-fg tabular-nums">{s.count}</span>
                   </li>
                 ))}
               </ul>
