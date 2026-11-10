@@ -635,7 +635,7 @@ function Components() {
       </Sub>
 
       <Sub title="Skeleton · line, block, circle, thumb">
-        <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-[1fr_auto_8rem]">
+        <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-[1fr_auto_var(--demo-col)]">
           <div className="flex flex-col gap-2">
             <Skeleton shape="line" />
             <Skeleton shape="line" className="w-2/3" />

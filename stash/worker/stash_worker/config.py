@@ -32,6 +32,10 @@ class Config:
     # USD per million tokens for the fast model, used by the cost guard.
     fast_usd_in: float = field(default_factory=lambda: _float("CLAUDE_FAST_USD_PER_MTOK_IN", 1.0))
     fast_usd_out: float = field(default_factory=lambda: _float("CLAUDE_FAST_USD_PER_MTOK_OUT", 5.0))
+    # The stronger model for syntheses (and exports later).
+    smart_model: str = field(default_factory=lambda: _env("CLAUDE_SMART_MODEL"))
+    smart_usd_in: float = field(default_factory=lambda: _float("CLAUDE_SMART_USD_PER_MTOK_IN", 3.0))
+    smart_usd_out: float = field(default_factory=lambda: _float("CLAUDE_SMART_USD_PER_MTOK_OUT", 15.0))
 
     groq_key: str = field(default_factory=lambda: _env("GROQ_API_KEY"))
     groq_model: str = field(default_factory=lambda: _env("GROQ_TRANSCRIBE_MODEL", "whisper-large-v3-turbo"))
@@ -60,6 +64,10 @@ class Config:
     @property
     def has_claude(self) -> bool:
         return bool(self.anthropic_key and self.fast_model)
+
+    @property
+    def has_smart(self) -> bool:
+        return bool(self.anthropic_key and self.smart_model)
 
     def missing_required(self) -> list[str]:
         missing = []

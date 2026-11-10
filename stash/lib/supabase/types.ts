@@ -333,6 +333,7 @@ export type Database = {
           grade: number | null;
           voice_answer_text: string | null;
           created_at: string;
+          feedback: string | null;
         };
         Insert: {
           id?: string;
@@ -342,6 +343,7 @@ export type Database = {
           grade?: number | null;
           voice_answer_text?: string | null;
           created_at?: string;
+          feedback?: string | null;
         };
         Update: {
           id?: string;
@@ -351,6 +353,7 @@ export type Database = {
           grade?: number | null;
           voice_answer_text?: string | null;
           created_at?: string;
+          feedback?: string | null;
         };
         Relationships: [];
       };
@@ -556,6 +559,7 @@ export type Database = {
           quiet_hours: Json;
           created_at: string;
           updated_at: string;
+          timezone: string;
         };
         Insert: {
           user_id?: string;
@@ -572,6 +576,7 @@ export type Database = {
           quiet_hours?: Json;
           created_at?: string;
           updated_at?: string;
+          timezone?: string;
         };
         Update: {
           user_id?: string;
@@ -588,6 +593,67 @@ export type Database = {
           quiet_hours?: Json;
           created_at?: string;
           updated_at?: string;
+          timezone?: string;
+        };
+        Relationships: [];
+      };
+      daily_queues: {
+        Row: {
+          id: string;
+          user_id: string;
+          day: string;
+          save_ids: string[];
+          minutes: number;
+          built_at: string;
+          done_ids: string[];
+        };
+        Insert: {
+          id?: string;
+          user_id?: string;
+          day: string;
+          save_ids?: string[];
+          minutes?: number;
+          built_at?: string;
+          done_ids?: string[];
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          day?: string;
+          save_ids?: string[];
+          minutes?: number;
+          built_at?: string;
+          done_ids?: string[];
+        };
+        Relationships: [];
+      };
+      push_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          user_agent: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          user_agent?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          endpoint?: string;
+          p256dh?: string;
+          auth?: string;
+          user_agent?: string | null;
+          created_at?: string;
         };
         Relationships: [];
       };
@@ -597,6 +663,16 @@ export type Database = {
       search_saves: { Args: { p_query: string; p_space_id?: string | null; p_embedding?: string | null; p_limit?: number }; Returns: { save_id: string; score: number; snippet: string | null; snippet_start: number | null }[] };
       related_saves: { Args: { p_save_id: string; p_limit?: number }; Returns: { save_id: string; similarity: number }[] };
       request_reprocess: { Args: { p_save_id: string }; Returns: undefined };
+      mark_queue_done: { Args: { p_day: string; p_save_id: string }; Returns: undefined };
+      save_push_subscription: { Args: { p_endpoint: string; p_p256dh: string; p_auth: string; p_user_agent?: string | null }; Returns: undefined };
+      vapid_public_key: { Args: Record<string, never>; Returns: string | null };
+      cron_vapid: { Args: { p_secret: string }; Returns: { public_key: string | null; private_key: string | null; subject: string | null }[] };
+      cron_set_vapid: { Args: { p_secret: string; p_public: string; p_private: string }; Returns: undefined };
+      cron_due_reminders: { Args: { p_secret: string }; Returns: { id: string; user_id: string; save_id: string; title: string; timezone: string; quiet_hours: Json; subscriptions: Json }[] };
+      cron_mark_fired: { Args: { p_secret: string; p_ids: string[] }; Returns: undefined };
+      cron_drop_subscriptions: { Args: { p_secret: string; p_endpoints: string[] }; Returns: undefined };
+      cron_daily_candidates: { Args: { p_secret: string }; Returns: { user_id: string; day: string; minutes: number; saves: Json; subscriptions: Json }[] };
+      cron_store_daily: { Args: { p_secret: string; p_user_id: string; p_day: string; p_save_ids: string[]; p_minutes: number }; Returns: boolean };
     };
     Enums: {
       space_kind: "topic" | "project" | "inbox";
@@ -604,7 +680,7 @@ export type Database = {
       save_status: "queued" | "processing" | "ready" | "failed" | "dead_link";
       intent: "learn" | "try" | "visit" | "buy" | "inspire" | "fun";
       reminder_kind: "time" | "place" | "context";
-      job_type: "ingest" | "reprocess" | "synthesize" | "export";
+      job_type: "ingest" | "reprocess" | "synthesize" | "export" | "grade" | "card_gen";
       job_state: "queued" | "running" | "done" | "failed";
       export_kind: "brief" | "moodboard" | "deck" | "collection";
       theme_pref: "system" | "dark" | "light" | "black";

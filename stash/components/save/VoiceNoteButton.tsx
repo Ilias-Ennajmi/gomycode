@@ -18,11 +18,20 @@ export function VoiceNoteButton({
   onProblem,
   done,
   className,
+  idleLabel = "Why I saved it",
+  doneLabel = "Voice note saved",
+  holdHint = "Hold to record why you saved it",
+  disabled,
 }: {
   onRecorded: (blob: Blob, mime: string) => void;
   onProblem: (message: string) => void;
   done?: boolean;
   className?: string;
+  /** Labels, so the same hold-to-record button serves recall answers in Learn. */
+  idleLabel?: string;
+  doneLabel?: string;
+  holdHint?: string;
+  disabled?: boolean;
 }) {
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -81,16 +90,17 @@ export function VoiceNoteButton({
       onPointerUp={stop}
       onPointerCancel={stop}
       onContextMenu={(e) => e.preventDefault()}
-      aria-label={recording ? "Recording, release to keep" : "Hold to record why you saved it"}
+      aria-label={recording ? "Recording, release to keep" : holdHint}
+      disabled={disabled}
       className={cx(
-        "flex h-12 select-none touch-none items-center justify-center gap-2 rounded-card border px-4 text-label",
+        "flex h-12 select-none touch-none items-center justify-center gap-2 rounded-card border px-4 text-label disabled:opacity-40",
         recording ? "border-fg bg-fg text-background" : "border-line text-fg",
         className,
       )}
     >
       <Mic size={24} strokeWidth={2} aria-hidden className={recording ? "animate-pulse" : undefined} />
       <span className="truncate">
-        {recording ? `Recording ${Math.floor(elapsed / 1000)}s` : done ? "Voice note saved" : "Why I saved it"}
+        {recording ? `Recording ${Math.floor(elapsed / 1000)}s` : done ? doneLabel : idleLabel}
       </span>
     </button>
   );

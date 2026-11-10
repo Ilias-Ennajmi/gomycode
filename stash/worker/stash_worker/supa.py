@@ -67,6 +67,11 @@ class Supa:
         )
         r.raise_for_status()
 
+    def download(self, bucket: str, path: str) -> bytes:
+        r = self.http.get(f"/storage/v1/object/{bucket}/{path}")
+        r.raise_for_status()
+        return r.content
+
     def remove(self, bucket: str, paths: list[str]) -> None:
         if not paths:
             return

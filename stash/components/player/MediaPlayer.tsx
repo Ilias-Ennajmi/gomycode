@@ -150,7 +150,7 @@ export const MediaPlayer = forwardRef<
       {caption && mode === "video" && (
         <p
           aria-hidden
-          className="pointer-events-none absolute inset-x-4 bottom-[28%] mx-auto max-w-md rounded-sm px-2 py-1 text-center text-body"
+          className="pointer-events-none absolute inset-x-4 bottom-[var(--captions-bottom)] mx-auto max-w-md rounded-sm px-2 py-1 text-center text-body"
           style={{ ...INK_LIGHT, background: "color-mix(in srgb, var(--scrim-base) 70%, transparent)" }}
         >
           {caption}

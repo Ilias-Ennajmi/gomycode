@@ -64,7 +64,7 @@ export function RemindSheet({
           </button>
         </li>
       </ul>
-      <p className="px-3 pt-3 text-caption text-fg-muted">Reminder notifications switch on in the next update; your reminders are kept until then.</p>
+      <p className="px-3 pt-3 text-caption text-fg-muted">Reminders notify you if notifications are on (Settings → Reminders). Nearby reminders arrive with Places.</p>
     </Sheet>
   );
 }

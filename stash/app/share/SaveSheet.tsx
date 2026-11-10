@@ -211,7 +211,7 @@ export function SaveSheet() {
               <SpacePicker spaces={shown} selectedId={spaceId} onPick={pick} onCreate={create} />
             </div>
 
-            <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 xs:grid-cols-2">
               <VoiceNoteButton
                 done={voiceDone}
                 onRecorded={(b, m) => void uploadVoice(b, m)}

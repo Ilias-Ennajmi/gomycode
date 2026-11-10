@@ -33,7 +33,8 @@ export function LibraryView() {
 
   const [space, setSpace] = useState<string | null>(params.get("space"));
   const [filter, setFilter] = useState<Filter>(isFilter(params.get("filter")) ? (params.get("filter") as Filter) : "all");
-  const [pasteOpen, setPasteOpen] = useState(false);
+  // Today's empty state links here with ?paste=1 to open "Paste a link" straight away.
+  const [pasteOpen, setPasteOpen] = useState(params.get("paste") === "1");
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<Hit[] | null>(null);
   const [searching, setSearching] = useState(false);

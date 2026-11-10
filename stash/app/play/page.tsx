@@ -4,7 +4,7 @@ import { PlayView } from "./PlayView";
 
 export const metadata: Metadata = { title: "Play" };
 
-/** Full-screen vertical player: no tab bar. ?queue=today | ?space=&filter= | ?ids= | ?id= */
+/** Full-screen vertical player: no tab bar. ?queue=today | space:<id> | search:<q> | item:<id> (also ?space=&filter=, ?ids=, ?id=) */
 export default function PlayPage() {
   return (
     <Suspense>

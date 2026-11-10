@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronRight, Palette, Sparkles } from "lucide-react";
+import { Bell, ChevronRight, Palette, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Placeholder } from "@/components/shell/Placeholder";
 import { DeviceCard } from "./DeviceCard";
@@ -14,9 +14,16 @@ export default function YouPage() {
       <nav aria-label="Settings" className="px-4">
         <ul className="overflow-hidden rounded-lg border border-line bg-surface">
           <li>
-            <Link href="/settings" className="tap flex items-center gap-3 px-4 py-3 text-body text-fg">
+            <Link href="/settings#appearance" className="tap flex items-center gap-3 px-4 py-3 text-body text-fg">
               <Palette size={24} strokeWidth={2} aria-hidden className="text-fg-muted" />
               <span className="flex-1">Appearance</span>
+              <ChevronRight size={24} strokeWidth={2} aria-hidden className="text-fg-subtle" />
+            </Link>
+          </li>
+          <li className="border-t border-line">
+            <Link href="/settings#reminders" className="tap flex items-center gap-3 px-4 py-3 text-body text-fg">
+              <Bell size={24} strokeWidth={2} aria-hidden className="text-fg-muted" />
+              <span className="flex-1">Reminders</span>
               <ChevronRight size={24} strokeWidth={2} aria-hidden className="text-fg-subtle" />
             </Link>
           </li>
