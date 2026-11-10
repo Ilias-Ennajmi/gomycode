@@ -37,7 +37,7 @@ export function IconButton({
       aria-pressed={pressed}
       className={cx(
         "inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
-        "transition-[background-color,transform] duration-[var(--dur-fast)] ease-standard active:scale-90",
+        "press",
         "disabled:cursor-not-allowed disabled:opacity-40",
         pressed ? "bg-fg text-background" : VARIANT[variant],
         className,

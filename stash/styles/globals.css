@@ -19,6 +19,11 @@
   --color-fg-subtle: var(--text-tertiary);
   --color-accent: var(--accent);
   --color-on-accent: var(--on-accent);
+  --color-accent-line: var(--accent-line);
+  --color-on-space: var(--on-space);
+  --color-brand-lime: var(--brand-lime);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-paper: var(--brand-paper);
   --color-insight: var(--insight);
   --color-danger: var(--danger);
   --color-scrim: var(--scrim);
@@ -47,15 +52,22 @@
   --font-body: var(--type-family-body);
 
   --text-*: initial;
+  --text-hero: var(--type-hero-size);
+  --text-hero--line-height: var(--type-hero-line);
+  --text-hero--font-weight: var(--type-hero-weight);
+  --text-hero--letter-spacing: var(--type-hero-tracking);
   --text-display: var(--type-display-size);
+  --text-display--letter-spacing: var(--type-display-tracking);
   --text-display--line-height: var(--type-display-line);
   --text-display--font-weight: var(--type-display-weight);
   --text-title: var(--type-title-size);
   --text-title--line-height: var(--type-title-line);
   --text-title--font-weight: var(--type-title-weight);
+  --text-title--letter-spacing: var(--type-title-tracking);
   --text-heading: var(--type-heading-size);
   --text-heading--line-height: var(--type-heading-line);
   --text-heading--font-weight: var(--type-heading-weight);
+  --text-heading--letter-spacing: var(--type-heading-tracking);
   --text-body: var(--type-body-size);
   --text-body--line-height: var(--type-body-line);
   --text-body--font-weight: var(--type-body-weight);
@@ -85,9 +97,11 @@
   --shadow-*: initial;
   --shadow-raised: var(--elev-raised);
   --shadow-sheet: var(--elev-sheet);
+  --shadow-pop: var(--elev-pop);
 
   --ease-standard: var(--motion-ease-standard);
   --ease-spring: var(--motion-ease-spring);
+  --ease-out: var(--motion-ease-out);
 }
 
 @layer base {
@@ -113,6 +127,16 @@
   h2,
   h3 {
     font-family: var(--type-family-display);
+  }
+  /* Display sizes are always set in the display face, wherever they appear. */
+  .text-hero,
+  .text-display,
+  .text-title {
+    font-family: var(--type-family-display);
+  }
+  ::selection {
+    background: var(--accent);
+    color: var(--on-accent);
   }
   input,
   textarea,
@@ -140,6 +164,52 @@
 
 @utility pt-safe {
   padding-top: env(safe-area-inset-top);
+}
+
+/* Press feedback for anything tappable: a quick squish, springing back on release. */
+@utility press {
+  transition-property: transform, opacity, background-color, color, border-color;
+  transition-duration: var(--dur-fast);
+  transition-timing-function: var(--motion-ease-spring);
+  &:active:not(:disabled) {
+    transform: scale(var(--press-scale));
+    transition-duration: var(--dur-press);
+    transition-timing-function: var(--motion-ease-out);
+  }
+}
+
+/* Entrance for content that arrives (cards, sections): a short rise. Off with reduce motion. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@utility rise-in {
+  /* backwards, not both: once it has played, transforms and opacity set elsewhere (drags, press) apply again. */
+  animation: rise-in var(--dur-screen) var(--motion-ease-out) backwards;
+}
+
+/* A springy "pop" for a state that just changed (a check, a badge, a count). */
+@keyframes pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@utility pop-in {
+  animation: pop var(--dur-sheet) var(--motion-ease-out) backwards;
 }
 
 @utility tap {

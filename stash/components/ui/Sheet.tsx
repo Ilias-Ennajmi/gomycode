@@ -5,7 +5,7 @@ import { AnimatePresence, motion, useDragControls, type PanInfo } from "framer-m
 import { useBackToClose } from "@/lib/hooks/useBackToClose";
 import { useMotionOK } from "@/lib/hooks/useMotionOK";
 import { cx } from "./cx";
-import { tokenSeconds } from "@/lib/motionTokens";
+import { spring, tokenSeconds } from "@/lib/motionTokens";
 
 export type SheetProps = {
   open: boolean;
@@ -18,7 +18,6 @@ export type SheetProps = {
   className?: string;
 };
 
-const SPRING = { type: "spring", stiffness: 380, damping: 36, mass: 0.9 } as const;
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])';
 
 /**
@@ -104,7 +103,7 @@ export function Sheet({ open, onClose, label, title, children, className }: Shee
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
-            transition={motionOK ? SPRING : { duration: 0 }}
+            transition={spring("sheet", motionOK)}
             drag="y"
             dragControls={drag}
             dragListener={false}
@@ -117,11 +116,11 @@ export function Sheet({ open, onClose, label, title, children, className }: Shee
               className="flex h-8 shrink-0 cursor-grab touch-none items-center justify-center"
               onPointerDown={(e) => drag.start(e)}
             >
-              <span className="h-1 w-10 rounded-full bg-line" />
+              <span className="h-1.5 w-12 rounded-full bg-line" />
             </div>
             {title && (
               <h2
-                className="shrink-0 touch-none px-5 pb-2 text-heading"
+                className="shrink-0 touch-none px-5 pb-3 text-title"
                 onPointerDown={(e) => drag.start(e)}
               >
                 {title}

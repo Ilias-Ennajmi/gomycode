@@ -16,7 +16,7 @@ export function Banner({ variant = "info", children, action, className }: Banner
     <div
       role="status"
       className={cx(
-        "flex min-h-12 items-center gap-3 rounded-card border border-line bg-raised px-3 py-2 text-label text-fg",
+        "flex min-h-14 items-center gap-3 rounded-lg border border-line bg-surface px-4 py-2 text-label text-fg shadow-pop",
         className,
       )}
     >

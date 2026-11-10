@@ -18,14 +18,14 @@ export function Chip({ label, selected = false, count, dot, className, type = "b
     <button
       type={type}
       aria-pressed={selected}
-      className={cx("group inline-flex h-12 shrink-0 items-center rounded-full", className)}
+      className={cx("press group inline-flex h-12 shrink-0 items-center rounded-full", className)}
       {...rest}
     >
       <span
         className={cx(
-          "inline-flex h-9 items-center gap-2 rounded-full border px-3 text-label",
+          "inline-flex h-10 items-center gap-2 rounded-full border px-4 text-label",
           "transition-colors duration-[var(--dur-fast)] ease-standard",
-          selected ? "border-fg bg-fg text-background" : "border-line text-fg group-hover:bg-raised",
+          selected ? "border-fg bg-fg text-background" : "border-line bg-surface text-fg group-hover:bg-raised",
         )}
       >
         {dot && <span aria-hidden className={cx("h-2 w-2 rounded-full", SPACE_BG[dot])} />}

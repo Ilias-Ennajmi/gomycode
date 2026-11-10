@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import { useMotionOK } from "@/lib/hooks/useMotionOK";
 import { cx } from "./cx";
-import { tokenSeconds } from "@/lib/motionTokens";
+import { spring } from "@/lib/motionTokens";
 
 export type SegmentedOption<T extends string> = {
   value: T;
@@ -25,7 +25,7 @@ export type SegmentedProps<T extends string> = {
   className?: string;
 };
 
-/** Segmented control as a radiogroup with arrow-key navigation. Selected = surface pill, text colour. */
+/** Segmented control as a radiogroup with arrow-key navigation. Selected = a solid ink pill that springs between options. */
 export function Segmented<T extends string>({
   options,
   value,
@@ -52,7 +52,7 @@ export function Segmented<T extends string>({
     <div
       role="radiogroup"
       aria-label={label}
-      className={cx("inline-flex max-w-full gap-1 rounded-card bg-raised p-1", fullWidth && "flex w-full", className)}
+      className={cx("inline-flex max-w-full gap-1 rounded-full bg-raised p-1", fullWidth && "flex w-full", className)}
     >
       {options.map((o, i) => {
         const selected = o.value === value;
@@ -71,9 +71,9 @@ export function Segmented<T extends string>({
             onClick={() => onChange(o.value)}
             onKeyDown={(e) => onKeyDown(e, i)}
             className={cx(
-              "relative inline-flex h-12 min-w-12 flex-1 items-center justify-center gap-2 rounded-sm px-3 text-label",
+              "press relative inline-flex h-12 min-w-12 flex-1 items-center justify-center gap-2 rounded-full px-3 text-label",
               "transition-colors duration-[var(--dur-fast)]",
-              selected ? "text-fg" : "text-fg-muted hover:text-fg",
+              selected ? "text-background" : "text-fg-muted hover:text-fg",
             )}
           >
             {selected &&
@@ -81,11 +81,11 @@ export function Segmented<T extends string>({
                 <motion.span
                   layoutId={pillId}
                   aria-hidden
-                  className="absolute inset-0 rounded-sm bg-surface"
-                  transition={{ duration: tokenSeconds("--dur-fast"), ease: [0.2, 0, 0, 1] }}
+                  className="absolute inset-0 rounded-full bg-fg"
+                  transition={spring("pop", motionOK)}
                 />
               ) : (
-                <span aria-hidden className="absolute inset-0 rounded-sm bg-surface" />
+                <span aria-hidden className="absolute inset-0 rounded-full bg-fg" />
               ))}
             <span className="relative inline-flex items-center gap-2 whitespace-nowrap">
               {Icon && <Icon size={24} strokeWidth={2} aria-hidden />}

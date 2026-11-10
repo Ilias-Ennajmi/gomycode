@@ -9,9 +9,9 @@ export type SkeletonProps = {
 
 const SHAPE: Record<SkeletonShape, string> = {
   line: "h-4 w-full rounded-sm",
-  block: "h-24 w-full rounded-card",
+  block: "h-24 w-full rounded-lg",
   circle: "h-12 w-12 rounded-full",
-  thumb: "aspect-9/16 w-full rounded-card",
+  thumb: "aspect-9/16 w-full rounded-lg",
 };
 
 /** Shimmer placeholder shaped like the real content. Static when reduce motion is on (CSS). */

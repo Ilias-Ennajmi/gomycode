@@ -2,8 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
 import { CalendarDays, CircleUser, GraduationCap, LayoutGrid, Play, type LucideIcon } from "lucide-react";
+import { cx } from "@/components/ui/cx";
 import { useDueFlag } from "@/lib/dueFlag";
+import { useMotionOK } from "@/lib/hooks/useMotionOK";
+import { spring } from "@/lib/motionTokens";
 
 type Tab = { href: string; label: string; icon: LucideIcon };
 
@@ -16,17 +20,29 @@ const RIGHT: Tab[] = [
   { href: "/you", label: "You", icon: CircleUser },
 ];
 
-function TabLink({ tab, active }: { tab: Tab; active: boolean }) {
+function TabLink({ tab, active, motionOK }: { tab: Tab; active: boolean; motionOK: boolean }) {
   const Icon = tab.icon;
   return (
     <Link
       href={tab.href}
       aria-current={active ? "page" : undefined}
-      className={`tap flex flex-1 flex-col items-center justify-center gap-1 transition-colors duration-[var(--dur-fast)] ${
-        active ? "text-fg" : "text-fg-subtle"
-      }`}
+      className={cx(
+        "press tap flex flex-1 flex-col items-center justify-center gap-1",
+        active ? "text-fg" : "text-fg-subtle",
+      )}
     >
-      <Icon size={24} strokeWidth={2} aria-hidden />
+      <span className="relative flex h-8 w-14 items-center justify-center">
+        {/* The active pill springs from tab to tab (text colour, never the accent). */}
+        {active && (
+          <motion.span
+            layoutId="tab-pill"
+            aria-hidden
+            className="absolute inset-0 rounded-full bg-fg"
+            transition={spring("pop", motionOK)}
+          />
+        )}
+        <Icon size={24} strokeWidth={active ? 2.25 : 2} aria-hidden className={cx("relative", active && "text-background")} />
+      </span>
       <span className="text-tab">{tab.label}</span>
     </Link>
   );
@@ -43,29 +59,33 @@ export function BottomBar({ hasDue: hasDueProp, playHref = "/play?queue=today" }
   const dueFlag = useDueFlag();
   const hasDue = hasDueProp ?? dueFlag;
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const motionOK = useMotionOK();
 
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-safe"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 pb-safe backdrop-blur-md"
     >
       <div className="mx-auto flex h-[var(--bar-height)] max-w-xl items-stretch px-2">
         {LEFT.map((t) => (
-          <TabLink key={t.href} tab={t} active={isActive(t.href)} />
+          <TabLink key={t.href} tab={t} active={isActive(t.href)} motionOK={motionOK} />
         ))}
         <div className="flex flex-1 items-start justify-center">
           <Link
             href={playHref}
             aria-label={hasDue ? "Play, items due today" : "Play"}
-            className={`-mt-[var(--play-raise)] flex h-[var(--play-size)] w-[var(--play-size)] items-center justify-center rounded-full bg-accent text-on-accent shadow-raised transition-transform duration-[var(--dur-fast)] active:scale-95 ${
-              hasDue ? "ring-4 ring-accent/30" : ""
-            }`}
+            className={cx(
+              "press -mt-[var(--play-raise)] flex h-[var(--play-size)] w-[var(--play-size)] items-center justify-center rounded-full bg-accent text-on-accent shadow-raised",
+              // Ring in the background colour lifts the button off the bar; a due day adds an accent halo.
+              "ring-4 ring-background",
+              hasDue && "outline-2 outline-offset-4 outline-accent-line",
+            )}
           >
-            <Play size={24} strokeWidth={2} fill="currentColor" aria-hidden />
+            <Play size={26} strokeWidth={2} fill="currentColor" aria-hidden className="translate-x-px" />
           </Link>
         </div>
         {RIGHT.map((t) => (
-          <TabLink key={t.href} tab={t} active={isActive(t.href)} />
+          <TabLink key={t.href} tab={t} active={isActive(t.href)} motionOK={motionOK} />
         ))}
       </div>
     </nav>

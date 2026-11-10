@@ -48,13 +48,14 @@ export function Switch({ checked, onChange, label, description, hideLabel, disab
         className={cx(
           "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full ring-1 ring-inset",
           "transition-colors duration-[var(--dur-fast)] ease-standard",
-          checked ? "bg-fg ring-fg" : "bg-raised ring-line",
+          checked ? "bg-fg ring-fg" : "bg-raised ring-fg-subtle",
         )}
       >
         <span
           className={cx(
-            "absolute left-1 h-5 w-5 rounded-full transition-transform duration-[var(--dur-fast)] ease-standard",
-            checked ? "translate-x-5 bg-background" : "translate-x-0 bg-fg-subtle",
+            // The knob springs across (overshoot curve; instant with reduce motion).
+            "absolute left-1 h-5 w-5 rounded-full transition-transform duration-[var(--dur-screen)] ease-spring",
+            checked ? "translate-x-5 bg-background" : "translate-x-0 bg-fg-muted",
           )}
         />
       </span>

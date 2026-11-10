@@ -25,7 +25,7 @@ export function Placeholder({
       {action && (
         <Link
           href={action.href}
-          className="tap flex items-center justify-center rounded-card border border-line px-6 text-label text-fg"
+          className="press tap flex items-center justify-center rounded-full bg-fg px-6 text-label text-background"
         >
           {action.label}
         </Link>

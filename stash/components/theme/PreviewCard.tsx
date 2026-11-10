@@ -13,16 +13,16 @@ export function PreviewCard({ className }: { className?: string }) {
   return (
     // A picture of the current choices, not controls: inert keeps it out of focus order and TalkBack.
     <div inert className={cx("flex flex-col gap-3", className)}>
-      <div className="rounded-xl bg-accent p-4 text-on-accent">
+      <div className="rounded-xl bg-accent p-4 text-on-accent shadow-pop">
         <div className="flex items-baseline justify-between gap-3">
-          <p className="font-display text-heading">Your 5 for today</p>
+          <p className="font-display text-title">Your 5 for today</p>
           <p className="text-caption">4 day streak</p>
         </div>
         <div className="mt-3 flex gap-2" aria-hidden>
           {QUEUE.map((c) => (
             <span key={c} className="relative aspect-9/16 flex-1 overflow-hidden rounded-sm bg-surface">
               {/* 3px Space top edge, see Card. */}
-              <span className={cx("absolute inset-x-0 top-0 h-0.75", SPACE_BG[c])} />
+              <span className={cx("absolute inset-x-0 top-0 h-[var(--edge)]", SPACE_BG[c])} />
             </span>
           ))}
         </div>

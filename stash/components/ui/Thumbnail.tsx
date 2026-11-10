@@ -58,15 +58,15 @@ export function Thumbnail({
       ) : (
         loading && <span aria-hidden className="shimmer absolute inset-0" />
       )}
-      {/* 3px Space top edge (spec: "thumbnail top edge"); a hairline, not a spacing step. */}
-      {spaceColor && <span aria-hidden className={cx("absolute inset-x-0 top-0 z-10 h-0.75", SPACE_BG[spaceColor])} />}
+      {/* Space top edge (spec: "thumbnail top edge"), token --edge. */}
+      {spaceColor && <span aria-hidden className={cx("absolute inset-x-0 top-0 z-10 h-[var(--edge)]", SPACE_BG[spaceColor])} />}
       {unwatched && (
-        <span className="absolute left-2 top-3 z-10 h-3 w-3 rounded-full" style={{ background: "var(--ink-light)" }}>
+        <span className="absolute left-3 top-3.5 z-10 h-3 w-3 rounded-full ring-2 ring-[var(--scrim-base)]/40" style={{ background: "var(--ink-light)" }}>
           <span className="sr-only">Unwatched</span>
         </span>
       )}
       {duration !== undefined && (
-        <span className="absolute right-2 top-2 z-10 rounded-sm bg-scrim px-2 text-caption" style={INK_LIGHT}>
+        <span className="absolute right-2 top-2.5 z-10 rounded-full bg-scrim px-2 text-caption tabular-nums" style={INK_LIGHT}>
           {formatDuration(duration)}
         </span>
       )}
@@ -78,7 +78,7 @@ export function Thumbnail({
           </span>
         ) : (
           keyIdea && (
-            <span className="line-clamp-4 text-left text-caption" style={INK_LIGHT}>
+            <span className="line-clamp-4 text-left text-label" style={INK_LIGHT}>
               <WordReveal text={keyIdea} animate={Boolean(animate)} />
             </span>
           )
@@ -88,10 +88,10 @@ export function Thumbnail({
     </>
   );
 
-  const base = cx("relative block aspect-9/16 w-full overflow-hidden rounded-card bg-raised", className);
+  const base = cx("relative block aspect-9/16 w-full overflow-hidden rounded-lg bg-raised", className);
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} aria-label={label} className={cx(base, "active:scale-95 transition-transform duration-[var(--dur-fast)]")}>
+      <button type="button" onClick={onClick} aria-label={label} className={cx(base, "press")}>
         {body}
       </button>
     );

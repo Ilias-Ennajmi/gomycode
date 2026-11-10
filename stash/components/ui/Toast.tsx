@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { AnimatePresence, motion } from "framer-motion";
 import { useMotionOK } from "@/lib/hooks/useMotionOK";
 import { cx } from "./cx";
-import { tokenSeconds } from "@/lib/motionTokens";
+import { spring } from "@/lib/motionTokens";
 
 export type ToastOptions = {
   message: string;
@@ -69,20 +69,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           {current && (
             <motion.div
               key={current.id}
-              initial={motionOK ? { opacity: 0, y: 16 } : false}
-              animate={{ opacity: 1, y: 0 }}
-              exit={motionOK ? { opacity: 0, y: 16 } : { opacity: 0, transition: { duration: 0 } }}
-              transition={{ duration: tokenSeconds("--dur-screen"), ease: [0.2, 0, 0, 1] }}
+              initial={motionOK ? { opacity: 0, y: 24, scale: 0.96 } : false}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={motionOK ? { opacity: 0, y: 16, scale: 0.98, transition: { duration: 0.14 } } : { opacity: 0, transition: { duration: 0 } }}
+              transition={spring("pop", motionOK)}
               className={cx(
-                "pointer-events-auto flex min-h-14 w-full max-w-md items-center gap-3 rounded-card",
-                "border border-line bg-raised py-1 pl-4 pr-1 text-fg shadow-raised",
+                "pointer-events-auto flex min-h-14 w-full max-w-md items-center gap-3 rounded-full",
+                "bg-fg py-1 pl-5 pr-1 text-background shadow-raised",
               )}
             >
-              <span className="min-w-0 flex-1 text-body">{current.message}</span>
+              <span className="min-w-0 flex-1 py-2 text-label">{current.message}</span>
               {current.actionLabel && (
                 <button
                   type="button"
-                  className="h-12 shrink-0 rounded-card bg-accent px-4 text-label text-on-accent active:scale-95"
+                  className="press h-12 shrink-0 rounded-full bg-accent px-5 text-label text-on-accent"
                   onClick={() => {
                     current.onAction?.();
                     dismiss(current.id);

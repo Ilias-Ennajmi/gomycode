@@ -5,7 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import { useMotionOK } from "@/lib/hooks/useMotionOK";
 import { cx } from "./cx";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "on-accent";
+export type ButtonVariant = "primary" | "secondary" | "ink" | "ghost" | "danger" | "on-accent";
 export type ButtonSize = "md" | "lg";
 
 export type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
@@ -21,17 +21,20 @@ export type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "childre
 
 const VARIANT: Record<ButtonVariant, string> = {
   // Accent = "act now" only.
-  primary: "bg-accent text-on-accent",
-  secondary: "border border-line text-fg hover:bg-raised",
+  primary: "bg-accent text-on-accent shadow-pop",
+  // Tonal: a filled raised surface with a hairline, so it reads as a button on any card.
+  secondary: "border border-line bg-raised text-fg hover:border-fg-subtle",
+  // Strong but not "act now": solid text colour (e.g. Quick sort, Recall on a tinted block).
+  ink: "bg-fg text-background",
   ghost: "text-fg hover:bg-raised",
-  danger: "border border-line text-danger hover:bg-raised",
+  danger: "border border-line bg-raised text-danger",
   // For buttons sitting on an accent surface (the Today hero).
   "on-accent": "bg-on-accent text-accent",
 };
 
 const SIZE: Record<ButtonSize, string> = {
   md: "h-12 px-5",
-  lg: "h-14 px-6",
+  lg: "h-14 px-7 text-heading",
 };
 
 export function Button({
@@ -53,8 +56,7 @@ export function Button({
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cx(
-        "inline-flex shrink-0 select-none items-center justify-center gap-2 rounded-card font-body text-label",
-        "transition-[opacity,background-color,transform] duration-[var(--dur-fast)] ease-standard active:scale-95",
+        "press inline-flex shrink-0 select-none items-center justify-center gap-2 rounded-full font-body text-label",
         "disabled:cursor-not-allowed",
         disabled && !loading && "opacity-40",
         loading && "cursor-progress opacity-70",

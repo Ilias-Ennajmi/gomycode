@@ -18,19 +18,19 @@ export function PageHeader({
 }) {
   const Heading = headingLevel === 1 ? "h1" : "h2";
   return (
-    <header className="flex items-end justify-between gap-4 px-4 pt-6 pb-4">
+    <header className="flex items-end justify-between gap-4 px-4 pt-8 pb-4">
       <div className="flex min-w-0 items-center gap-2">
         {back && (
           <BackButton
             fallback={back}
             label="Back"
-            className="tap -ml-3 flex items-center justify-center rounded-full text-fg"
+            className="press tap -ml-2 flex items-center justify-center rounded-full bg-raised text-fg"
           >
             <ChevronLeft size={24} strokeWidth={2} aria-hidden />
           </BackButton>
         )}
         <div className="min-w-0">
-          {eyebrow && <div className="text-caption text-fg-muted">{eyebrow}</div>}
+          {eyebrow && <div className="mb-1 text-label text-fg-muted">{eyebrow}</div>}
           <Heading className="truncate text-display">{title}</Heading>
         </div>
       </div>

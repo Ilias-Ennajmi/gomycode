@@ -14,7 +14,7 @@ export type ProgressSegmentsProps = {
 
 export function ProgressSegments({ total, filled, accent, onAccent, label, className }: ProgressSegmentsProps) {
   const done = Math.max(0, Math.min(total, filled));
-  const fill = onAccent ? "bg-on-accent" : accent ? "bg-accent" : "bg-fg";
+  const fill = onAccent ? "bg-on-accent" : accent ? "bg-accent-line" : "bg-fg";
   const empty = onAccent ? "bg-on-accent/25" : "bg-line";
   return (
     <div
@@ -27,7 +27,7 @@ export function ProgressSegments({ total, filled, accent, onAccent, label, class
       className={cx("flex w-full gap-1", className)}
     >
       {Array.from({ length: total }, (_, i) => (
-        <span key={i} className={cx("h-1 flex-1 rounded-full", i < done ? fill : empty)} />
+        <span key={i} className={cx("h-2 flex-1 rounded-full transition-colors duration-[var(--dur-screen)]", i < done ? fill : empty)} />
       ))}
     </div>
   );
