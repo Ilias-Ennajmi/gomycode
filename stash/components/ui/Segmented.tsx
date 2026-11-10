@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useRef, type KeyboardEvent } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import { useMotionOK } from "@/lib/hooks/useMotionOK";
 import { cx } from "./cx";
@@ -78,7 +78,7 @@ export function Segmented<T extends string>({
           >
             {selected &&
               (motionOK ? (
-                <motion.span
+                <m.span
                   layoutId={pillId}
                   aria-hidden
                   className="absolute inset-0 rounded-full bg-fg"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import {
   Archive,
   Bell,
@@ -520,7 +520,7 @@ function Motion() {
               {d.cssVar} · {d.ms}ms · {d.use}
             </code>
             <div className={cx("flex h-12 items-center rounded-card bg-raised px-1", end ? "justify-end" : "justify-start")}>
-              <motion.span
+              <m.span
                 layout
                 aria-hidden
                 className="block h-10 w-10 rounded-sm bg-fg"

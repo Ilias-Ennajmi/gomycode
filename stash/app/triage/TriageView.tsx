@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion, useMotionValue, useTransform, type PanInfo } from "framer-motion";
+import { AnimatePresence, m, useMotionValue, useTransform, type PanInfo } from "framer-motion";
 import { Archive, Bookmark } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -224,7 +224,7 @@ function SwipeCard({
   };
 
   return (
-    <motion.div
+    <m.div
       className="absolute inset-0 touch-pan-y"
       style={{ x, rotate }}
       drag="x"
@@ -243,21 +243,21 @@ function SwipeCard({
       exit="exit"
     >
       <CardFace save={save} space={space} thumb={thumb} now={now} />
-      <motion.span
+      <m.span
         aria-hidden
         style={{ opacity: keepHint }}
         className="absolute left-4 top-4 z-20 -rotate-6 rounded-full bg-fg px-4 py-2 font-display text-heading text-background"
       >
         Keep
-      </motion.span>
-      <motion.span
+      </m.span>
+      <m.span
         aria-hidden
         style={{ opacity: goHint }}
         className="absolute right-4 top-4 z-20 rotate-6 rounded-full bg-raised px-4 py-2 font-display text-heading text-fg"
       >
         Let go
-      </motion.span>
-    </motion.div>
+      </m.span>
+    </m.div>
   );
 }
 

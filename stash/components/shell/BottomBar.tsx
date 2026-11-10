@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { CalendarDays, CircleUser, GraduationCap, LayoutGrid, Play, type LucideIcon } from "lucide-react";
 import { cx } from "@/components/ui/cx";
 import { useDueFlag } from "@/lib/dueFlag";
@@ -34,7 +34,7 @@ function TabLink({ tab, active, motionOK }: { tab: Tab; active: boolean; motionO
       <span className="relative flex h-8 w-14 items-center justify-center">
         {/* The active pill springs from tab to tab (text colour, never the accent). */}
         {active && (
-          <motion.span
+          <m.span
             layoutId="tab-pill"
             aria-hidden
             className="absolute inset-0 rounded-full bg-fg"

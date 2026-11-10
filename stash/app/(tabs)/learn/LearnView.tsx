@@ -3,7 +3,8 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Flame } from "lucide-react";
+import { Flame, Hash } from "lucide-react";
+import { LearnHighlights } from "@/components/learn/LearnHighlights";
 import { AiLabel } from "@/components/ui/AiLabel";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -115,7 +116,7 @@ export function LearnView() {
           </h2>
           {loop.syntheses.length === 0 ? (
             <p className="rounded-lg border-2 border-dashed border-line p-4 text-body text-fg-muted">
-              When a Space gathers 5 saves, the AI reads them together and shows what they agree on here.
+              When a Space or a topic gathers 5 saves, the AI reads them together and shows what they agree on here.
             </p>
           ) : (
             <ul className="flex flex-col gap-3">
@@ -136,6 +137,13 @@ export function LearnView() {
                             <span aria-hidden className={cx("h-2 w-2 rounded-full", SPACE_BG[sp.color])} />
                             {sp.name}
                           </span>
+                        )}
+                        {!sp && s.tag && (
+                          // A topic synthesis: across Spaces, for every save tagged with it.
+                          <Link href={`/library?c=${encodeURIComponent(`tag:${s.tag.toLowerCase()}`)}`} className="press -my-2 flex min-h-12 items-center gap-1.5 self-start text-label text-fg underline">
+                            <Hash size={16} strokeWidth={2.25} aria-hidden />
+                            {s.tag} · topic
+                          </Link>
                         )}
                         {s.topic && <h3 className="text-heading">{s.topic}</h3>}
                       </div>
@@ -167,6 +175,8 @@ export function LearnView() {
             </ul>
           )}
         </section>
+
+        <LearnHighlights savesById={savesById} onKept={(id) => lib.patchSave(id, { kept: true })} />
       </div>
     </>
   );

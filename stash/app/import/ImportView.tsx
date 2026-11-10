@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bookmark, Check, FileArchive, Heart, Image as ImageIcon, RotateCcw, type LucideIcon } from "lucide-react";
+import { Bookmark, Check, FileArchive, Heart, Image as ImageIcon, Link2, RotateCcw, type LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Banner } from "@/components/ui/Banner";
 import { cx } from "@/components/ui/cx";
 import { haptic } from "@/lib/haptics";
-import { isWantedEntry, newLinks, parseExportFile, type ImportedLink, type ImportSource } from "@/lib/importers";
+import { isWantedEntry, newLinks, parseExportFile, parseLinkList, type ImportedLink, type ImportKind as ImportSource } from "@/lib/importers";
 import { existingUrls, importHistory, queueLinks, recordImport, type ImportRecord } from "@/lib/importRun";
 import { isZip, readZipEntries } from "@/lib/zip";
 
@@ -17,6 +17,7 @@ type Choice = { id: ImportSource | "screenshots"; title: string; detail: string;
 const CHOICES: Choice[] = [
   { id: "instagram", title: "Instagram Saved", detail: "From your Instagram data download", icon: Bookmark },
   { id: "tiktok", title: "TikTok Favorites", detail: "From your TikTok data download", icon: Heart },
+  { id: "links", title: "A list of links", detail: "YouTube videos, articles, bookmarks: paste them or pick a file", icon: Link2 },
 ];
 
 const HOW: Record<ImportSource, string[]> = {
@@ -29,6 +30,10 @@ const HOW: Record<ImportSource, string[]> = {
     "In TikTok: Settings → Account → Download your data.",
     "Choose JSON (TXT works too), request it, then download the ZIP when it's ready.",
     "Pick the ZIP below (or the user_data JSON inside it).",
+  ],
+  links: [
+    "Paste links below, one per line or mixed in with text: YouTube videos and Shorts, articles, reels, anything with a web address.",
+    "Or pick a file: a text or CSV file, bookmarks exported from a browser, or a YouTube playlist from Google Takeout.",
   ],
 };
 
@@ -44,6 +49,7 @@ export function ImportView() {
   const [source, setSource] = useState<ImportSource | null>(null);
   const [phase, setPhase] = useState<Phase>({ step: "pick" });
   const [history, setHistory] = useState<ImportRecord[]>([]);
+  const [pasted, setPasted] = useState("");
   const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -52,11 +58,15 @@ export function ImportView() {
       .catch(() => {});
   }, []);
 
-  const read = async (file: File, src: ImportSource) => {
+  const read = async (file: File | { name: string; text: string }, src: ImportSource) => {
     setPhase({ step: "reading", progress: 0 });
     try {
       let links: ImportedLink[] = [];
-      if (isZip(file.name, file.type)) {
+      if (src === "links") {
+        links = parseLinkList("text" in file && typeof file.text === "string" ? file.text : await (file as File).text());
+      } else if (!(file instanceof File)) {
+        links = [];
+      } else if (isZip(file.name, file.type)) {
         const entries = await readZipEntries(file, (n) => isWantedEntry(n, src), (p) => setPhase({ step: "reading", progress: p }));
         for (const [name, text] of Object.entries(entries)) links.push(...parseExportFile(name, text, src));
       } else {
@@ -68,7 +78,9 @@ export function ImportView() {
         setPhase({
           step: "error",
           message:
-            src === "instagram"
+            src === "links"
+              ? "No links found there. A link starts with https://."
+              : src === "instagram"
               ? "No saved posts in this file. Pick the ZIP from Instagram's “Download your information” with Saved included."
               : "No favourite videos in this file. Pick the ZIP from TikTok's “Download your data”.",
         });
@@ -90,7 +102,8 @@ export function ImportView() {
     setPhase({ step: "sending", fileName, found, sent: 0, total: fresh.length });
     const sent = await queueLinks(fresh, (s, total) => setPhase({ step: "sending", fileName, found, sent: s, total }));
     haptic();
-    if (source) await recordImport(source, fileName, found, fresh.length).catch(() => {});
+    // The import log only knows the two data downloads; a list of links is not recorded there.
+    if (source && source !== "links") await recordImport(source, fileName, found, fresh.length).catch(() => {});
     setPhase({ step: "done", found, queued: fresh.length, offline: sent < fresh.length });
     importHistory()
       .then(setHistory)
@@ -99,6 +112,7 @@ export function ImportView() {
 
   const restart = () => {
     setPhase({ step: "pick" });
+    setPasted("");
     if (input.current) input.current.value = "";
   };
 
@@ -159,7 +173,7 @@ export function ImportView() {
               ref={input}
               id="import-file"
               type="file"
-              accept=".zip,.json,.html,.txt,application/zip,application/json"
+              accept=".zip,.json,.html,.txt,.csv,application/zip,application/json,text/plain,text/csv"
               className="sr-only"
               onChange={(e) => {
                 const f = e.target.files?.[0];
@@ -170,12 +184,33 @@ export function ImportView() {
             {(phase.step === "pick" || phase.step === "error") && (
               <>
                 {phase.step === "error" && <Banner>{phase.message}</Banner>}
+                {source === "links" && (
+                  <>
+                    <label htmlFor="import-paste" className="sr-only">
+                      Links
+                    </label>
+                    <textarea
+                      id="import-paste"
+                      rows={5}
+                      value={pasted}
+                      onChange={(e) => setPasted(e.target.value)}
+                      placeholder={"https://www.youtube.com/watch?v=…\nhttps://example.com/an-article"}
+                      className="w-full rounded-lg border border-line bg-raised p-4 text-input text-fg outline-none placeholder:text-fg-subtle focus:border-fg"
+                    />
+                    <Button size="lg" fullWidth disabled={!pasted.trim()} onClick={() => void read({ name: "Pasted links", text: pasted }, "links")}>
+                      Find the links
+                    </Button>
+                  </>
+                )}
                 <label
                   htmlFor="import-file"
-                  className="press flex h-14 cursor-pointer items-center justify-center gap-2 rounded-full bg-accent text-label text-on-accent shadow-pop"
+                  className={cx(
+                    "press flex h-14 cursor-pointer items-center justify-center gap-2 rounded-full text-label",
+                    source === "links" ? "border border-line bg-raised text-fg" : "bg-accent text-on-accent shadow-pop",
+                  )}
                 >
                   <FileArchive size={24} strokeWidth={2} aria-hidden />
-                  Pick the downloaded ZIP
+                  {source === "links" ? "Or pick a file" : "Pick the downloaded ZIP"}
                 </label>
               </>
             )}
@@ -187,14 +222,14 @@ export function ImportView() {
             {phase.step === "review" && (
               <div className="flex flex-col gap-3">
                 <p className="text-body text-fg">
-                  Found <strong>{phase.found}</strong> {source === "instagram" ? "saved posts" : "favourite videos"}
+                  Found <strong>{phase.found}</strong> {source === "links" ? (phase.found === 1 ? "link" : "links") : source === "instagram" ? "saved posts" : "favourite videos"}
                   {phase.found !== phase.fresh.length && <> · {phase.found - phase.fresh.length} already in Stash</>}.
                 </p>
                 {phase.fresh.length > 0 ? (
                   <>
                     <p className="text-caption text-fg-muted">
-                      They go to your Inbox and are read in the background. Each one uses a little of your monthly AI budget; when
-                      it runs out, the rest wait until you raise it.
+                      They go to your Inbox and are read in the background, a few at a time. Titles and pictures come first;
+                      summaries follow.
                     </p>
                     <Button size="lg" fullWidth onClick={() => void send(phase.fileName, phase.found, phase.fresh)}>
                       {`Import ${phase.fresh.length} ${phase.fresh.length === 1 ? "save" : "saves"}`}

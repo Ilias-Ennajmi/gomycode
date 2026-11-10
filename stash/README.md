@@ -1,6 +1,6 @@
 # Stash
 
-Save Instagram and TikTok videos, watch them in the app, remember them and use them.
+Save Instagram, TikTok and YouTube videos and web articles, watch or read them in the app, remember them and use them.
 A personal app: a Next.js website on Vercel, wrapped in a small Android app (a Trusted Web
 Activity) that installs from GitHub Releases and keeps itself up to date through Obtainium.
 
@@ -38,8 +38,48 @@ than 3 days are deleted every night (pg_cron `stash-cleanup-anonymous`). Row-lev
 every row private to that identity: someone else who opens the address gets their own empty
 space, never your saves.
 
-Good to know: clearing Chrome's data for the site, or a new phone, starts a new empty identity.
-(An optional "link to Google for backup" can be added later if that ever matters.)
+Good to know: clearing Chrome's data for the site, or a new phone, starts a new empty identity,
+unless you made a **recovery code** first (next section).
+
+## Move to a new phone, and backups
+
+- **Settings → Move to a new phone → Create a recovery code.** The code (20 letters and digits) is
+  shown once, with a Copy button and a QR. Keep it in a password manager or on paper: anyone with
+  it can open your Stash, and nobody can bring your saves back without it. Stash stores only a
+  fingerprint of it. Making a new code switches the old one off.
+- **On the new phone:** open Stash → **I have a recovery code** (on the first screen, or in
+  Settings) → type the code or scan the QR. The phone becomes the same Stash, with every save.
+  Saves made on that phone before stay with its old identity, and the app says so first.
+- Too many wrong tries from one connection are blocked for an hour; five new codes a day at most.
+- **Settings → Backups** lists the weekly copies (every Sunday, the last four kept): one JSON file
+  with saves, summaries, transcripts, Spaces, cards and highlights. Tap to download.
+
+## Setup: what has to be switched on
+
+**Settings → Setup** shows it in plain words: this phone is connected, processing is running, this
+phone is an owner's phone, an AI key is added, and how much of the video space is used.
+
+The website itself needs only two values (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
+Everything else lives in Supabase and is set up once by whoever deploys it
+([docs/CONTRACT_0007.md](docs/CONTRACT_0007.md), section 9, and `worker/README.md`).
+
+**The one step for the owner:** get a free key at Google AI Studio, then in the Supabase dashboard
+open **Vault** and add a secret named `stash_gemini_api_key` with the key as its value. Until then
+saves still play and can be searched; their summaries fill in by themselves a few minutes after
+the key is added. The key never reaches the phone or the website.
+
+## How a save plays
+
+| The save has | What you see |
+|---|---|
+| a stored copy (Supabase Storage, bucket `stash-video`) | the video itself, through a 6-hour link the phone signs with its own session |
+| no copy, but an official player | the TikTok / Instagram / YouTube (no-cookie) player inside Stash, sandboxed, with **Open in …** next to it |
+| neither | a card with the key idea and **Open in …** |
+| an article | a reading view: key idea, takeaways, the text; **Open the article** |
+| a screenshot | the image |
+
+Only those three players can ever be framed: the database checks the address, the app checks it
+again, and the site's Content-Security-Policy allows frames from those three hosts only.
 
 **One-time switch (only if the app can't save):** Supabase dashboard → project
 *Ilias-Ennajmi's Project* → **Authentication → Sign In / Providers** → turn on
@@ -107,8 +147,8 @@ Nominatim for at most one place per second, with its own User-Agent, and remembe
 | What | How it works |
 |---|---|
 | **Galaxy** (`/library?lens=galaxy`) | Once 5 saves are processed, the worker groups them by meaning and names each group (a `galaxy` job, re-run after every 5 new saves). Pinch or wheel to zoom, drag to pan, tap a label to zoom into a group, tap a dot to open the save. |
-| **Share a screenshot** | In the gallery, open a screenshot of a post and tap **Share → Stash**. The image stays on the phone until it has an identity and a connection, then uploads to your private folder (`stash-thumbs/<you>/screenshots/`). The worker reads it with Claude vision (creator, caption, what it is, places), files it into a Space and makes it searchable. Needs Android app **1.1.0** (below). One image per share. |
-| **Saved Wrapped** (top of You) | Saved, watched and applied this month, your top Spaces and creators, older months with the arrows, **Share my month**. |
+| **Share a screenshot** | In the gallery, open a screenshot of a post and tap **Share → Stash**. The image stays on the phone until it has an identity and a connection, then uploads to your private folder (`stash-thumbs/<you>/screenshots/`). The worker reads it (creator, caption, what it is, places), files it into a Space and makes it searchable. Needs Android app **1.1.0** (below). The installed web app takes up to 10 images in one share (each becomes a save); the Android shell still sends one at a time until it gets a "send several" filter in a later APK. |
+| **Saved Wrapped** (top of You) | Saved, watched and applied this month, your top Spaces and creators, older months with the arrows, **Share my month as a picture** (a PNG through the share sheet; downloaded where files can't be shared). |
 | **Context reminders** | Remind me → *When it fits*: Weekend morning (a notification Saturday or Sunday at 9), Next evening in Stash, When I open Learn (shown when that happens, then under For you). |
 | **Shortcuts** | Long-press the app icon: Play my 5, Search, Inbox. |
 
@@ -128,6 +168,6 @@ the icon on the home screen waits for 1.2.0.
 ## Secrets
 
 Nothing secret lives in this repository. The browser only gets the Supabase URL and the
-publishable key; row-level security keeps every row private to its owner. API keys for later
-phases go in Vercel environment variables (marked sensitive), Supabase secrets and the
-worker's environment. The Android signing key is kept by the owner, never in git or GitHub.
+publishable key; row-level security keeps every row private to its owner. API keys live in
+Supabase Vault and never leave Supabase: not in Vercel, not in the worker's environment, not on
+the phone. The Android signing key is kept by the owner, never in git or GitHub.

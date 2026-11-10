@@ -9,8 +9,14 @@
 //   cache, so nothing cached for the previous identity is served offline to the new one.
 // - Shared images left in the inbox for more than an hour are deleted (on activate and
 //   on each share).
-// Bump VERSION whenever these caching rules or the precached files change (v6: new brand icon and offline page).
-const VERSION = "v6";
+// - Several screenshots shared at once all land in the inbox: /share?shared-image=<id>,<id>,…
+// - Page navigations wait at most NAV_TIMEOUT_MS for the network, then the cached shell shows
+//   (a weak connection opens the app as fast as no connection).
+// Bump VERSION whenever these caching rules or the precached files change (v7: main tabs precached,
+// navigation timeout, multi-image share).
+const VERSION = "v7";
+const NAV_TIMEOUT_MS = 2500;
+const MAX_SHARED_IMAGES = 10;
 const SHARED_AT = "X-Stash-Shared-At"; // header on inbox entries (epoch ms)
 const SHARE_MAX_AGE_MS = 60 * 60 * 1000;
 const SHARE_INBOX = "stash-share-inbox"; // not versioned: a shared image must survive an update
@@ -23,7 +29,7 @@ const MAX_IMAGES = 300;
 const MAX_OPAQUE_IMAGES = 30; // opaque responses count ~7 MB each against quota
 const MAX_STATIC = 200;
 const MAX_DATA = 200;
-const PRECACHE = ["/today", "/offline.html", "/icons/icon-192.png", "/manifest.webmanifest"];
+const PRECACHE = ["/today", "/library", "/learn", "/you", "/play", "/offline.html", "/icons/icon-192.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -90,18 +96,31 @@ async function trim(cacheName, max) {
   for (let i = 0; i < keys.length - max; i++) await cache.delete(keys[i]);
 }
 
-async function networkFirst(request, cacheName, fallbackUrl) {
+async function networkFirst(request, cacheName, fallbackUrl, timeoutMs) {
   const cache = await caches.open(cacheName);
-  try {
-    const response = await fetch(request);
+  // ?source=android&v=… and shortcut params shouldn't miss the cache offline.
+  const fromCache = async () => (await cache.match(request, { ignoreVary: true })) ?? (await cache.match(request, { ignoreVary: true, ignoreSearch: true }));
+  const network = fetch(request).then((response) => {
     if (response.ok && !response.redirected && response.type !== "opaqueredirect") {
       cache.put(request, response.clone());
       if (cacheName === DATA) trim(DATA, MAX_DATA);
     }
     return response;
+  });
+  network.catch(() => {}); // handled below; this only keeps a late failure quiet
+  try {
+    if (!timeoutMs) return await network;
+    // Slow network: show the cached copy now; the request still finishes and refreshes the cache.
+    let timer;
+    const slow = new Promise((resolve) => {
+      timer = setTimeout(() => fromCache().then(resolve), timeoutMs);
+    });
+    const first = await Promise.race([network, slow]);
+    clearTimeout(timer);
+    if (first) return first;
+    return await network;
   } catch {
-    // ?source=android&v=… and shortcut params shouldn't miss the cache offline.
-    const cached = (await cache.match(request, { ignoreVary: true })) ?? (await cache.match(request, { ignoreVary: true, ignoreSearch: true }));
+    const cached = await fromCache();
     if (cached) return cached;
     if (fallbackUrl) return (await caches.match(fallbackUrl)) ?? Response.error();
     return Response.error();
@@ -137,12 +156,19 @@ async function receiveShare(request) {
       const v = form.get(k);
       if (typeof v === "string" && v.trim()) params.set(k, v.slice(0, 2000));
     }
-    const file = form.getAll("media").find((f) => typeof f !== "string" && f.type && f.type.startsWith("image/"));
-    if (file) {
-      const id = self.crypto.randomUUID();
+    const files = form
+      .getAll("media")
+      .filter((f) => typeof f !== "string" && f.type && f.type.startsWith("image/"))
+      .slice(0, MAX_SHARED_IMAGES);
+    if (files.length) {
       const cache = await caches.open(SHARE_INBOX);
-      await cache.put(`/share/inbox/${id}`, new Response(file, { headers: { "Content-Type": file.type, [SHARED_AT]: String(Date.now()) } }));
-      params.set("shared-image", id);
+      const ids = [];
+      for (const file of files) {
+        const id = self.crypto.randomUUID();
+        await cache.put(`/share/inbox/${id}`, new Response(file, { headers: { "Content-Type": file.type, [SHARED_AT]: String(Date.now()) } }));
+        ids.push(id);
+      }
+      params.set("shared-image", ids.join(","));
     }
     await pruneShareInbox();
   } catch {
@@ -168,7 +194,7 @@ self.addEventListener("fetch", (event) => {
   if (url.hostname.endsWith("tile.openstreetmap.org")) return;
 
   if (request.mode === "navigate") {
-    event.respondWith(networkFirst(request, SHELL, "/offline.html"));
+    event.respondWith(networkFirst(request, SHELL, "/offline.html", NAV_TIMEOUT_MS));
     return;
   }
   // Supabase REST reads (saves, insights, …): network first, cached when offline.

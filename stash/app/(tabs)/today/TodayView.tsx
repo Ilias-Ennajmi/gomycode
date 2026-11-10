@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Bell, Check, Flame, GraduationCap, Layers, Play, RefreshCw, Timer, User } from "lucide-react";
+import { AskRow, AskSheet } from "@/components/ask/AskEntry";
 import { AiLabel } from "@/components/ui/AiLabel";
 import { Button } from "@/components/ui/Button";
 import { ProgressSegments } from "@/components/ui/ProgressSegments";
@@ -61,6 +62,7 @@ export function TodayView() {
   const [lengthOpen, setLengthOpen] = useState(false);
   const [nearbyShown, setNearbyShown] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
+  const [askOpen, setAskOpen] = useState(false);
 
   const spacesById = useMemo(() => new Map(lib.spaces.map((s) => [s.id, s])), [lib.spaces]);
   const inboxId = lib.spaces.find((s) => s.kind === "inbox")?.id ?? null;
@@ -211,6 +213,8 @@ export function TodayView() {
           </section>
         )}
 
+        {!firstLoad && <AskRow onClick={() => setAskOpen(true)} className="rise-in -mt-2" />}
+
         {/* The section stays mounted so the Place-nearby card can look for a place; hidden while empty. */}
         <section aria-labelledby="for-you" className={cx("flex flex-col gap-3", forYou.length === 0 && !nearbyShown && "hidden")}>
           <h2 id="for-you" className="text-title">
@@ -304,6 +308,17 @@ export function TodayView() {
           <p className="text-caption text-fg-muted">Your queue rebuilds to fit. Stash remembers the length for tomorrow.</p>
         </div>
       </Sheet>
+
+      <AskSheet
+        open={askOpen}
+        onClose={() => setAskOpen(false)}
+        saves={lib.saves}
+        thumbs={lib.thumbs}
+        onOpenSave={(s) => {
+          setAskOpen(false);
+          router.push(`/item/${s.id}`);
+        }}
+      />
 
       <QuickSort
         open={sortOpen}

@@ -61,7 +61,7 @@ export function PasteLinkSheet({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           error={invalid ? "That doesn't look like a link." : undefined}
-          hint="Tip: in Instagram or TikTok, tap Share → Stash to save without leaving the app."
+          hint="Reels, TikToks, YouTube videos and articles all work. Tip: in any app, Share → Stash saves without leaving it."
         />
         <Button type="submit" disabled={!raw} fullWidth>
           Save

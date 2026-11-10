@@ -8,7 +8,7 @@ import { getBrowserClient, sessionUser } from "@/lib/supabase/client";
 
 /**
  * This phone's private id (an anonymous Supabase identity) and this month's
- * AI spend. The worker only processes saves from ids listed in OWNER_USER_IDS.
+ * AI spend. AI and saved video copies are for the ids in the Vault secret `stash_owner_ids`.
  */
 export function DeviceCard() {
   const { toast } = useToast();

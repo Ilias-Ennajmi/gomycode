@@ -1,62 +1,88 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { getBrowserClient } from "@/lib/supabase/client";
+import { bucketPolicy, forget, pickFresh, prune, remember, type SignedCache } from "@/lib/signedCache";
 
 /*
- * Signed Storage URLs (thumbnails, voice notes) last 7 days and are remembered
- * in localStorage, so the same image keeps the same URL: the service worker's
- * image cache can then serve it offline.
+ * Signed Storage URLs, made by the phone's own session (row-level security on
+ * storage.objects decides what it may read) and remembered in localStorage until
+ * shortly before they end. See lib/signedCache.ts for how long each bucket's links live.
  */
 
 const KEY = "stash.signed";
-const TTL_S = 7 * 24 * 3600;
-const MARGIN_MS = 12 * 3600 * 1000;
+export const VIDEO_BUCKET = "stash-video";
 
-type Entry = { url: string; exp: number };
-
-function readCache(): Record<string, Entry> {
+function readCache(): SignedCache {
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? "{}") as Record<string, Entry>;
+    return (JSON.parse(localStorage.getItem(KEY) ?? "{}") as SignedCache) ?? {};
   } catch {
     return {};
   }
 }
 
-function writeCache(cache: Record<string, Entry>) {
+function writeCache(cache: SignedCache) {
   try {
-    const now = Date.now();
-    const fresh = Object.fromEntries(Object.entries(cache).filter(([, e]) => e.exp > now));
-    localStorage.setItem(KEY, JSON.stringify(fresh));
+    localStorage.setItem(KEY, JSON.stringify(prune(cache, Date.now())));
   } catch {
     // storage full or blocked: URLs are simply signed again next time
   }
 }
 
-export async function signedUrls(bucket: string, paths: string[]): Promise<Record<string, string>> {
-  const cache = readCache();
+// One request per bucket+path at a time, however many screens ask.
+const inFlight = new Map<string, Promise<Record<string, string>>>();
+
+export async function signedUrls(bucket: string, paths: Array<string | null | undefined>): Promise<Record<string, string>> {
   const now = Date.now();
-  const out: Record<string, string> = {};
-  const missing: string[] = [];
-  for (const p of new Set(paths.filter(Boolean))) {
-    const hit = cache[`${bucket}/${p}`];
-    if (hit && hit.exp - MARGIN_MS > now) out[p] = hit.url;
-    else missing.push(p);
-  }
+  const { fresh, missing } = pickFresh(readCache(), bucket, paths, now);
   const supabase = getBrowserClient();
-  if (missing.length && supabase && navigator.onLine) {
-    const { data } = await supabase.storage.from(bucket).createSignedUrls(missing, TTL_S);
-    for (const row of data ?? []) {
-      if (row.signedUrl && row.path) {
-        out[row.path] = row.signedUrl;
-        cache[`${bucket}/${row.path}`] = { url: row.signedUrl, exp: now + TTL_S * 1000 };
-      }
-    }
-    writeCache(cache);
+  if (!missing.length || !supabase || (typeof navigator !== "undefined" && !navigator.onLine)) return fresh;
+
+  const key = `${bucket}|${missing.slice().sort().join("|")}`;
+  let request = inFlight.get(key);
+  if (!request) {
+    request = (async () => {
+      const { data } = await supabase.storage.from(bucket).createSignedUrls(missing, bucketPolicy(bucket).ttlS);
+      const signed: Record<string, string> = {};
+      for (const row of data ?? []) if (row.signedUrl && row.path) signed[row.path] = row.signedUrl;
+      if (Object.keys(signed).length) writeCache(remember(readCache(), bucket, signed, Date.now()));
+      return signed;
+    })()
+      .catch(() => ({}) as Record<string, string>)
+      .finally(() => inFlight.delete(key));
+    inFlight.set(key, request);
   }
-  return out;
+  return { ...fresh, ...(await request) };
 }
 
-/** The app's own video URL: a redirect to a short-lived link to the stored MP4. */
-export function videoUrl(saveId: string): string {
-  return `/api/media/${saveId}`;
+/** The playable address of a stored video (6 h link, reused until near its end). Null offline or when refused. */
+export async function videoUrl(save: { videoPath?: string | null }): Promise<string | null> {
+  if (!save.videoPath) return null;
+  return (await signedUrls(VIDEO_BUCKET, [save.videoPath]))[save.videoPath] ?? null;
+}
+
+/** A link that stopped working before its time (clock skew, revoked): sign it again next time. */
+export function forgetSignedUrl(bucket: string, path: string) {
+  writeCache(forget(readCache(), bucket, path));
+}
+
+/**
+ * Video links for a short list of saves (the one playing and the next two in Play),
+ * signed in one request so the next video can start loading before it is on screen.
+ */
+export function useVideoUrls(paths: Array<string | null | undefined>): Record<string, string> {
+  const wanted = useMemo(() => [...new Set(paths.filter((p): p is string => Boolean(p)))].sort(), [paths]);
+  const key = wanted.join("|");
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!key) return;
+    let alive = true;
+    void signedUrls(VIDEO_BUCKET, key.split("|")).then((u) => {
+      if (alive && Object.keys(u).length) setUrls((prev) => ({ ...prev, ...u }));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [key]);
+  return urls;
 }

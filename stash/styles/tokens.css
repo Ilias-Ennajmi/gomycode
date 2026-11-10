@@ -103,6 +103,9 @@
   --detail-max-h: 60dvh;
   --detail-max-h-lg: 64dvh;
   --overlay-top: 22%;
+  /* Play, platform embeds: the frame leaves the top bar and the caption band free. */
+  --embed-top: calc(env(safe-area-inset-top) + 92px);
+  --embed-bottom: calc(env(safe-area-inset-bottom) + 172px);
   --captions-bottom: 28%;
   --demo-col: 8rem;
   --edge: 4px; /* the Space colour edge on thumbnails */

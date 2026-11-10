@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, type KeyboardEvent } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { LayoutGrid, Map as MapIcon, Orbit, type LucideIcon } from "lucide-react";
 import { cx } from "@/components/ui/cx";
 import { useMotionOK } from "@/lib/hooks/useMotionOK";
@@ -56,7 +56,7 @@ export function LensToggle({ value, onChange }: { value: Lens; onChange: (l: Len
             )}
           >
             {selected && (
-              <motion.span layoutId="lens-pill" aria-hidden className="absolute inset-0 rounded-full bg-fg" transition={spring("pop", motionOK)} />
+              <m.span layoutId="lens-pill" aria-hidden className="absolute inset-0 rounded-full bg-fg" transition={spring("pop", motionOK)} />
             )}
             <Icon size={20} strokeWidth={2} aria-hidden className="relative" />
             <span className="relative">{label}</span>

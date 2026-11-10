@@ -13,6 +13,8 @@
  */
 
 const MAX_IMAGE = 8 * 1024 * 1024;
+const MAX_IMAGES = 10;
+const MAX_TOTAL = 24 * 1024 * 1024; // the hand-off page carries the images inline
 const FIELDS = ["title", "text", "url"] as const;
 
 function shareParams(form: FormData): URLSearchParams {
@@ -37,28 +39,42 @@ export async function POST(request: Request): Promise<Response> {
     return redirect(request, new URLSearchParams());
   }
   const q = shareParams(form);
-  const file = form.getAll("media").find((f): f is File => typeof f !== "string" && f.type.startsWith("image/"));
-  if (!file) return redirect(request, q);
-  if (file.size > MAX_IMAGE) {
+  const all = form.getAll("media").filter((f): f is File => typeof f !== "string" && f.type.startsWith("image/"));
+  if (!all.length) return redirect(request, q);
+  // Several screenshots can be shared at once: keep the ones that fit (each ≤ 8 MB, 10 at most).
+  const files: File[] = [];
+  let total = 0;
+  for (const f of all) {
+    if (files.length >= MAX_IMAGES || f.size > MAX_IMAGE || total + f.size > MAX_TOTAL) continue;
+    files.push(f);
+    total += f.size;
+  }
+  if (!files.length) {
     q.set("shared-image", "too-big");
     return redirect(request, q);
   }
 
-  const id = crypto.randomUUID();
-  q.set("shared-image", id);
-  const data = Buffer.from(await file.arrayBuffer()).toString("base64");
-  const type = /^image\/[a-z0-9.+-]+$/i.test(file.type) ? file.type : "image/jpeg";
+  const images = await Promise.all(
+    files.map(async (file) => ({
+      id: crypto.randomUUID(),
+      type: /^image\/[a-z0-9.+-]+$/i.test(file.type) ? file.type : "image/jpeg",
+      data: Buffer.from(await file.arrayBuffer()).toString("base64"),
+    })),
+  );
+  q.set("shared-image", images.map((i) => i.id).join(","));
   // JSON.stringify escapes the values for a script context; "<" is escaped so nothing can close the tag.
-  const payload = JSON.stringify({ id, type, data, next: `/share?${q}` }).replace(/</g, "\\u003c");
+  const payload = JSON.stringify({ images, next: `/share?${q}` }).replace(/</g, "\\u003c");
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Saving…</title></head><body><script>
 (async () => {
   const p = ${payload};
   try {
-    const bin = atob(p.data);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     const cache = await caches.open("stash-share-inbox");
-    await cache.put("/share/inbox/" + p.id, new Response(new Blob([bytes], { type: p.type }), { headers: { "Content-Type": p.type, "X-Stash-Shared-At": String(Date.now()) } }));
+    for (const im of p.images) {
+      const bin = atob(im.data);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      await cache.put("/share/inbox/" + im.id, new Response(new Blob([bytes], { type: im.type }), { headers: { "Content-Type": im.type, "X-Stash-Shared-At": String(Date.now()) } }));
+    }
   } catch (e) {}
   location.replace(p.next);
 })();

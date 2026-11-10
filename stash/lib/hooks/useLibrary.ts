@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getBrowserClient } from "@/lib/supabase/client";
-import { fetchSaves, fetchSpaces, type SaveItem, type Space } from "@/lib/data";
+import { applySaveRow, fetchSaves, fetchSpaces, type SaveItem, type SaveRow, type Space } from "@/lib/data";
 import { flush, onOutboxChange, pending, type OutboxItem } from "@/lib/outbox";
 import { signedUrls } from "@/lib/media";
 import { isPendingDelete, onPendingDeleteChange } from "@/lib/undo";
@@ -97,10 +97,21 @@ export function useLibrary() {
     const online = () => void flush().then(refresh);
     window.addEventListener("online", online);
 
+    // Live progress: a save's own columns (step, title, picture, player) are folded in the moment
+    // the change arrives; the full refresh that follows brings the insights.
+    const onSave = (payload: { eventType?: string; new?: unknown }) => {
+      const row = payload.new as (Partial<SaveRow> & { id?: string }) | undefined;
+      if (payload.eventType === "UPDATE" && row?.id) {
+        setSaves((prev) => prev.map((s) => (s.id === row.id ? applySaveRow(s, row) : s)));
+        if (row.thumb_path) void signedUrls("stash-thumbs", [row.thumb_path]).then((urls) => setThumbs((prev) => ({ ...prev, ...urls })));
+      }
+      soon();
+    };
+
     const supabase = getBrowserClient();
     const channel = supabase
       ?.channel(`stash-library-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "stash", table: "saves" }, soon)
+      .on("postgres_changes", { event: "*", schema: "stash", table: "saves" }, onSave)
       .on("postgres_changes", { event: "*", schema: "stash", table: "insights" }, soon)
       .on("postgres_changes", { event: "*", schema: "stash", table: "states" }, soon)
       .subscribe();

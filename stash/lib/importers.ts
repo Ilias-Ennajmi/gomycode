@@ -11,7 +11,11 @@
  * whole structure looking for post links instead of trusting one exact shape.
  */
 
+import { cleanUrl, youtubeId } from "@/lib/links";
+
 export type ImportSource = "instagram" | "tiktok";
+/** "links": any list of links (YouTube, articles, …) from a pasted text or a text / CSV / bookmarks file. */
+export type ImportKind = ImportSource | "links";
 export type ImportedLink = { url: string; savedAt: string | null; key: string };
 
 const IG_POST = /^https?:\/\/(?:www\.|m\.)?instagram\.com\/(?:[A-Za-z0-9_.]+\/)?(p|reels?|tv)\/([A-Za-z0-9_-]{5,})/i;
@@ -25,6 +29,8 @@ export function dedupeKey(url: string): string {
   if (ig) return `ig:${ig[2]}`;
   const tt = url.match(TT_VIDEO);
   if (tt) return `tt:${tt[1]}`;
+  const yt = youtubeId(url);
+  if (yt) return `yt:${yt}`;
   try {
     const u = new URL(url);
     u.hash = "";
@@ -182,6 +188,45 @@ export function parseTikTokText(text: string): ImportedLink[] {
     }
   }
   return unique(out);
+}
+
+// A YouTube Takeout playlist CSV lists bare video ids ("dQw4w9WgXcQ,2024-01-05T10:00:00+00:00").
+const YT_CSV_ROW = /^\s*([A-Za-z0-9_-]{11})\s*,\s*(\d{4}-\d{2}-\d{2}[T ][^,\s]*)?/;
+const MAX_LINKS = 2000;
+
+/**
+ * Any list of links: a pasted text, a .txt / .csv file, exported bookmarks (HTML), a
+ * YouTube Takeout playlist. Instagram, TikTok and YouTube links are tidied to their
+ * canonical form; everything else is kept as an article link.
+ */
+export function parseLinkList(text: string): ImportedLink[] {
+  const out: ImportedLink[] = [];
+  const seen = new Set<string>();
+  const add = (raw: string, savedAt: string | null = null) => {
+    if (out.length >= MAX_LINKS) return;
+    const trimmed = raw.replace(/&amp;/g, "&").replace(/[),.;!?\]]+$/, "");
+    let url: string;
+    try {
+      url = new URL(trimmed).toString();
+    } catch {
+      return;
+    }
+    url = normalizeInstagram(url) ?? normalizeTikTok(url) ?? cleanUrl(url);
+    const key = dedupeKey(url);
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ url, savedAt, key });
+  };
+  for (const line of text.split(/\r?\n/)) {
+    const found = line.match(URL_IN_TEXT);
+    if (found) {
+      for (const u of found) add(u);
+      continue;
+    }
+    const row = line.match(YT_CSV_ROW);
+    if (row) add(`https://www.youtube.com/watch?v=${row[1]}`, row[2] ? toIso(row[2]) : null);
+  }
+  return out;
 }
 
 /** Files inside an export ZIP that hold saved/favourite links. */
