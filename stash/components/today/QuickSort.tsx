@@ -37,6 +37,7 @@ export function QuickSort({
   const [filed, setFiled] = useState(0);
   const [dx, setDx] = useState(0);
   const start = useRef<number | null>(null);
+  const [dragging, setDragging] = useState(false);
 
   // Freeze the stack when it opens so filing doesn't reshuffle it.
   const [stack, setStack] = useState<SaveItem[]>([]);
@@ -80,20 +81,27 @@ export function QuickSort({
           </p>
           <div
             className="mx-auto w-1/2 touch-pan-y select-none"
-            style={{ transform: dx ? `translateX(${dx}px) rotate(${dx / 30}deg)` : undefined }}
+            style={{
+              transform: dx ? `translateX(${dx}px) rotate(${dx / 30}deg)` : undefined,
+              // 1:1 with the finger while dragging, a spring back when let go (token duration).
+              transition: dx && dragging ? "none" : "transform var(--dur-screen) var(--ease-spring)",
+            }}
             onPointerDown={(e) => {
               start.current = e.clientX;
+              setDragging(true);
             }}
             onPointerMove={(e) => {
               if (start.current !== null) setDx(Math.min(0, e.clientX - start.current));
             }}
             onPointerUp={() => {
               start.current = null;
+              setDragging(false);
               if (dx < -SWIPE_PX) next();
               else setDx(0);
             }}
             onPointerCancel={() => {
               start.current = null;
+              setDragging(false);
               setDx(0);
             }}
           >

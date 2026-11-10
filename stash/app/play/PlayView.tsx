@@ -75,6 +75,8 @@ export function PlayView() {
   const [remindOpen, setRemindOpen] = useState(false);
   const [showHints, setShowHints] = useState(false);
   const [dx, setDx] = useState(0);
+  // After a swipe that doesn't commit, the page springs back instead of jumping.
+  const [settling, setSettling] = useState(false);
   const watched = useRef(new Set<string>());
   const pages = useRef<Array<HTMLElement | null>>([]);
   const scroller = useRef<HTMLDivElement>(null);
@@ -320,6 +322,10 @@ export function PlayView() {
       if (dx > SWIPE_PX) keep(current);
       else if (dx < -SWIPE_PX) archive(current);
     }
+    if (dx !== 0) {
+      setSettling(true);
+      setTimeout(() => setSettling(false), 300);
+    }
     setDx(0);
   };
 
@@ -372,7 +378,15 @@ export function PlayView() {
               data-index={i}
               aria-label={`${i + 1} of ${items.length}`}
               className="relative h-dvh w-full snap-start snap-always touch-pan-y"
-              style={i === active && dx ? { transform: `translateX(${dx}px) rotate(${dx / 40}deg)`, transition: "none" } : undefined}
+              style={
+                i === active && (dx || settling)
+                  ? {
+                      transform: `translateX(${dx}px) rotate(${dx / 40}deg)`,
+                      // 1:1 with the finger while dragging; springs back on release (token duration, 0 with reduce motion).
+                      transition: dx ? "none" : "transform var(--dur-screen) var(--ease-spring)",
+                    }
+                  : undefined
+              }
             >
               {near ? (
                 <MediaPlayer

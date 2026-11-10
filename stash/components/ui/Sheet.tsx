@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useDragControls, type PanInfo } from "framer-m
 import { useBackToClose } from "@/lib/hooks/useBackToClose";
 import { useMotionOK } from "@/lib/hooks/useMotionOK";
 import { cx } from "./cx";
+import { tokenSeconds } from "@/lib/motionTokens";
 
 export type SheetProps = {
   open: boolean;
@@ -74,7 +75,7 @@ export function Sheet({ open, onClose, label, title, children, className }: Shee
     if (info.offset.y > 120 || info.velocity.y > 600) onClose();
   };
 
-  const fade = motionOK ? { duration: 0.25 } : { duration: 0 };
+  const fade = motionOK ? { duration: tokenSeconds("--dur-screen") } : { duration: 0 };
 
   return (
     <AnimatePresence>

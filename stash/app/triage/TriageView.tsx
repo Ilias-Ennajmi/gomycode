@@ -19,6 +19,7 @@ import { moveToSpace, type SaveItem, type Space } from "@/lib/data";
 import { PLATFORM_LABEL } from "@/lib/links";
 import { ageLabel, remainingToday, triageCandidates, TRIAGE_DEFAULT_LIMIT } from "@/lib/triage";
 import { decide, fetchSuggestions, fetchTriageLimit, fetchTriageSeen } from "@/lib/triageData";
+import { tokenSeconds } from "@/lib/motionTokens";
 
 const SWIPE_PX = 110;
 const SWIPE_VELOCITY = 600;
@@ -232,10 +233,10 @@ function SwipeCard({
       dragElastic={0.9}
       onDragEnd={onDragEnd}
       variants={{
-        exit: (dir: Dir) => (motionOK ? { x: dir === "keep" ? 480 : -480, opacity: 0, transition: { duration: 0.25 } } : { opacity: 0, transition: { duration: 0 } }),
+        exit: (dir: Dir) => (motionOK ? { x: dir === "keep" ? 480 : -480, opacity: 0, transition: { duration: tokenSeconds("--dur-screen") } } : { opacity: 0, transition: { duration: 0 } }),
       }}
       initial={motionOK ? { scale: 0.95, opacity: 0.6 } : false}
-      animate={{ scale: 1, opacity: 1, transition: { duration: motionOK ? 0.15 : 0 } }}
+      animate={{ scale: 1, opacity: 1, transition: { duration: motionOK ? tokenSeconds("--dur-fast") : 0 } }}
       exit="exit"
     >
       <CardFace save={save} space={space} thumb={thumb} now={now} />

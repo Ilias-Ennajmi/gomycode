@@ -47,7 +47,7 @@ export function SaveGrid({
         const processing = s.status === "queued" || s.status === "processing";
         const label = badge?.(s);
         return (
-          <li key={s.id} className="relative">
+          <li key={s.id} className="relative" data-morph-src={s.id}>
             <Thumbnail
               src={s.thumbPath ? thumbs[s.thumbPath] : undefined}
               spaceColor={space?.color}

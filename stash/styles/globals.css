@@ -154,6 +154,28 @@
   }
 }
 
+/* Key idea arriving word by word (components/ui/WordReveal). Tokens are 0 with reduce motion. */
+@keyframes word-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@utility word-in {
+  animation: word-in var(--dur-screen) var(--ease-standard) both;
+}
+
+/* Thumbnail → item morph (lib/morph.ts) and any other view transition: screen-transition token. */
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: var(--dur-screen);
+  animation-timing-function: var(--ease-standard);
+}
+
 @keyframes shimmer {
   from {
     background-position: -200% 0;

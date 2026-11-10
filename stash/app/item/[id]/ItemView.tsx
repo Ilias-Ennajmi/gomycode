@@ -38,6 +38,8 @@ import {
 } from "@/lib/data";
 import { signedUrls } from "@/lib/media";
 import { PLATFORM_LABEL, publicUrl } from "@/lib/links";
+import { morphName } from "@/lib/morph";
+import { WordReveal } from "@/components/ui/WordReveal";
 import { haptic } from "@/lib/haptics";
 import { cancelDelete, scheduleDelete } from "@/lib/undo";
 import { getBrowserClient } from "@/lib/supabase/client";
@@ -86,6 +88,9 @@ export function ItemView({ id }: { id: string }) {
   const [remindOpen, setRemindOpen] = useState(false);
   const [note, setNote] = useState("");
   const watchedSent = useRef(false);
+  // The key idea fades in word by word when processing finishes while the page is open.
+  const lastStatus = useRef<string | null>(null);
+  const [revealIdea, setRevealIdea] = useState(false);
   const { done, toggle } = useDoneActions(id);
 
   const load = useCallback(async () => {
@@ -95,6 +100,8 @@ export function ItemView({ id }: { id: string }) {
         setMissing(true);
         return;
       }
+      if ((lastStatus.current === "queued" || lastStatus.current === "processing") && s.status === "ready") setRevealIdea(true);
+      lastStatus.current = s.status;
       setSave(s);
       setNote(s.userNote ?? "");
       const [sp, segs, relIds] = await Promise.all([fetchSpaces(), fetchTranscript(id), fetchRelated(id).catch(() => [])]);
@@ -143,7 +150,9 @@ export function ItemView({ id }: { id: string }) {
   if (!save) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 p-4 pt-safe">
-        <Skeleton shape="thumb" className="mx-auto max-h-[var(--detail-max-h)] max-w-xs" />
+        <div data-morph-dst={id} style={{ viewTransitionName: morphName(id) }} className="mx-auto w-full max-w-xs">
+          <Skeleton shape="thumb" className="max-h-[var(--detail-max-h)]" />
+        </div>
         <Skeleton shape="line" />
         <Skeleton shape="line" className="w-2/3" />
       </main>
@@ -245,7 +254,11 @@ export function ItemView({ id }: { id: string }) {
         </div>
       </header>
 
-      <div className="mx-auto aspect-9/16 max-h-[var(--detail-max-h-lg)] w-full max-w-sm overflow-hidden rounded-card">
+      <div
+        data-morph-dst={save.id}
+        style={{ viewTransitionName: morphName(save.id) }}
+        className="mx-auto aspect-9/16 max-h-[var(--detail-max-h-lg)] w-full max-w-sm overflow-hidden rounded-card"
+      >
         <MediaPlayer
           ref={player}
           save={save}
@@ -287,7 +300,9 @@ export function ItemView({ id }: { id: string }) {
           ) : save.keyIdea ? (
             <>
               <AiLabel text="Key idea" />
-              <h1 className="text-title">{save.keyIdea}</h1>
+              <h1 className="text-title">
+                <WordReveal text={save.keyIdea} animate={revealIdea} />
+              </h1>
               {save.takeaways.length > 0 && (
                 <ul className="flex flex-col gap-2">
                   {save.takeaways.map((t, i) => (

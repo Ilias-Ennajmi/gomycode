@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import { useMotionOK } from "@/lib/hooks/useMotionOK";
 import { cx } from "./cx";
+import { tokenSeconds } from "@/lib/motionTokens";
 
 export type SegmentedOption<T extends string> = {
   value: T;
@@ -81,7 +82,7 @@ export function Segmented<T extends string>({
                   layoutId={pillId}
                   aria-hidden
                   className="absolute inset-0 rounded-sm bg-surface"
-                  transition={{ duration: 0.15, ease: [0.2, 0, 0, 1] }}
+                  transition={{ duration: tokenSeconds("--dur-fast"), ease: [0.2, 0, 0, 1] }}
                 />
               ) : (
                 <span aria-hidden className="absolute inset-0 rounded-sm bg-surface" />

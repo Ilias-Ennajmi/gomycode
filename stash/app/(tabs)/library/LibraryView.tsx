@@ -26,6 +26,7 @@ import { createSpace, nextSpaceColor, updateSpace, type SaveItem } from "@/lib/d
 import { FILTER_LABEL, FILTERS, filterSaves, isFilter, spaceCounts, type Filter } from "@/lib/queue";
 import { formatDuration } from "@/components/ui/Thumbnail";
 import { triageCandidates } from "@/lib/triage";
+import { morphTo } from "@/lib/morph";
 
 // Leaflet touches `window` when it loads, so the map is client-only.
 const MapView = dynamic(() => import("@/components/library/MapView"), {
@@ -134,7 +135,8 @@ export function LibraryView() {
     setHits(null);
   };
 
-  const open = (s: SaveItem, t?: number | null) => router.push(t ? `/item/${s.id}?t=${Math.floor(t)}` : `/item/${s.id}`);
+  // The thumbnail grows into the item's player (View Transition; plain navigation without it).
+  const open = (s: SaveItem, t?: number | null) => morphTo(router, t ? `/item/${s.id}?t=${Math.floor(t)}` : `/item/${s.id}`, s.id);
 
   const newSpace = async (name: string) => {
     try {

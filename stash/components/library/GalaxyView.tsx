@@ -8,6 +8,7 @@ import { cx } from "@/components/ui/cx";
 import { SPACE_BG, spaceVar, type SpaceColor } from "@/components/ui/space";
 import { cardText } from "@/components/library/SaveGrid";
 import { haptic } from "@/lib/haptics";
+import { tokenMs } from "@/lib/motionTokens";
 import { useMotionOK } from "@/lib/hooks/useMotionOK";
 import { fetchGalaxy, onGalaxyChange, readGalaxyCache, type Galaxy } from "@/lib/galaxy";
 import {
@@ -27,13 +28,6 @@ import type { SaveItem, Space } from "@/lib/data";
 const MIN_SAVES = 5;
 const TAP_SLOP = 8; // px a finger may wander and still count as a tap
 
-/** Duration of a screen transition in ms, from the motion token (0 with reduce motion). */
-function screenDuration(): number {
-  if (typeof window === "undefined") return 0;
-  const raw = getComputedStyle(document.documentElement).getPropertyValue("--dur-screen").trim();
-  const ms = raw.endsWith("ms") ? parseFloat(raw) : raw.endsWith("s") ? parseFloat(raw) * 1000 : parseFloat(raw);
-  return Number.isFinite(ms) ? ms : 0;
-}
 
 /**
  * Library → Galaxy. Saves as dots, grouped by meaning and labelled by topic (laid
@@ -113,7 +107,7 @@ export function GalaxyView({
     (target: View) => {
       if (anim.current) cancelAnimationFrame(anim.current);
       const from = viewRef.current;
-      const ms = motionOK ? screenDuration() : 0;
+      const ms = motionOK ? tokenMs("--dur-screen") : 0;
       if (!ms) {
         setView(target);
         return;

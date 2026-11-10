@@ -1,8 +1,8 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useMotionOK } from "@/lib/hooks/useMotionOK";
 import { cx } from "./cx";
+import { WordReveal } from "./WordReveal";
 import { SPACE_BG, type SpaceColor } from "./space";
 
 export type ThumbnailProps = {
@@ -48,7 +48,6 @@ export function Thumbnail({
   className,
 }: ThumbnailProps) {
   const motionOK = useMotionOK();
-  const words = keyIdea?.split(/\s+/) ?? [];
   const animate = reveal && motionOK;
 
   const body = (
@@ -80,18 +79,7 @@ export function Thumbnail({
         ) : (
           keyIdea && (
             <span className="line-clamp-4 text-left text-caption" style={INK_LIGHT}>
-              {animate
-                ? words.map((w, i) => (
-                    <motion.span
-                      key={`${i}-${w}`}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: i * 0.06, duration: 0.25 }}
-                    >
-                      {w}{" "}
-                    </motion.span>
-                  ))
-                : keyIdea}
+              <WordReveal text={keyIdea} animate={Boolean(animate)} />
             </span>
           )
         )}

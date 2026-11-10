@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { AnimatePresence, motion } from "framer-motion";
 import { useMotionOK } from "@/lib/hooks/useMotionOK";
 import { cx } from "./cx";
+import { tokenSeconds } from "@/lib/motionTokens";
 
 export type ToastOptions = {
   message: string;
@@ -71,7 +72,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               initial={motionOK ? { opacity: 0, y: 16 } : false}
               animate={{ opacity: 1, y: 0 }}
               exit={motionOK ? { opacity: 0, y: 16 } : { opacity: 0, transition: { duration: 0 } }}
-              transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
+              transition={{ duration: tokenSeconds("--dur-screen"), ease: [0.2, 0, 0, 1] }}
               className={cx(
                 "pointer-events-auto flex min-h-14 w-full max-w-md items-center gap-3 rounded-card",
                 "border border-line bg-raised py-1 pl-4 pr-1 text-fg shadow-raised",
