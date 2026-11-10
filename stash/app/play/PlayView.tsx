@@ -551,7 +551,7 @@ export function PlayView() {
       {current && !finished && (
         <>
           {/* Right rail */}
-          <div className="fixed right-2 z-10 flex flex-col gap-3" style={{ bottom: "calc(env(safe-area-inset-bottom) + 160px)" }}>
+          <div className="fixed right-2 z-10 flex flex-col gap-3" style={{ bottom: "calc(env(safe-area-inset-bottom) + var(--play-rail-bottom))" }}>
             <RailButton label="Applied" icon={CheckCircle2} pressed={Boolean(current.appliedAt)} onClick={() => toggleApplied(current)} />
             <RailButton label="Keep" icon={Heart} pressed={current.kept} onClick={() => keep(current)} />
             <RailButton label="To task" icon={ListTodo} onClick={() => toTask(current)} />

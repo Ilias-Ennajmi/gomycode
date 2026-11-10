@@ -80,6 +80,7 @@
   --play-size: 56px;
   --play-raise: 18px;
   --bar-height: 64px;
+  --play-rail-bottom: 160px; /* Play: the side rail sits above the caption and controls */
   /* Overlay heights and positions (relative to the screen). */
   --sheet-max-h: 88dvh;
   --panel-max-h: 40dvh;

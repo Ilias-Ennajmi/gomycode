@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { ChevronRight, Orbit, Shrink } from "lucide-react";
+import { AiLabel } from "@/components/ui/AiLabel";
 import { IconButton } from "@/components/ui/IconButton";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cx } from "@/components/ui/cx";
@@ -283,7 +284,7 @@ export function GalaxyView({
                   textAnchor="middle"
                   className="text-label"
                   style={{
-                    fill: "var(--text-secondary)",
+                    fill: "var(--insight)", // labels are written by the AI (insight colour, like other AI text)
                     stroke: "var(--surface)",
                     strokeWidth: 4,
                     paintOrder: "stroke",
@@ -301,6 +302,7 @@ export function GalaxyView({
         )}
       </div>
 
+      <AiLabel text="Group names" />
       <p className="text-caption text-fg-muted">Pinch to zoom · tap a label to open its group · tap a dot to watch</p>
 
       {focused ? (

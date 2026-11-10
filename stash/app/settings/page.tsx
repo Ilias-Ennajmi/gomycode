@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { AppearanceControls } from "@/components/theme/AppearanceControls";
 import { NearbySettings } from "@/components/places/NearbySettings";
 import { ReminderSettings } from "@/components/settings/ReminderSettings";
+import { DeviceIdRow } from "@/components/settings/DeviceIdRow";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -25,6 +26,12 @@ export default function SettingsPage() {
         </section>
         <section id="nearby" aria-label="Nearby" className="scroll-mt-4">
           <NearbySettings />
+        </section>
+        <section id="device" aria-labelledby="device-title" className="flex scroll-mt-4 flex-col gap-4">
+          <h2 id="device-title" className="text-title">
+            This device
+          </h2>
+          <DeviceIdRow />
         </section>
       </div>
     </main>
