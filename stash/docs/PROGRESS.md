@@ -4,11 +4,70 @@ Read this at the start of every session. Updated after every task.
 
 ## Current phase: 4 · Delight — built on a branch (migration 0006 written, not applied; worker not deployed; APK 1.1.0 built, not signed)
 
+**Where things are (corrected 2026-11-10):** the Phase 2–4 work **is pushed**: `origin/claude/magical-turing-jwi3nx`
+at 21289f5. Migrations 0004, 0005 and 0006 are **not applied** anywhere (0001–0003 are). Production is
+**not deployed** with Phases 2–4 (it still runs Phase 1). The review fixes below sit on the local branch
+`stash-review-fixes` (from 21289f5), not pushed.
+
+## Review fixes (2026-11-10, on top of 21289f5)
+
+A reviewer pass over Phases 2–4 found 4 blocking findings and 12 concerns. 0004–0006 were not applied
+yet, so they were **edited in place** (no 0007). Verified on a throwaway local Postgres 16 with Supabase
+stubs: 0001→0006 in order, then 0004–0006 again, plus an attack script run as role `authenticated`
+with a second identity's `auth.uid()` (results in "Checks" below).
+
+| # | Finding | Fix |
+|---|---|---|
+| F1 | `settings.timezone` took any string; one bad zone made `cron_daily_candidates` and `wrapped()` throw for everyone | 0004: trigger `guard_settings_timezone` (BEFORE INSERT/UPDATE OF timezone) refuses names not in `pg_timezone_names`; the cron CTE joins `pg_timezone_names` and skips unknown zones; `wrapped()` falls back to Africa/Casablanca |
+| F2a | Push endpoints could be any https (or http via the table) URL, and the cron route POSTs to each | 0004: check constraint `push_subscriptions_endpoint_host` (https on fcm.googleapis.com, updates.push.services.mozilla.com, *.notify.windows.com, web.push.apple.com, *.push.apple.com). Same list in `lib/pushHosts.ts` (unit-tested), used by `/api/push/subscribe` and the cron sender (`parseTargets`) |
+| F2b | Cron candidates covered every identity | `stash.owner_ids()` (service_role only) reads Vault secret `stash_owner_ids` (comma-separated device ids, the same value as the worker's `OWNER_USER_IDS`). `cron_due_reminders` (0004 and 0006), `cron_daily_candidates` and `cron_store_daily` return/store nothing for other ids; **nothing at all while the secret is missing or empty** |
+| F2c | Reminders were marked fired after sending, pushes sent one by one | `cron_mark_fired` now claims (returns only the ids it flipped); the route claims first, then sends. Both cron routes send in parallel (`sendPushes`: 8 s per push, 40 s overall, maxDuration 60); the daily route stops building after 25 s (the next hourly run continues) |
+| F3a | Worker trusted the row a job pointed at | Ingest/reprocess, grade, synthesize and export fail the job with `owner_mismatch` (no AI call, the other row untouched) unless `job.user_id` owns the save/card/Space/export; an export's Space must belong to the export's owner. Galaxy reads only `job.user_id`'s rows. pytest covers each |
+| F3b | RLS checks a row's `user_id`, not the ids it references | 0004: one generic trigger `stash.guard_same_owner()` (SECURITY DEFINER, `zz_same_owner`, runs after the other BEFORE triggers) on saves, insights, transcripts, embeddings, places, states, cards, reviews (card_id), syntheses (space_id + source_save_ids[]), reminders, jobs, exports, usage, daily_queues (save_ids[], done_ids[]); 0006 adds galaxy_points. The worker's own inserts pass (it sets user_id from the row) |
+| F3c | `get_collection` published raw save ids | Removed; `/c/<slug>` keys rows by position and signs thumbnails by path only |
+| F4 | Learn took the 100 earliest cards, then filtered kept on the phone | `fetchDueCards` filters in the query (`saves!inner(states!inner(kept))`, `saves.states.kept = true`); the client filter stays as a net. Vitest |
+| C1 | Collection joins | `get_collection` / `collection_save_ids` / `is_shared_thumb` join the Space on `sp.user_id = e.user_id`; `guard_export_columns` refuses a Space that isn't the caller's |
+| C2 | A lost session silently made a new, empty identity | localStorage flag `stash.identity`; with no session and the flag set, `refreshSession()` first; if that fails a new identity is made and a 10 s toast says so (never blocks). **Known risk, still open:** if the refresh token is gone (site data cleared), the old saves stay with the old device id and the worker's `OWNER_USER_IDS` / Vault `stash_owner_ids` must be updated by hand |
+| C3 | Time zone kept current only from Settings → Reminders | NativeBoot syncs the device zone once per session, only when different, only once the identity has saves (so the cleanup still sees empty identities as untouched) |
+| C4 | Empty queues frozen while items process; late queue times skipped | Neither the app (`shouldStoreQueue`) nor `cron_store_daily` stores an empty queue while saves are queued/processing; the cron builds once local time ≥ queue_time **or** the local hour is 23 |
+| C5 | Archived Space kept thumbnails shared | `is_shared_thumb` (and `collection_save_ids`) require `not sp.archived` |
+| C6 | A galaxy crash aborted `run()`; a running galaxy job swallowed new embeddings | Galaxy errors back off like other jobs; `run()` catches any per-job exception; `maybe_galaxy` only skips when a job is **queued**, so a running one gets exactly one queued follow-up |
+| C7 | A late worker grade could overwrite a newer self-grade | The card update is conditional on the `due_at` it read (`due_at=eq.<old>`) |
+| C8 | Cached REST responses survived an identity change; share inbox grew | The page posts `identity-changed` to the service worker (new identity, or a different stored id) and it deletes the REST cache; shared images older than 1 h are deleted on activate and on each share (sw v5) |
+| C9 | Raw 160px in Play; Galaxy labels not marked as AI | Token `--play-rail-bottom`; Galaxy labels in the insight colour plus `AI · Group names` |
+| C10 | Tag-based syntheses | **Not built** (see limits): needs a tag trigger, a worker path and a Learn view; not small |
+| C12 | Cleanup could delete an owner device | `cleanup_anonymous_users` never deletes ids in `stash.owner_ids()` |
+| — | Found while testing: 0006 re-read the usage kinds from a constraint Postgres prints as `'{a,b}'::text[]`, so after 0005 the list collapsed to `{galaxy}` and every worker usage insert would have failed | 0005 and 0006 now merge the full known list with both printed forms |
+
+### Checks (review fixes)
+- Local Postgres 16 + stubs: 0001→0006 apply, and 0004→0006 again; usage kinds = embed, export, galaxy,
+  grade, search, synthesize, transcribe, understand.
+- As `authenticated` with device B's uid: unknown time zone refused; `http://…`, `https://evil.example/…`,
+  `https://169.254.169.254/…` and a lookalike `fcm.googleapis.com.evil.example` refused (RPC and direct insert);
+  FCM and WNS endpoints accepted; a job, reminder, card, review, states row, save-in-Space and daily queue
+  pointing at device A's save/Space/card refused; an export of A's Space refused; B's own rows still insert;
+  `owner_ids()` not executable. As service_role: the worker's inserts for A pass, a mis-owned usage row fails.
+- Cron: without `stash_owner_ids` both candidate functions return 0 rows; with it only A's reminders;
+  `cron_mark_fired` twice → 1 then 0; hour-23 rule builds at 23:xx local with a 23:59 queue time and not at
+  12:xx; empty store while processing → false, for a non-owner → false, after ready → true; cleanup keeps an
+  empty owner device and deletes it once it's no longer listed; `wrapped()` and the candidates survive a bad
+  zone written behind the trigger's back; galaxy: one running + 7 new embeddings → exactly one queued job.
+- Grants: `owner_ids`, `guard_same_owner`, `guard_settings_timezone`, `cleanup_anonymous_users`:
+  not executable by anon/authenticated, executable by service_role.
+- tsc, eslint, Vitest (160 tests, 21 files), pytest (104), next build: green.
+
+### Owner setup added by the review fixes
+- **Add Vault secret `stash_owner_ids`** = your device id (Settings → This device, or You; several ids
+  comma-separated, the same value as the worker's `OWNER_USER_IDS`). SQL editor, after 0004:
+  `select vault.create_secret('<device id>', 'stash_owner_ids', 'Stash owner devices');`
+  Until it exists, reminders and the daily queue are never pushed or built by the cron (Today still builds
+  the queue on open).
+
 ## Phase 4 · Delight — built, waiting for 0004–0006, the worker deploy and the signed APK
 
 ### Phase 4 status (2026-11-10)
-Built on the Phase 4 worktree branch (from `claude/magical-turing-jwi3nx` @ d5ae4f8). Nothing applied,
-pushed or deployed.
+Built on the Phase 4 worktree branch (from `claude/magical-turing-jwi3nx` @ d5ae4f8) and later pushed
+(see the correction at the top). Not applied or deployed.
 - `supabase/migrations/0006_delight.sql` (**NOT APPLIED**; apply after 0004 and 0005): job type `galaxy`;
   `galaxy_points` / `galaxy_clusters` / `galaxy_layouts` (RLS owner read, phone read-only); trigger on
   `embeddings` → `maybe_galaxy()` queues a job after 5+ new embeddings since the last layout (one waiting
@@ -54,7 +113,8 @@ pushed or deployed.
   with the owner's key** (1.0.0 only accepts text shares).
 
 ### Owner setup for Phase 4 (after Phase 2/3's lists)
-1. Apply 0004, 0005, then `supabase/migrations/0006_delight.sql`.
+1. Apply 0004, 0005, then `supabase/migrations/0006_delight.sql`. Then add the Vault secret
+   `stash_owner_ids` = your device id (see "Owner setup added by the review fixes").
 2. Redeploy the worker (`gcloud run deploy …`; the image now installs numpy). No new env vars.
 3. Deploy the web app. No new Vercel variables.
 4. Push the branch → the workflow publishes the unsigned 1.1.0 build → `./sign.sh stash-release.jks password.txt`
@@ -75,6 +135,13 @@ pushed or deployed.
 | Motion | `document.startViewTransition` thumbnail → item player (plain navigation without support or with reduce motion); JS animations read `--dur-*` tokens; key idea word reveal in CSS | One source of truth; reduce motion zeroes the tokens |
 
 ### Not done / limits (Phase 4)
+- Tag-based syntheses (spec: a tag reaching 5+ saves) are not built: the schema allows them
+  (`syntheses.space_id` null + `topic`), but it needs a trigger on `insights.tags`, a worker path that
+  selects saves by tag and a place in Learn to show them. Space syntheses work.
+- Losing the session's refresh token (site data cleared) still means a new, empty identity; the app now
+  says so, but moving the old saves over is manual (see C2 above).
+- Running 0004 again after 0006 puts back 0004's `cron_due_reminders` (time reminders only) until 0006
+  runs again: apply the files in order.
 - Wrapped shares text only (no PNG card).
 - Several images in one share: only the first is saved (the Android filter is SEND, not SEND_MULTIPLE).
 - Galaxy shows every processed save; it doesn't follow the Space chip filter.
@@ -274,6 +341,12 @@ Estimated running cost at ~300 saves/month: ≈ $2.70 (Claude only). See the app
 - `search_saves()` and the worker queue functions are Phase 1 migrations (0003, 0004).
 
 ## Log
+- 2026-11-10 — Review fixes on branch `stash-review-fixes` (from 21289f5): 0004–0006 edited in place (time
+  zone guard, push host check, owner ids from Vault, same-owner trigger, collection without save ids, claim
+  before send, usage-kind bug), worker owner checks + crash safety + conditional grade, Learn query, push
+  allowlist module, identity refresh + SW cache clear, time zone sync, Settings device id. Local checks
+  green; nothing applied, pushed or deployed. Correction: the Phase 2–4 branch was already pushed
+  (origin/claude/magical-turing-jwi3nx @ 21289f5).
 - 2026-11-10 — Phase 4 built (migration 0006, galaxy + vision in the worker, Galaxy lens, screenshot share target, Wrapped, context reminders, shortcuts, identity on the phone + cleanup, motion pass, Android 1.1.0 unsigned). Local checks green; nothing applied, pushed, deployed or signed.
 - 2026-11-10 — Phase 3 built on the branch (migration 0005 written, worker exports + geocoding, Space/Export/collection, Map lens + Nearby, import, triage). Local checks green; migration not applied, nothing deployed.
 - 2026-11-10 — Phase 2 built (loop database, queue builder + SM-2, Today, Play queues, Learn, reminders + Web Push, worker grade/synthesize). tsc, eslint, 58 Vitest, 52 pytest, next build green; Playwright at 360 px (/today, /learn, /play, /settings, /you) renders empty and seeded states with no errors or horizontal scroll. Not applied, pushed or deployed.

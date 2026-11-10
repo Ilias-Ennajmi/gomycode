@@ -75,6 +75,9 @@ Each step degrades gracefully, so the app keeps working while keys are missing:
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | Cloudflare → R2 (below) |
 | `INSTAGRAM_COOKIES_B64` | Optional. Only if Instagram starts refusing downloads: a Netscape cookies.txt, base64-encoded |
 
+Put the same device ids in the Supabase Vault secret `stash_owner_ids` (after migration 0004): the cron
+routes only build daily queues and send reminders for those devices, and the daily cleanup never deletes them.
+
 ## Set up (once)
 
 1. **Cloudflare R2:** create a bucket `stash-videos` (keep it private). R2 → Manage API tokens →
