@@ -7,7 +7,7 @@ name:type[?=nullable][!=has default]. Re-run after a migration changes columns.
 """
 TABLES = {
  "spaces": "id:uuid! user_id:uuid! name:text kind:space_kind! color_token:text! icon:text? due_date:date? sort_order:int! archived:bool! description:text? created_at:ts!",
- "saves": "id:uuid! user_id:uuid! client_id:uuid? source_url:text platform:platform space_id:uuid? status:save_status! video_path:text? thumb_path:text? duration_s:num? creator_handle:text? caption:text? saved_at:ts! user_note:text? voice_note_path:text? created_at:ts! updated_at:ts! title:text? error:text? processed_at:ts?",
+ "saves": "id:uuid! user_id:uuid! client_id:uuid? source_url:text platform:platform space_id:uuid? status:save_status! video_path:text? thumb_path:text? duration_s:num? creator_handle:text? caption:text? saved_at:ts! user_note:text? voice_note_path:text? created_at:ts! updated_at:ts! title:text? error:text? processed_at:ts? process_step:process_step! video_state:video_state! playback:playback! embed_url:text? video_bytes:int? ai_state:ai_state!",
  "insights": "save_id:uuid user_id:uuid! title:text? key_idea:text? takeaways:json! actions:json! intent:intent? tags:text[]! language:text? suggested_space_id:uuid? confidence:num? created_at:ts! updated_at:ts!",
  "transcripts": "save_id:uuid user_id:uuid! segments:json! full_text:text! tsv:unknown?! created_at:ts!",
  "embeddings": "save_id:uuid user_id:uuid! vector:text model:text created_at:ts!",
@@ -15,11 +15,11 @@ TABLES = {
  "states": "save_id:uuid user_id:uuid! watched_at:ts? kept:bool! archived_at:ts? applied_at:ts? skip_count:int! last_shown_at:ts? created_at:ts! triage_seen_at:ts?",
  "cards": "id:uuid! save_id:uuid user_id:uuid! prompt:text answer:text ease:num! interval_days:int! repetitions:int! due_at:ts! created_at:ts!",
  "reviews": "id:uuid! card_id:uuid user_id:uuid! answered_at:ts! grade:int? voice_answer_text:text? created_at:ts! feedback:text?",
- "syntheses": "id:uuid! space_id:uuid? user_id:uuid! topic:text? points:json! disagreements:json! suggested_action:text? source_save_ids:uuid[]! created_at:ts!",
+ "syntheses": "id:uuid! space_id:uuid? user_id:uuid! topic:text? points:json! disagreements:json! suggested_action:text? source_save_ids:uuid[]! created_at:ts! tag:text?",
  "reminders": "id:uuid! save_id:uuid user_id:uuid! kind:reminder_kind fire_at:ts? geofence:json? fired:bool! created_at:ts! rule:json?",
  "jobs": "id:uuid! save_id:uuid? space_id:uuid? user_id:uuid! type:job_type state:job_state! attempts:int! error:text? locked_at:ts? run_after:ts! payload:json! created_at:ts! updated_at:ts!",
  "exports": "id:uuid! space_id:uuid user_id:uuid! kind:export_kind options:json! file_path:text? share_slug:text? created_at:ts! status:text! error:text? files:json! updated_at:ts!",
- "usage": "id:uuid! user_id:uuid! save_id:uuid? kind:text input_tokens:int! output_tokens:int! audio_seconds:num! usd:num! created_at:ts!",
+ "usage": "id:uuid! user_id:uuid! save_id:uuid? kind:text input_tokens:int! output_tokens:int! audio_seconds:num! usd:num! created_at:ts! provider:text?",
  "settings": "user_id:uuid! theme:theme_pref! accent:text! accent_custom:text? text_scale:num! density:int! reduce_motion:bool! haptics:bool! monthly_budget_usd:num! queue_time:text! queue_minutes:int! quiet_hours:json! created_at:ts! updated_at:ts! timezone:text! triage_daily_limit:int!",
  "daily_queues": "id:uuid! user_id:uuid! day:date save_ids:uuid[]! minutes:int! built_at:ts! done_ids:uuid[]!",
  "push_subscriptions": "id:uuid! user_id:uuid! endpoint:text p256dh:text auth:text user_agent:text? created_at:ts!",
@@ -27,6 +27,10 @@ TABLES = {
  "galaxy_points": "save_id:uuid user_id:uuid! x:num y:num cluster:int created_at:ts!",
  "galaxy_clusters": "user_id:uuid! cluster:int label:text cx:num cy:num size:int created_at:ts!",
  "galaxy_layouts": "user_id:uuid! built_at:ts! points:int!",
+ "asks": "id:uuid! user_id:uuid! question:text status:ask_status! answer:text? cited_save_ids:uuid[]! error:text? created_at:ts! updated_at:ts!",
+ "highlights": "id:uuid! save_id:uuid user_id:uuid! text:text start_s:num? end_s:num? card_id:uuid? source:highlight_source! created_at:ts!",
+ "backups": "id:uuid! user_id:uuid! path:text bytes:int! saves:int! created_at:ts!",
+ "recovery": "user_id:uuid created_at:ts! last_restored_at:ts?",
 }
 ENUMS = {
  "space_kind": ["topic", "project", "inbox"],
@@ -34,10 +38,17 @@ ENUMS = {
  "save_status": ["queued", "processing", "ready", "failed", "dead_link"],
  "intent": ["learn", "try", "visit", "buy", "inspire", "fun"],
  "reminder_kind": ["time", "place", "context"],
- "job_type": ["ingest", "reprocess", "synthesize", "export", "grade", "card_gen", "galaxy"],
+ "job_type": ["ingest", "reprocess", "synthesize", "export", "grade", "card_gen", "galaxy", "ask", "backup"],
  "job_state": ["queued", "running", "done", "failed"],
  "export_kind": ["brief", "moodboard", "deck", "collection"],
  "theme_pref": ["system", "dark", "light", "black"],
+ # Text columns with a check constraint (0007), typed as unions for the app.
+ "process_step": ["queued", "fetching", "watching", "reading", "filing", "ready"],
+ "video_state": ["none", "stored", "blocked", "too_big", "evicted"],
+ "playback": ["video", "embed", "link", "none"],
+ "ai_state": ["pending", "done", "no_key", "not_owner", "over_budget", "failed"],
+ "ask_status": ["queued", "running", "ready", "failed"],
+ "highlight_source": ["user", "ai"],
 }
 BASE = {"uuid": "string", "text": "string", "date": "string", "ts": "string", "int": "number", "num": "number", "bool": "boolean", "json": "Json", "unknown": "unknown"}
 
@@ -84,6 +95,8 @@ FUNCTIONS = [
   '      nearby_places: { Args: { p_lat: number; p_lng: number; p_limit?: number }; Returns: { id: string; save_id: string; name: string; lat: number; lng: number; address: string | null; distance_m: number }[] };',
   '      get_collection: { Args: { p_slug: string }; Returns: Json };',
   '      wrapped: { Args: { p_month: string }; Returns: Json };',
+  '      auto_collections: { Args: { p_min?: number }; Returns: { kind: "tag" | "creator" | "intent" | "places"; key: string; label: string; n: number; save_ids: string[]; latest: string }[] };',
+  '      pipeline_status: { Args: Record<string, never>; Returns: Json };',
 ]
 out += ["    };", "    Views: { [_ in never]: never };", "    Functions: {", *FUNCTIONS, "    };", "    Enums: {"]
 for e, vals in ENUMS.items():

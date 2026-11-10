@@ -69,6 +69,12 @@ export type Database = {
           title: string | null;
           error: string | null;
           processed_at: string | null;
+          process_step: Database["stash"]["Enums"]["process_step"];
+          video_state: Database["stash"]["Enums"]["video_state"];
+          playback: Database["stash"]["Enums"]["playback"];
+          embed_url: string | null;
+          video_bytes: number | null;
+          ai_state: Database["stash"]["Enums"]["ai_state"];
         };
         Insert: {
           id?: string;
@@ -91,6 +97,12 @@ export type Database = {
           title?: string | null;
           error?: string | null;
           processed_at?: string | null;
+          process_step?: Database["stash"]["Enums"]["process_step"];
+          video_state?: Database["stash"]["Enums"]["video_state"];
+          playback?: Database["stash"]["Enums"]["playback"];
+          embed_url?: string | null;
+          video_bytes?: number | null;
+          ai_state?: Database["stash"]["Enums"]["ai_state"];
         };
         Update: {
           id?: string;
@@ -113,6 +125,12 @@ export type Database = {
           title?: string | null;
           error?: string | null;
           processed_at?: string | null;
+          process_step?: Database["stash"]["Enums"]["process_step"];
+          video_state?: Database["stash"]["Enums"]["video_state"];
+          playback?: Database["stash"]["Enums"]["playback"];
+          embed_url?: string | null;
+          video_bytes?: number | null;
+          ai_state?: Database["stash"]["Enums"]["ai_state"];
         };
         Relationships: [];
       };
@@ -374,6 +392,7 @@ export type Database = {
           suggested_action: string | null;
           source_save_ids: string[];
           created_at: string;
+          tag: string | null;
         };
         Insert: {
           id?: string;
@@ -385,6 +404,7 @@ export type Database = {
           suggested_action?: string | null;
           source_save_ids?: string[];
           created_at?: string;
+          tag?: string | null;
         };
         Update: {
           id?: string;
@@ -396,6 +416,7 @@ export type Database = {
           suggested_action?: string | null;
           source_save_ids?: string[];
           created_at?: string;
+          tag?: string | null;
         };
         Relationships: [];
       };
@@ -539,6 +560,7 @@ export type Database = {
           audio_seconds: number;
           usd: number;
           created_at: string;
+          provider: string | null;
         };
         Insert: {
           id?: string;
@@ -550,6 +572,7 @@ export type Database = {
           audio_seconds?: number;
           usd?: number;
           created_at?: string;
+          provider?: string | null;
         };
         Update: {
           id?: string;
@@ -561,6 +584,7 @@ export type Database = {
           audio_seconds?: number;
           usd?: number;
           created_at?: string;
+          provider?: string | null;
         };
         Relationships: [];
       };
@@ -786,6 +810,123 @@ export type Database = {
         };
         Relationships: [];
       };
+      asks: {
+        Row: {
+          id: string;
+          user_id: string;
+          question: string;
+          status: Database["stash"]["Enums"]["ask_status"];
+          answer: string | null;
+          cited_save_ids: string[];
+          error: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string;
+          question: string;
+          status?: Database["stash"]["Enums"]["ask_status"];
+          answer?: string | null;
+          cited_save_ids?: string[];
+          error?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          question?: string;
+          status?: Database["stash"]["Enums"]["ask_status"];
+          answer?: string | null;
+          cited_save_ids?: string[];
+          error?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      highlights: {
+        Row: {
+          id: string;
+          save_id: string;
+          user_id: string;
+          text: string;
+          start_s: number | null;
+          end_s: number | null;
+          card_id: string | null;
+          source: Database["stash"]["Enums"]["highlight_source"];
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          save_id: string;
+          user_id?: string;
+          text: string;
+          start_s?: number | null;
+          end_s?: number | null;
+          card_id?: string | null;
+          source?: Database["stash"]["Enums"]["highlight_source"];
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          save_id?: string;
+          user_id?: string;
+          text?: string;
+          start_s?: number | null;
+          end_s?: number | null;
+          card_id?: string | null;
+          source?: Database["stash"]["Enums"]["highlight_source"];
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      backups: {
+        Row: {
+          id: string;
+          user_id: string;
+          path: string;
+          bytes: number;
+          saves: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string;
+          path: string;
+          bytes?: number;
+          saves?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          path?: string;
+          bytes?: number;
+          saves?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      recovery: {
+        Row: {
+          user_id: string;
+          created_at: string;
+          last_restored_at: string | null;
+        };
+        Insert: {
+          user_id: string;
+          created_at?: string;
+          last_restored_at?: string | null;
+        };
+        Update: {
+          user_id?: string;
+          created_at?: string;
+          last_restored_at?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
     Functions: {
@@ -798,13 +939,15 @@ export type Database = {
       cron_vapid: { Args: { p_secret: string }; Returns: { public_key: string | null; private_key: string | null; subject: string | null }[] };
       cron_set_vapid: { Args: { p_secret: string; p_public: string; p_private: string }; Returns: undefined };
       cron_due_reminders: { Args: { p_secret: string }; Returns: { id: string; user_id: string; save_id: string; title: string; timezone: string; quiet_hours: Json; subscriptions: Json }[] };
-      cron_mark_fired: { Args: { p_secret: string; p_ids: string[] }; Returns: string[] };
+      cron_mark_fired: { Args: { p_secret: string; p_ids: string[] }; Returns: undefined };
       cron_drop_subscriptions: { Args: { p_secret: string; p_endpoints: string[] }; Returns: undefined };
       cron_daily_candidates: { Args: { p_secret: string }; Returns: { user_id: string; day: string; minutes: number; saves: Json; subscriptions: Json }[] };
       cron_store_daily: { Args: { p_secret: string; p_user_id: string; p_day: string; p_save_ids: string[]; p_minutes: number }; Returns: boolean };
       nearby_places: { Args: { p_lat: number; p_lng: number; p_limit?: number }; Returns: { id: string; save_id: string; name: string; lat: number; lng: number; address: string | null; distance_m: number }[] };
       get_collection: { Args: { p_slug: string }; Returns: Json };
       wrapped: { Args: { p_month: string }; Returns: Json };
+      auto_collections: { Args: { p_min?: number }; Returns: { kind: "tag" | "creator" | "intent" | "places"; key: string; label: string; n: number; save_ids: string[]; latest: string }[] };
+      pipeline_status: { Args: Record<string, never>; Returns: Json };
     };
     Enums: {
       space_kind: "topic" | "project" | "inbox";
@@ -812,10 +955,16 @@ export type Database = {
       save_status: "queued" | "processing" | "ready" | "failed" | "dead_link";
       intent: "learn" | "try" | "visit" | "buy" | "inspire" | "fun";
       reminder_kind: "time" | "place" | "context";
-      job_type: "ingest" | "reprocess" | "synthesize" | "export" | "grade" | "card_gen" | "galaxy";
+      job_type: "ingest" | "reprocess" | "synthesize" | "export" | "grade" | "card_gen" | "galaxy" | "ask" | "backup";
       job_state: "queued" | "running" | "done" | "failed";
       export_kind: "brief" | "moodboard" | "deck" | "collection";
       theme_pref: "system" | "dark" | "light" | "black";
+      process_step: "queued" | "fetching" | "watching" | "reading" | "filing" | "ready";
+      video_state: "none" | "stored" | "blocked" | "too_big" | "evicted";
+      playback: "video" | "embed" | "link" | "none";
+      ai_state: "pending" | "done" | "no_key" | "not_owner" | "over_budget" | "failed";
+      ask_status: "queued" | "running" | "ready" | "failed";
+      highlight_source: "user" | "ai";
     };
     CompositeTypes: { [_ in never]: never };
   };
