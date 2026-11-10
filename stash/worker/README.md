@@ -21,6 +21,23 @@ Phase 3 adds **`export`** jobs: a creative brief (PDF + Word, text by `CLAUDE_SM
 `stash-exports`. After each ingest it also geocodes the places the AI found with OpenStreetMap Nominatim
 (free, 1 request per second, User-Agent "Stash personal app", answers cached) so they can be pinned on the Map.
 
+Phase 4 adds:
+
+- **`galaxy`** — queued by the database once 5 new embeddings arrived since the owner's last layout
+  (one waiting job per user). Loads the owner's embeddings, unit-normalises them, runs k-means
+  (k = √(n/2), 2 to 12, fixed seed, so the same library gives the same layout), projects to 2D with
+  PCA and pulls each dot toward its group's centre. One `CLAUDE_FAST_MODEL` call names every group
+  (2–4 words, from the members' tags and key ideas; validated, asked once more if unusable); without
+  the model, over budget or on a bad answer a group is named after its most common tag. Writes
+  `galaxy_points`, `galaxy_clusters`, then `galaxy_layouts` (the phone reloads on that row). Usage kind
+  `galaxy`. Needs `numpy` (in `requirements.txt`).
+- **Screenshots** — saves with platform `screenshot` (source `screenshot:<client_id>.jpg`) skip yt-dlp:
+  the image is read from `stash-thumbs/<user>/screenshots/<client_id>.jpg` (only that folder of the
+  save's owner), becomes the save's thumbnail and goes to `CLAUDE_FAST_MODEL` as an image block with
+  the usual insights tool plus creator, caption text, what it is and any visible link. Filing,
+  places, cards and the embedding follow as for a video. If the upload never arrived, the save is
+  marked failed with "Share it again" (no retries).
+
 Every job type goes through the same owner gate (`OWNER_USER_IDS`) and monthly cost guard. Claude is
 called with `tool_choice: auto` and an instruction to answer through the tool; an answer without the tool
 call counts as invalid and is asked for once more.
@@ -98,6 +115,6 @@ letters print. Rebuild and redeploy the worker once after pulling Phase 3.
 ```bash
 cd stash/worker
 pip install -r requirements.txt pytest
-python -m pytest            # rules, ffmpeg steps, the job flow, grading, syntheses, exports and geocoding (no network)
+python -m pytest            # rules, ffmpeg steps, the job flow, grading, syntheses, exports, geocoding, galaxy and screenshots (no network)
 python -m stash_worker      # process the queue once, using the env vars above
 ```

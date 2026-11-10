@@ -2,7 +2,84 @@
 
 Read this at the start of every session. Updated after every task.
 
-## Current phase: 3 (Phase 2 and Phase 3 both built, merged on `claude/magical-turing-jwi3nx`; migrations 0004 + 0005 and the worker deploy pending)
+## Current phase: 4 · Delight — built on a branch (migration 0006 written, not applied; worker not deployed; APK 1.1.0 built, not signed)
+
+## Phase 4 · Delight — built, waiting for 0004–0006, the worker deploy and the signed APK
+
+### Phase 4 status (2026-11-10)
+Built on the Phase 4 worktree branch (from `claude/magical-turing-jwi3nx` @ d5ae4f8). Nothing applied,
+pushed or deployed.
+- `supabase/migrations/0006_delight.sql` (**NOT APPLIED**; apply after 0004 and 0005): job type `galaxy`;
+  `galaxy_points` / `galaxy_clusters` / `galaxy_layouts` (RLS owner read, phone read-only); trigger on
+  `embeddings` → `maybe_galaxy()` queues a job after 5+ new embeddings since the last layout (one waiting
+  job per user); storage policies so the phone can upload (insert/update) only into
+  `stash-thumbs/<uid>/screenshots/`; `reminders.rule` (check: weekend_morning | evening_open | learn_open);
+  `cron_due_reminders` also returns context reminders that carry a fire_at; `stash.wrapped(date)`
+  (security invoker); `stash.cleanup_anonymous_users()` (security definer, refuses other callers) +
+  pg_cron `stash-cleanup-anonymous` daily 03:23; usage kind `galaxy`; galaxy_layouts in Realtime;
+  ends with the explicit EXECUTE block for the whole schema (0001–0006).
+- Worker: `galaxy` jobs (stash_worker/galaxy.py), screenshots read with Claude vision in `_ingest`
+  (`ai.read_screenshot`, `rules.normalize_screenshot`, `rules.screenshot_path`); `call_tool` accepts content
+  blocks; numpy added. 95 pytest tests (75 before).
+- Web: Galaxy lens (`components/library/GalaxyView.tsx`, math in `lib/galaxyMath.ts`), POST share target
+  (`app/manifest.ts`, `public/sw.js` v4, `app/share/receive/route.ts`, `lib/shareInbox.ts`, outbox uploads
+  images first, SaveSheet screenshot mode, player image mode), Saved Wrapped (`components/you/WrappedCard.tsx`,
+  `lib/wrapped.ts`), context reminders (`lib/contextRules.ts`, RemindSheet "When it fits",
+  `components/reminders/ContextCheck.tsx`), shortcuts (`?search=1`, `?space=inbox`), identity on the
+  phone (`lib/supabase/session.ts`, `client.ts`, NativeBoot; proxy.ts only refreshes), motion pass
+  (`lib/morph.ts`, `components/ui/WordReveal.tsx`, `lib/motionTokens.ts`, springy swipes).
+- Android: SEND `image/*` filter, shareTarget POST multipart to `/share/receive`, versionCode 2 /
+  versionName 1.1.0, e2e records an informational image share. **Unsigned** (no key here).
+- Checks: tsc, eslint, 126 Vitest (18 files), 95 pytest, next build green; no raw colours in components/app;
+  Android XML parsed with minidom, shareTarget JSON reproduced from build.gradle and parsed; 0001–0006
+  applied in order (0006 twice) on local Postgres 16 with Supabase stubs, grant table checked, galaxy
+  trigger (4 → 0 jobs, 6 → 1 job), phone can't write galaxy rows, screenshot folder policy, rule check,
+  wrapped output, cleanup (deletes only the empty, old, anonymous, unchanged user), cron sees context
+  reminders. Playwright at 360 px, dark + light: /library?lens=galaxy (seeded: 12 dots, 2 labels, label tap
+  zooms + lists its 6 saves, dot tap opens /item/<that save>), /you (Wrapped), /share (3 states), /learn,
+  /today, /library?space=inbox, /library?search=1 (field focused): no page errors, no horizontal scroll.
+  Screenshot share end to end in Chrome (multipart POST with a PNG): through the service worker and
+  through the route fallback → "Saved", preview, outbox holds a `screenshot` save with a JPEG.
+
+### Phase 4 acceptance checks
+- [ ] BUILT, NEEDS DEPLOY + WORKER — "Galaxy clusters are labelled and open the right saves": layout and
+  labelling tested in pytest (deterministic with the seed, topics separate, fallback labels, over-budget
+  path); the lens verified in the browser with a seeded layout (labels drawn, label → zoom, dot → the right
+  `/item/<id>`). Needs 0006 applied, the worker redeployed (numpy) with `CLAUDE_FAST_MODEL`, and 5+ processed
+  saves (or `select stash.maybe_galaxy('<device id>')` once after 0006 for an owner who already has them).
+- [ ] BUILT, NEEDS DEPLOY + WORKER + SIGNED APK — "Sharing a screenshot of a post creates a save filed in the
+  right Space": share → save sheet → outbox → upload path verified in Chrome; the worker's vision path
+  tested with a stubbed model (image block sent, creator/caption read, filed into the suggested Space at
+  confidence ≥ 0.75, Inbox below). Needs 0006 (upload policy), the worker deploy, and Android **1.1.0 signed
+  with the owner's key** (1.0.0 only accepts text shares).
+
+### Owner setup for Phase 4 (after Phase 2/3's lists)
+1. Apply 0004, 0005, then `supabase/migrations/0006_delight.sql`.
+2. Redeploy the worker (`gcloud run deploy …`; the image now installs numpy). No new env vars.
+3. Deploy the web app. No new Vercel variables.
+4. Push the branch → the workflow publishes the unsigned 1.1.0 build → `./sign.sh stash-release.jks password.txt`
+   → commit `android/releases/Stash-1.1.0.apk` → push → release `stash-android-v1.1.0` + e2e.
+5. On the phone: update through Obtainium, then share a screenshot of a post (gallery → Share → Stash).
+
+### Decisions added in Phase 4
+| Topic | Decision | Why |
+|---|---|---|
+| Identity | Created on the phone by `ensureSession()` (one shared in-flight call, skipped on /design, /c, /offline and for crawler user agents, backed off 30 s after a failure); every Supabase REST/Storage request waits for it through a session-aware fetch; proxy.ts only refreshes | proxy.ts made a user per GET (link previews, bots: ~50 users). Headless browsers still count as users so `scripts/e2e-smoke.mjs` works |
+| Cleanup | Daily: anonymous users > 3 days old with no saves, no non-Inbox Space, no push subscription and settings never changed | Only empty identities; the project's other app has no anonymous users |
+| Share target | POST multipart to `/share/receive` (Next can't put route.ts next to app/share/page.tsx); the service worker keeps the image in Cache `stash-share-inbox` and redirects to `/share?shared-image=<id>`; before the SW is installed the route hands the image back in a tiny page (nothing stored server-side) | No identity is needed to accept a share; a text share still lands on `/share?…` (the e2e check holds) |
+| Screenshot files | JPEG ≤ 1600 px, < 2 MB (bucket limit) at `stash-thumbs/<uid>/screenshots/<client_id>.jpg`; source_url `screenshot:<client_id>.jpg`; uploaded before the row so the worker never sees a save without its file; one image per share | The worker derives the path from its own user id, so a client can't point it at another folder |
+| Galaxy layout | k-means on unit embeddings (seed 7), PCA 2D, members pulled 45 % toward their centre, clusters numbered by size | Semantic groups that also read as groups on a phone |
+| Galaxy labels | One fast-model call for all clusters; fallback = top tag (also over budget, without AI spend) | Spec |
+| Context reminders | weekend_morning has a fire_at (cron + push); evening_open and learn_open fire on the phone (fired = true, fire_at = now → For you card) | A TWA can't see Wi-Fi or other background context |
+| Wrapped colours | Bars neutral, accent only on Applied, Space colours for Spaces | Accent means "act" |
+| Motion | `document.startViewTransition` thumbnail → item player (plain navigation without support or with reduce motion); JS animations read `--dur-*` tokens; key idea word reveal in CSS | One source of truth; reduce motion zeroes the tokens |
+
+### Not done / limits (Phase 4)
+- Wrapped shares text only (no PNG card).
+- Several images in one share: only the first is saved (the Android filter is SEND, not SEND_MULTIPLE).
+- Galaxy shows every processed save; it doesn't follow the Space chip filter.
+- The view-transition morph targets the item page only (Play opens without it).
+- The e2e image-share step is informational (the emulator's media store may not pass the file).
 
 ## Phase 2 · The loop — built, waiting for migration 0004 and the worker deploy
 
@@ -197,6 +274,7 @@ Estimated running cost at ~300 saves/month: ≈ $2.70 (Claude only). See the app
 - `search_saves()` and the worker queue functions are Phase 1 migrations (0003, 0004).
 
 ## Log
+- 2026-11-10 — Phase 4 built (migration 0006, galaxy + vision in the worker, Galaxy lens, screenshot share target, Wrapped, context reminders, shortcuts, identity on the phone + cleanup, motion pass, Android 1.1.0 unsigned). Local checks green; nothing applied, pushed, deployed or signed.
 - 2026-11-10 — Phase 3 built on the branch (migration 0005 written, worker exports + geocoding, Space/Export/collection, Map lens + Nearby, import, triage). Local checks green; migration not applied, nothing deployed.
 - 2026-11-10 — Phase 2 built (loop database, queue builder + SM-2, Today, Play queues, Learn, reminders + Web Push, worker grade/synthesize). tsc, eslint, 58 Vitest, 52 pytest, next build green; Playwright at 360 px (/today, /learn, /play, /settings, /you) renders empty and seeded states with no errors or horizontal scroll. Not applied, pushed or deployed.
 - 2026-10-09 — Migration 0003 applied; PR #8 merged; production deployed and smoke-tested (pages, auth walls, offline save PASS; synced steps blocked by anonymous sign-ins being off). Added scripts/e2e-smoke.mjs.

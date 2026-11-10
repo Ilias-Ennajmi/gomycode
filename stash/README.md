@@ -31,8 +31,10 @@ APK and allow installing from the browser.
 
 ## No login
 
-Stash has no sign-in screen. The first time your phone opens it, the app silently creates a
-private, anonymous identity for that phone and keeps it in a cookie. Row-level security keeps
+Stash has no sign-in screen. The first time your phone opens it, the app itself (its
+JavaScript, never the server) silently creates a private, anonymous identity for that phone and
+keeps it in a cookie. Link previews and crawlers never get one; empty anonymous identities older
+than 3 days are deleted every night (pg_cron `stash-cleanup-anonymous`). Row-level security keeps
 every row private to that identity: someone else who opens the address gets their own empty
 space, never your saves.
 
@@ -89,7 +91,7 @@ The Android app shows them as normal app notifications.
 | Address | What it is |
 |---|---|
 | `/s/<space>` | A Space: kind and due date, stats, Play unwatched, **Export**, the AI card, Applied first |
-| `/library?lens=map` | Map of saved places with **Nearby** (Galaxy lens arrives in Phase 4) |
+| `/library?lens=map` | Map of saved places with **Nearby** |
 | `/import` | Bring your Instagram Saved and TikTok Favorites from their data downloads |
 | `/triage` | Sort old saves, one card at a time (20 a day) |
 | `/c/<link>` | A shared collection: public, read-only, never creates an identity |
@@ -99,6 +101,23 @@ The Android app shows them as normal app notifications.
 **© OpenStreetMap contributors** (ODbL). No API key and no cost. The attribution is shown on
 the map, as the OpenStreetMap tile and Nominatim usage policies require. The worker asks
 Nominatim for at most one place per second, with its own User-Agent, and remembers answers.
+
+## Phase 4: Galaxy, screenshots, Wrapped
+
+| What | How it works |
+|---|---|
+| **Galaxy** (`/library?lens=galaxy`) | Once 5 saves are processed, the worker groups them by meaning and names each group (a `galaxy` job, re-run after every 5 new saves). Pinch or wheel to zoom, drag to pan, tap a label to zoom into a group, tap a dot to open the save. |
+| **Share a screenshot** | In the gallery, open a screenshot of a post and tap **Share → Stash**. The image stays on the phone until it has an identity and a connection, then uploads to your private folder (`stash-thumbs/<you>/screenshots/`). The worker reads it with Claude vision (creator, caption, what it is, places), files it into a Space and makes it searchable. Needs Android app **1.1.0** (below). One image per share. |
+| **Saved Wrapped** (top of You) | Saved, watched and applied this month, your top Spaces and creators, older months with the arrows, **Share my month**. |
+| **Context reminders** | Remind me → *When it fits*: Weekend morning (a notification Saturday or Sunday at 9), Next evening in Stash, When I open Learn (shown when that happens, then under For you). |
+| **Shortcuts** | Long-press the app icon: Play my 5, Search, Inbox. |
+
+**Android app 1.1.0 needs signing.** Screenshot sharing is a change to the Android shell (a new
+share target), so it needs a new APK. The build is ready (versionCode 2, versionName 1.1.0);
+after the branch is pushed, the workflow publishes the unsigned build, then sign it with your
+key exactly as in [android/README.md](android/README.md) (`./sign.sh stash-release.jks password.txt`),
+commit `android/releases/Stash-1.1.0.apk` and push. Obtainium then offers the update. Until then,
+link sharing keeps working in 1.0.0; only images need 1.1.0.
 
 ## Secrets
 

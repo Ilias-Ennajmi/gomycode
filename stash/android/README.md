@@ -14,7 +14,7 @@ Changing it needs a new APK and a matching `public/.well-known/assetlinks.json` 
 | ------------------------------------------------ | ------------------------------------------------------------------------ |
 | App icon, splash screen, system bar colours      | `app/src/main/res/drawable`, `values/colors.xml`                         |
 | Links to the site open in the app                | VIEW intent filter in `AndroidManifest.xml`                              |
-| Share → Stash saves a link                       | SEND intent filter + `shareTarget` in `app/build.gradle` → `/share` page |
+| Share → Stash saves a link or a screenshot (1.1.0) | SEND `text/plain` + `image/*` intent filters + `shareTarget` in `app/build.gradle` (POST multipart to `/share/receive`, same as the web manifest) → `/share` page |
 | Long-press shortcuts: Play my 5, Search, Inbox   | `res/xml/shortcuts.xml` → `/play?queue=today`, `/library?search=1`, `/library?space=inbox` |
 | Web notifications shown as the app's own         | `DelegationService` in `AndroidManifest.xml`                             |
 
@@ -24,6 +24,13 @@ inside the Android app and which version is installed.
 The web side of the connection: `public/.well-known/assetlinks.json` proves the site trusts
 this app (package name and signing certificate SHA-256). It must be public (no login) and
 match the release key, or Android shows a browser bar at the top.
+
+## Versions
+
+| Version | versionCode | Shell change |
+|---|---|---|
+| 1.0.0 | 1 | First release |
+| 1.1.0 | 2 | Screenshots: SEND `image/*` filter, share target POST multipart (`/share/receive`, file field `media`). **Built, not signed yet** |
 
 ## Building, signing and releasing
 
