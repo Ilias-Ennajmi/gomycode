@@ -90,6 +90,34 @@ export function deviceTimeZone(): string {
   }
 }
 
+const TZ_SYNCED = "stash.tz.synced";
+
+/**
+ * Keeps settings.timezone on the phone's zone, so the cron builds the daily queue and
+ * sends reminders at the right local time. At most once per app session, and only
+ * written when it differs. Skipped while the identity has no saves (the cron ignores
+ * such users anyway, and an untouched settings row lets the cleanup drop empty
+ * identities).
+ */
+export async function syncDeviceTimeZone(): Promise<"same" | "updated" | "skipped"> {
+  try {
+    if (sessionStorage.getItem(TZ_SYNCED)) return "skipped";
+    sessionStorage.setItem(TZ_SYNCED, "1");
+  } catch {
+    // no sessionStorage: still at most once per page load via the caller
+  }
+  const zone = deviceTimeZone();
+  const supabase = client();
+  const [{ data: settings }, { count }] = await Promise.all([
+    supabase.from("settings").select("timezone").maybeSingle(),
+    supabase.from("saves").select("id", { count: "exact", head: true }).limit(1),
+  ]);
+  if (!settings || !count) return "skipped";
+  if (settings.timezone === zone) return "same";
+  await saveLoopSettings({ timezone: zone });
+  return "updated";
+}
+
 // --- Daily queue -----------------------------------------------------------------
 
 export type DailyQueue = { day: string; saveIds: string[]; doneIds: string[]; minutes: number };

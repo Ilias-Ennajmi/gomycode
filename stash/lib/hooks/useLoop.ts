@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getBrowserClient } from "@/lib/supabase/client";
 import { useLibrary } from "@/lib/hooks/useLibrary";
-import { localDay } from "@/lib/dailyQueue";
+import { localDay, shouldStoreQueue } from "@/lib/dailyQueue";
 import { setDueFlag } from "@/lib/dueFlag";
 import { daysThisWeek, streak } from "@/lib/streak";
 import { dueToday } from "@/lib/sm2";
@@ -138,6 +138,8 @@ export function useLoop() {
       const d = localDay();
       const ids = buildForDay(lib.saves, lib.spaces, dueSaveIds, d, m);
       setQueue((prev) => ({ day: d, saveIds: ids, doneIds: prev?.day === d ? prev.doneIds : [], minutes: m }));
+      // Nothing ready yet but saves still processing: show it, don't freeze the day empty.
+      if (!shouldStoreQueue(ids, lib.saves.map((s) => s.status))) return ids;
       try {
         await storeDailyQueue(d, ids, m);
       } catch {

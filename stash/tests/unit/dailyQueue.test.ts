@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { buildDailyQueue, estimateMinutes, localDay, maxItems, normalizeMinutes, type QueueCandidate } from "@/lib/dailyQueue";
+import { buildDailyQueue, estimateMinutes, localDay, maxItems, normalizeMinutes, shouldStoreQueue, type QueueCandidate } from "@/lib/dailyQueue";
+
+describe("shouldStoreQueue", () => {
+  it("stores a non-empty queue, and an empty one only when nothing is processing", () => {
+    expect(shouldStoreQueue(["a"], ["processing"])).toBe(true);
+    expect(shouldStoreQueue([], ["ready", "failed"])).toBe(true);
+    expect(shouldStoreQueue([], ["ready", "processing"])).toBe(false);
+    expect(shouldStoreQueue([], ["queued"])).toBe(false);
+  });
+});
 
 const DAY = "2026-11-10";
 

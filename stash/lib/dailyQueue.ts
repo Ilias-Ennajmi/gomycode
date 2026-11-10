@@ -167,3 +167,12 @@ export function localDay(now = new Date(), timeZone?: string): string {
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
+
+/**
+ * An empty queue is stored only when nothing is still processing: otherwise the day
+ * would be frozen empty while saves become ready minutes later (the cron or the next
+ * open builds it then). Same rule as cron_store_daily in the database.
+ */
+export function shouldStoreQueue(ids: string[], statuses: readonly string[]): boolean {
+  return ids.length > 0 || !statuses.some((s) => s === "queued" || s === "processing");
+}
