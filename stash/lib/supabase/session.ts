@@ -13,6 +13,7 @@ export type MinimalSession = { access_token: string; user: { id: string } };
 export type SessionAuth<S extends MinimalSession = MinimalSession> = {
   getSession: () => Promise<{ data: { session: S | null } }>;
   signInAnonymously: () => Promise<{ data: { session: S | null }; error: unknown }>;
+  refreshSession?: () => Promise<{ data: { session: S | null }; error: unknown }>;
 };
 
 export type GateOptions = {
@@ -26,7 +27,19 @@ export type GateOptions = {
   retryMs?: number;
   /** Called once when a new identity was created (the app refreshes server-rendered parts). */
   onCreated?: () => void;
+  /** Whether this device already had an identity (a flag kept in localStorage). */
+  hadIdentity?: () => boolean;
+  /** Remembers that this device has an identity (called with each session found or made). */
+  rememberIdentity?: (userId: string) => void;
+  /**
+   * The device had an identity, its session is gone and couldn't be refreshed, so a new,
+   * empty one was made. The app tells the person (it can't be undone from here).
+   */
+  onReplaced?: () => void;
 };
+
+/** localStorage key: set once this device has had an identity. */
+export const IDENTITY_FLAG = "stash.identity";
 
 /** Paths that never get an identity. Same list proxy.ts used to skip. */
 export const PUBLIC_PREFIXES = ["/design", "/offline", "/api/cron", "/c"];
@@ -61,16 +74,34 @@ export function createSessionGate<S extends MinimalSession>(getAuth: () => Sessi
     inFlight ??= (async () => {
       try {
         const { data } = await auth.getSession();
-        if (data.session) return data.session;
+        if (data.session) {
+          opts.rememberIdentity?.(data.session.user.id);
+          return data.session;
+        }
         if (opts.isPublicPage?.() || opts.isBot?.()) return null;
         if (opts.isOnline && !opts.isOnline()) return null;
         if (now() - lastFailure < retryMs) return null;
+        // This device had an identity: try to get it back before making a new, empty one.
+        const had = opts.hadIdentity?.() ?? false;
+        if (had && auth.refreshSession) {
+          try {
+            const { data: refreshed, error } = await auth.refreshSession();
+            if (!error && refreshed.session) {
+              opts.rememberIdentity?.(refreshed.session.user.id);
+              return refreshed.session;
+            }
+          } catch {
+            // fall through: a new identity keeps the app usable
+          }
+        }
         const { data: signed, error } = await auth.signInAnonymously();
         if (error || !signed.session) {
           lastFailure = now();
           return null;
         }
+        opts.rememberIdentity?.(signed.session.user.id);
         opts.onCreated?.();
+        if (had) opts.onReplaced?.();
         return signed.session;
       } catch {
         lastFailure = now();

@@ -58,7 +58,7 @@ export async function POST(request: Request): Promise<Response> {
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     const cache = await caches.open("stash-share-inbox");
-    await cache.put("/share/inbox/" + p.id, new Response(new Blob([bytes], { type: p.type }), { headers: { "Content-Type": p.type } }));
+    await cache.put("/share/inbox/" + p.id, new Response(new Blob([bytes], { type: p.type }), { headers: { "Content-Type": p.type, "X-Stash-Shared-At": String(Date.now()) } }));
   } catch (e) {}
   location.replace(p.next);
 })();

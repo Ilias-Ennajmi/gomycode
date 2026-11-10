@@ -99,3 +99,55 @@ describe("helpers", () => {
     expect(isBotAgent("Slackbot-LinkExpanding 1.0")).toBe(true);
   });
 });
+
+describe("ensureSession on a device that had an identity", () => {
+  const OLD: MinimalSession = { access_token: "old", user: { id: "u-old" } };
+
+  function auth(refreshed: MinimalSession | null) {
+    const f = fakeAuth();
+    const refreshSession = vi.fn(async () => ({ data: { session: refreshed }, error: refreshed ? null : new Error("no refresh token") }));
+    return { ...f, refreshSession, auth: { ...f.auth, refreshSession } };
+  }
+
+  it("tries a refresh first and keeps the old identity when it works", async () => {
+    const a = auth(OLD);
+    const replaced = vi.fn();
+    const remembered: string[] = [];
+    const ensure = createSessionGate(() => a.auth, {
+      hadIdentity: () => true,
+      rememberIdentity: (id) => remembered.push(id),
+      onReplaced: replaced,
+    });
+    await expect(ensure()).resolves.toBe(OLD);
+    expect(a.refreshSession).toHaveBeenCalledTimes(1);
+    expect(a.signIn).not.toHaveBeenCalled();
+    expect(replaced).not.toHaveBeenCalled();
+    expect(remembered).toEqual(["u-old"]);
+  });
+
+  it("makes a new identity when the refresh fails, and says so", async () => {
+    const a = auth(null);
+    const replaced = vi.fn();
+    const created = vi.fn();
+    const ensure = createSessionGate(() => a.auth, { hadIdentity: () => true, onReplaced: replaced, onCreated: created });
+    await expect(ensure()).resolves.toBe(S);
+    expect(a.signIn).toHaveBeenCalledTimes(1);
+    expect(created).toHaveBeenCalledTimes(1);
+    expect(replaced).toHaveBeenCalledTimes(1);
+  });
+
+  it("a first-ever identity is not a replacement and needs no refresh", async () => {
+    const a = auth(null);
+    const replaced = vi.fn();
+    const remembered: string[] = [];
+    const ensure = createSessionGate(() => a.auth, {
+      hadIdentity: () => false,
+      rememberIdentity: (id) => remembered.push(id),
+      onReplaced: replaced,
+    });
+    await expect(ensure()).resolves.toBe(S);
+    expect(a.refreshSession).not.toHaveBeenCalled();
+    expect(replaced).not.toHaveBeenCalled();
+    expect(remembered).toEqual(["u1"]);
+  });
+});

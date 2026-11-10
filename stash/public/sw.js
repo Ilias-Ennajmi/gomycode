@@ -5,8 +5,14 @@
 // - Web Push: reminders and "Your 5 for today" (playbook step 3.9); a tap opens the right screen.
 // - Share target (POST /share/receive, multipart): a shared screenshot is kept in the
 //   "stash-share-inbox" Cache and the save sheet opens on /share?shared-image=<id>.
+// - A new identity on this device (message "identity-changed") empties the Supabase REST
+//   cache, so nothing cached for the previous identity is served offline to the new one.
+// - Shared images left in the inbox for more than an hour are deleted (on activate and
+//   on each share).
 // Bump VERSION whenever these caching rules change.
-const VERSION = "v4";
+const VERSION = "v5";
+const SHARED_AT = "X-Stash-Shared-At"; // header on inbox entries (epoch ms)
+const SHARE_MAX_AGE_MS = 60 * 60 * 1000;
 const SHARE_INBOX = "stash-share-inbox"; // not versioned: a shared image must survive an update
 const SHELL = `stash-shell-${VERSION}`;
 const DATA = `stash-data-${VERSION}`;
@@ -44,8 +50,38 @@ self.addEventListener("activate", (event) => {
     caches
       .keys()
       .then((keys) => Promise.all(keys.filter((k) => k.startsWith("stash-") && ![SHELL, DATA, IMAGES, OPAQUE, STATIC, SHARE_INBOX].includes(k)).map((k) => caches.delete(k))))
+      .then(() => pruneShareInbox())
       .then(() => self.clients.claim()),
   );
+});
+
+/** Deletes shared images older than an hour. An entry without a stamp (older SW) gets one now. */
+async function pruneShareInbox(now = Date.now()) {
+  try {
+    const cache = await caches.open(SHARE_INBOX);
+    for (const req of await cache.keys()) {
+      const res = await cache.match(req);
+      const at = Number(res?.headers.get(SHARED_AT));
+      if (!res) continue;
+      if (!at) {
+        const headers = new Headers(res.headers);
+        headers.set(SHARED_AT, String(now));
+        await cache.put(req, new Response(await res.blob(), { headers }));
+      } else if (now - at > SHARE_MAX_AGE_MS) {
+        await cache.delete(req);
+      }
+    }
+  } catch {
+    // Best effort: tried again on the next share or update.
+  }
+}
+
+// The page tells the worker when this device got a new identity.
+self.addEventListener("message", (event) => {
+  if (event.origin && event.origin !== self.location.origin) return;
+  if (event.data && event.data.type === "identity-changed") {
+    event.waitUntil(caches.delete(DATA));
+  }
 });
 
 async function trim(cacheName, max) {
@@ -105,9 +141,10 @@ async function receiveShare(request) {
     if (file) {
       const id = self.crypto.randomUUID();
       const cache = await caches.open(SHARE_INBOX);
-      await cache.put(`/share/inbox/${id}`, new Response(file, { headers: { "Content-Type": file.type } }));
+      await cache.put(`/share/inbox/${id}`, new Response(file, { headers: { "Content-Type": file.type, [SHARED_AT]: String(Date.now()) } }));
       params.set("shared-image", id);
     }
+    await pruneShareInbox();
   } catch {
     // Unreadable form: the sheet says "No link found" and nothing is lost on the phone.
   }
