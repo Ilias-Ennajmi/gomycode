@@ -96,7 +96,7 @@ export function Sheet({ open, onClose, label, title, children, className }: Shee
             aria-label={label}
             tabIndex={-1}
             className={cx(
-              "absolute inset-x-0 bottom-0 mx-auto flex max-h-[88dvh] w-full max-w-lg flex-col",
+              "absolute inset-x-0 bottom-0 mx-auto flex max-h-[var(--sheet-max-h)] w-full max-w-lg flex-col",
               "rounded-t-sheet bg-surface pb-safe text-fg shadow-sheet outline-none",
               className,
             )}

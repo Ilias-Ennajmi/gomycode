@@ -80,6 +80,7 @@
 
   /* 4px spacing grid in px, so text size changes don't stretch layout. */
   --spacing: 4px;
+  --breakpoint-xs: 25rem; /* 400px: two save-sheet buttons side by side */
 
   --shadow-*: initial;
   --shadow-raised: var(--elev-raised);

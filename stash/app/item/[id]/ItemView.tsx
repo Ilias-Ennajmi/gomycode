@@ -143,7 +143,7 @@ export function ItemView({ id }: { id: string }) {
   if (!save) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 p-4 pt-safe">
-        <Skeleton shape="thumb" className="mx-auto max-h-[60dvh] max-w-xs" />
+        <Skeleton shape="thumb" className="mx-auto max-h-[var(--detail-max-h)] max-w-xs" />
         <Skeleton shape="line" />
         <Skeleton shape="line" className="w-2/3" />
       </main>
@@ -244,7 +244,7 @@ export function ItemView({ id }: { id: string }) {
         </div>
       </header>
 
-      <div className="mx-auto aspect-9/16 max-h-[64dvh] w-full max-w-sm overflow-hidden rounded-card">
+      <div className="mx-auto aspect-9/16 max-h-[var(--detail-max-h-lg)] w-full max-w-sm overflow-hidden rounded-card">
         <MediaPlayer
           ref={player}
           save={save}

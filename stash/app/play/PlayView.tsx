@@ -520,7 +520,7 @@ export function PlayView() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="pointer-events-none fixed inset-x-0 top-[22%] z-10 flex justify-between px-4 text-label"
+            className="pointer-events-none fixed inset-x-0 top-[var(--overlay-top)] z-10 flex justify-between px-4 text-label"
           >
             <span className="flex items-center gap-2 rounded-full px-3 py-2" style={{ background: "color-mix(in srgb, var(--scrim-base) 70%, transparent)" }}>
               <Archive size={20} strokeWidth={2} aria-hidden /> ← Archive
@@ -572,7 +572,7 @@ export function PlayView() {
               )}
             </button>
             {expanded && (
-              <div className="scroll-area max-h-[40dvh] overflow-y-auto pr-16">
+              <div className="scroll-area max-h-[var(--panel-max-h)] overflow-y-auto pr-16">
                 {current.takeaways.length > 0 && (
                   <ul className="flex flex-col gap-2 pb-3">
                     {current.takeaways.map((t, i) => (
