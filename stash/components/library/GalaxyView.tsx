@@ -39,10 +39,17 @@ const TAP_SLOP = 8; // px a finger may wander and still count as a tap
  */
 export function GalaxyView({
   saves,
+  totalReady,
+  filterLabel,
   spacesById,
   onOpen,
 }: {
+  /** The saves to draw: the Library's current selection (Space chip and filter applied). */
   saves: SaveItem[];
+  /** Ready saves in the whole Library, for the "forms at 5 saves" message. */
+  totalReady?: number;
+  /** Name of the Space or filter in effect, when there is one. */
+  filterLabel?: string | null;
   spacesById: Map<string, Space>;
   onOpen: (s: SaveItem) => void;
 }) {
@@ -214,12 +221,21 @@ export function GalaxyView({
   };
 
   // --- States
-  const readyCount = saves.filter((s) => s.status === "ready" && !s.archivedAt).length;
+  const readyCount = totalReady ?? saves.filter((s) => s.status === "ready" && !s.archivedAt).length;
   if (!galaxy && !loaded) {
     return (
       <div className="px-4">
         <Skeleton shape="block" className="aspect-square w-full rounded-xl" />
       </div>
+    );
+  }
+  if (!points.length && filterLabel && (galaxy?.points.length ?? 0) > 0) {
+    return (
+      <section aria-label="Galaxy" className="flex flex-col items-center gap-4 px-6 py-12 text-center">
+        <Illustration name="search" />
+        <h2 className="text-title">Nothing from {filterLabel} here yet</h2>
+        <p className="max-w-xs text-body text-fg-muted">The Galaxy shows saves once they are processed. Pick another Space, or All, to see the rest.</p>
+      </section>
     );
   }
   if (!points.length) {
@@ -304,6 +320,11 @@ export function GalaxyView({
         )}
       </div>
 
+      {filterLabel && (
+        <p className="text-label text-fg">
+          Showing {filterLabel} · {points.length} {points.length === 1 ? "save" : "saves"}
+        </p>
+      )}
       <AiLabel text="Group names" />
       <p className="text-caption text-fg-muted">Pinch to zoom · tap a label to open its group · tap a dot to watch</p>
 

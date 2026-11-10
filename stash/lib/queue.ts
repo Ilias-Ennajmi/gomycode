@@ -1,6 +1,6 @@
 import type { SaveItem } from "@/lib/data";
 
-export const FILTERS = ["all", "unwatched", "kept", "applied", "archived", "instagram", "tiktok"] as const;
+export const FILTERS = ["all", "unwatched", "kept", "applied", "archived", "instagram", "tiktok", "youtube", "web"] as const;
 export type Filter = (typeof FILTERS)[number];
 
 export const FILTER_LABEL: Record<Filter, string> = {
@@ -11,6 +11,8 @@ export const FILTER_LABEL: Record<Filter, string> = {
   archived: "Archived",
   instagram: "Instagram",
   tiktok: "TikTok",
+  youtube: "YouTube",
+  web: "Articles",
 };
 
 export function isFilter(v: string | null | undefined): v is Filter {
@@ -39,6 +41,8 @@ export function filterSaves(
         return Boolean(s.appliedAt);
       case "instagram":
       case "tiktok":
+      case "youtube":
+      case "web":
         return s.platform === filter;
       default:
         return true;

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, ClipboardPaste, Layers, Play, Search, X } from "lucide-react";
+import { ArrowRight, ClipboardPaste, Layers, Play, Search, Sparkles, X } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Banner } from "@/components/ui/Banner";
 import { Chip } from "@/components/ui/Chip";
@@ -16,7 +16,12 @@ import { SpacePicker } from "@/components/save/SpacePicker";
 import { PasteLinkSheet } from "@/components/library/PasteLinkSheet";
 import { SpaceColorSheet } from "@/components/space/ColorPicker";
 import { LensToggle, isLens, type Lens } from "@/components/library/LensToggle";
-import { GalaxyView } from "@/components/library/GalaxyView";
+import { CollectionHeader, CollectionsRow } from "@/components/library/Collections";
+import { AskSheet } from "@/components/ask/AskEntry";
+import { useCollections } from "@/lib/hooks/useCollections";
+import { collectionSaves, findCollection } from "@/lib/collections";
+import { searchSaves, type Hit } from "@/lib/search";
+import { looksLikeQuestion } from "@/lib/askState";
 import { SaveGrid, cardText } from "@/components/library/SaveGrid";
 import { SPACE_BG } from "@/components/ui/space";
 import { cx } from "@/components/ui/cx";
@@ -38,7 +43,15 @@ const MapView = dynamic(() => import("@/components/library/MapView"), {
   ),
 });
 
-type Hit = { saveId: string; snippet: string | null; start: number | null };
+// The Galaxy's pan / zoom code is only fetched when its lens opens.
+const GalaxyView = dynamic(() => import("@/components/library/GalaxyView").then((m) => m.GalaxyView), {
+  ssr: false,
+  loading: () => (
+    <div className="px-4">
+      <Skeleton shape="block" className="aspect-square w-full rounded-xl" />
+    </div>
+  ),
+});
 
 export function LibraryView() {
   const router = useRouter();
@@ -56,6 +69,11 @@ export function LibraryView() {
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<Hit[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [byMeaning, setByMeaning] = useState(false);
+  const [collectionId, setCollectionId] = useState<string | null>(params.get("c"));
+  // Today links here with ?ask=1 to open "Ask your saves" straight away.
+  const [ask, setAsk] = useState<{ open: boolean; question?: string }>({ open: params.get("ask") === "1" });
+  const searchRun = useRef(0);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const inbox = lib.spaces.find((s) => s.kind === "inbox") ?? null;
@@ -64,10 +82,17 @@ export function LibraryView() {
   const counts = useMemo(() => spaceCounts(lib.saves, inboxId), [lib.saves, inboxId]);
   const selectedId = space === "inbox" ? inboxId : space;
   const selected = selectedId ? spacesById.get(selectedId) : undefined;
+  const readyCount = useMemo(() => lib.saves.filter((s) => s.status === "ready").length, [lib.saves]);
+  const collections = useCollections(lib.saves, lib.synced ? `synced:${readyCount}` : "");
+  const collection = findCollection(collections, collectionId);
   const visible = useMemo(
-    // ?space=inbox (the Inbox shortcut) filters at once, before the Spaces have loaded.
-    () => filterSaves(lib.saves, { space: space === "inbox" || (selectedId && selectedId === inboxId) ? "inbox" : selectedId, filter, inboxId }),
-    [lib.saves, space, selectedId, filter, inboxId],
+    () =>
+      collection
+        ? // A smart group is its own list of saves; the filter chips still narrow it.
+          filterSaves(collectionSaves(collection, lib.saves), { space: null, filter, inboxId })
+        : // ?space=inbox (the Inbox shortcut) filters at once, before the Spaces have loaded.
+          filterSaves(lib.saves, { space: space === "inbox" || (selectedId && selectedId === inboxId) ? "inbox" : selectedId, filter, inboxId }),
+    [lib.saves, space, selectedId, filter, inboxId, collection],
   );
   const byId = useMemo(() => new Map(lib.saves.map((s) => [s.id, s])), [lib.saves]);
   const [openedAt] = useState(() => new Date());
@@ -88,13 +113,15 @@ export function LibraryView() {
     if (space) q.set("space", space);
     if (filter !== "all") q.set("filter", filter);
     if (lens !== "grid") q.set("lens", lens);
+    if (collectionId) q.set("c", collectionId);
     const next = q.toString();
     if (next !== window.location.search.replace(/^\?/, "")) {
       window.history.replaceState(window.history.state, "", next ? `?${next}` : window.location.pathname);
     }
-  }, [space, filter, lens]);
+  }, [space, filter, lens, collectionId]);
 
   const playHref = (() => {
+    if (collection) return visible.length ? `/play?ids=${visible.slice(0, 60).map((s) => s.id).join(",")}` : "/play";
     const q = new URLSearchParams();
     if (space) q.set("space", space);
     q.set("filter", filter);
@@ -107,32 +134,33 @@ export function LibraryView() {
       setHits(null);
       return;
     }
+    const run = ++searchRun.current;
     setSearching(true);
-    try {
-      const r = await fetch("/api/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ q, spaceId: selectedId }),
-      });
-      if (!r.ok) throw new Error();
-      const json = (await r.json()) as { results: Hit[] };
-      setHits(json.results);
-    } catch {
-      // Offline: search what's on the phone (captions and key ideas).
-      const needle = q.toLowerCase();
-      setHits(
-        lib.saves
-          .filter((s) => [s.keyIdea, s.aiTitle, s.caption, s.title, ...s.tags].some((t) => t?.toLowerCase().includes(needle)))
-          .map((s) => ({ saveId: s.id, snippet: null, start: null })),
-      );
-    } finally {
-      setSearching(false);
-    }
+    setByMeaning(false);
+    setHits((h) => h ?? []);
+    // Word matches show first; matches by meaning join them a moment later. If the meaning
+    // part fails (or the phone is offline) the words, or the saves on the phone, are the answer.
+    const result = await searchSaves(q, {
+      spaceId: selectedId,
+      saves: lib.saves,
+      onWords: (words) => run === searchRun.current && setHits(words),
+    });
+    if (run !== searchRun.current) return;
+    setHits(result.hits);
+    setByMeaning(result.byMeaning);
+    setSearching(false);
   };
 
   const clearSearch = () => {
+    searchRun.current++;
     setQuery("");
     setHits(null);
+    setSearching(false);
+  };
+
+  const pickCollection = (id: string | null) => {
+    setCollectionId(id);
+    if (id) setSpace(null);
   };
 
   // The thumbnail grows into the item's player (View Transition; plain navigation without it).
@@ -199,7 +227,10 @@ export function LibraryView() {
               spaces={lib.spaces}
               selectedId={selectedId}
               counts={counts}
-              onPick={(id) => setSpace(id && id === inboxId ? "inbox" : id)}
+              onPick={(id) => {
+                setSpace(id && id === inboxId ? "inbox" : id);
+                if (id) setCollectionId(null);
+              }}
               onCreate={newSpace}
               onLongPress={(id) => id !== inboxId && setColorFor(id)}
             />
@@ -222,7 +253,7 @@ export function LibraryView() {
             </Link>
           )}
 
-          {oldCount > 0 && !selectedId && lens === "grid" && hits === null && (
+          {oldCount > 0 && !selectedId && !collection && lens === "grid" && hits === null && (
             <Link href="/triage" className="press mx-4 flex min-h-14 items-center gap-3 rounded-lg bg-surface px-4 text-label text-fg shadow-pop">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-raised">
                 <Layers size={20} strokeWidth={2} aria-hidden />
@@ -240,11 +271,37 @@ export function LibraryView() {
             ))}
           </div>
 
+          {lens === "grid" && hits === null && (!selectedId || collection) && (
+            <CollectionsRow collections={collections} selectedId={collection?.id ?? null} onPick={(c) => pickCollection(c?.id ?? null)} />
+          )}
+
+          {collection && hits === null && lens === "grid" && (
+            <CollectionHeader collection={collection} count={visible.length} playHref={visible.length ? playHref : null} onClose={() => pickCollection(null)} />
+          )}
+
           {hits !== null ? (
             <section aria-label="Search results" className="flex flex-col gap-2 px-4">
+              <button
+                type="button"
+                onClick={() => setAsk({ open: true, question: query.trim() })}
+                className={cx(
+                  "press flex min-h-14 items-center gap-3 rounded-lg bg-surface px-4 py-2 text-left shadow-pop",
+                  looksLikeQuestion(query) && "ring-1 ring-insight/50",
+                )}
+              >
+                <Sparkles size={22} strokeWidth={2} aria-hidden className="shrink-0 text-insight" />
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="text-label text-insight">Ask your saves</span>
+                  <span className="line-clamp-1 text-caption text-fg-muted">Get an answer to “{query.trim()}”, with the saves it came from</span>
+                </span>
+                <ArrowRight size={20} strokeWidth={2} aria-hidden className="shrink-0 text-fg-muted" />
+              </button>
               <div className="flex items-center justify-between">
                 <h2 className="text-heading">
-                  {searching ? "Searching…" : `${hitSaves.length} ${hitSaves.length === 1 ? "result" : "results"}`}
+                  {searching && hitSaves.length === 0 ? "Searching…" : `${hitSaves.length} ${hitSaves.length === 1 ? "result" : "results"}`}
+                  {(searching || byMeaning) && hitSaves.length > 0 && (
+                    <span className="ml-2 text-caption text-fg-muted">{searching ? "looking by meaning…" : "by words and meaning"}</span>
+                  )}
                 </h2>
                 {hitSaves.length > 0 && (
                   <Link
@@ -288,19 +345,25 @@ export function LibraryView() {
           ) : lens === "map" ? (
             <MapView saves={visible} spacesById={spacesById} thumbs={lib.thumbs} onOpen={(s) => open(s)} />
           ) : lens === "galaxy" ? (
-            <GalaxyView saves={lib.saves} spacesById={spacesById} onOpen={(s) => open(s)} />
+            <GalaxyView
+              saves={visible}
+              totalReady={lib.saves.filter((s) => s.status === "ready" && !s.archivedAt).length}
+              filterLabel={selected ? selected.name : filter !== "all" ? FILTER_LABEL[filter] : null}
+              spacesById={spacesById}
+              onOpen={(s) => open(s)}
+            />
           ) : lib.loading && lib.saves.length === 0 ? (
             <div className="grid grid-cols-2 gap-3 px-4">
               {Array.from({ length: 4 }, (_, i) => (
                 <Skeleton key={i} shape="thumb" />
               ))}
             </div>
-          ) : visible.length === 0 && (selectedId || filter !== "all") ? (
+          ) : visible.length === 0 && (selectedId || collection || filter !== "all") ? (
             <EmptyState illustration="done" title="All clear here" message="Nothing matches this filter. Pick another chip or Space." />
           ) : (
             <SaveGrid
               items={visible}
-              queued={!selectedId && filter === "all" ? lib.queued.slice(0, 6) : []}
+              queued={!selectedId && !collection && filter === "all" ? lib.queued.slice(0, 6) : []}
               thumbs={lib.thumbs}
               spacesById={spacesById}
               justReady={lib.justReady}
@@ -342,6 +405,14 @@ export function LibraryView() {
               className="h-full min-w-0 flex-1 bg-transparent text-input text-fg outline-none placeholder:text-fg-subtle"
             />
             {(query || hits) && <IconButton label="Clear search" icon={X} onClick={clearSearch} />}
+            <button
+              type="button"
+              aria-label="Ask your saves"
+              onClick={() => setAsk({ open: true, question: looksLikeQuestion(query) ? query.trim() : undefined })}
+              className="press flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-raised text-insight"
+            >
+              <Sparkles size={22} strokeWidth={2} aria-hidden />
+            </button>
           </div>
         </form>
       )}
@@ -362,6 +433,18 @@ export function LibraryView() {
           }}
         />
       )}
+
+      <AskSheet
+        open={ask.open}
+        onClose={() => setAsk({ open: false })}
+        initialQuestion={ask.question}
+        saves={lib.saves}
+        thumbs={lib.thumbs}
+        onOpenSave={(s) => {
+          setAsk({ open: false });
+          router.push(`/item/${s.id}`);
+        }}
+      />
 
       <PasteLinkSheet open={pasteOpen} onClose={() => setPasteOpen(false)} spaceId={selectedId === inboxId ? null : selectedId} onSaved={() => toast({ message: "Saved" })} />
     </div>
