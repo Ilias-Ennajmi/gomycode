@@ -126,29 +126,32 @@ Build every colour, type style and shape as a CSS variable in `styles/tokens.css
 
 | Token | Dark | Light |
 | --- | --- | --- |
-| background | #0E0E10 | #F6F4EF |
-| surface | #17171B | #FFFFFF |
-| surfaceRaised | #1F1F25 | #EFECE6 |
-| border | #2A2A31 | #E4E1DA |
-| textPrimary | #F2F0EB | #141413 |
-| textSecondary | #B4B1AA | #5E5B55 |
-| textTertiary | #9B988F | #6E6B65 |
-| accent (default Lime) | #C8F05A | #C8F05A |
-| onAccent | #0E0E10 | #0E0E10 |
-| insight | #FF9C66 | #B44A12 |
+| background | #0C0E16 | #F4F2EB |
+| surface | #161926 | #FFFFFF |
+| surfaceRaised | #202434 | #ECE9E0 |
+| border | #2C3146 | #DFDBD0 |
+| textPrimary | #F5F4EF | #0C0E16 |
+| textSecondary | #B9BCCB | #555764 |
+| textTertiary | #9B9EB1 | #666876 |
+| accent (default Lime) | #C6FF34 | #C6FF34 |
+| onAccent | #0C0E16 | #0C0E16 |
+| onSpace (ink on a solid Space colour) | #0C0E16 | #FFFFFF |
+| insight | #FF9C66 | #A8440F |
 | danger | #FF6B6B | #C62828 |
-| scrim over video | #0E0E10 at 80% | same |
+| scrim over video | #0C0E16 at 80% | same |
 
-**Space palette** (dark value / light value): Violet #B79CFF / #6B4FD8 · Teal #5FD4C0 / #0F8A78 · Amber #F2B64B / #8A5A00 · Blue #7FA8FF / #2F5FD0 · Rose #FF8FB1 / #C0365F · Green #8ED47A / #3C7D2B · Cyan #6FD3E8 / #0B7A90 · Sand #D9C3A0 / #7A6440 · Inbox grey #B4B1AA / #5E5B55. Each Space also gets a tint (its colour at 15% over surface) for chip backgrounds.
+Brand (refreshed 2026-11-10, "bold and playful"): the mark is a rounded "S" built from three stacked cards, electric lime #C6FF34 on deep ink #0C0E16, whatever accent is picked. Paths in `scripts/brand-paths.mjs`; `npm run icons` writes every icon from them.
 
-**Typography:** Bricolage Grotesque for display, Manrope for everything else (loaded with next/font). Scale: Display 30/700, Title 22/700, Heading 18/700, Body 15/500, Label 14/600, Caption 13/500. Nothing smaller than 13px, except tab labels at 12px. Respect the system font scale.
+**Space palette** (dark value / light value): Violet #B79CFF / #6B4FD8 · Teal #5FD4C0 / #0B7A6A · Amber #F2B64B / #8A5A00 · Blue #7FA8FF / #2F5FD0 · Rose #FF8FB1 / #C0365F · Green #8ED47A / #3A7A2A · Cyan #6FD3E8 / #0A7389 · Sand #D9C3A0 / #76603C · Inbox grey #B9BCCB / #555764. Each Space also gets a tint (its colour at 16% light / 22% dark over surface) for chips and cards, and is used as a confident solid block (Space header, picked chip, recall card) with onSpace ink.
 
-**Shape and spacing:** spacing steps of 4px (4, 8, 12, 16, 20, 24, 32). Radii: 10 small, 14 buttons and cards, 20 large cards, 24 hero, 28 bottom sheets. Every tap target at least 48px; inputs at least 16px font so the page never zooms. Icons from lucide-react only, 24px, 2px stroke. No emoji in the UI. Safe-area padding on every bottom bar (playbook step 3.7).
+**Typography:** Rubik (heavy, softly rounded grotesk) for display, Manrope for everything else (loaded with next/font). Scale: Hero 44/800, Display 34/800, Title 24/800, Heading 19/700, Body 15/500, Label 14/700, Caption 13/600. Nothing smaller than 13px, except tab labels at 12px. Respect the system font scale.
+
+**Shape and spacing:** spacing steps of 4px (4, 8, 12, 16, 20, 24, 32). Radii: 12 small, 18 cards, 24 large cards and thumbnails, 32 hero, Space blocks and bottom sheets; buttons and chips are pills. Every tap target at least 48px; inputs at least 16px font so the page never zooms. Icons from lucide-react only, 24px, 2px stroke. No emoji in the UI. Safe-area padding on every bottom bar (playbook step 3.7).
 
 **Theme and colour picker (Settings → Appearance)**
 
 - **Theme:** System (default), Dark, Light, Black (AMOLED, background #000000). Switching is instant, with no reload.
-- **Accent colour:** presets Lime (default), Coral #FF7A59, Sky #6CC4FF, Gold #F5C542, Mono (text colour), plus a custom colour picker. The app computes `onAccent` automatically for 4.5:1 contrast and warns if the chosen accent is too close to a Space colour.
+- **Accent colour:** presets Lime (default), Coral #FF7059, Sky #5CC8FF, Gold #FFC83D, Mono (text colour), plus a custom colour picker. The app computes `onAccent` automatically for 4.5:1 contrast and warns if the chosen accent is too close to a Space colour.
 - **Space colours:** pick from the Space palette when creating or editing a Space. Long-press a Space chip to change it.
 - **Display:** text size (90–130%), grid density (2 or 3 columns), reduce motion, haptics on/off.
 - A live preview card at the top of Appearance shows a mini Today card and a Space chip in the current choices.
@@ -257,7 +260,7 @@ These details decide whether the app feels smooth or clunky. Treat them as requi
 - Tapping a thumbnail grows it into the player with a View Transition.
 - New saves show a shimmer skeleton; when processing finishes, the key idea fades in word by word.
 - Bottom sheets use spring physics. Swipe gestures follow the finger and snap.
-- Durations: 150 ms for small changes, 250 ms for screen transitions, 350 ms for sheets.
+- Durations: 120 ms press, 160 ms for small changes, 260 ms for screen transitions, 380 ms for sheets; springs with a little bounce for gestures (lib/motionTokens.ts).
 
 **Haptics:** `navigator.vibrate(10)` on save, keep, archive, applied and on each recall grade. Off when the setting is off.
 

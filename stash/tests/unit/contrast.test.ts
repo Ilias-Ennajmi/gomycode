@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { clashingSpaces, colorDistance, contrastRatio, parseHex, pickOnAccent } from "@/lib/theme/contrast";
 
 // Values mirror styles/tokens.css (tests may hold literals; components may not).
-const INK_DARK = "#0e0e10";
-const INK_LIGHT = "#f6f4ef";
+const INK_DARK = "#0c0e16";
+const INK_LIGHT = "#f5f4ef";
 
 describe("contrast", () => {
   it("parses 3 and 6 digit hex", () => {
@@ -18,7 +18,7 @@ describe("contrast", () => {
   });
 
   it("picks dark ink on every light preset and it passes 4.5:1", () => {
-    for (const accent of ["#c8f05a", "#ff7a59", "#6cc4ff", "#f5c542"]) {
+    for (const accent of ["#c6ff34", "#ff7059", "#5cc8ff", "#ffc83d"]) {
       const r = pickOnAccent(accent, INK_DARK, INK_LIGHT);
       expect(r.ink).toBe(INK_DARK);
       expect(r.passes).toBe(true);
@@ -39,7 +39,7 @@ describe("contrast", () => {
   it("warns when the accent is close to a Space colour", () => {
     const spaces = { violet: "#b79cff", teal: "#5fd4c0", green: "#8ed47a" };
     expect(clashingSpaces("#b89dfe", spaces)).toEqual(["violet"]);
-    expect(clashingSpaces("#c8f05a", spaces)).toEqual([]);
+    expect(clashingSpaces("#c6ff34", spaces)).toEqual([]);
     expect(colorDistance("#000000", "#000000")).toBe(0);
   });
 });

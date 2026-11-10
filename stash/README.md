@@ -119,6 +119,12 @@ key exactly as in [android/README.md](android/README.md) (`./sign.sh stash-relea
 commit `android/releases/Stash-1.1.0.apk` and push. Obtainium then offers the update. Until then,
 link sharing keeps working in 1.0.0; only images need 1.1.0.
 
+**Android app 1.2.0: the new icon.** The rebrand changes the launcher icon, the splash and the
+status bar colours, which live in the Android shell, so it is a new APK (versionCode 3,
+versionName 1.2.0, everything from 1.1.0 included). Sign and publish it the same way
+(`android/releases/Stash-1.2.0.apk`). The web app's new look ships with a normal deploy; only
+the icon on the home screen waits for 1.2.0.
+
 ## Secrets
 
 Nothing secret lives in this repository. The browser only gets the Supabase URL and the

@@ -1,5 +1,17 @@
 # Changelog
 
+## Brand and UI refresh (2026-11-10)
+- New brand, bold and playful: a rounded "S" built from three stacked cards, electric lime on deep ink; a wordmark in Rubik ExtraBold; new app icon, maskable icon, favicon and offline page
+- Headlines in Rubik (heavy, softly rounded); body stays in Manrope. Bigger, heavier type scale with a new Hero size for big numbers
+- Retuned colours: deep-ink dark theme, warm paper light theme, a punchier lime and brighter coral, sky and gold; every theme × accent checked for contrast in the tests
+- Bigger radii, pill buttons, cards with a crisp lift; Spaces as confident colour blocks (Space header, picked chips, For you cards, recall cards)
+- Springy motion everywhere through the motion tokens: press feedback on every tap, the tab pill and lens toggle spring between options, swipe stamps that pop, cards fling off on keep / archive / sort and wobble back when a swipe doesn't commit; all off with reduce motion
+- Every screen reworked: Today hero, For you, Inbox and recall blocks; Library lens toggle, Space block, search; item page; Space page; Learn; You and Wrapped (a deep-ink poster); Settings in cards; save sheet; Play overlays and finish screen; Quick sort; Sort old saves; Import; the public collection page
+- First open with no saves now says hello and shows how to share a reel to Stash, step by step
+- Brand illustrations (SVG, theme-aware) for empty, done, search and error states
+- Fixed: the Galaxy map stayed blank when the layout loaded before the saves
+- Android app **1.2.0** (versionCode 3): the new launcher icon, splash and bar colours. Needs a build and signing with the owner's key
+
 ## Phase 4 · Delight (2026-11-10)
 - Library → **Galaxy**: your saves as dots in their Space colours, grouped by meaning and labelled by topic; pinch or wheel to zoom, drag to pan, tap a label to zoom into its group, tap a dot to open the save; the groups are also a list below the map
 - **Screenshots shared to Stash**: share an image from the gallery (Android app 1.1.0, or the installed web app); the AI reads the post in it (who posted it, caption, what it is, places) and files it like a reel

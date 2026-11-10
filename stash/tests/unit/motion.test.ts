@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseDuration, tokenMs } from "@/lib/motionTokens";
+import { SPRINGS, parseDuration, spring, tokenMs } from "@/lib/motionTokens";
 import { morphName } from "@/lib/morph";
 
 describe("motion tokens", () => {
@@ -12,8 +12,25 @@ describe("motion tokens", () => {
   });
 
   it("falls back to the token values on the server", () => {
-    expect(tokenMs("--dur-screen")).toBe(250);
-    expect(tokenMs("--dur-sheet")).toBe(350);
+    expect(tokenMs("--dur-press")).toBe(120);
+    expect(tokenMs("--dur-screen")).toBe(260);
+    expect(tokenMs("--dur-sheet")).toBe(380);
+  });
+
+  it("springs collapse to an instant change with reduce motion", () => {
+    expect(spring("sheet", true)).toBe(SPRINGS.sheet);
+    for (const name of Object.keys(SPRINGS) as (keyof typeof SPRINGS)[]) {
+      expect(spring(name, false)).toEqual({ duration: 0 });
+    }
+  });
+
+  it("fallbacks match the duration tokens in tokens.css", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync(new URL("../../styles/tokens.css", import.meta.url), "utf8");
+    for (const name of ["--dur-press", "--dur-fast", "--dur-screen", "--dur-sheet"] as const) {
+      const m = new RegExp(`${name}:\\s*(\\d+)ms`).exec(css);
+      expect(Number(m?.[1]), name).toBe(tokenMs(name));
+    }
   });
 
   it("view-transition names are valid CSS identifiers", () => {

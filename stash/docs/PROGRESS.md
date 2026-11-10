@@ -9,6 +9,93 @@ at 21289f5. Migrations 0004, 0005 and 0006 are **not applied** anywhere (0001–
 **not deployed** with Phases 2–4 (it still runs Phase 1). The review fixes below sit on the local branch
 `stash-review-fixes` (from 21289f5), not pushed.
 
+## Brand and UI refresh (2026-11-10, branch `stash-rebrand` from 64c30f1)
+
+The owner asked for better branding, UX and UI and picked **Bold and playful**. Web changes ship with a
+normal deploy; the launcher icon needs **Android 1.2.0** (versionCode 3), built from this branch and
+signed with the owner's key like 1.1.0 (`android/README.md`). Nothing applied or deployed here.
+
+### Decisions
+- **Mark:** a rounded "S" built from three stacked cards (evolves the old three lime bars), electric
+  lime `#c6ff34` on deep ink `#0c0e16`; the cards step from 55% to 80% to full lime so the stack reads.
+  It never follows the accent picker. **Wordmark:** "stash" in Rubik ExtraBold, as outlines.
+  Source of truth: `scripts/brand-paths.mjs`; `npm run icons` writes `public/icons/*` (any + maskable,
+  SVG + 192/512 PNG), `public/favicon.ico`, `public/brand/{mark,lockup-light,lockup-dark}.svg` and the
+  Android drawables (`ic_launcher_foreground/background`, `splash`, `ic_notification`). minSdk 26 means
+  the adaptive vector icon covers every launcher, so no PNG mipmaps exist or are needed.
+  `components/brand/paths.ts` mirrors the paths for the app (test `brand.test.ts`).
+- **Type:** Rubik (via next/font, weights 600/700/800) for Hero 44/800, Display 34/800, Title 24/800,
+  Heading 19/700, with negative tracking tokens; Manrope stays for body (Body 15/500, Label 14/700,
+  Caption 13/600, Tab 12/700). `.text-hero/.text-display/.text-title` always use the display face.
+- **Colour:** dark = deep ink (`#0c0e16` / `#161926` / `#202434`), light = warm paper `#f4f2eb`,
+  black stays `#000`. Presets: lime `#c6ff34`, coral `#ff7059`, sky `#5cc8ff`, gold `#ffc83d`, mono;
+  inks `#0c0e16` / `#f5f4ef`. Light-theme Space colours darkened slightly (teal, green, cyan, sand,
+  inbox) so white ink on a solid block reaches 4.5:1. Insight in light `#a8440f` (4.5:1 on raised).
+- **New tokens:** `--brand-lime/ink/paper`, `--on-space`, `--tint-amount` (16% light, 22% dark),
+  `--accent-line` (accent as a line or dot on the page; the ink in light, where lime is invisible),
+  `--type-hero-*`, `--type-*-tracking`, `--dur-press` (120 ms), `--motion-ease-out`, `--press-scale`,
+  `--elev-pop`, `--edge` (4px Space edge). Durations now 160 / 260 / 380 ms; spring curve has more
+  overshoot. Radii 12 / 18 / 24 / 32 / 32 sheet; buttons and chips are pills.
+- **Motion:** utility `press` (squish on press, spring back) on every tappable thing; `rise-in` and
+  `pop-in` entrances (fill-mode backwards so drags and press still apply afterwards); named springs in
+  `lib/motionTokens.ts` (`sheet`, `fling`, `snap`, `pop`) through `spring(name, motionOK)`, instant with
+  reduce motion. Every CSS duration is a token, so reduce motion zeroes them.
+- **Colour roles kept:** accent only for act-now (Start, Play, primary, Undo, Play all); selected states
+  are ink pills (tab bar, lens toggle, segmented, filter chips); Space colours as solid blocks and tints;
+  insight orange only for AI labels.
+
+### What changed per screen
+- **Shell:** tab bar with a springing ink pill behind the active icon, Play 60px with a background ring
+  (due day: an accent-line outline); headers with a raised back button.
+- **Today:** brand tile + date, chunky weekly segments; lime hero ("3 to watch · about 3 min", streak
+  pill, Keep going / Start, a length pill); For you cards filled with their Space tint; "4 saves to
+  sort" block with a fanned stack of thumbnails and an ink Sort button; recall block.
+- **First run (no saves):** new `components/today/Welcome.tsx`: animated lockup, one line on what Stash
+  is, "How to save a reel" in three coloured steps with the share illustration, Paste a link, Bring the
+  saves you already have.
+- **Library:** accent Play in the header, springing lens toggle, the picked Space as a solid colour block
+  (count, open), bolder search pill, empty / no-match / filter-empty states with illustrations, Galaxy
+  dots bigger; **fixed** Galaxy staying blank when the layout arrived before the saves (the size
+  observer now re-attaches once points exist). Map pins bigger.
+- **Item:** accent Play, the Space as a solid chip, numbered takeaways in Space-coloured circles,
+  Applied (ink, pops) and Remind side by side, to-dos and transcript in cards; "This save is gone" state.
+- **Space:** the whole header is a block of the Space colour with big Hero stats; "This Space is gone".
+- **Learn:** the recall question sits on its Space colour; answers on the tint; caught-up and empty
+  states with illustrations; syntheses as tinted cards with numbered points and a "Try" box.
+- **You:** Saved Wrapped as a deep-ink poster (forced dark tokens), Hero numbers, Space bars with
+  labels on chips, numbered creators; settings list with icon tiles.
+- **Settings:** each section in a card; switches spring.
+- **Save sheet:** brand tile with a check that pops, "Back takes you where you were", ink Done; error
+  state with an illustration.
+- **Play:** Keep / Archive stamps that grow with the swipe and pop when they would commit; the card
+  flings off (keep right, archive left) and wobbles back if it doesn't; rail buttons pop when on;
+  title-size key idea; solid Space chip; finish screen with the done illustration.
+- **Quick sort / Sort old saves:** progress segments, cards drop into the chips when filed or fly left
+  when skipped; triage cards fling with a spin and the next springs up.
+- **Import, public collection `/c/[slug]`, not-found, offline banner, offline page:** restyled, with the
+  lockup on public pages.
+- **/design:** new Brand section (lockup, mark, tile sizes 16–96, illustrations, rules); type, radii,
+  motion and elevation tables updated.
+
+### Screenshot harness (no backend)
+`scripts/fixtures/mock-supabase.mjs` answers REST, RPC, auth and storage signing with invented fixtures
+(`scripts/fixtures/data.mjs`); `scripts/screens.mjs` captures the main screens at 412×915 @2x in light
+and dark (`ONLY=today,play` to pick). Run the dev server with
+`NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54399 NEXT_PUBLIC_SUPABASE_ANON_KEY=fixture`. Development
+only; nothing in the app imports it.
+
+### Checks
+- tsc, eslint (0 warnings), Vitest (216 tests, 23 files; new `palette.test.ts` checks text 4.5:1 on
+  background / surface / raised, accent ink 4.5:1 and accent line 3:1 for every preset, Space dots 3:1,
+  ink on solid Space blocks 4.5:1 and text / AI text on Space tints 4.5:1, in light, dark and black;
+  `brand.test.ts` keeps the paths, icon files, Android colours and version in sync), next build: green.
+- No raw colours or arbitrary px sizes in `components/` or `app/` (grep).
+
+### Not done here
+- The worker's export renderer (`worker/stash_worker/render.py`) still uses the old paper colour for
+  briefs and decks; worth retuning with the next worker deploy.
+- Android 1.2.0 is not built or signed (no key here); the old 1.1.0 icon stays until it is.
+
 ## Review fixes (2026-11-10, on top of 21289f5)
 
 A reviewer pass over Phases 2–4 found 4 blocking findings and 12 concerns. 0004–0006 were not applied
