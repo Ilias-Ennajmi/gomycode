@@ -14,6 +14,8 @@
 --   * imports: history of Instagram / TikTok data-export imports.
 --   * Backlog triage: settings.triage_daily_limit and states.triage_seen_at.
 --   * usage.kind gains 'export' (brief / deck text written by the smart model).
+--   * Function privileges for the whole schema, explicit per function (end of
+--     file): the phone's role reaches only the RPCs the app calls.
 --
 -- Written to run after 0004 (Phase 2) and to be re-runnable.
 -- =============================================================================
@@ -47,16 +49,6 @@ create trigger set_updated_at before update on stash.exports
   for each row execute function stash.set_updated_at();
 
 
--- An unguessable link id: 12 random bytes → 16 URL-safe characters.
-create or replace function stash.new_share_slug()
-returns text
-language sql
-volatile
-security invoker
-set search_path = ''
-as $$
-  select pg_catalog.translate(pg_catalog.encode(extensions.gen_random_bytes(12), 'base64'), '+/=', '-_');
-$$;
 
 
 -- The phone chooses the Space, kind and options; everything else comes from the
@@ -89,7 +81,10 @@ begin
 
   -- A collection is just a link: mint it now, no job needed.
   if tg_op = 'INSERT' and new.kind = 'collection'::stash.export_kind then
-    new.share_slug := coalesce(new.share_slug, stash.new_share_slug());
+    -- An unguessable link id: 12 random bytes → 16 URL-safe characters. Inlined (not a helper
+    -- function) because this trigger runs as the phone's role, which may execute no stash helpers.
+    new.share_slug := coalesce(new.share_slug,
+      pg_catalog.translate(pg_catalog.encode(extensions.gen_random_bytes(12), 'base64'), '+/=', '-_'));
     new.status     := 'ready';
   end if;
   return new;
@@ -316,29 +311,6 @@ create policy "stash_shared_thumbs_read" on storage.objects
   using (bucket_id = 'stash-thumbs' and stash.is_shared_thumb(name));
 
 
--- -----------------------------------------------------------------------------
--- The public role may call exactly two functions in this schema.
---
--- Functions are executable by PUBLIC by default, which would include anon once
--- anon can see the schema. So: take EXECUTE away from PUBLIC on every function
--- here, give it back to authenticated and service_role (unchanged for them),
--- then grant anon only what the collection page needs. anon still has no table
--- privileges in `stash` (0001), and every table has owner-only RLS.
--- -----------------------------------------------------------------------------
-revoke execute on all functions in schema stash from public;
-revoke execute on all functions in schema stash from anon;
-grant  execute on all functions in schema stash to authenticated, service_role;
-revoke execute on function stash.collection_save_ids(text) from authenticated;
-revoke execute on function stash.handle_new_user() from authenticated;
-alter default privileges in schema stash revoke execute on functions from public;
-alter default privileges in schema stash grant  execute on functions to authenticated, service_role;
-
-revoke all on all tables    in schema stash from anon;
-revoke all on all sequences in schema stash from anon;
-
-grant usage on schema stash to anon;
-grant execute on function stash.get_collection(text)  to anon;
-grant execute on function stash.is_shared_thumb(text) to anon;
 
 
 -- -----------------------------------------------------------------------------
@@ -380,7 +352,6 @@ as $$
    limit greatest(1, least(p_limit, 500));
 $$;
 
-grant execute on function stash.nearby_places(double precision, double precision, int) to authenticated, service_role;
 
 
 -- -----------------------------------------------------------------------------
@@ -442,5 +413,51 @@ begin
   end if;
 end
 $$;
+
+-- -----------------------------------------------------------------------------
+-- Function privileges for the whole schema (0001-0005), explicit per function.
+--
+-- Postgres lets PUBLIC execute every new function, and "alter default privileges
+-- in schema … revoke … from public" can't undo that global default, so every
+-- function created after 0004's revoke (and every one here) was executable by
+-- anyone. Anonymous devices ARE role `authenticated`, so `authenticated` must
+-- only reach what the app calls. This block runs last and leaves exactly:
+--
+--   authenticated: search_saves, related_saves, request_reprocess, mark_queue_done,
+--                  save_push_subscription, vapid_public_key, nearby_places
+--   anon:          vapid_public_key, cron_* (each checks the Vault secret),
+--                  get_collection, is_shared_thumb (public collection page)
+--   service_role:  everything (the worker; it bypasses RLS anyway)
+--   nobody else:   wake_worker, claim_jobs, sweep, cron_ok, call_app,
+--                  maybe_synthesize, collection_save_ids, guard and trigger
+--                  functions (triggers fire without EXECUTE on their function).
+--
+-- Any later migration that adds a function must grant it here-style, explicitly.
+-- -----------------------------------------------------------------------------
+revoke execute on all functions in schema stash from public, anon, authenticated;
+grant  execute on all functions in schema stash to service_role;
+
+grant execute on function stash.search_saves(text, uuid, extensions.vector, int)               to authenticated;
+grant execute on function stash.related_saves(uuid, int)                                       to authenticated;
+grant execute on function stash.request_reprocess(uuid)                                        to authenticated;
+grant execute on function stash.mark_queue_done(date, uuid)                                    to authenticated;
+grant execute on function stash.save_push_subscription(text, text, text, text)                 to authenticated;
+grant execute on function stash.vapid_public_key()                                             to authenticated, anon;
+grant execute on function stash.nearby_places(double precision, double precision, int)         to authenticated;
+
+grant execute on function stash.cron_vapid(text)                                               to anon;
+grant execute on function stash.cron_set_vapid(text, text, text)                               to anon;
+grant execute on function stash.cron_due_reminders(text)                                       to anon;
+grant execute on function stash.cron_mark_fired(text, uuid[])                                  to anon;
+grant execute on function stash.cron_drop_subscriptions(text, text[])                          to anon;
+grant execute on function stash.cron_daily_candidates(text)                                    to anon;
+grant execute on function stash.cron_store_daily(text, uuid, date, uuid[], int)                to anon;
+grant execute on function stash.get_collection(text)                                           to anon;
+grant execute on function stash.is_shared_thumb(text)                                          to anon;
+
+-- anon sees the schema (for those RPCs) but no table or sequence in it.
+grant usage on schema stash to anon;
+revoke all on all tables    in schema stash from anon;
+revoke all on all sequences in schema stash from anon;
 
 notify pgrst, 'reload schema';

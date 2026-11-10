@@ -44,7 +44,7 @@ Nothing was applied to Supabase, nothing deployed, nothing pushed.
 - `supabase/migrations/0005_projects_places_import.sql` (written, **NOT APPLIED**; apply after 0004):
   exports status/error/files/updated_at + column guard + `export` job trigger (collection links get their
   slug from the database at once, no worker needed), private bucket `stash-exports` (`<uid>/` policies),
-  `stash.get_collection(slug)` + `stash.is_shared_thumb(path)` (security definer, the only two functions
+  `stash.get_collection(slug)` + `stash.is_shared_thumb(path)` (security definer, the only Phase 3 functions
   anon can execute; anon gets schema usage but still no table privileges), `stash.nearby_places(lat,lng)`,
   `places.geocoded_at`, `stash.imports`, `settings.triage_daily_limit`, `states.triage_seen_at`,
   `usage.kind` + 'export' (keeps whatever 0004 allows), exports in the Realtime publication.
@@ -84,7 +84,7 @@ Nothing was applied to Supabase, nothing deployed, nothing pushed.
 | Geocoding | OpenStreetMap Nominatim in the worker, ≤ 1 req/s, cached, custom User-Agent | Free; Google Places would need a key and billing |
 | Collection links | Slug minted by the database trigger (16 URL-safe chars, 96 bits); public page reads through a security-definer function with the anon key | Works without the worker and without a service key on Vercel; only share-safe fields leave the database |
 | Shared thumbnails | Storage policy for anon on `stash-thumbs`, limited by `stash.is_shared_thumb()` to saves inside a live collection | Thumbnails stay private otherwise |
-| anon and `stash` | anon gets schema usage; EXECUTE revoked from PUBLIC on every function, re-granted to authenticated/service_role; anon may run only the two collection functions | Needed so PostgREST can serve the public page; nothing else opens up |
+| Function privileges | 0005 ends with one explicit block for the whole schema: EXECUTE revoked from PUBLIC/anon/authenticated on every `stash` function, then granted per function. authenticated (every phone, anonymous devices included): search_saves, related_saves, request_reprocess, mark_queue_done, save_push_subscription, vapid_public_key, nearby_places. anon: vapid_public_key, the 7 `cron_*` functions (each checks the Vault secret), get_collection, is_shared_thumb. service_role: all. Nobody else: wake_worker, claim_jobs, sweep, cron_ok, call_app, maybe_synthesize, collection_save_ids, guard and trigger functions | `alter default privileges … in schema` can't revoke the global PUBLIC default, so functions created after a revoke were callable by anyone, and anonymous devices are `authenticated`. Verified on a local Postgres 16 with Supabase stubs (0001–0005 in order, 0005 twice) |
 | Brief formats | One export row writes PDF + DOCX (`exports.files`), file_path = PDF | Spec: "PDF and DOCX" |
 | Deck and moodboard | No AI; built from key ideas, takeaways and thumbnails | Fast and free; only the brief needs writing |
 | Without the smart model | Brief is assembled from the saves' insights | An export never fails for lack of a key |
