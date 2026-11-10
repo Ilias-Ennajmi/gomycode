@@ -5,6 +5,7 @@ import { Sparkles } from "lucide-react";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { formatRelativeTime } from "@/lib/utils";
 import type { ArticleSummary } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 /** At the end of an article: three close ones from your own feeds (by meaning, not words). */
 export function MoreLikeThis({
@@ -14,15 +15,16 @@ export function MoreLikeThis({
   articleId: string;
   onOpen: (article: ArticleSummary) => void;
 }) {
+  const { t } = useT();
   const { data } = useSWR<{ articles: ArticleSummary[] }>(`/api/articles/${articleId}/similar`, {
     revalidateOnFocus: false,
   });
   const articles = data?.articles ?? [];
   if (articles.length === 0) return null;
   return (
-    <section aria-label="More like this" className="mt-10">
+    <section aria-label={t("More like this")} className="mt-10">
       <h2 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        <Sparkles className="h-3.5 w-3.5 text-primary" /> More like this
+        <Sparkles className="h-3.5 w-3.5 text-primary" /> {t("More like this")}
       </h2>
       <ul className="divide-y rounded-2xl border bg-card/60">
         {articles.map((article) => (

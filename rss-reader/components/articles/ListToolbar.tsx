@@ -81,7 +81,7 @@ function LayoutSwitch({
   return (
     <span
       role="radiogroup"
-      aria-label="Layout"
+      aria-label={t("Layout")}
       className="ml-0.5 flex shrink-0 items-center rounded-full border p-0.5"
     >
       {LAYOUTS.map(({ id, label, icon: Icon }) => (
@@ -189,7 +189,7 @@ export function ListToolbar(props: ListToolbarProps) {
         ref={scroller}
         onScroll={measure}
         role="toolbar"
-        aria-label="Filters"
+        aria-label={t("Filters")}
         className={cn(
           "flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto px-3 py-1.5 scrollbar-none",
           // A soft edge says "there's more this way".
@@ -212,7 +212,7 @@ export function ListToolbar(props: ListToolbarProps) {
                 title={t("Got 5 minutes?")}
                 className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
               >
-                <Timer className="h-3.5 w-3.5" /> 5 min
+                <Timer className="h-3.5 w-3.5" /> {t("5 min")}
               </button>
             )}
             {(
@@ -234,7 +234,7 @@ export function ListToolbar(props: ListToolbarProps) {
                   setLaterTab(id);
                 }}
               >
-                {label}
+                {t(label)}
               </Chip>
             ))}
           </>
@@ -345,7 +345,7 @@ export function ListToolbar(props: ListToolbarProps) {
           type="button"
           onClick={props.onRefresh}
           disabled={props.refreshing}
-          aria-label="Refresh feeds"
+          aria-label={t("Refresh feeds")}
           className="hidden h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground md:flex"
         >
           <RefreshCw className={cn("h-4 w-4", props.refreshing && "animate-spin")} />
@@ -511,7 +511,7 @@ function OptionsMenu(props: ListToolbarProps) {
             ) : (
               <Rows3 className="h-3.5 w-3.5" />
             )}
-            Layout
+            {t("Layout")}
           </DropdownMenuLabel>
           <DropdownMenuRadioGroup
             value={props.layout}

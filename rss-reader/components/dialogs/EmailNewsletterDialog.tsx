@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useReaderState } from "@/lib/hooks/useReaderState";
+import { useT, tr } from "@/lib/i18n";
 
 interface EmailNewsletterDialogProps {
   open: boolean;
@@ -26,6 +27,7 @@ interface EmailNewsletterDialogProps {
  * issues land in Newsletters → Email.
  */
 export function EmailNewsletterDialog({ open, onOpenChange }: EmailNewsletterDialogProps) {
+  const { t } = useT();
   const { setView, setNewsletterKind } = useReaderState();
   const { mutate } = useSWRConfig();
   const [name, setName] = React.useState("");
@@ -55,7 +57,7 @@ export function EmailNewsletterDialog({ open, onOpenChange }: EmailNewsletterDia
       setCreated({ title: body.feed.title, email: body.feed.email });
       mutate((key) => typeof key === "string" && key.startsWith("/api/feeds"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't create an address");
+      toast.error(error instanceof Error ? error.message : tr("Couldn't create an address"));
     } finally {
       setCreating(false);
     }
@@ -65,7 +67,7 @@ export function EmailNewsletterDialog({ open, onOpenChange }: EmailNewsletterDia
     if (!created) return;
     await navigator.clipboard.writeText(created.email);
     setCopied(true);
-    toast.success("Address copied");
+    toast.success(tr("Address copied"));
   }
 
   function done() {
@@ -81,21 +83,22 @@ export function EmailNewsletterDialog({ open, onOpenChange }: EmailNewsletterDia
           <form onSubmit={create}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5 text-primary" /> Email newsletter
+                <Mail className="h-5 w-5 text-primary" /> {t("Email newsletter")}
               </DialogTitle>
               <DialogDescription>
-                For newsletters that only come by email. You get an address to sign up with, and
-                every issue shows up in Newsletters → Email.
+                {t(
+                  "For newsletters that only come by email. You get an address to sign up with, and every issue shows up in Newsletters → Email."
+                )}
               </DialogDescription>
             </DialogHeader>
             <label className="mt-4 block text-sm font-medium" htmlFor="newsletter-name">
-              Newsletter name
+              {t("Newsletter name")}
             </label>
             <Input
               id="newsletter-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="e.g. Morning Brew"
+              placeholder={t("e.g. Morning Brew")}
               className="mt-1.5"
               autoFocus
               maxLength={120}
@@ -103,16 +106,17 @@ export function EmailNewsletterDialog({ open, onOpenChange }: EmailNewsletterDia
             <DialogFooter className="mt-5">
               <Button type="submit" disabled={creating || !name.trim()} className="gap-1.5">
                 {creating && <Loader2 className="h-4 w-4 animate-spin" />}
-                Create address
+                {t("Create address")}
               </Button>
             </DialogFooter>
           </form>
         ) : (
           <div>
             <DialogHeader>
-              <DialogTitle>Sign up with this address</DialogTitle>
+              <DialogTitle>{t("Sign up with this address")}</DialogTitle>
               <DialogDescription>
-                Use it on {created.title}&rsquo;s sign-up page instead of your own email.
+                {t("Use it on")} {created.title}
+                {t("’s sign-up page instead of your own email.")}
               </DialogDescription>
             </DialogHeader>
             <div className="mt-4 flex items-center gap-2 rounded-xl border bg-muted/50 p-2 pl-3">
@@ -124,23 +128,25 @@ export function EmailNewsletterDialog({ open, onOpenChange }: EmailNewsletterDia
                 className="shrink-0 gap-1.5"
               >
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                {copied ? "Copied" : "Copy"}
+                {copied ? t("Copied") : t("Copy")}
               </Button>
             </div>
             <ol className="mt-4 list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground">
-              <li>Paste the address in the newsletter&rsquo;s sign-up form.</li>
+              <li>{t("Paste the address in the newsletter’s sign-up form.")}</li>
               <li>
-                Its confirmation email arrives in Newsletters → Email within the hour (or tap
-                refresh). Open it and tap the confirm link.
+                {t(
+                  "Its confirmation email arrives in Newsletters → Email within the hour (or tap refresh). Open it and tap the confirm link."
+                )}
               </li>
-              <li>New issues then arrive there on their own.</li>
+              <li>{t("New issues then arrive there on their own.")}</li>
             </ol>
             <p className="mt-3 text-xs text-muted-foreground">
-              The address is from Kill the Newsletter, a free service that turns emails into a feed.
-              You can copy it again from the newsletter&rsquo;s menu in the sources list.
+              {t(
+                "The address is from Kill the Newsletter, a free service that turns emails into a feed. You can copy it again from the newsletter’s menu in the sources list."
+              )}
             </p>
             <DialogFooter className="mt-5">
-              <Button onClick={done}>Done</Button>
+              <Button onClick={done}>{t("Done")}</Button>
             </DialogFooter>
           </div>
         )}

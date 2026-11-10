@@ -33,11 +33,13 @@ import { clockLabel } from "@/lib/snips";
 import { TagEditor } from "@/components/highlights/TagEditor";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import type { HighlightColor, HighlightSummary } from "@/lib/types";
+import { useT, tr } from "@/lib/i18n";
 
 const COLORS = Object.keys(HIGHLIGHT_SWATCH) as HighlightColor[];
 
 /** Later → Highlights: every passage and note, newest first, searchable and exportable. */
 export function HighlightsList() {
+  const { t } = useT();
   const [sendOpen, setSendOpen] = React.useState(false);
   const [draft, setDraft] = React.useState("");
   const [search, setSearch] = React.useState("");
@@ -70,17 +72,17 @@ export function HighlightsList() {
             <Input
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
-              placeholder="Search highlights and notes…"
+              placeholder={t("Search highlights and notes…")}
               enterKeyHint="search"
               className="h-8 pl-8 pr-7"
-              aria-label="Search highlights"
+              aria-label={t("Search highlights")}
             />
             {draft && (
               <button
                 type="button"
                 onClick={() => setDraft("")}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label="Clear search"
+                aria-label={t("Clear search")}
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -95,7 +97,7 @@ export function HighlightsList() {
               }
               download
             >
-              <Download className="h-3.5 w-3.5" /> Export
+              <Download className="h-3.5 w-3.5" /> {t("Export")}
             </a>
           </Button>
           <Button
@@ -104,11 +106,15 @@ export function HighlightsList() {
             className="h-8 gap-1.5 text-xs"
             onClick={() => setSendOpen(true)}
           >
-            <Send className="h-3.5 w-3.5" /> Send to…
+            <Send className="h-3.5 w-3.5" /> {t("Send to…")}
           </Button>
           {sendOpen && <SendHighlightsSheet open onOpenChange={setSendOpen} />}
         </div>
-        <div className="flex items-center gap-1.5" role="toolbar" aria-label="Filter by colour">
+        <div
+          className="flex items-center gap-1.5"
+          role="toolbar"
+          aria-label={t("Filter by colour")}
+        >
           {COLORS.map((c) => (
             <button
               key={c}
@@ -131,7 +137,7 @@ export function HighlightsList() {
           <div
             className="-mx-3 flex gap-1.5 overflow-x-auto px-3 scrollbar-none"
             role="toolbar"
-            aria-label="Filter by tag"
+            aria-label={t("Filter by tag")}
           >
             {tags.map(({ tag: name, count }) => (
               <button
@@ -172,8 +178,8 @@ export function HighlightsList() {
           <Highlighter className="h-10 w-10" />
           <p className="max-w-xs text-sm">
             {filtered
-              ? "No highlights match."
-              : "No highlights yet. Select text in any article to highlight it or add a note."}
+              ? t("No highlights match.")
+              : t("No highlights yet. Select text in any article to highlight it or add a note.")}
           </p>
         </div>
       ) : (
@@ -193,6 +199,7 @@ export function HighlightsList() {
 }
 
 function HighlightRow({ highlight }: { highlight: HighlightSummary }) {
+  const { t } = useT();
   const { setSelectedArticleId, setMobilePane } = useReaderState();
   const article = highlight.article;
 
@@ -210,9 +217,9 @@ function HighlightRow({ highlight }: { highlight: HighlightSummary }) {
   async function remove() {
     try {
       await deleteHighlight(highlight.id);
-      toast.success("Highlight removed");
+      toast.success(tr("Highlight removed"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not remove the highlight");
+      toast.error(error instanceof Error ? error.message : tr("Could not remove the highlight"));
     }
   }
 
@@ -227,7 +234,7 @@ function HighlightRow({ highlight }: { highlight: HighlightSummary }) {
           <button type="button" onClick={open} className="block w-full text-left">
             {snip && (
               <span className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
-                <Scissors className="h-3 w-3" /> Snip · {clockLabel(start)}
+                <Scissors className="h-3 w-3" /> {t("Snip ·")} {clockLabel(start)}
                 {highlight.endSeconds ? `–${clockLabel(highlight.endSeconds)}` : ""}
               </span>
             )}
@@ -272,7 +279,7 @@ function HighlightRow({ highlight }: { highlight: HighlightSummary }) {
                 onClick={open}
                 className="flex h-7 items-center gap-1.5 rounded-full bg-primary/10 px-2.5 text-xs font-semibold text-primary hover:bg-primary/20"
               >
-                <Play className="h-3 w-3 fill-current" /> Play from {clockLabel(start)}
+                <Play className="h-3 w-3 fill-current" /> {t("Play from")} {clockLabel(start)}
               </button>
             )}
             <TagEditor highlight={highlight} />
@@ -280,20 +287,20 @@ function HighlightRow({ highlight }: { highlight: HighlightSummary }) {
         </div>
         <div className="flex shrink-0 flex-col gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100">
           <IconButton
-            label="Copy"
+            label={t("Copy")}
             onClick={() =>
-              navigator.clipboard.writeText(highlight.text).then(() => toast.success("Copied"))
+              navigator.clipboard.writeText(highlight.text).then(() => toast.success(tr("Copied")))
             }
           >
             <Copy className="h-3.5 w-3.5" />
           </IconButton>
           {article && (
-            <IconButton label="Share" onClick={() => shareQuote(highlight.text, article)}>
+            <IconButton label={t("Share")} onClick={() => shareQuote(highlight.text, article)}>
               <Share2 className="h-3.5 w-3.5" />
             </IconButton>
           )}
           <IconButton
-            label="Share as a picture"
+            label={t("Share as a picture")}
             onClick={() =>
               shareQuoteImage({
                 text: highlight.text,
@@ -306,13 +313,15 @@ function HighlightRow({ highlight }: { highlight: HighlightSummary }) {
                   ? `${clockLabel(start)}${highlight.endSeconds ? ` – ${clockLabel(highlight.endSeconds)}` : ""}`
                   : undefined,
               }).catch((error) =>
-                toast.error(error instanceof Error ? error.message : "Could not make the picture")
+                toast.error(
+                  error instanceof Error ? error.message : tr("Could not make the picture")
+                )
               )
             }
           >
             <ImageIcon className="h-3.5 w-3.5" />
           </IconButton>
-          <IconButton label="Remove highlight" onClick={remove}>
+          <IconButton label={t("Remove highlight")} onClick={remove}>
             <Trash2 className="h-3.5 w-3.5" />
           </IconButton>
         </div>
@@ -330,12 +339,13 @@ function IconButton({
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  const { t } = useT();
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={label}
-      title={label}
+      aria-label={t(label)}
+      title={t(label)}
       className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
     >
       {children}

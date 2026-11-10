@@ -33,7 +33,7 @@ import {
   stripHtml,
 } from "@/lib/utils";
 import { cacheArticleForOffline } from "@/components/layout/OfflineSupport";
-import { useT } from "@/lib/i18n";
+import { useT, tr } from "@/lib/i18n";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { Highlight } from "@/components/shared/Highlight";
 import type { ArticleSummary } from "@/lib/types";
@@ -245,11 +245,11 @@ export function ArticleCard({
                   <Bookmark
                     className={cn("h-5 w-5", Math.abs(dx) >= SWIPE_TRIGGER && "fill-current")}
                   />
-                  {article.isSaved ? "Remove from Later" : "Read later"}
+                  {article.isSaved ? t("Remove from Later") : t("Read later")}
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
-                  {article.isRead ? "Mark unread" : "Mark read"}
+                  {article.isRead ? t("Mark unread") : t("Mark read")}
                   <Check className="h-5 w-5" />
                 </span>
               )}
@@ -357,7 +357,7 @@ export function ArticleCard({
                     big ? "left-2.5 top-2.5" : "-left-1 -top-1"
                   )}
                   role="img"
-                  aria-label="Unread"
+                  aria-label={t("Unread")}
                 />
               )}
             </div>
@@ -423,14 +423,14 @@ export function ArticleCard({
                 <span className="shrink-0">
                   {article.isVideo
                     ? article.isShort
-                      ? "Short"
+                      ? t("Short")
                       : article.durationSeconds
                         ? durationLabel(article.durationSeconds)
-                        : "Video"
+                        : t("Video")
                     : article.audioUrl
                       ? article.durationSeconds
                         ? durationLabel(article.durationSeconds)
-                        : "Episode"
+                        : t("Episode")
                       : article.readingMinutes
                         ? `${article.readingMinutes} min`
                         : readingTime(article.content || article.summary)}
@@ -443,7 +443,7 @@ export function ArticleCard({
                 </span>
                 {article.boosted && (
                   <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-primary/15 px-1.5 py-px text-[10.5px] font-semibold text-primary">
-                    <TrendingUp className="h-3 w-3" /> Boosted
+                    <TrendingUp className="h-3 w-3" /> {t("Boosted")}
                   </span>
                 )}
                 {isSnoozed(article) && (
@@ -461,7 +461,7 @@ export function ArticleCard({
                 )}
                 {article.isPromo && (
                   <span className="shrink-0 rounded bg-muted px-1.5 py-px text-[10.5px] font-semibold">
-                    Sponsored
+                    {t("Sponsored")}
                   </span>
                 )}
                 {/* Touch screens: actions sit inline, since there's no hover. */}
@@ -498,7 +498,7 @@ export function ArticleCard({
                 <div
                   className="mt-3 h-[3px] overflow-hidden rounded-full bg-border"
                   role="progressbar"
-                  aria-label="Reading progress"
+                  aria-label={t("Reading progress")}
                   aria-valuenow={progress}
                   aria-valuemin={0}
                   aria-valuemax={100}
@@ -556,8 +556,8 @@ export function ArticleCard({
             <Check className="h-4 w-4" />
             {article.audioUrl && !article.isVideo
               ? article.isRead
-                ? "Mark as unplayed"
-                : "Mark as played"
+                ? t("Mark as unplayed")
+                : t("Mark as played")
               : article.isRead
                 ? t("Mark as unread")
                 : t("Mark as read")}
@@ -572,7 +572,7 @@ export function ArticleCard({
               }}
               className="gap-2"
             >
-              <ListStart className="h-4 w-4" /> Play next
+              <ListStart className="h-4 w-4" /> {t("Play next")}
             </ContextMenuItem>
             <ContextMenuItem
               onSelect={() => {
@@ -581,7 +581,7 @@ export function ArticleCard({
               }}
               className="gap-2"
             >
-              <ListEnd className="h-4 w-4" /> Add to queue
+              <ListEnd className="h-4 w-4" /> {t("Add to queue")}
             </ContextMenuItem>
           </>
         )}
@@ -604,7 +604,7 @@ export function ArticleCard({
           <ContextMenuItem
             onSelect={() => {
               cacheArticleForOffline(article.id);
-              toast.success("Kept for offline reading");
+              toast.success(tr("Kept for offline reading"));
             }}
             className="gap-2"
           >
@@ -618,7 +618,7 @@ export function ArticleCard({
               onSelect={onMuteSource}
               className="gap-2 text-destructive focus:text-destructive"
             >
-              <EyeOff className="h-4 w-4" /> Mute {article.feed.title}
+              <EyeOff className="h-4 w-4" /> {t("Mute")} {article.feed.title}
             </ContextMenuItem>
           </>
         )}
@@ -751,6 +751,7 @@ function CardActions({
   onArchive?: () => void;
   className?: string;
 }) {
+  const { t } = useT();
   return (
     <div
       className={cn("flex shrink-0 items-center gap-0.5", className)}
@@ -763,8 +764,8 @@ function CardActions({
             "rounded-md p-1.5 hover:bg-accent",
             isSnoozed(article) ? "text-amber-500" : "text-muted-foreground hover:text-foreground"
           )}
-          aria-label="Snooze"
-          title="Snooze"
+          aria-label={t("Snooze")}
+          title={t("Snooze")}
         >
           <AlarmClock className="h-4 w-4" />
         </button>
@@ -774,8 +775,8 @@ function CardActions({
           type="button"
           onClick={onArchive}
           className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-          aria-label={article.archivedAt ? "Move back to Later" : "Archive"}
-          title={article.archivedAt ? "Move back to Later" : "Archive"}
+          aria-label={article.archivedAt ? t("Move back to Later") : t("Archive")}
+          title={article.archivedAt ? t("Move back to Later") : t("Archive")}
         >
           {article.archivedAt ? (
             <ArchiveRestore className="h-4 w-4" />
@@ -791,8 +792,8 @@ function CardActions({
           "rounded-md p-1.5 hover:bg-accent",
           article.isSaved ? "text-primary" : "text-muted-foreground hover:text-foreground"
         )}
-        aria-label={article.isSaved ? "Remove from Later" : "Read later"}
-        title={article.isSaved ? "Remove from Later (S)" : "Read later (S)"}
+        aria-label={article.isSaved ? t("Remove from Later") : t("Read later")}
+        title={article.isSaved ? t("Remove from Later (S)") : t("Read later (S)")}
       >
         <Bookmark
           // A new key on each change replays the little pop when it becomes saved.
@@ -815,6 +816,7 @@ function RelatedCoverage({
   onToggle: () => void;
   onSelect?: (article: ArticleSummary) => void;
 }) {
+  const { t } = useT();
   const others = article.topic!.sources.filter((s) => s !== article.feed.title);
   const label =
     others.length <= 2
@@ -831,7 +833,7 @@ function RelatedCoverage({
       >
         <Layers className="h-3.5 w-3.5 shrink-0 text-primary" />
         <span className="min-w-0 flex-1 truncate">
-          Also covered by <span className="font-medium text-foreground/80">{label}</span>
+          {t("Also covered by")} <span className="font-medium text-foreground/80">{t(label)}</span>
         </span>
         <ChevronDown
           className={cn("h-3.5 w-3.5 shrink-0 transition-transform", expanded && "rotate-180")}
@@ -870,6 +872,7 @@ function RelatedCoverage({
 
 /** On a video's picture: its length, or Short / Live / Upcoming. */
 function VideoBadge({ article, big }: { article: ArticleSummary; big: boolean }) {
+  const { t } = useT();
   const label =
     article.liveStatus === "live"
       ? "Live"
@@ -891,7 +894,7 @@ function VideoBadge({ article, big }: { article: ArticleSummary; big: boolean })
         article.liveStatus === "live" ? "bg-red-600" : "bg-black/80"
       )}
     >
-      {label}
+      {t(label)}
     </span>
   );
 }

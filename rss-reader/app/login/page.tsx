@@ -7,8 +7,10 @@ import { browserSupportsWebAuthn, startAuthentication } from "@simplewebauthn/br
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useT } from "@/lib/i18n";
 
 function LoginForm() {
+  const { t } = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [password, setPassword] = React.useState("");
@@ -86,13 +88,15 @@ function LoginForm() {
           <Rss className="h-6 w-6" />
         </div>
         <div>
-          <h1 className="tracking-tight text-2xl font-bold">Welcome back</h1>
-          <p className="text-sm text-muted-foreground">Enter your password to open your reader.</p>
+          <h1 className="tracking-tight text-2xl font-bold">{t("Welcome back")}</h1>
+          <p className="text-sm text-muted-foreground">
+            {t("Enter your password to open your reader.")}
+          </p>
         </div>
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">{t("Password")}</Label>
         <Input
           id="password"
           type="password"
@@ -112,7 +116,7 @@ function LoginForm() {
       </div>
 
       <Button type="submit" className="h-11 w-full" disabled={!password || submitting}>
-        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
+        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : t("Sign in")}
       </Button>
       {passkey && (
         <Button
@@ -127,7 +131,7 @@ function LoginForm() {
           ) : (
             <Fingerprint className="h-4 w-4" />
           )}
-          Unlock with a passkey
+          {t("Unlock with a passkey")}
         </Button>
       )}
     </form>

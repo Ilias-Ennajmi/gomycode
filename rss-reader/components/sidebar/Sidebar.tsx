@@ -130,7 +130,7 @@ export function Sidebar({
     if (groupFeeds.length === 0 && !empty) return null;
     return (
       <div key={label}>
-        <p className="px-2.5 pb-1 pt-2 text-xs text-muted-foreground">{label}</p>
+        <p className="px-2.5 pb-1 pt-2 text-xs text-muted-foreground">{t(label)}</p>
         <div className="space-y-0.5">
           {groupFeeds.length === 0 && empty}
           {groupFeeds.map((feed) => (
@@ -202,7 +202,7 @@ export function Sidebar({
               type="button"
               onClick={() => setSearchDraft("")}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label="Clear search"
+              aria-label={t("Clear search")}
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -229,8 +229,8 @@ export function Sidebar({
                 });
               }
             }}
-            aria-label={pinned ? "Unpin this search" : "Pin this search"}
-            title={pinned ? "Unpin this search" : "Pin this search to the sidebar"}
+            aria-label={pinned ? t("Unpin this search") : t("Pin this search")}
+            title={pinned ? t("Unpin this search") : t("Pin this search to the sidebar")}
           >
             {pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
           </Button>
@@ -240,7 +240,7 @@ export function Sidebar({
           size="icon"
           className="h-8 w-8 shrink-0"
           onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-          aria-label="Toggle dark mode"
+          aria-label={t("Toggle dark mode")}
         >
           {!mounted ? (
             <SunMoon className="h-4 w-4" />
@@ -434,11 +434,12 @@ function SavedSearchItem({
   onOpen: () => void;
   onRemove: () => void;
 }) {
+  const { t } = useT();
   const count = useSavedSearchCount(saved);
   return (
     <NavItem
       icon={<Search className="h-4 w-4" />}
-      label={saved.label || saved.query}
+      label={t(saved.label) || saved.query}
       count={count}
       active={active}
       onClick={onOpen}

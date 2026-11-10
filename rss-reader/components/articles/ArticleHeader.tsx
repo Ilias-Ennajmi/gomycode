@@ -78,18 +78,18 @@ export function ArticleHeader({
         <span>
           {article.isVideo
             ? article.liveStatus === "upcoming"
-              ? "Upcoming"
+              ? t("Upcoming")
               : article.liveStatus === "live"
-                ? "Live now"
+                ? t("Live now")
                 : article.isShort
-                  ? "Short"
+                  ? t("Short")
                   : article.durationSeconds
                     ? `${durationLabel(article.durationSeconds)} video`
-                    : "Video"
+                    : t("Video")
             : article.audioUrl
               ? article.durationSeconds
                 ? `${durationLabel(article.durationSeconds)} episode`
-                : "Episode"
+                : t("Episode")
               : article.readingMinutes
                 ? `${article.readingMinutes} min read`
                 : readingTime(article.content || article.summary)}
@@ -104,7 +104,7 @@ export function ArticleHeader({
           onClick={onToggleSave}
         >
           <Bookmark className={cn("h-3.5 w-3.5", article.isSaved && "fill-current")} />
-          {article.isSaved ? "In Later" : "Read later"}
+          {article.isSaved ? t("In Later") : t("Read later")}
         </Button>
         {article.isSaved && (
           <Button variant="outline" size="sm" className="gap-1.5" onClick={onToggleArchive}>
@@ -113,28 +113,28 @@ export function ArticleHeader({
             ) : (
               <Archive className="h-3.5 w-3.5" />
             )}
-            {article.archivedAt ? "Unarchive" : "Archive"}
+            {article.archivedAt ? t("Unarchive") : t("Archive")}
           </Button>
         )}
         {onCollect && (
           <Button variant="outline" size="sm" className="gap-1.5" onClick={onCollect}>
-            <FolderPlus className="h-3.5 w-3.5" /> Collect
+            <FolderPlus className="h-3.5 w-3.5" /> {t("Collect")}
           </Button>
         )}
         <SnoozeMenu article={article} align="start">
           <Button variant="outline" size="sm" className="gap-1.5">
             <AlarmClock className="h-3.5 w-3.5" />
-            {isSnoozed(article) ? `Snoozed · ${formatSnooze(article.snoozedUntil!)}` : "Snooze"}
+            {isSnoozed(article) ? `Snoozed · ${formatSnooze(article.snoozedUntil!)}` : t("Snooze")}
           </Button>
         </SnoozeMenu>
         <Button variant="outline" size="sm" className="gap-1.5" asChild>
           <a href={article.link} target="_blank" rel="noopener noreferrer">
-            <ExternalLink className="h-3.5 w-3.5" /> Open original
+            <ExternalLink className="h-3.5 w-3.5" /> {t("Open original")}
           </a>
         </Button>
         <Button variant="outline" size="sm" className="gap-1.5" onClick={onToggleRead}>
           <Check className="h-3.5 w-3.5" />
-          {article.isRead ? "Mark unread" : "Mark read"}
+          {article.isRead ? t("Mark unread") : t("Mark read")}
         </Button>
         <Button
           variant="outline"
@@ -142,7 +142,7 @@ export function ArticleHeader({
           className="gap-1.5"
           onClick={() => shareLink(article.title, article.link)}
         >
-          <Share2 className="h-3.5 w-3.5" /> Share
+          <Share2 className="h-3.5 w-3.5" /> {t("Share")}
         </Button>
       </div>
     </div>

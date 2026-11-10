@@ -4,12 +4,21 @@ import * as React from "react";
 import { Sparkles } from "lucide-react";
 import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.11.10";
+export const WHATS_NEW_VERSION = "2026.11.10b";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "Everything Reader can do",
+    text: "Settings → Help has a searchable list of every feature and where to find it, with a button that takes you there. Handy for what hides behind ⋯ menus and long-presses.",
+  },
+  {
+    title: "French, everywhere",
+    text: "The whole interface now follows Settings → Language: lists, the reader, the player, News, Discover, settings, messages. Articles stay in their own language.",
+  },
   {
     title: "No more frozen start",
     text: "On a weak connection the app used to sit on its logo until the network gave up. It now shows your saved copy after a few seconds and refreshes behind it. If it ever fails to open, a screen offers to try again or reset the saved copy.",
@@ -244,6 +253,7 @@ export function WhatsNew({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
+  const { t } = useT();
   const [open, setOpen] = React.useState(false);
   React.useEffect(() => {
     if (forced !== undefined) return;
@@ -274,7 +284,7 @@ export function WhatsNew({
       onOpenChange={change}
       title={
         <span className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" /> What&apos;s new
+          <Sparkles className="h-4 w-4 text-primary" /> {t("What's new")}
         </span>
       }
     >
@@ -288,7 +298,7 @@ export function WhatsNew({
       </ul>
       <div className="px-3 pt-5">
         <Button className="w-full" onClick={() => change(false)}>
-          Nice
+          {t("Nice")}
         </Button>
       </div>
     </Sheet>

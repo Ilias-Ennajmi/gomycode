@@ -66,7 +66,7 @@ export function BottomNav({ className }: { className?: string }) {
 
   return (
     <nav
-      aria-label="Sections"
+      aria-label={t("Sections")}
       className={cn(
         "relative shrink-0 border-t bg-background/95 pb-safe backdrop-blur md:hidden",
         mobilePane === "reader" && "hidden",
@@ -159,13 +159,14 @@ function TabButton({
   count: number;
   onClick: () => void;
 }) {
+  const { t } = useT();
   const Icon = icon ?? (tab ? (ICONS[tab.type] ?? Folder) : Folder);
   return (
     <button
       type="button"
       onClick={onClick}
       aria-current={active ? "page" : undefined}
-      aria-label={dot ? `${label}, something new` : label}
+      aria-label={dot ? `${label}, something new` : t(label)}
       className={cn(
         "flex h-full w-full flex-col items-center justify-center gap-0.5 text-[10.5px] font-medium transition-colors",
         active ? "text-foreground" : "text-muted-foreground"
@@ -190,7 +191,7 @@ function TabButton({
           />
         )}
       </span>
-      <span className="max-w-full truncate px-0.5">{label}</span>
+      <span className="max-w-full truncate px-0.5">{t(label)}</span>
     </button>
   );
 }

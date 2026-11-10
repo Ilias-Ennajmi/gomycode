@@ -4,9 +4,11 @@ import useSWR, { useSWRConfig } from "swr";
 import { toast } from "sonner";
 import { Smartphone } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { useT, tr } from "@/lib/i18n";
 
 /** Keep YouTube Shorts out of every list (they stay in YouTube → Shorts). */
 export function HideShortsSwitch() {
+  const { t } = useT();
   const { data, mutate } = useSWR<{ prefs: { hideShorts: boolean } }>("/api/videos/prefs");
   const { mutate: mutateAll } = useSWRConfig();
   const hideShorts = data?.prefs.hideShorts ?? false;
@@ -19,7 +21,7 @@ export function HideShortsSwitch() {
       body: JSON.stringify({ hideShorts: value }),
     });
     if (!res.ok) {
-      toast.error("Could not save that setting");
+      toast.error(tr("Could not save that setting"));
       mutate();
       return;
     }
@@ -30,9 +32,9 @@ export function HideShortsSwitch() {
     <label className="flex items-center gap-3 rounded-lg border px-3 py-2.5">
       <Smartphone className="h-4 w-4 shrink-0 text-muted-foreground" />
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium">Hide YouTube Shorts</span>
+        <span className="block text-sm font-medium">{t("Hide YouTube Shorts")}</span>
         <span className="block text-xs text-muted-foreground">
-          Everywhere except YouTube → Shorts
+          {t("Everywhere except YouTube → Shorts")}
         </span>
       </span>
       <Switch checked={hideShorts} onCheckedChange={change} disabled={!data} />

@@ -11,6 +11,7 @@ import {
   savePlaybackRate,
   type YTPlayer,
 } from "@/lib/youtube-player";
+import { useT } from "@/lib/i18n";
 
 export interface VideoControls {
   seek: (seconds: number) => void;
@@ -51,6 +52,7 @@ export function VideoPlayer({
   onEnded,
   endCard,
 }: VideoPlayerProps) {
+  const { t } = useT();
   const slotRef = React.useRef<HTMLDivElement>(null);
   const frameRef = React.useRef<HTMLDivElement>(null);
   const playerRef = React.useRef<YTPlayer | null>(null);
@@ -189,7 +191,7 @@ export function VideoPlayer({
         rel="noopener noreferrer"
         className="flex aspect-video w-full items-center justify-center gap-2 rounded-xl bg-muted text-sm font-medium"
       >
-        <Play className="h-4 w-4" /> Watch on YouTube
+        <Play className="h-4 w-4" /> {t("Watch on YouTube")}
       </a>
     );
   }
@@ -219,7 +221,7 @@ export function VideoPlayer({
                 slotRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
               }
               className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-              aria-label="Back to the video"
+              aria-label={t("Back to the video")}
             >
               <ArrowUp className="h-3.5 w-3.5" />
             </button>
@@ -230,7 +232,7 @@ export function VideoPlayer({
                 setDismissedMini(true);
               }}
               className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-              aria-label="Close the mini player"
+              aria-label={t("Close the mini player")}
             >
               <X className="h-3.5 w-3.5" />
             </button>

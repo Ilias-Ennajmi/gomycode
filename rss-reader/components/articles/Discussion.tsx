@@ -5,12 +5,14 @@ import { useInView } from "react-intersection-observer";
 import { ArrowUpRight, MessagesSquare } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils";
 import type { DiscussionThread } from "@/app/api/articles/[id]/discussion/route";
+import { useT } from "@/lib/i18n";
 
 /**
  * At the end of an article: the Hacker News and Reddit threads about it, one tap away.
  * Looked up only once the end of the article is in view, and left out when there are none.
  */
 export function Discussion({ articleId }: { articleId: string }) {
+  const { t } = useT();
   const { ref, inView } = useInView({ triggerOnce: true, rootMargin: "400px" });
   const { data } = useSWR<{ threads: DiscussionThread[] }>(
     inView ? `/api/articles/${articleId}/discussion` : null,
@@ -20,9 +22,9 @@ export function Discussion({ articleId }: { articleId: string }) {
   return (
     <div ref={ref}>
       {threads.length > 0 && (
-        <section aria-label="Discussion" className="mt-10">
+        <section aria-label={t("Discussion")} className="mt-10">
           <h2 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <MessagesSquare className="h-3.5 w-3.5 text-primary" /> Discussion
+            <MessagesSquare className="h-3.5 w-3.5 text-primary" /> {t("Discussion")}
           </h2>
           <ul className="divide-y rounded-2xl border bg-card/60">
             {threads.map((thread) => (
@@ -50,9 +52,11 @@ export function Discussion({ articleId }: { articleId: string }) {
                     <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                       {thread.site === "hn" ? "Hacker News" : thread.where}
                       {" · "}
-                      {thread.comments} comment{thread.comments === 1 ? "" : "s"}
+                      {thread.comments} {t("comment")}
+                      {thread.comments === 1 ? "" : "s"}
                       {" · "}
-                      {thread.points} point{thread.points === 1 ? "" : "s"}
+                      {thread.points} {t("point")}
+                      {thread.points === 1 ? "" : "s"}
                       {thread.at ? ` · ${formatRelativeTime(thread.at)}` : ""}
                     </span>
                   </span>

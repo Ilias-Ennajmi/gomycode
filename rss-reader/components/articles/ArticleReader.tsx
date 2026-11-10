@@ -83,8 +83,10 @@ import { ReaderHighlights } from "@/components/highlights/ReaderHighlights";
 import { ArticleHighlights } from "@/components/highlights/ArticleHighlights";
 import { SnoozeMenu, isSnoozed } from "@/components/articles/SnoozeMenu";
 import type { ArticleSummary } from "@/lib/types";
+import { useT, tr } from "@/lib/i18n";
 
 export function ArticleReader() {
+  const { t } = useT();
   const { view, selectedArticleId, setSelectedArticleId, setMobilePane, listParams, sort } =
     useReaderState();
   const { articles, mutate: mutateList } = useArticles(listParams, sort);
@@ -318,9 +320,9 @@ export function ArticleReader() {
       await toggleArticleArchived(article.id, archived);
       refreshAllLists();
       mutateSingle();
-      toast.success(archived ? "Archived" : "Moved back to Later");
+      toast.success(archived ? tr("Archived") : tr("Moved back to Later"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not update article");
+      toast.error(error instanceof Error ? error.message : tr("Could not update article"));
     }
   }
 
@@ -331,9 +333,9 @@ export function ArticleReader() {
       await toggleArticleSaved(article.id, !article.isSaved);
       refreshAllLists();
       mutateSingle();
-      toast.success(article.isSaved ? "Removed from Later" : "Added to Later");
+      toast.success(article.isSaved ? tr("Removed from Later") : tr("Added to Later"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not update article");
+      toast.error(error instanceof Error ? error.message : tr("Could not update article"));
     }
   }
 
@@ -344,7 +346,7 @@ export function ArticleReader() {
       await toggleArticleRead(article.id, !article.isRead);
       mutate();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not update article");
+      toast.error(error instanceof Error ? error.message : tr("Could not update article"));
     }
   }
 
@@ -360,7 +362,7 @@ export function ArticleReader() {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center text-muted-foreground">
         <BookOpen className="h-10 w-10" />
-        <p className="text-sm">Select an article to start reading</p>
+        <p className="text-sm">{t("Select an article to start reading")}</p>
       </div>
     );
   }
@@ -388,7 +390,7 @@ export function ArticleReader() {
           onClick={() => updatePrefs({ focus: false })}
           className="absolute right-3 top-3 z-20 rounded-full border bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur hover:text-foreground"
         >
-          Exit focus
+          {t("Exit focus")}
         </button>
       )}
       <div
@@ -404,7 +406,7 @@ export function ArticleReader() {
           onClick={() => setMobilePane("list")}
         >
           <ChevronLeft className="h-5 w-5 shrink-0" />
-          <span className="max-w-[40vw] truncate">{view.label}</span>
+          <span className="max-w-[40vw] truncate">{t(view.label)}</span>
         </Button>
         <div className="flex items-center">
           <Button
@@ -412,8 +414,8 @@ export function ArticleReader() {
             size="icon"
             className={cn("h-10 w-10", article.isRead && "text-primary")}
             onClick={handleToggleRead}
-            aria-label={article.isRead ? "Mark unread" : "Mark read"}
-            title={article.isRead ? "Mark unread (M)" : "Mark read (M)"}
+            aria-label={article.isRead ? t("Mark unread") : t("Mark read")}
+            title={article.isRead ? t("Mark unread (M)") : t("Mark read (M)")}
           >
             <Check className="h-5 w-5" />
           </Button>
@@ -422,8 +424,8 @@ export function ArticleReader() {
             size="icon"
             className={cn("h-10 w-10", article.isSaved && "text-primary")}
             onClick={handleToggleSave}
-            aria-label={article.isSaved ? "Remove from Later" : "Read later"}
-            title={article.isSaved ? "Remove from Later (S)" : "Read later (S)"}
+            aria-label={article.isSaved ? t("Remove from Later") : t("Read later")}
+            title={article.isSaved ? t("Remove from Later (S)") : t("Read later (S)")}
           >
             <Bookmark className={cn("h-5 w-5", article.isSaved && "fill-current")} />
           </Button>
@@ -432,7 +434,7 @@ export function ArticleReader() {
               variant="ghost"
               size="icon"
               className={cn("h-10 w-10", isSnoozed(article) && "text-amber-500")}
-              aria-label="Snooze"
+              aria-label={t("Snooze")}
             >
               <AlarmClock className="h-5 w-5" />
             </Button>
@@ -443,7 +445,7 @@ export function ArticleReader() {
               size="icon"
               className="h-10 w-10"
               onClick={handleToggleArchive}
-              aria-label={article.archivedAt ? "Move back to Later" : "Archive"}
+              aria-label={article.archivedAt ? t("Move back to Later") : t("Archive")}
             >
               {article.archivedAt ? (
                 <ArchiveRestore className="h-5 w-5" />
@@ -457,7 +459,7 @@ export function ArticleReader() {
             size="icon"
             className="h-10 w-10"
             onClick={() => shareLink(article.title, article.link)}
-            aria-label="Share"
+            aria-label={t("Share")}
           >
             <Share className="h-5 w-5" />
           </Button>
@@ -669,7 +671,7 @@ export function ArticleReader() {
               />
               <TimeListCard
                 id="chapters"
-                title="Chapters"
+                title={t("Chapters")}
                 icon={ListVideo}
                 items={extras.chapters.map((c) => ({ t: c.t, label: c.title }))}
                 store={videoId ? timeStore : episodeTime}
@@ -677,7 +679,7 @@ export function ArticleReader() {
               />
               <TimeListCard
                 id="key-moments"
-                title="Key moments"
+                title={t("Key moments")}
                 icon={Sparkles}
                 items={extras.keyMoments.map((m) => ({ t: m.t, label: m.text }))}
                 store={videoId ? timeStore : episodeTime}
@@ -697,11 +699,11 @@ export function ArticleReader() {
             <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
               <Lock className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
               <span className="min-w-0 flex-1">
-                A paid post: this is the free preview. Read it all where you&rsquo;re subscribed.
+                {t("A paid post: this is the free preview. Read it all where you’re subscribed.")}
               </span>
               <Button size="sm" variant="outline" className="gap-1.5" asChild>
                 <a href={article.link} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-3.5 w-3.5" /> Open the post
+                  <ExternalLink className="h-3.5 w-3.5" /> {t("Open the post")}
                 </a>
               </Button>
             </div>
@@ -763,13 +765,13 @@ export function ArticleReader() {
           />
           {translating.translation && (
             <p className="mt-6 flex items-center justify-between gap-3 rounded-xl border bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
-              <span>Translated by AI. It can miss nuances.</span>
+              <span>{t("Translated by AI. It can miss nuances.")}</span>
               <button
                 type="button"
                 onClick={translating.original}
                 className="shrink-0 font-medium text-primary hover:underline"
               >
-                Read the original
+                {t("Read the original")}
               </button>
             </p>
           )}
@@ -810,8 +812,9 @@ function UpNext({
   next: ArticleSummary | null;
   onGo: (article: ArticleSummary) => void;
 }) {
+  const { t } = useT();
   return (
-    <nav aria-label="More articles" className="mt-12 border-t pt-6">
+    <nav aria-label={t("More articles")} className="mt-12 border-t pt-6">
       {next && (
         <button
           type="button"
@@ -830,7 +833,7 @@ function UpNext({
           )}
           <span className="min-w-0 flex-1">
             <span className="block text-xs font-semibold uppercase tracking-wide text-primary">
-              Up next
+              {t("Up next")}
             </span>
             <span className="mt-0.5 line-clamp-2 block text-[15px] font-semibold leading-snug">
               {next.title}
@@ -849,11 +852,13 @@ function UpNext({
           className="mt-3 flex w-full items-center gap-1.5 text-left text-sm text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4 shrink-0" />
-          <span className="truncate">Previous: {previous.title}</span>
+          <span className="truncate">
+            {t("Previous:")} {previous.title}
+          </span>
         </button>
       )}
       <p className="mt-4 text-center text-xs text-muted-foreground md:hidden">
-        Tip: swipe left or right to move between articles
+        {t("Tip: swipe left or right to move between articles")}
       </p>
     </nav>
   );
@@ -869,6 +874,7 @@ function AiSummary({
   /** False while the full article is still loading, so the summary uses the whole text. */
   ready: boolean;
 }) {
+  const { t } = useT();
   const status = useAiStatus();
   const { summary, isLoading } = useArticleSummary(
     articleId,
@@ -879,11 +885,11 @@ function AiSummary({
 
   return (
     <section
-      aria-label="AI summary"
+      aria-label={t("AI summary")}
       className="mt-6 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3.5"
     >
       <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
-        <Sparkles className="h-3.5 w-3.5" /> Summary
+        <Sparkles className="h-3.5 w-3.5" /> {t("Summary")}
       </p>
       {text ? (
         <p className="text-[15px] leading-relaxed text-foreground/90">{text}</p>
@@ -911,11 +917,12 @@ function FullArticleBar({
   onToggle: (feedVersion: boolean) => void;
   link: string;
 }) {
+  const { t } = useT();
   if (loading) {
     return (
-      <div className="mt-6 space-y-2" role="status" aria-label="Loading the full article">
+      <div className="mt-6 space-y-2" role="status" aria-label={t("Loading the full article")}>
         <Skeleton className="h-8 w-56 rounded-lg" />
-        <p className="text-xs text-muted-foreground">Loading the full article…</p>
+        <p className="text-xs text-muted-foreground">{t("Loading the full article…")}</p>
       </div>
     );
   }
@@ -938,7 +945,7 @@ function FullArticleBar({
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            {option.label}
+            {t(option.label)}
           </button>
         ))}
       </div>
@@ -948,15 +955,15 @@ function FullArticleBar({
     return (
       <div className="mt-6 rounded-lg border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
         {status === "limited"
-          ? "This site limits free reading, so only the excerpt is available here."
-          : "The full article couldn’t be loaded, so this is the feed’s excerpt."}{" "}
+          ? t("This site limits free reading, so only the excerpt is available here.")
+          : t("The full article couldn’t be loaded, so this is the feed’s excerpt.")}{" "}
         <a
           href={link}
           target="_blank"
           rel="noopener noreferrer"
           className="font-medium text-primary hover:underline"
         >
-          Open original
+          {t("Open original")}
         </a>
       </div>
     );
@@ -966,11 +973,12 @@ function FullArticleBar({
 
 /** "4 min left" while reading, from the words still below the fold. */
 function MinutesLeft({ words, progress }: { words: number; progress: number }) {
+  const { t } = useT();
   const minutes = Math.ceil((words * (1 - progress / 100)) / 230);
   if (words < 300 || progress < 3 || progress > 97 || minutes < 1) return null;
   return (
     <span className="pointer-events-none absolute bottom-4 right-4 z-10 rounded-full border bg-popover/90 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur">
-      {minutes} min left · done by{" "}
+      {minutes} {t("min left · done by")}{" "}
       {new Date(Date.now() + minutes * 60_000).toLocaleTimeString([], {
         hour: "numeric",
         minute: "2-digit",
@@ -992,6 +1000,7 @@ function ResumeReading({
   progress: number;
   scrollRef: React.RefObject<HTMLDivElement | null>;
 }) {
+  const { t } = useT();
   const [visible, setVisible] = React.useState(startProgress >= 10 && startProgress <= 90);
   React.useEffect(() => {
     if (!visible) return;
@@ -1021,7 +1030,7 @@ function ResumeReading({
       className="absolute bottom-[calc(env(safe-area-inset-bottom)+16px)] left-1/2 z-20 flex -translate-x-1/2 whitespace-nowrap animate-fade-in items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-medium text-background shadow-xl"
     >
       <ArrowDownToLine className="h-4 w-4" />
-      Continue where you left off · {startProgress}%
+      {t("Continue where you left off ·")} {startProgress}%
     </button>
   );
 }

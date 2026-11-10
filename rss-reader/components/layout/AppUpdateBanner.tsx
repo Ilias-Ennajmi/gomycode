@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Download, X } from "lucide-react";
 import { newerAppRelease } from "@/lib/native";
+import { useT } from "@/lib/i18n";
 
 const DISMISSED_KEY = "android-update-dismissed";
 
@@ -11,6 +12,7 @@ const DISMISSED_KEY = "android-update-dismissed";
  * features arrive through the website, so a new app is only needed when its shell changes.
  */
 export function AppUpdateBanner() {
+  const { t } = useT();
   const [release, setRelease] = React.useState<{ version: string; url: string } | null>(null);
 
   React.useEffect(() => {
@@ -44,14 +46,14 @@ export function AppUpdateBanner() {
     <div className="flex shrink-0 items-center gap-2 bg-primary px-3 py-2 text-sm text-primary-foreground">
       <Download className="h-4 w-4 shrink-0" />
       <a href={release.url} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate">
-        Reader {release.version} is available.{" "}
-        <span className="font-semibold underline">Update</span>
+        Reader {release.version} {t("is available.")}{" "}
+        <span className="font-semibold underline">{t("Update")}</span>
       </a>
       <button
         type="button"
         onClick={dismiss}
         className="rounded p-1 hover:bg-primary-foreground/10"
-        aria-label="Dismiss"
+        aria-label={t("Dismiss")}
       >
         <X className="h-4 w-4" />
       </button>

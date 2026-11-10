@@ -21,6 +21,7 @@ import { useAudio } from "@/components/audio/AudioProvider";
 import { Art } from "@/components/media/MediaCards";
 import type { DiscoverResult } from "@/lib/hooks/useDiscover";
 import type { SourcePreview as Preview, SourcePreviewItem } from "@/app/api/discover/preview/route";
+import { useT } from "@/lib/i18n";
 
 const KIND_LABEL = {
   rss: "Site",
@@ -50,6 +51,7 @@ export function SourcePreview({
   /** For a source already followed: its own buttons (open, mute, unfollow…). */
   manage?: React.ReactNode;
 }) {
+  const { t } = useT();
   const { data, error, isLoading } = useSWR<Preview>(
     `/api/discover/preview?url=${encodeURIComponent(result.url)}&kind=${result.kind}`,
     { revalidateOnFocus: false, shouldRetryOnError: false }
@@ -113,7 +115,7 @@ export function SourcePreview({
               )}
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent to-background" />
               <DialogPrimitive.Close
-                aria-label="Close"
+                aria-label={t("Close")}
                 className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-background/70 backdrop-blur hover:bg-background"
               >
                 <X className="h-4 w-4" />
@@ -151,7 +153,7 @@ export function SourcePreview({
                     ) : (
                       <Plus className="h-4 w-4" />
                     )}
-                    {isFollowing ? "Following" : "Follow"}
+                    {isFollowing ? t("Following") : t("Follow")}
                   </button>
                   {(data?.siteUrl || result.siteUrl) && (
                     <a
@@ -160,7 +162,7 @@ export function SourcePreview({
                       rel="noopener noreferrer"
                       className="flex h-11 items-center gap-1.5 rounded-full px-4 text-sm font-medium ring-1 ring-border hover:bg-accent"
                     >
-                      Website <ArrowUpRight className="h-3.5 w-3.5" />
+                      {t("Website")} <ArrowUpRight className="h-3.5 w-3.5" />
                     </a>
                   )}
                 </div>
@@ -186,7 +188,7 @@ export function SourcePreview({
                       onClick={() => setMore((v) => !v)}
                       className="mt-1 text-sm font-semibold hover:underline"
                     >
-                      {more ? "see less" : "… see more"}
+                      {more ? t("see less") : t("… see more")}
                     </button>
                   )}
                 </div>
@@ -194,24 +196,24 @@ export function SourcePreview({
 
               <h3 className="mb-2 text-[15px] font-bold tracking-tight">
                 {kind === "podcast"
-                  ? "Latest episodes"
+                  ? t("Latest episodes")
                   : kind === "youtube"
-                    ? "Latest videos"
-                    : "Latest posts"}
+                    ? t("Latest videos")
+                    : t("Latest posts")}
               </h3>
               {isLoading && (
                 <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Looking inside…
+                  <Loader2 className="h-4 w-4 animate-spin" /> {t("Looking inside…")}
                 </div>
               )}
               {error && (
                 <p className="rounded-xl bg-muted/60 px-4 py-3 text-sm text-muted-foreground">
-                  {(error as Error).message || "Couldn't load a preview right now."} You can still
-                  follow it.
+                  {(error as Error).message || t("Couldn't load a preview right now.")}{" "}
+                  {t("You can still follow it.")}
                 </p>
               )}
               {data && data.items.length === 0 && (
-                <p className="py-6 text-sm text-muted-foreground">Nothing published yet.</p>
+                <p className="py-6 text-sm text-muted-foreground">{t("Nothing published yet.")}</p>
               )}
               {data && kind === "youtube" ? (
                 <ul className="grid grid-cols-2 gap-3 pb-6">

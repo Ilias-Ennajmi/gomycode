@@ -8,6 +8,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatRelativeTime } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 // Highlights → Send to…: connect Readwise or a Notion database with your own token, send
 // now, and new highlights follow after each hourly refresh (lib/exports.ts).
@@ -38,9 +39,10 @@ export function SendHighlightsSheet({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useT();
   const { data, mutate } = useSWR<Status>(open ? "/api/highlights/send" : null);
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title="Send highlights">
+    <Sheet open={open} onOpenChange={onOpenChange} title={t("Send highlights")}>
       <div className="space-y-4 px-4 pb-4">
         {(["readwise", "notion"] as const).map((service) => (
           <Service
@@ -64,6 +66,7 @@ function Service({
   status?: { connected: boolean; lastAt: string | null };
   onChange: (status: Status) => void;
 }) {
+  const { t } = useT();
   const name = service === "readwise" ? "Readwise" : "Notion";
   const [token, setToken] = React.useState("");
   const [database, setDatabase] = React.useState("");
@@ -89,14 +92,14 @@ function Service({
         <h3 className="text-sm font-semibold">{name}</h3>
         {status?.connected && (
           <span className="text-xs text-muted-foreground">
-            {status.lastAt ? `Sent ${formatRelativeTime(status.lastAt)}` : "Connected"}
+            {status.lastAt ? `Sent ${formatRelativeTime(status.lastAt)}` : t("Connected")}
           </span>
         )}
       </div>
       {status?.connected ? (
         <>
           <p className="mt-1 text-xs text-muted-foreground">
-            New highlights go there by themselves every hour.
+            {t("New highlights go there by themselves every hour.")}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button
@@ -109,7 +112,7 @@ function Service({
               }
             >
               {busy === "send" && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-              Send new now
+              {t("Send new now")}
             </Button>
             <Button
               size="sm"
@@ -134,7 +137,7 @@ function Service({
               }}
             >
               {busy === "all" && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-              {service === "notion" ? "Start over" : "Send all again"}
+              {service === "notion" ? t("Start over") : t("Send all again")}
             </Button>
             <Button
               size="sm"
@@ -147,7 +150,7 @@ function Service({
                 if (res.ok) onChange(await res.json());
               }}
             >
-              Disconnect
+              {t("Disconnect")}
             </Button>
           </div>
         </>
@@ -166,7 +169,7 @@ function Service({
             value={token}
             onChange={(event) => setToken(event.target.value)}
             placeholder={
-              service === "readwise" ? "Readwise access token" : "Notion integration secret"
+              service === "readwise" ? t("Readwise access token") : t("Notion integration secret")
             }
             aria-label={`${name} token`}
           />
@@ -174,8 +177,8 @@ function Service({
             <Input
               value={database}
               onChange={(event) => setDatabase(event.target.value)}
-              placeholder="Database link or ID"
-              aria-label="Notion database"
+              placeholder={t("Database link or ID")}
+              aria-label={t("Notion database")}
             />
           )}
           <Button
@@ -184,7 +187,7 @@ function Service({
             disabled={!token.trim() || (service === "notion" && !database.trim()) || busy !== null}
           >
             {busy === "connect" && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-            Connect
+            {t("Connect")}
           </Button>
         </form>
       )}

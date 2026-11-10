@@ -133,7 +133,7 @@ export function TimePile({
               from === id ? "bg-background shadow-sm" : "text-muted-foreground"
             )}
           >
-            {label}
+            {t(label)}
           </button>
         ))}
       </div>

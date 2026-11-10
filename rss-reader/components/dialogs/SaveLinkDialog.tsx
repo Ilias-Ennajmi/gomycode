@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import type { ArticleSummary } from "@/lib/types";
 import { cacheLaterForOffline } from "@/components/layout/OfflineSupport";
+import { useT, tr } from "@/lib/i18n";
 
 interface SaveLinkDialogProps {
   open: boolean;
@@ -25,6 +26,7 @@ interface SaveLinkDialogProps {
 
 /** Save any web page to Read Later; the server extracts the readable text. */
 export function SaveLinkDialog({ open, onOpenChange }: SaveLinkDialogProps) {
+  const { t } = useT();
   const { setView, setLaterTab, setSelectedArticleId, setMobilePane } = useReaderState();
   const { mutate } = useSWRConfig();
   const [url, setUrl] = React.useState("");
@@ -48,7 +50,7 @@ export function SaveLinkDialog({ open, onOpenChange }: SaveLinkDialogProps) {
       if (!res.ok) throw new Error(body.error || "Could not save this link");
       const article = body.article as ArticleSummary;
       await mutate((key) => typeof key === "string" && key.startsWith("/api/articles"));
-      toast.success(body.existed ? "Moved to the top of Later" : "Saved to Later");
+      toast.success(body.existed ? tr("Moved to the top of Later") : tr("Saved to Later"));
       cacheLaterForOffline();
       onOpenChange(false);
       setView({ type: "later", label: "Later" });
@@ -56,7 +58,7 @@ export function SaveLinkDialog({ open, onOpenChange }: SaveLinkDialogProps) {
       setSelectedArticleId(article.id);
       setMobilePane("reader");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save this link");
+      toast.error(error instanceof Error ? error.message : tr("Could not save this link"));
     } finally {
       setSaving(false);
     }
@@ -67,10 +69,11 @@ export function SaveLinkDialog({ open, onOpenChange }: SaveLinkDialogProps) {
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit} className="space-y-4">
           <DialogHeader>
-            <DialogTitle>Save a link</DialogTitle>
+            <DialogTitle>{t("Save a link")}</DialogTitle>
             <DialogDescription>
-              Paste any article or video link. It&rsquo;s saved to Later with the text cleaned up
-              for reading.
+              {t(
+                "Paste any article or video link. It’s saved to Later with the text cleaned up for reading."
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="relative">
@@ -83,16 +86,16 @@ export function SaveLinkDialog({ open, onOpenChange }: SaveLinkDialogProps) {
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://…"
               className="pl-9"
-              aria-label="Link to save"
+              aria-label={t("Link to save")}
             />
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t("Cancel")}
             </Button>
             <Button type="submit" disabled={saving || !url.trim()} className="gap-1.5">
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              Save to Later
+              {t("Save to Later")}
             </Button>
           </DialogFooter>
         </form>

@@ -32,6 +32,7 @@ export function ShortsPlayer({
   startIndex: number;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const shorts = React.useMemo(
     () => articles.filter((a) => a.isVideo && youTubeVideoId(a.link)),
     [articles]
@@ -224,7 +225,7 @@ export function ShortsPlayer({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("Close")}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 backdrop-blur"
           >
             <X className="h-5 w-5" />
@@ -255,7 +256,7 @@ export function ShortsPlayer({
         <button
           type="button"
           onClick={togglePlay}
-          aria-label={paused ? "Play" : "Pause"}
+          aria-label={paused ? t("Play") : t("Pause")}
           className="absolute inset-0 z-10 cursor-default"
         />
         {paused && (
@@ -281,7 +282,7 @@ export function ShortsPlayer({
         {/* Actions down the right, like the apps this borrows from. */}
         <div className="absolute bottom-24 right-2 z-20 flex flex-col items-center gap-4 pb-safe">
           <Action
-            label={isSaved ? "Remove from Later" : "Read later"}
+            label={isSaved ? t("Remove from Later") : t("Read later")}
             active={isSaved}
             onClick={() => {
               haptic("success");
@@ -291,11 +292,11 @@ export function ShortsPlayer({
           >
             <Bookmark className={cn("h-6 w-6", isSaved && "fill-current")} />
           </Action>
-          <Action label="Share" onClick={() => void shareLink(current.title, current.link)}>
+          <Action label={t("Share")} onClick={() => void shareLink(current.title, current.link)}>
             <Share2 className="h-6 w-6" />
           </Action>
           <Action
-            label="Details"
+            label={t("Details")}
             onClick={() => {
               onClose();
               setSelectedArticleId(current.id);
@@ -305,7 +306,7 @@ export function ShortsPlayer({
             <Text className="h-6 w-6" />
           </Action>
           <Action
-            label="Open on YouTube"
+            label={t("Open on YouTube")}
             onClick={() => window.open(current.link, "_blank", "noopener")}
           >
             <ExternalLink className="h-6 w-6" />
@@ -319,7 +320,7 @@ export function ShortsPlayer({
           type="button"
           onClick={() => go(-1)}
           disabled={index === 0}
-          aria-label="Previous short"
+          aria-label={t("Previous short")}
           className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30"
         >
           <ChevronUp className="h-5 w-5" />
@@ -328,7 +329,7 @@ export function ShortsPlayer({
           type="button"
           onClick={() => go(1)}
           disabled={index + 1 >= shorts.length}
-          aria-label="Next short"
+          aria-label={t("Next short")}
           className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30"
         >
           <ChevronDown className="h-5 w-5" />

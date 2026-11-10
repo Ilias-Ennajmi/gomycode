@@ -23,6 +23,7 @@ import { StoryImage, StoryMeta } from "@/components/news/StoryParts";
 import { refreshFeeds, refreshToastMessage } from "@/lib/hooks/useFeeds";
 import { useFrontPage, useInsights, type NewsSection, type NewsStory } from "@/lib/hooks/useNews";
 import { useReaderState } from "@/lib/hooks/useReaderState";
+import { useT, tr } from "@/lib/i18n";
 
 interface NewsViewProps {
   onManageSources: (setup?: boolean) => void;
@@ -30,6 +31,7 @@ interface NewsViewProps {
 
 /** The News tab: a front page with top stories, insights, sections and the weather. */
 export function NewsView({ onManageSources }: NewsViewProps) {
+  const { t } = useT();
   const { bind: bindPull, pull, refreshing: pulling } = usePullToRefresh();
   const { page, isLoading, error, mutate } = useFrontPage();
   const { setSelectedArticleId, setMobilePane, setView, selectedArticleId } = useReaderState();
@@ -52,7 +54,7 @@ export function NewsView({ onManageSources }: NewsViewProps) {
       globalMutate((key) => typeof key === "string" && key.startsWith("/api/"));
       toast.success(refreshToastMessage(result));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not refresh");
+      toast.error(e instanceof Error ? e.message : tr("Could not refresh"));
     } finally {
       setRefreshing(false);
     }
@@ -74,7 +76,7 @@ export function NewsView({ onManageSources }: NewsViewProps) {
               {today}
             </p>
             <h1 className="font-serif text-4xl font-semibold leading-none tracking-tight md:text-5xl">
-              The News
+              {t("The News")}
             </h1>
           </div>
           <div className="flex items-center gap-1.5">
@@ -85,7 +87,7 @@ export function NewsView({ onManageSources }: NewsViewProps) {
               onClick={() => setView({ type: "briefing", label: "Today's briefing" })}
             >
               <Sunrise className="h-4 w-4" />
-              <span className="max-sm:sr-only">Briefing</span>
+              <span className="max-sm:sr-only">{t("Briefing")}</span>
             </Button>
             <WeatherWidget />
             <Button
@@ -94,7 +96,7 @@ export function NewsView({ onManageSources }: NewsViewProps) {
               className="h-9 w-9 rounded-full"
               onClick={refresh}
               disabled={refreshing}
-              aria-label="Refresh news"
+              aria-label={t("Refresh news")}
             >
               <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
             </Button>
@@ -105,7 +107,7 @@ export function NewsView({ onManageSources }: NewsViewProps) {
               onClick={() => onManageSources()}
             >
               <Settings2 className="h-4 w-4" />
-              <span className="max-sm:sr-only">Sources</span>
+              <span className="max-sm:sr-only">{t("Sources")}</span>
             </Button>
           </div>
         </header>
@@ -114,16 +116,16 @@ export function NewsView({ onManageSources }: NewsViewProps) {
           <FrontPageSkeleton />
         ) : error && !page ? (
           <p className="py-16 text-center text-sm text-muted-foreground">
-            The news didn&rsquo;t load. Check your connection and try again.
+            {t("The news didn’t load. Check your connection and try again.")}
           </p>
         ) : page && !page.hasSources ? (
           <Welcome onSetup={() => onManageSources(true)} />
         ) : page && page.hero.length === 0 && page.sections.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center text-sm text-muted-foreground">
             <Newspaper className="h-10 w-10" />
-            <p>No fresh stories yet. Refresh to fetch the latest news.</p>
+            <p>{t("No fresh stories yet. Refresh to fetch the latest news.")}</p>
             <Button size="sm" onClick={refresh} disabled={refreshing}>
-              Refresh now
+              {t("Refresh now")}
             </Button>
           </div>
         ) : page ? (
@@ -135,7 +137,7 @@ export function NewsView({ onManageSources }: NewsViewProps) {
 
             {page.developing.length > 0 && (
               <StoryRow
-                title="Developing"
+                title={t("Developing")}
                 icon={<Zap className="h-4 w-4 text-amber-500" />}
                 stories={page.developing}
                 onOpen={open}
@@ -158,7 +160,7 @@ export function NewsView({ onManageSources }: NewsViewProps) {
                   {section.id === "morocco" && page.moroccoAbroad.length > 0 && (
                     <div className="min-w-0 md:col-span-2">
                       <StoryRow
-                        title="Morocco in the world press"
+                        title={t("Morocco in the world press")}
                         icon={<Globe2 className="h-4 w-4 text-primary" />}
                         stories={page.moroccoAbroad}
                         onOpen={open}
@@ -177,6 +179,7 @@ export function NewsView({ onManageSources }: NewsViewProps) {
 }
 
 function Insights() {
+  const { t } = useT();
   const { insights, isLoading } = useInsights(true);
   if (insights?.disabled) return null;
   const bullets = insights?.bullets ?? [];
@@ -185,7 +188,7 @@ function Insights() {
   return (
     <aside className="rounded-2xl border bg-card/60 p-5">
       <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-        <Sparkles className="h-4 w-4 text-primary" /> What&rsquo;s happening
+        <Sparkles className="h-4 w-4 text-primary" /> {t("What’s happening")}
       </h2>
       {isLoading && bullets.length === 0 ? (
         <div className="mt-4 space-y-3">
@@ -220,6 +223,7 @@ function SectionBlock({
   onSeeAll: () => void;
   activeId: string | null;
 }) {
+  const { t } = useT();
   const [lead, ...rest] = section.stories;
   return (
     <section className={cn("min-w-0", wide && "md:col-span-2")}>
@@ -230,7 +234,7 @@ function SectionBlock({
           onClick={onSeeAll}
           className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
         >
-          See all <ArrowRight className="h-3.5 w-3.5" />
+          {t("See all")} <ArrowRight className="h-3.5 w-3.5" />
         </button>
       </header>
       <div
@@ -355,17 +359,18 @@ function StoryRow({
 }
 
 function Welcome({ onSetup }: { onSetup: () => void }) {
+  const { t } = useT();
   return (
     <div className="mx-auto flex max-w-lg flex-col items-center gap-4 py-16 text-center">
       <Newspaper className="h-12 w-12 text-primary" />
-      <h2 className="font-serif text-3xl font-semibold">Your front page</h2>
+      <h2 className="font-serif text-3xl font-semibold">{t("Your front page")}</h2>
       <p className="text-muted-foreground">
-        Morocco, Europe and the world, the economy, sport and tech, from outlets you choose. Pick
-        your sources once and the front page builds itself: top stories, sections, what&rsquo;s
-        developing and the weather.
+        {t(
+          "Morocco, Europe and the world, the economy, sport and tech, from outlets you choose. Pick your sources once and the front page builds itself: top stories, sections, what’s developing and the weather."
+        )}
       </p>
       <Button size="lg" className="rounded-full" onClick={onSetup}>
-        Choose my sources
+        {t("Choose my sources")}
       </Button>
     </div>
   );

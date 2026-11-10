@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { useFeeds, useCategories } from "@/lib/hooks/useFeeds";
 import { useReaderState, type ViewState } from "@/lib/hooks/useReaderState";
 import type { LaterTab } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 interface Command {
   id: string;
@@ -74,6 +75,7 @@ export function CommandPalette({
   onShowShortcuts,
   onRefresh,
 }: CommandPaletteProps) {
+  const { t } = useT();
   const { setView, setLaterTab, setSearch, setSelectedArticleId, setMobilePane } = useReaderState();
   const { feeds } = useFeeds();
   const { categories } = useCategories();
@@ -370,21 +372,21 @@ export function CommandPalette({
           onKeyDown={onKeyDown}
           className="fixed left-1/2 top-[max(1rem,12vh)] z-50 flex max-h-[min(70vh,520px)] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 flex-col overflow-hidden rounded-2xl border bg-popover text-popover-foreground shadow-2xl data-[state=open]:animate-fade-in"
         >
-          <DialogPrimitive.Title className="sr-only">Command palette</DialogPrimitive.Title>
+          <DialogPrimitive.Title className="sr-only">{t("Command palette")}</DialogPrimitive.Title>
           <div className="flex items-center gap-3 border-b px-4">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Go to, add, search…"
+              placeholder={t("Go to, add, search…")}
               className="h-12 min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted-foreground"
-              aria-label="Command"
+              aria-label={t("Command")}
               aria-controls="command-list"
               aria-activedescendant={results[active] ? `command-${results[active].id}` : undefined}
               autoFocus
             />
             <kbd className="hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground sm:block">
-              Esc
+              {t("Esc")}
             </kbd>
           </div>
           <div
@@ -394,7 +396,9 @@ export function CommandPalette({
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2"
           >
             {results.length === 0 && (
-              <p className="px-3 py-6 text-center text-sm text-muted-foreground">Nothing found</p>
+              <p className="px-3 py-6 text-center text-sm text-muted-foreground">
+                {t("Nothing found")}
+              </p>
             )}
             {results.map((command, index) => {
               const heading = command.group !== lastGroup ? command.group : null;
@@ -422,10 +426,10 @@ export function CommandPalette({
                     <span className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground">
                       {command.icon}
                     </span>
-                    <span className="min-w-0 flex-1 truncate">{command.label}</span>
+                    <span className="min-w-0 flex-1 truncate">{t(command.label)}</span>
                     {command.hint && (
                       <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
-                        {command.hint}
+                        {t(command.hint)}
                       </kbd>
                     )}
                   </button>

@@ -11,6 +11,7 @@ import { usePref } from "@/lib/prefs";
 import { readSeen, type StorySource } from "@/lib/stories";
 import type { FeedSummary } from "@/lib/types";
 import type { SourceTab } from "@/lib/hooks/useReaderState";
+import { useT } from "@/lib/i18n";
 
 const StoriesPlayer = dynamic(
   () => import("@/components/stories/StoriesPlayer").then((m) => m.StoriesPlayer),
@@ -35,6 +36,7 @@ function inScope(feed: FeedSummary, scope?: SourceTab) {
  * plays For You's picks.
  */
 export function StoryBubbles({ scope, className }: { scope?: SourceTab; className?: string }) {
+  const { t } = useT();
   const { feeds } = useFeeds();
   const { personal } = usePersonal();
   const [open, setOpen] = React.useState<number | null>(null);
@@ -83,7 +85,7 @@ export function StoryBubbles({ scope, className }: { scope?: SourceTab; classNam
         type="button"
         onClick={toggle}
         aria-expanded={false}
-        aria-label="Show stories"
+        aria-label={t("Show stories")}
         className={cn(
           "flex w-full items-center gap-2.5 px-4 py-2 text-left text-xs text-muted-foreground hover:bg-accent/60",
           className
@@ -101,8 +103,9 @@ export function StoryBubbles({ scope, className }: { scope?: SourceTab; classNam
           ))}
         </span>
         <span className="min-w-0 flex-1 truncate">
-          <span className="font-semibold text-foreground">Stories</span> · {sources.length} source
-          {sources.length === 1 ? "" : "s"} with something new
+          <span className="font-semibold text-foreground">{t("Stories")}</span> · {sources.length}{" "}
+          {t("source")}
+          {sources.length === 1 ? "" : "s"} {t("with something new")}
         </span>
         <ChevronDown className="h-4 w-4 shrink-0" />
       </button>
@@ -116,14 +119,14 @@ export function StoryBubbles({ scope, className }: { scope?: SourceTab; classNam
           type="button"
           onClick={toggle}
           aria-expanded={true}
-          aria-label="Hide stories"
+          aria-label={t("Hide stories")}
           className="absolute right-2 top-1 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-background/80 text-muted-foreground backdrop-blur hover:text-foreground"
         >
           <ChevronUp className="h-4 w-4" />
         </button>
         <div
           role="list"
-          aria-label="Stories"
+          aria-label={t("Stories")}
           className={cn(
             "flex gap-3 overflow-x-auto px-4 pb-2 pt-3 scrollbar-none snap-x",
             className

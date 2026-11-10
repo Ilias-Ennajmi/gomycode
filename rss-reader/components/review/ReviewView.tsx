@@ -24,6 +24,7 @@ import { shareQuoteImage } from "@/lib/quote-card";
 import { haptic } from "@/lib/native";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import { useReviewStatus, type ReviewItem } from "@/lib/hooks/useReview";
+import { useT, tr } from "@/lib/i18n";
 
 type Grade = "again" | "good" | "easy" | "never";
 function inDays(days: number) {
@@ -38,6 +39,7 @@ function inDays(days: number) {
  * back; a streak counts the days in a row with a review.
  */
 export function ReviewView() {
+  const { t } = useT();
   const { data, isLoading, mutate } = useReviewStatus();
   const { setSelectedArticleId, setMobilePane } = useReaderState();
   // The queue for this sitting: today's set, then "review more" batches.
@@ -66,10 +68,10 @@ export function ReviewView() {
       haptic();
       setQueue((q) => (q ? q.slice(1) : q));
       setDone((n) => n + 1);
-      if (value === "never") toast("It won't come back in reviews");
+      if (value === "never") toast(tr("It won't come back in reviews"));
       if ((queue?.length ?? 0) <= 1) mutate();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save your answer");
+      toast.error(error instanceof Error ? error.message : tr("Could not save your answer"));
     } finally {
       setBusy(false);
     }
@@ -82,7 +84,7 @@ export function ReviewView() {
       const body = (await res.json()) as { highlights: ReviewItem[] };
       setQueue(body.highlights);
     } catch {
-      toast.error("Could not load more highlights");
+      toast.error(tr("Could not load more highlights"));
     } finally {
       setLoadingMore(false);
     }
@@ -116,17 +118,18 @@ export function ReviewView() {
         <header className="flex items-center gap-3">
           <BookOpenCheck className="h-6 w-6 text-primary" />
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-semibold tracking-tight">Daily review</h1>
+            <h1 className="text-xl font-semibold tracking-tight">{t("Daily review")}</h1>
             <p className="text-sm text-muted-foreground">
-              A few highlights a day, so what you kept stays with you.
+              {t("A few highlights a day, so what you kept stays with you.")}
             </p>
           </div>
           {data && data.streak > 0 && (
             <span
               className="inline-flex items-center gap-1 rounded-full bg-orange-500/15 px-2.5 py-1 text-xs font-semibold text-orange-600 dark:text-orange-400"
-              title="Days in a row with a review"
+              title={t("Days in a row with a review")}
             >
-              <Flame className="h-3.5 w-3.5" /> {data.streak} day{data.streak === 1 ? "" : "s"}
+              <Flame className="h-3.5 w-3.5" /> {data.streak} {t("day")}
+              {data.streak === 1 ? "" : "s"}
             </span>
           )}
         </header>
@@ -177,25 +180,25 @@ export function ReviewView() {
         {current && (
           <div className="sticky bottom-0 -mx-5 mt-6 border-t bg-background/95 px-5 pb-safe pt-3 backdrop-blur">
             <p className="mb-2 text-center text-xs text-muted-foreground">
-              Did it stick? It comes back…
+              {t("Did it stick? It comes back…")}
             </p>
             <div className="grid grid-cols-3 gap-2">
               <GradeButton
-                label="Again"
+                label={t("Again")}
                 hint={inDays(current.next.again)}
                 disabled={busy}
                 onClick={() => void grade("again")}
                 icon={<RotateCcw className="h-4 w-4" />}
               />
               <GradeButton
-                label="Good"
+                label={t("Good")}
                 hint={inDays(current.next.good)}
                 disabled={busy}
                 onClick={() => void grade("good")}
                 primary
               />
               <GradeButton
-                label="Easy"
+                label={t("Easy")}
                 hint={inDays(current.next.easy)}
                 disabled={busy}
                 onClick={() => void grade("easy")}
@@ -207,7 +210,7 @@ export function ReviewView() {
               disabled={busy}
               className="mx-auto mt-2 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
             >
-              <EyeOff className="h-3.5 w-3.5" /> Don&apos;t show this again
+              <EyeOff className="h-3.5 w-3.5" /> {t("Don't show this again")}
             </button>
           </div>
         )}
@@ -231,6 +234,7 @@ function GradeButton({
   primary?: boolean;
   icon?: React.ReactNode;
 }) {
+  const { t } = useT();
   return (
     <button
       type="button"
@@ -245,7 +249,7 @@ function GradeButton({
     >
       <span className="flex items-center gap-1.5 text-sm font-semibold">
         {icon}
-        {label}
+        {t(label)}
       </span>
       <span
         className={cn(
@@ -253,7 +257,7 @@ function GradeButton({
           primary ? "text-primary-foreground/80" : "text-muted-foreground"
         )}
       >
-        {hint}
+        {t(hint)}
       </span>
     </button>
   );
@@ -271,6 +275,7 @@ function SwipeableCard({
   onOpen: () => void;
   onGrade: (grade: Grade) => void;
 }) {
+  const { t } = useT();
   const [dx, setDx] = React.useState(0);
   const drag = React.useRef<{ x: number; y: number; horizontal: boolean | null } | null>(null);
   const armed = Math.abs(dx) >= SWIPE_AT;
@@ -315,7 +320,7 @@ function SwipeableCard({
           )}
           aria-hidden
         >
-          {dx > 0 ? "Good" : "Again"}
+          {dx > 0 ? t("Good") : t("Again")}
         </div>
       )}
       <div
@@ -329,6 +334,7 @@ function SwipeableCard({
 }
 
 function ReviewCard({ item, onOpen }: { item: ReviewItem; onOpen: () => void }) {
+  const { t } = useT();
   const article = item.article;
   return (
     <article className="animate-rise-in rounded-2xl border bg-card p-5 shadow-sm md:p-7">
@@ -374,12 +380,12 @@ function ReviewCard({ item, onOpen }: { item: ReviewItem; onOpen: () => void }) 
               title: article?.title,
               source: article?.feed.title,
             }).catch((error) =>
-              toast.error(error instanceof Error ? error.message : "Could not make the picture")
+              toast.error(error instanceof Error ? error.message : tr("Could not make the picture"))
             )
           }
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
-          aria-label="Share as a picture"
-          title="Share as a picture"
+          aria-label={t("Share as a picture")}
+          title={t("Share as a picture")}
         >
           <ImageIcon className="h-4 w-4" />
         </button>
@@ -436,14 +442,16 @@ function Finished({
   loadingMore: boolean;
   onMore: () => void;
 }) {
+  const { t } = useT();
   const { setView, setLaterTab } = useReaderState();
   if (total === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed px-6 py-12 text-center">
         <Highlighter className="h-10 w-10 text-muted-foreground" />
         <p className="max-w-xs text-sm text-muted-foreground">
-          Nothing to review yet. Highlight passages while you read, and they come back here a day
-          later.
+          {t(
+            "Nothing to review yet. Highlight passages while you read, and they come back here a day later."
+          )}
         </p>
       </div>
     );
@@ -456,18 +464,18 @@ function Finished({
           <Check className="h-7 w-7" />
         </span>
       </div>
-      <h2 className="text-lg font-semibold">Done for today</h2>
+      <h2 className="text-lg font-semibold">{t("Done for today")}</h2>
       <p className="max-w-xs text-sm text-muted-foreground">
         {reviewed > 0
           ? `${reviewed} highlight${reviewed === 1 ? "" : "s"} reviewed today.`
-          : "Nothing was due today."}
-        {streak > 1 ? ` That's ${streak} days in a row.` : ""} New ones come back tomorrow.
+          : t("Nothing was due today.")}
+        {streak > 1 ? ` That's ${streak} days in a row.` : ""} {t("New ones come back tomorrow.")}
       </p>
       <div className="mt-2 flex flex-wrap justify-center gap-2">
         {moreDue > 0 && (
           <Button onClick={onMore} disabled={loadingMore} className="gap-1.5">
             {loadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
-            Review {Math.min(5, moreDue)} more
+            {t("Review")} {Math.min(5, moreDue)} {t("more")}
           </Button>
         )}
         <Button
@@ -477,7 +485,7 @@ function Finished({
             setLaterTab("highlights");
           }}
         >
-          All highlights
+          {t("All highlights")}
         </Button>
       </div>
     </div>
@@ -486,6 +494,7 @@ function Finished({
 
 /** On Today: today's review waiting, one tap away. Nothing when it's done or empty. */
 export function ReviewPrompt() {
+  const { t } = useT();
   const { data } = useReviewStatus();
   const { setView } = useReaderState();
   const count = data?.highlights.length ?? 0;
@@ -500,14 +509,15 @@ export function ReviewPrompt() {
         <BookOpenCheck className="h-5 w-5" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">Daily review</span>
+        <span className="block text-sm font-semibold">{t("Daily review")}</span>
         <span className="block text-xs text-muted-foreground">
-          {count} highlight{count === 1 ? "" : "s"} to look back on
+          {count} {t("highlight")}
+          {count === 1 ? "" : "s"} {t("to look back on")}
           {data.streak > 0 ? ` · ${data.streak}-day streak` : ""}
         </span>
       </span>
       <span className="rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground">
-        Start
+        {t("Start")}
       </span>
     </button>
   );

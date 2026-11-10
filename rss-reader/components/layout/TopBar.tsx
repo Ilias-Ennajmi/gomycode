@@ -128,7 +128,7 @@ export function TopBar({
         )}
         <nav
           ref={navRef}
-          aria-label="Sections"
+          aria-label={t("Sections")}
           className={cn(
             "relative flex min-w-0 flex-1 items-center overflow-x-auto px-2 scrollbar-none md:px-3",
             phone && "hidden"
@@ -159,7 +159,7 @@ export function TopBar({
                 {!isActive && hasNew(tab.type) && (
                   <span
                     className="h-1.5 w-1.5 rounded-full bg-primary"
-                    aria-label="New since you last looked"
+                    aria-label={t("New since you last looked")}
                   />
                 )}
               </button>
@@ -181,7 +181,7 @@ export function TopBar({
             size="icon"
             className="h-9 w-9"
             onClick={openSearch}
-            aria-label="Search"
+            aria-label={t("Search")}
           >
             <Search className="h-[18px] w-[18px]" />
           </Button>
@@ -191,7 +191,7 @@ export function TopBar({
             onManageNews={onManageNews}
             onSaveLink={onSaveLink}
           >
-            <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Add">
+            <Button variant="ghost" size="icon" className="h-9 w-9" aria-label={t("Add")}>
               <Plus className="h-5 w-5" />
             </Button>
           </AddMenu>
@@ -200,7 +200,7 @@ export function TopBar({
             size="icon"
             className={cn("h-9 w-9", mobilePane === "settings" && "text-primary")}
             onClick={() => setMobilePane("settings")}
-            aria-label="Settings"
+            aria-label={t("Settings")}
           >
             <Settings className="h-[18px] w-[18px]" />
           </Button>
@@ -234,17 +234,18 @@ function AddMenu({
   onSaveLink: () => void;
   children: React.ReactNode;
 }) {
+  const { t } = useT();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
-        <DropdownMenuLabel className="text-xs text-muted-foreground">Add</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs text-muted-foreground">{t("Add")}</DropdownMenuLabel>
         <DropdownMenuItem onSelect={() => onAddFeed(kind)} className="gap-2.5 py-2">
           <Compass className="h-4 w-4 text-primary" />
           <span>
             <span className="block text-sm">{KIND_LABEL[kind]}</span>
             <span className="block text-xs text-muted-foreground">
-              Browse, search, or follow a topic
+              {t("Browse, search, or follow a topic")}
             </span>
           </span>
         </DropdownMenuItem>
@@ -255,9 +256,9 @@ function AddMenu({
           >
             <AtSign className="h-4 w-4 text-primary" />
             <span>
-              <span className="block text-sm">Email newsletter</span>
+              <span className="block text-sm">{t("Email newsletter")}</span>
               <span className="block text-xs text-muted-foreground">
-                Get an address to sign up with
+                {t("Get an address to sign up with")}
               </span>
             </span>
           </DropdownMenuItem>
@@ -265,16 +266,18 @@ function AddMenu({
         <DropdownMenuItem onSelect={onManageNews} className="gap-2.5 py-2">
           <Newspaper className="h-4 w-4 text-primary" />
           <span>
-            <span className="block text-sm">News sources</span>
-            <span className="block text-xs text-muted-foreground">Choose the outlets in News</span>
+            <span className="block text-sm">{t("News sources")}</span>
+            <span className="block text-xs text-muted-foreground">
+              {t("Choose the outlets in News")}
+            </span>
           </span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={onSaveLink} className="gap-2.5 py-2">
           <Link2 className="h-4 w-4 text-primary" />
           <span>
-            <span className="block text-sm">Save a link</span>
-            <span className="block text-xs text-muted-foreground">Read it later</span>
+            <span className="block text-sm">{t("Save a link")}</span>
+            <span className="block text-xs text-muted-foreground">{t("Read it later")}</span>
           </span>
         </DropdownMenuItem>
       </DropdownMenuContent>

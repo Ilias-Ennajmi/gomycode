@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { searchPlaces, useSaveNewsPrefs, useWeather } from "@/lib/hooks/useNews";
+import { useT, tr } from "@/lib/i18n";
 
 /** WMO weather codes (Open-Meteo) → an icon and a short label. */
 function describe(code: number, isDay = true): { icon: LucideIcon; label: string } {
@@ -43,6 +44,7 @@ function hourLabel(time: string) {
 }
 
 export function WeatherWidget({ className }: { className?: string }) {
+  const { t } = useT();
   const { weather, needsLocation, isLoading, usingDevice, locateDevice, forgetDevice } =
     useWeather();
   const savePrefs = useSaveNewsPrefs();
@@ -65,7 +67,7 @@ export function WeatherWidget({ className }: { className?: string }) {
       await locateDevice();
       setOpen(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not get your location");
+      toast.error(error instanceof Error ? error.message : tr("Could not get your location"));
     } finally {
       setLocating(false);
     }
@@ -79,7 +81,7 @@ export function WeatherWidget({ className }: { className?: string }) {
       setQuery("");
       setOpen(false);
     } catch {
-      toast.error("Could not save the city");
+      toast.error(tr("Could not save the city"));
     }
   }
 
@@ -98,7 +100,7 @@ export function WeatherWidget({ className }: { className?: string }) {
           className
         )}
         aria-label={
-          weather ? `Weather: ${weather.temperature}°, ${now?.label}` : "Set weather location"
+          weather ? `Weather: ${weather.temperature}°, ${now?.label}` : t("Set weather location")
         }
       >
         <Icon className="h-5 w-5 text-amber-500" />
@@ -106,12 +108,12 @@ export function WeatherWidget({ className }: { className?: string }) {
           <>
             <span className="text-base font-semibold tabular-nums">{weather.temperature}°</span>
             <span className="max-w-[9rem] truncate text-muted-foreground">
-              {weather.name ?? "Near you"}
+              {weather.name ?? t("Near you")}
             </span>
           </>
         ) : (
           <span className="text-muted-foreground">
-            {needsLocation ? "Add your city" : "Weather unavailable"}
+            {needsLocation ? t("Add your city") : t("Weather unavailable")}
           </span>
         )}
       </PopoverTrigger>
@@ -120,9 +122,10 @@ export function WeatherWidget({ className }: { className?: string }) {
           <div className="border-b p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-medium">{weather.name ?? "Near you"}</p>
+                <p className="text-sm font-medium">{weather.name ?? t("Near you")}</p>
                 <p className="text-xs text-muted-foreground">
-                  {now.label} · feels {weather.feelsLike}° · wind {weather.wind} km/h
+                  {t(now.label)} {t("· feels")} {weather.feelsLike}
+                  {t("° · wind")} {weather.wind} {t("km/h")}
                 </p>
               </div>
               <div className="shrink-0 whitespace-nowrap text-right">
@@ -164,13 +167,13 @@ export function WeatherWidget({ className }: { className?: string }) {
             ) : (
               <LocateFixed className="h-4 w-4 text-primary" />
             )}
-            {usingDevice ? "Update my exact location" : "Use my exact location"}
+            {usingDevice ? t("Update my exact location") : t("Use my exact location")}
           </button>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Or search a city…"
-            aria-label="Search a city"
+            placeholder={t("Or search a city…")}
+            aria-label={t("Search a city")}
             className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:border-primary"
           />
           {places.length > 0 && (
@@ -191,7 +194,7 @@ export function WeatherWidget({ className }: { className?: string }) {
           )}
           {weather?.source === "ip" && (
             <p className="px-2 text-[11px] text-muted-foreground">
-              Based on your approximate location.
+              {t("Based on your approximate location.")}
             </p>
           )}
         </div>

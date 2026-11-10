@@ -12,6 +12,7 @@ import {
   removeFromCollection,
   useCollections,
 } from "@/lib/hooks/useCollections";
+import { useT, tr } from "@/lib/i18n";
 
 /**
  * "Add to collection": a list of collections to tick, and a line to make a new one. Ticking
@@ -27,6 +28,7 @@ export function CollectionPicker({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useT();
   const { collections, isLoading } = useCollections(open ? articleId : null);
   const [name, setName] = React.useState("");
   const [busy, setBusy] = React.useState<string | null>(null);
@@ -38,7 +40,7 @@ export function CollectionPicker({
       if (inside) await removeFromCollection(id, articleId);
       else await addToCollection(id, articleId);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "That didn't work");
+      toast.error(error instanceof Error ? error.message : tr("That didn't work"));
     } finally {
       setBusy(null);
     }
@@ -54,7 +56,7 @@ export function CollectionPicker({
       haptic("success");
       toast.success(`Added to “${trimmed}”`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "That didn't work");
+      toast.error(error instanceof Error ? error.message : tr("That didn't work"));
     } finally {
       setBusy(null);
     }
@@ -64,7 +66,7 @@ export function CollectionPicker({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm gap-0 p-0">
         <DialogTitle className="px-4 pb-2 pt-4 text-base font-semibold">
-          Add to collection
+          {t("Add to collection")}
         </DialogTitle>
         <ul className="max-h-[50vh] overflow-y-auto border-y">
           {isLoading && (
@@ -74,7 +76,7 @@ export function CollectionPicker({
           )}
           {!isLoading && collections.length === 0 && (
             <li className="px-4 py-5 text-sm text-muted-foreground">
-              No collections yet. Name one below to start it with this article.
+              {t("No collections yet. Name one below to start it with this article.")}
             </li>
           )}
           {collections.map((c) => (
@@ -102,8 +104,9 @@ export function CollectionPicker({
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{c.name}</span>
                   <span className="block text-xs text-muted-foreground">
-                    {c.count} article{c.count === 1 ? "" : "s"}
-                    {c.slug ? " · public" : ""}
+                    {c.count} {t("article")}
+                    {c.count === 1 ? "" : "s"}
+                    {c.slug ? t(" · public") : ""}
                   </span>
                 </span>
               </button>
@@ -121,14 +124,14 @@ export function CollectionPicker({
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="New collection…"
-            aria-label="New collection name"
+            placeholder={t("New collection…")}
+            aria-label={t("New collection name")}
             className="h-9 min-w-0 flex-1 rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
           />
           <button
             type="submit"
             disabled={!name.trim() || busy === "new"}
-            aria-label="Create"
+            aria-label={t("Create")}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-40"
           >
             {busy === "new" ? (

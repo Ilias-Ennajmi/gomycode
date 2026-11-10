@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { WifiOff } from "lucide-react";
 import { flushOutbox, onOutboxChange, outboxSize } from "@/lib/outbox";
+import { useT } from "@/lib/i18n";
 
 /** Asks the service worker to save everything in Later for reading offline. */
 export function cacheLaterForOffline() {
@@ -22,6 +23,7 @@ export function cacheArticleForOffline(id: string) {
  * in the outbox and are sent when the connection returns.
  */
 export function OfflineSupport() {
+  const { t } = useT();
   const [online, setOnline] = React.useState(true);
   const [pending, setPending] = React.useState(0);
   const { mutate } = useSWRConfig();
@@ -73,10 +75,11 @@ export function OfflineSupport() {
   return (
     <div className="flex shrink-0 items-center justify-center gap-2 bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground">
       <WifiOff className="h-3.5 w-3.5" />
-      Offline: showing saved copies
+      {t("Offline: showing saved copies")}
       {pending > 0 && (
         <span className="rounded-full bg-primary/15 px-1.5 text-primary">
-          {pending} change{pending === 1 ? "" : "s"} waiting
+          {pending} {t("change")}
+          {pending === 1 ? "" : "s"} {t("waiting")}
         </span>
       )}
     </div>

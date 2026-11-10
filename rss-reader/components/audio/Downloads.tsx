@@ -43,8 +43,8 @@ export function DownloadButton({ episode, className }: { episode: Episode; class
   return (
     <button
       type="button"
-      aria-label={label}
-      title={label}
+      aria-label={t(label)}
+      title={t(label)}
       disabled={percent !== null}
       onClick={() => {
         if (saved) {

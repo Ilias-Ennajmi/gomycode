@@ -5,6 +5,7 @@ import { Highlighter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HIGHLIGHT_SWATCH } from "@/components/highlights/ReaderHighlights";
 import type { HighlightSummary } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 /**
  * "Your highlights" under the article: every passage and note, including ones that aren't
@@ -19,6 +20,7 @@ export function ArticleHighlights({
   missing: string[];
   bodyRef: React.MutableRefObject<HTMLDivElement | null>;
 }) {
+  const { t } = useT();
   if (highlights.length === 0) return null;
 
   function jumpTo(id: string) {
@@ -31,9 +33,9 @@ export function ArticleHighlights({
   }
 
   return (
-    <section aria-label="Your highlights" className="mt-10 rounded-2xl border bg-card/60 p-4">
+    <section aria-label={t("Your highlights")} className="mt-10 rounded-2xl border bg-card/60 p-4">
       <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        <Highlighter className="h-3.5 w-3.5" /> Your highlights · {highlights.length}
+        <Highlighter className="h-3.5 w-3.5" /> {t("Your highlights ·")} {highlights.length}
       </h2>
       <ul className="space-y-3">
         {highlights.map((h) => {
@@ -59,7 +61,7 @@ export function ArticleHighlights({
                   )}
                   {absent && (
                     <span className="mt-1 block text-xs text-muted-foreground">
-                      From the other version of this article
+                      {t("From the other version of this article")}
                     </span>
                   )}
                 </span>

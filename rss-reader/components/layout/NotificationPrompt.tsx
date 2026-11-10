@@ -4,6 +4,7 @@ import * as React from "react";
 import { toast } from "sonner";
 import { BellRing, Loader2, X } from "lucide-react";
 import { loadPushStatus, turnOnPush } from "@/lib/push-client";
+import { useT, tr } from "@/lib/i18n";
 
 const DISMISSED_KEY = "push-prompt-dismissed";
 const ASK_AGAIN_MS = 30 * 24 * 60 * 60 * 1000;
@@ -24,6 +25,7 @@ function dismissedRecently() {
  * This asks once (again a month after "Not now") when this device could get them but doesn't.
  */
 export function NotificationPrompt() {
+  const { t } = useT();
   const [publicKey, setPublicKey] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
 
@@ -60,10 +62,10 @@ export function NotificationPrompt() {
     setBusy(true);
     try {
       await turnOnPush(publicKey);
-      toast.success("Notifications are on. Choose which ones in Settings.");
+      toast.success(tr("Notifications are on. Choose which ones in Settings."));
       setPublicKey(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not turn on notifications");
+      toast.error(error instanceof Error ? error.message : tr("Could not turn on notifications"));
       dismiss();
     } finally {
       setBusy(false);
@@ -74,7 +76,7 @@ export function NotificationPrompt() {
     <div className="flex shrink-0 animate-fade-in items-center gap-3 border-b bg-primary/10 px-4 py-2.5 text-sm">
       <BellRing className="h-4 w-4 shrink-0 text-primary" />
       <p className="min-w-0 flex-1 leading-snug">
-        Get the morning briefing, breaking news and snoozed articles as notifications.
+        {t("Get the morning briefing, breaking news and snoozed articles as notifications.")}
       </p>
       <button
         type="button"
@@ -83,14 +85,14 @@ export function NotificationPrompt() {
         className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-70"
       >
         {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-        Turn on
+        {t("Turn on")}
       </button>
       <button
         type="button"
         onClick={dismiss}
         className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-        aria-label="Not now"
-        title="Not now"
+        aria-label={t("Not now")}
+        title={t("Not now")}
       >
         <X className="h-4 w-4" />
       </button>

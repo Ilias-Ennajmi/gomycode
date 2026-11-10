@@ -185,6 +185,11 @@
 }
 
 @layer utilities {
+  /* Red words on the dark theme: the button red (made for white text on it) is too dim
+     to read as text on a dark card. */
+  .dark .text-destructive {
+    color: hsl(0 85% 71%);
+  }
   .text-balance {
     text-wrap: balance;
   }

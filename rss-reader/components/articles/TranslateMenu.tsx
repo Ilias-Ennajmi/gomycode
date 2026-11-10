@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useT, tr } from "@/lib/i18n";
 
 export const TRANSLATE_LANGUAGES: { id: string; label: string }[] = [
   { id: "en", label: "English" },
@@ -51,7 +52,7 @@ export function useTranslation(articleId: string | null) {
           // Fine.
         }
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Couldn't translate this article");
+        toast.error(error instanceof Error ? error.message : tr("Couldn't translate this article"));
       } finally {
         setLoading(null);
       }
@@ -75,6 +76,7 @@ export function TranslateMenu({
   onOriginal: () => void;
   className?: string;
 }) {
+  const { t } = useT();
   const [last, setLast] = React.useState<string | null>(null);
   React.useEffect(() => {
     try {
@@ -90,8 +92,8 @@ export function TranslateMenu({
           variant="ghost"
           size="icon"
           className={cn("h-10 w-10", translation && "text-primary", className)}
-          aria-label="Translate"
-          title="Translate"
+          aria-label={t("Translate")}
+          title={t("Translate")}
         >
           {loading ? (
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -101,7 +103,9 @@ export function TranslateMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuLabel className="text-xs text-muted-foreground">Read in</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs text-muted-foreground">
+          {t("Read in")}
+        </DropdownMenuLabel>
         {TRANSLATE_LANGUAGES.map((language) => (
           <DropdownMenuItem
             key={language.id}
@@ -111,16 +115,16 @@ export function TranslateMenu({
               translation?.to === language.id && "font-semibold text-primary"
             )}
           >
-            {language.label}
+            {t(language.label)}
             {last === language.id && !translation && (
-              <span className="text-[10px] text-muted-foreground">last</span>
+              <span className="text-[10px] text-muted-foreground">{t("last")}</span>
             )}
           </DropdownMenuItem>
         ))}
         {translation && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={onOriginal}>Original</DropdownMenuItem>
+            <DropdownMenuItem onSelect={onOriginal}>{t("Original")}</DropdownMenuItem>
           </>
         )}
       </DropdownMenuContent>

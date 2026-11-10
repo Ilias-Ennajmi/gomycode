@@ -9,6 +9,7 @@ import { haptic } from "@/lib/native";
 import { markAllRead } from "@/lib/hooks/useFeeds";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import { useSWRConfig } from "swr";
+import { useT, tr } from "@/lib/i18n";
 
 interface Bullet {
   text: string;
@@ -38,6 +39,7 @@ export function CatchUpSheet({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useT();
   const { view, listParams, setSelectedArticleId, setMobilePane } = useReaderState();
   const { mutate } = useSWRConfig();
   const [state, setState] = React.useState<{
@@ -85,7 +87,7 @@ export function CatchUpSheet({
       await mutate((key) => typeof key === "string" && key.startsWith("/api/articles"));
       onOpenChange(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not mark them read");
+      toast.error(err instanceof Error ? err.message : tr("Could not mark them read"));
     } finally {
       setMarking(false);
     }
@@ -97,7 +99,7 @@ export function CatchUpSheet({
       onOpenChange={onOpenChange}
       title={
         <span className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" /> Catch me up
+          <Sparkles className="h-4 w-4 text-primary" /> {t("Catch me up")}
         </span>
       }
     >
@@ -108,17 +110,18 @@ export function CatchUpSheet({
           </p>
         ) : !state ? (
           <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Reading what you haven&apos;t…
+            <Loader2 className="h-4 w-4 animate-spin" /> {t("Reading what you haven't…")}
           </p>
         ) : state.bullets.length === 0 ? (
           <p className="py-6 text-sm text-muted-foreground">
-            Nothing unread here. You&apos;re caught up.
+            {t("Nothing unread here. You're caught up.")}
           </p>
         ) : (
           <>
             <p className="mb-3 text-xs text-muted-foreground">
-              {state.articleIds.length} unread article{state.articleIds.length === 1 ? "" : "s"}, in
-              a few lines.
+              {state.articleIds.length} {t("unread article")}
+              {state.articleIds.length === 1 ? "" : "s"}
+              {t(", in a few lines.")}
             </p>
             <ul className="space-y-3">
               {state.bullets.map((bullet, i) => (
@@ -160,7 +163,7 @@ export function CatchUpSheet({
             ) : (
               <CheckCheck className="h-4 w-4" />
             )}
-            Mark these {state.articleIds.length} read
+            {t("Mark these")} {state.articleIds.length} {t("read")}
           </Button>
         </div>
       )}

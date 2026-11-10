@@ -27,6 +27,7 @@ import { useFilters } from "@/lib/hooks/useFilters";
 import { HideShortsSwitch } from "@/components/video/HideShortsSwitch";
 import { loadPushStatus, turnOnPush, type PushStatus } from "@/lib/push-client";
 import type { FeedSummary, FilterRuleSummary } from "@/lib/types";
+import { useT, tr } from "@/lib/i18n";
 
 type Action = FilterRuleSummary["action"];
 
@@ -74,25 +75,27 @@ const TABS: { id: Action; label: string; icon: React.ReactNode }[] = [
 ];
 
 export function ContentFiltersDialog({ open, onOpenChange }: ContentFiltersDialogProps) {
+  const { t } = useT();
   const [tab, setTab] = React.useState<Action>("hide");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Content filters</DialogTitle>
+          <DialogTitle>{t("Content filters")}</DialogTitle>
           <DialogDescription>
-            Hide what you never want to see, boost what you always do, get alerts, and save matches
-            to Later automatically.
+            {t(
+              "Hide what you never want to see, boost what you always do, get alerts, and save matches to Later automatically."
+            )}
           </DialogDescription>
         </DialogHeader>
         <HideShortsSwitch />
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as Action)}>
           <TabsList className="grid w-full grid-cols-4">
-            {TABS.map((t) => (
-              <TabsTrigger key={t.id} value={t.id} className="gap-1.5 px-1">
-                {t.icon} {t.label}
+            {TABS.map((item) => (
+              <TabsTrigger key={item.id} value={item.id} className="gap-1.5 px-1">
+                {item.icon} {t(item.label)}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -110,6 +113,7 @@ export function ContentFiltersDialog({ open, onOpenChange }: ContentFiltersDialo
 
 /** Alerts arrive as notifications: when they are off on this device, say so and offer them. */
 function AlertDelivery() {
+  const { t } = useT();
   const [status, setStatus] = React.useState<PushStatus | null | undefined>(undefined);
   const [busy, setBusy] = React.useState(false);
   React.useEffect(() => {
@@ -124,8 +128,8 @@ function AlertDelivery() {
       <BellOff className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
       <span className="min-w-0 flex-1">
         {canTurnOn
-          ? "Notifications are off on this device: alerts will only show in Alerts."
-          : "This browser can't show notifications: alerts will show in Alerts."}
+          ? t("Notifications are off on this device: alerts will only show in Alerts.")
+          : t("This browser can't show notifications: alerts will show in Alerts.")}
       </span>
       {canTurnOn && (
         <Button
@@ -137,15 +141,15 @@ function AlertDelivery() {
             try {
               await turnOnPush(status!.publicKey!);
               setStatus(await loadPushStatus());
-              toast.success("Notifications on");
+              toast.success(tr("Notifications on"));
             } catch (error) {
-              toast.error(error instanceof Error ? error.message : "Could not turn them on");
+              toast.error(error instanceof Error ? error.message : tr("Could not turn them on"));
             } finally {
               setBusy(false);
             }
           }}
         >
-          Turn on
+          {t("Turn on")}
         </Button>
       )}
     </div>
@@ -153,6 +157,7 @@ function AlertDelivery() {
 }
 
 function RuleEditor({ action }: { action: Action }) {
+  const { t } = useT();
   const copy = COPY[action];
   const { rules, addRule, removeRule } = useFilters();
   const { feeds } = useFeeds();
@@ -171,7 +176,7 @@ function RuleEditor({ action }: { action: Action }) {
       await addRule(rule);
       reset();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save filter");
+      toast.error(error instanceof Error ? error.message : tr("Could not save filter"));
     } finally {
       setSaving(false);
     }
@@ -196,11 +201,16 @@ function RuleEditor({ action }: { action: Action }) {
             value={keywords}
             onChange={(e) => setKeywords(e.target.value)}
           />
-          <Button type="submit" size="icon" disabled={!keywords.trim() || saving} aria-label="Add">
+          <Button
+            type="submit"
+            size="icon"
+            disabled={!keywords.trim() || saving}
+            aria-label={t("Add")}
+          >
             <Plus className="h-4 w-4" />
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground">Separate several words with commas.</p>
+        <p className="text-xs text-muted-foreground">{t("Separate several words with commas.")}</p>
       </form>
 
       <div className="space-y-1.5">
@@ -209,7 +219,7 @@ function RuleEditor({ action }: { action: Action }) {
           <Select value={feedId} onValueChange={setFeedId}>
             <SelectTrigger>
               <SelectValue
-                placeholder={availableFeeds.length ? "Choose a feed" : "No feeds left"}
+                placeholder={availableFeeds.length ? t("Choose a feed") : t("No feeds left")}
               />
             </SelectTrigger>
             <SelectContent>
@@ -223,7 +233,7 @@ function RuleEditor({ action }: { action: Action }) {
           <Button
             size="icon"
             disabled={!feedId || saving}
-            aria-label="Add"
+            aria-label={t("Add")}
             onClick={() => save({ action, match: "feed", value: feedId }, () => setFeedId(""))}
           >
             <Plus className="h-4 w-4" />
@@ -234,7 +244,7 @@ function RuleEditor({ action }: { action: Action }) {
 
       <div className="flex min-h-10 flex-wrap gap-2 rounded-lg border bg-muted/30 p-2.5">
         {ownRules.length === 0 ? (
-          <p className="self-center px-1 text-sm text-muted-foreground">{copy.empty}</p>
+          <p className="self-center px-1 text-sm text-muted-foreground">{t(copy.empty)}</p>
         ) : (
           ownRules.map((rule) => (
             <RuleChip
@@ -242,7 +252,7 @@ function RuleEditor({ action }: { action: Action }) {
               rule={rule}
               feed={rule.match === "feed" ? feedById.get(rule.value) : undefined}
               onRemove={() =>
-                removeRule(rule.id).catch(() => toast.error("Could not delete filter"))
+                removeRule(rule.id).catch(() => toast.error(tr("Could not delete filter")))
               }
             />
           ))
@@ -261,13 +271,14 @@ function RuleChip({
   feed?: FeedSummary;
   onRemove: () => void;
 }) {
+  const { t } = useT();
   const label = rule.match === "feed" ? (feed?.title ?? "Deleted feed") : rule.value;
   return (
     <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border bg-background py-1 pl-2.5 pr-1 text-sm">
       {rule.match === "feed" && (
-        <FeedFavicon title={label} faviconUrl={feed?.faviconUrl} size={14} />
+        <FeedFavicon title={t(label)} faviconUrl={feed?.faviconUrl} size={14} />
       )}
-      <span className="truncate">{label}</span>
+      <span className="truncate">{t(label)}</span>
       <button
         type="button"
         onClick={onRemove}

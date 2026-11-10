@@ -15,6 +15,7 @@ import {
   SnipButton,
   SpeedButton,
 } from "@/components/audio/PlayerControls";
+import { useT } from "@/lib/i18n";
 
 /**
  * The full player on an episode's page. Until it's played, a single Play button (or
@@ -28,6 +29,7 @@ export function EpisodePlayer({
   /** A shared moment (?t=): play from there right away. */
   startAt?: number | null;
 }) {
+  const { t } = useT();
   const audio = useAudio();
   const episode = episodeOf(article);
   const current = audio.episode?.id === article.id;
@@ -62,15 +64,15 @@ export function EpisodePlayer({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-muted-foreground">{article.feed.title}</p>
           <p className="text-xs text-muted-foreground">
-            {article.durationSeconds ? durationLabel(article.durationSeconds) : "Episode"}
+            {article.durationSeconds ? durationLabel(article.durationSeconds) : t("Episode")}
             {!current && resumeAt > 0 && ` · ${clock(resumeAt)} listened`}
           </p>
         </div>
         <button
           type="button"
           onClick={() => audio.openPlayer(episode)}
-          aria-label="Open the full-screen player"
-          title="Full-screen player"
+          aria-label={t("Open the full-screen player")}
+          title={t("Full-screen player")}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           <Maximize2 className="h-4 w-4" />
@@ -82,7 +84,7 @@ export function EpisodePlayer({
             className="flex h-11 shrink-0 items-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background transition-transform active:scale-95"
           >
             <Play className="h-4 w-4 fill-current" />
-            {resumeAt > 0 ? `Resume at ${clock(resumeAt)}` : "Play"}
+            {resumeAt > 0 ? `Resume at ${clock(resumeAt)}` : t("Play")}
           </button>
         )}
       </div>
@@ -110,13 +112,14 @@ export function EpisodePlayer({
 
 /** "Ends at 9:42": when the episode finishes at this speed, if it keeps playing. */
 function EndsAt() {
+  const { t } = useT();
   const { duration, rate, playing } = useAudio();
   const current = usePlayerTime();
   if (!duration || !playing) return null;
   const end = new Date(Date.now() + ((duration - current) / rate) * 1000);
   return (
     <p className="mt-1 text-center text-[11px] text-muted-foreground">
-      Ends at {end.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+      {t("Ends at")} {end.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
     </p>
   );
 }
@@ -129,6 +132,7 @@ export function PlayEpisodeButton({
   article: ArticleSummary;
   className?: string;
 }) {
+  const { t } = useT();
   const audio = useAudio();
   const episode = episodeOf(article);
   if (!episode) return null;
@@ -155,7 +159,7 @@ export function PlayEpisodeButton({
             <span className="w-[3px] animate-pulse rounded-sm bg-current [animation-delay:150ms] [height:100%]" />
             <span className="w-[3px] animate-pulse rounded-sm bg-current [animation-delay:300ms] [height:40%]" />
           </span>
-          Playing
+          {t("Playing")}
         </>
       ) : (
         <>
@@ -164,7 +168,7 @@ export function PlayEpisodeButton({
             ? `${durationLabel(Math.max(60, article.durationSeconds - article.watchedSeconds))} left`
             : article.durationSeconds
               ? durationLabel(article.durationSeconds)
-              : "Play"}
+              : t("Play")}
         </>
       )}
     </button>

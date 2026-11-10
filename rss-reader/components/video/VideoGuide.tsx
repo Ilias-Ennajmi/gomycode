@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { clock, durationLabel, requestVideoAi, type VideoAiResult } from "@/lib/hooks/useVideo";
 import type { ArticleSummary, Chapter, TimedText } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 /**
  * While Gemini hasn't summarized the video yet: asks for it once when the video is opened,
@@ -22,6 +23,7 @@ export function VideoAiPending({
   /** A podcast episode: Gemini listens rather than watches. */
   audio?: boolean;
 }) {
+  const { t } = useT();
   const [state, setState] = React.useState<VideoAiResult | "working">("working");
   const onDoneRef = React.useRef(onDone);
   onDoneRef.current = onDone;
@@ -43,19 +45,23 @@ export function VideoAiPending({
   if (state === "failed" || state === "skipped" || state === "done") return null;
   return (
     <section
-      aria-label="AI summary"
+      aria-label={t("AI summary")}
       className="mt-6 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3.5"
     >
       <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
-        <Sparkles className="h-3.5 w-3.5" /> Summary
+        <Sparkles className="h-3.5 w-3.5" /> {t("Summary")}
       </p>
       {state === "working" || state === "running" ? (
         <>
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
             {audio
-              ? "Listening to the episode for a summary, key moments and a transcript… (a minute or two)"
-              : "Watching the video for a summary, key moments and a transcript… (up to a minute)"}
+              ? t(
+                  "Listening to the episode for a summary, key moments and a transcript… (a minute or two)"
+                )
+              : t(
+                  "Watching the video for a summary, key moments and a transcript… (up to a minute)"
+                )}
           </p>
           <div className="mt-3 space-y-2">
             <Skeleton className="h-3.5 w-full" />
@@ -65,10 +71,12 @@ export function VideoAiPending({
       ) : (
         <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
           <span className="min-w-0 flex-1">
-            Gemini is busy right now. The summary and transcript will be ready later on their own.
+            {t(
+              "Gemini is busy right now. The summary and transcript will be ready later on their own."
+            )}
           </span>
           <Button size="sm" variant="outline" className="gap-1.5" onClick={run}>
-            <RotateCcw className="h-3.5 w-3.5" /> Try again
+            <RotateCcw className="h-3.5 w-3.5" /> {t("Try again")}
           </Button>
         </div>
       )}
@@ -87,6 +95,7 @@ function TimeList({
   onSeek: (seconds: number) => void;
   collapsedCount?: number;
 }) {
+  const { t } = useT();
   const [expanded, setExpanded] = React.useState(false);
   // The part playing now: the last one that has started.
   let active = -1;
@@ -110,7 +119,7 @@ function TimeList({
               <span className="w-12 shrink-0 font-mono text-xs tabular-nums text-primary">
                 {clock(item.t)}
               </span>
-              <span className="min-w-0 flex-1">{item.label}</span>
+              <span className="min-w-0 flex-1">{t(item.label)}</span>
             </button>
           </li>
         ))}
@@ -121,7 +130,7 @@ function TimeList({
           onClick={() => setExpanded((v) => !v)}
           className="mt-1 px-2 text-xs font-medium text-muted-foreground hover:text-foreground"
         >
-          {expanded ? "Show less" : `Show all ${items.length}`}
+          {expanded ? t("Show less") : `Show all ${items.length}`}
         </button>
       )}
     </>
@@ -140,13 +149,14 @@ export function VideoGuide({
   current: number;
   onSeek: (seconds: number) => void;
 }) {
+  const { t } = useT();
   if (keyMoments.length === 0 && chapters.length === 0) return null;
   return (
     <div className="mt-6 grid grid-cols-1 gap-4">
       {keyMoments.length > 0 && (
-        <section aria-label="Key moments" className="rounded-xl border bg-card/60 p-3">
+        <section aria-label={t("Key moments")} className="rounded-xl border bg-card/60 p-3">
           <h2 className="mb-1.5 flex items-center gap-1.5 px-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5 text-primary" /> Key moments
+            <Sparkles className="h-3.5 w-3.5 text-primary" /> {t("Key moments")}
           </h2>
           <TimeList
             items={keyMoments.map((m) => ({ t: m.t, label: m.text }))}
@@ -156,9 +166,9 @@ export function VideoGuide({
         </section>
       )}
       {chapters.length > 0 && (
-        <section aria-label="Chapters" className="rounded-xl border bg-card/60 p-3">
+        <section aria-label={t("Chapters")} className="rounded-xl border bg-card/60 p-3">
           <h2 className="mb-1.5 flex items-center gap-1.5 px-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <ListVideo className="h-3.5 w-3.5" /> Chapters
+            <ListVideo className="h-3.5 w-3.5" /> {t("Chapters")}
           </h2>
           <TimeList
             items={chapters.map((c) => ({ t: c.t, label: c.title }))}
@@ -173,11 +183,12 @@ export function VideoGuide({
 
 /** "Resumed at 4:12 · Start over", under the player. */
 export function ResumedNote({ seconds, onRestart }: { seconds: number; onRestart: () => void }) {
+  const { t } = useT();
   const [visible, setVisible] = React.useState(true);
   if (!visible) return null;
   return (
     <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-      Resumed at {clock(seconds)}
+      {t("Resumed at")} {clock(seconds)}
       <span aria-hidden>·</span>
       <button
         type="button"
@@ -187,7 +198,7 @@ export function ResumedNote({ seconds, onRestart }: { seconds: number; onRestart
         }}
         className="font-medium text-foreground underline-offset-2 hover:underline"
       >
-        Start over
+        {t("Start over")}
       </button>
     </p>
   );
@@ -203,17 +214,18 @@ export function UpNextCard({
   onPlay: () => void;
   onDismiss: () => void;
 }) {
+  const { t } = useT();
   return (
     <div className="w-full max-w-sm rounded-2xl bg-background/95 p-3 text-foreground shadow-2xl">
       <div className="mb-2 flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {next.isSaved ? "Next in Later" : `More from ${next.feed.title}`}
+          {next.isSaved ? t("Next in Later") : `More from ${next.feed.title}`}
         </p>
         <button
           type="button"
           onClick={onDismiss}
           className="rounded-full p-1 text-muted-foreground hover:bg-accent"
-          aria-label="Close"
+          aria-label={t("Close")}
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -239,7 +251,7 @@ export function UpNextCard({
         </span>
       </button>
       <Button size="sm" className="mt-3 w-full gap-1.5" onClick={onPlay}>
-        <Play className="h-3.5 w-3.5 fill-current" /> Play next
+        <Play className="h-3.5 w-3.5 fill-current" /> {t("Play next")}
       </Button>
     </div>
   );

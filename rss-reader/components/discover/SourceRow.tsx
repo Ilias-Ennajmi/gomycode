@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { DiscoverResult } from "@/lib/hooks/useDiscover";
+import { useT } from "@/lib/i18n";
 
 export const KIND_META = {
   rss: { label: "Site", icon: Rss },
@@ -84,6 +85,7 @@ export function SourceRow({
   onMove,
   onOpen,
 }: SourceRowProps) {
+  const { t } = useT();
   const topic = result.provider === "topic";
   const { icon: KindIcon, label } = topic
     ? { icon: Newspaper, label: "News search" }
@@ -141,7 +143,7 @@ export function SourceRow({
             <AddedTo categories={categories} categoryId={added.categoryId} onMove={onMove} />
           ) : (
             <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11.5px] text-muted-foreground">
-              <span>{label}</span>
+              <span>{t(label)}</span>
               {result.lang && (
                 <>
                   <span aria-hidden>·</span>
@@ -178,7 +180,7 @@ export function SourceRow({
         ) : (
           <Plus className="h-3.5 w-3.5" />
         )}
-        {following ? "Following" : "Follow"}
+        {following ? t("Following") : t("Follow")}
       </button>
     </li>
   );
@@ -229,19 +231,22 @@ function AddedTo({
   categoryId: string | null;
   onMove: (categoryId: string | null) => void;
 }) {
+  const { t } = useT();
   const current = categories.find((c) => c.id === categoryId);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11.5px] font-medium text-primary hover:bg-primary/15">
         <Check className="h-3 w-3 shrink-0" />
         <span className="truncate">
-          Added to {current ? current.name : "your feed"}
-          <span className="text-primary/70"> · Change</span>
+          {t("Added to")} {current ? current.name : t("your feed")}
+          <span className="text-primary/70"> {t("· Change")}</span>
         </span>
         <ChevronDown className="h-3 w-3 shrink-0" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="max-h-72 w-56 overflow-y-auto">
-        <DropdownMenuLabel className="text-xs text-muted-foreground">Move to</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs text-muted-foreground">
+          {t("Move to")}
+        </DropdownMenuLabel>
         {categories.map((category) => (
           <DropdownMenuItem
             key={category.id}
@@ -260,7 +265,7 @@ function AddedTo({
         ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => onMove(null)} disabled={categoryId === null}>
-          No category
+          {t("No category")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

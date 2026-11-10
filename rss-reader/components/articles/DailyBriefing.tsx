@@ -4,9 +4,11 @@ import { ChevronRight, Sunrise } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBriefing } from "@/lib/hooks/useAi";
 import { useReaderState } from "@/lib/hooks/useReaderState";
+import { useT } from "@/lib/i18n";
 
 /** A compact entry to the Today briefing at the top of For You. */
 export function DailyBriefing() {
+  const { t } = useT();
   const { briefing, isLoading } = useBriefing(true);
   const { setView } = useReaderState();
 
@@ -26,12 +28,12 @@ export function DailyBriefing() {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[15px] font-semibold leading-tight tracking-tight">
-            Today&rsquo;s briefing
+            {t("Today’s briefing")}
           </span>
           {briefing ? (
             <>
               <span className="block text-xs text-muted-foreground">
-                {briefing.top.length} top stories · {minutes} min read
+                {briefing.top.length} {t("top stories ·")} {minutes} {t("min read")}
               </span>
               <span className="mt-1 block truncate text-[13px] text-foreground/80">
                 {briefing.top
@@ -41,7 +43,7 @@ export function DailyBriefing() {
               </span>
             </>
           ) : (
-            <span className="mt-1 block space-y-1.5" aria-label="Writing today's briefing">
+            <span className="mt-1 block space-y-1.5" aria-label={t("Writing today's briefing")}>
               <Skeleton className="h-3 w-3/4" />
               <Skeleton className="h-3 w-1/2" />
             </span>

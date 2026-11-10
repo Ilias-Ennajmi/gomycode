@@ -7,12 +7,14 @@ import { durationLabel } from "@/lib/hooks/useVideo";
 import { episodeOf, useAudio } from "@/components/audio/AudioProvider";
 import { Art } from "@/components/media/MediaCards";
 import type { ArticleSummary } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 /**
  * The top of the Podcasts tab: episodes started and not finished, one tap from picking up
  * where they stopped, like the "Continue" shelf of a podcast app.
  */
 export function ContinueListening({ onSeeAll }: { onSeeAll: () => void }) {
+  const { t } = useT();
   const { episode: playing, openPlayer } = useAudio();
   const { data } = useSWR<{ articles: ArticleSummary[] }>(
     "/api/articles?source=podcast&progress=1&page=1&limit=10",
@@ -25,14 +27,14 @@ export function ContinueListening({ onSeeAll }: { onSeeAll: () => void }) {
     <section aria-labelledby="continue-listening" className="px-4 pb-2 pt-3">
       <div className="mb-2 flex items-center justify-between">
         <h2 id="continue-listening" className="text-[15px] font-semibold">
-          Continue listening
+          {t("Continue listening")}
         </h2>
         <button
           type="button"
           onClick={onSeeAll}
           className="flex items-center gap-0.5 text-xs font-medium text-muted-foreground hover:text-foreground"
         >
-          See all <ChevronRight className="h-3.5 w-3.5" />
+          {t("See all")} <ChevronRight className="h-3.5 w-3.5" />
         </button>
       </div>
       <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 scrollbar-none">

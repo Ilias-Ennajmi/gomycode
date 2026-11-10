@@ -29,6 +29,7 @@ import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 import { refreshFeeds, refreshToastMessage, useAutoRefresh, useFeeds } from "@/lib/hooks/useFeeds";
 import { useSWRConfig } from "swr";
 import type { DiscoverKind } from "@/lib/discover/catalog";
+import { useT, tr } from "@/lib/i18n";
 
 // Dialogs and the less-used screens load right after the first paint instead of with the
 // page, so the list shows up sooner.
@@ -135,6 +136,7 @@ export function AppShell() {
 }
 
 function AppShellInner() {
+  const { t } = useT();
   const {
     mobilePane,
     setMobilePane,
@@ -249,7 +251,7 @@ function AppShellInner() {
         toast.success(refreshToastMessage(result));
       })
       .catch((error) =>
-        toast.error(error instanceof Error ? error.message : "Could not refresh feeds")
+        toast.error(error instanceof Error ? error.message : tr("Could not refresh feeds"))
       )
       .finally(() => {
         refreshingRef.current = false;
@@ -417,7 +419,7 @@ function AppShellInner() {
                     type="button"
                     onClick={() => setSelectedArticleId(null)}
                     className="absolute left-3 top-3 z-10 hidden h-9 w-9 items-center justify-center rounded-full bg-background/90 text-muted-foreground shadow ring-1 ring-border backdrop-blur hover:text-foreground md:flex"
-                    aria-label="Close article"
+                    aria-label={t("Close article")}
                   >
                     <X className="h-4 w-4" />
                   </button>

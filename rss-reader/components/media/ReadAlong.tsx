@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { clock } from "@/lib/hooks/useVideo";
 import { phraseAt, type Phrase } from "@/lib/phrases";
 import type { TimeStore } from "@/components/video/VideoGuide";
+import { useT } from "@/lib/i18n";
 
 // Read along like synced lyrics: short phrases, the one being said bright with its words
 // lighting up as they're spoken, what's been said dimmed, what's coming faint. The list
@@ -33,6 +34,7 @@ export function PhraseScroller({
   size: "card" | "full";
   className?: string;
 }) {
+  const { t } = useT();
   const active = useActivePhrase(store, phrases);
   const box = React.useRef<HTMLDivElement>(null);
   const touchedAt = React.useRef(0);
@@ -113,7 +115,7 @@ export function PhraseScroller({
           }}
           className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-primary-foreground px-3 py-1.5 text-xs font-semibold text-primary shadow-lg"
         >
-          <ArrowDownToLine className="h-3.5 w-3.5" /> Back to now
+          <ArrowDownToLine className="h-3.5 w-3.5" /> {t("Back to now")}
         </button>
       )}
     </div>

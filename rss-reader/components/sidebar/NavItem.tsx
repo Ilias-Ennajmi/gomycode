@@ -4,6 +4,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Ticker } from "@/components/ui/ticker";
+import { useT } from "@/lib/i18n";
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -25,6 +26,7 @@ export function NavItem({
   className,
   onClick,
 }: NavItemProps) {
+  const { t } = useT();
   return (
     <button
       type="button"
@@ -40,7 +42,7 @@ export function NavItem({
       <span className={cn("shrink-0", active ? "text-primary" : "text-muted-foreground")}>
         {icon}
       </span>
-      <span className="flex-1 truncate text-left">{label}</span>
+      <span className="flex-1 truncate text-left">{t(label)}</span>
       {trailing}
       {!!count && (
         <Badge

@@ -23,6 +23,7 @@ export function usePlayerTime() {
 
 /** A seek bar with the time played and left. Dragging previews; letting go seeks. */
 export function Scrubber({ className }: { className?: string }) {
+  const { t } = useT();
   const { duration, seek } = useAudio();
   const current = usePlayerTime();
   const [dragging, setDragging] = React.useState<number | null>(null);
@@ -45,7 +46,7 @@ export function Scrubber({ className }: { className?: string }) {
           if (dragging !== null) seek(dragging);
           setDragging(null);
         }}
-        aria-label="Position"
+        aria-label={t("Position")}
         aria-valuetext={`${clock(shown)} of ${clock(duration)}`}
         className="audio-scrubber w-full"
         style={{ "--progress": `${percent}%` } as React.CSSProperties}
@@ -65,13 +66,14 @@ export function PlayPauseButton({
   size?: "sm" | "lg";
   className?: string;
 }) {
+  const { t } = useT();
   const { playing, buffering, toggle } = useAudio();
   const Icon = buffering ? Loader2 : playing ? Pause : Play;
   return (
     <button
       type="button"
       onClick={toggle}
-      aria-label={playing ? "Pause" : "Play"}
+      aria-label={playing ? t("Pause") : t("Play")}
       className={cn(
         "flex shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-transform active:scale-95",
         size === "lg" ? "h-14 w-14" : "h-9 w-9",
@@ -188,7 +190,7 @@ export function SleepButton({ className }: { className?: string }) {
           )}
         >
           <Moon className="h-3.5 w-3.5" />
-          {label && <span className="tabular-nums">{label}</span>}
+          {label && <span className="tabular-nums">{t(label)}</span>}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

@@ -8,6 +8,7 @@ import { haptic } from "@/lib/native";
 import { useAiStatus } from "@/lib/hooks/useAi";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import type { AskSource } from "@/lib/smart";
+import { useT } from "@/lib/i18n";
 
 interface Turn {
   question: string;
@@ -23,6 +24,7 @@ const STORAGE_KEY = "ask-conversation";
  * The conversation stays for the session (so a follow-up can refer to the last answer).
  */
 export function AskView() {
+  const { t } = useT();
   const ai = useAiStatus();
   const { setSelectedArticleId, setMobilePane } = useReaderState();
   const { data: suggested } = useSWR<{ suggestions: string[] }>("/api/ask", {
@@ -101,9 +103,11 @@ export function AskView() {
           <header className="flex items-center gap-3">
             <MessageCircleQuestion className="h-6 w-6 text-primary" />
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-semibold tracking-tight">Ask your reader</h1>
+              <h1 className="text-xl font-semibold tracking-tight">{t("Ask your reader")}</h1>
               <p className="text-sm text-muted-foreground">
-                Questions answered from what you follow, with the articles behind each answer.
+                {t(
+                  "Questions answered from what you follow, with the articles behind each answer."
+                )}
               </p>
             </div>
             {turns.length > 0 && (
@@ -111,8 +115,8 @@ export function AskView() {
                 type="button"
                 onClick={() => setTurns([])}
                 className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
-                aria-label="Start over"
-                title="Start over"
+                aria-label={t("Start over")}
+                title={t("Start over")}
               >
                 <RotateCcw className="h-4 w-4" />
               </button>
@@ -121,14 +125,14 @@ export function AskView() {
 
           {ai && !ai.enabled && (
             <p className="mt-6 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-              AI is off: add a Gemini key in the settings to ask questions.
+              {t("AI is off: add a Gemini key in the settings to ask questions.")}
             </p>
           )}
 
           {turns.length === 0 ? (
             <div className="mt-8 space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Try asking
+                {t("Try asking")}
               </p>
               {[
                 ...suggestions,
@@ -158,7 +162,7 @@ export function AskView() {
                   <div className="rounded-2xl border bg-card/60 px-4 py-3 text-sm leading-relaxed">
                     {turn.answer === null ? (
                       <span className="flex items-center gap-2 text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" /> Reading your articles…
+                        <Loader2 className="h-4 w-4 animate-spin" /> {t("Reading your articles…")}
                       </span>
                     ) : turn.error ? (
                       <span className="text-destructive">{turn.error}</span>
@@ -217,15 +221,15 @@ export function AskView() {
               }
             }}
             rows={1}
-            placeholder="Ask about anything you follow…"
-            aria-label="Your question"
+            placeholder={t("Ask about anything you follow…")}
+            aria-label={t("Your question")}
             enterKeyHint="send"
             className="max-h-32 min-h-[44px] flex-1 resize-none rounded-2xl border bg-card px-4 py-2.5 text-base outline-none focus-visible:border-primary sm:text-sm"
           />
           <button
             type="submit"
             disabled={busy || !draft.trim()}
-            aria-label="Ask"
+            aria-label={t("Ask")}
             className={cn(
               "flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-opacity",
               (busy || !draft.trim()) && "opacity-40"

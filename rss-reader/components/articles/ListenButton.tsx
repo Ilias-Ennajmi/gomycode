@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { chunks, guessLang, htmlToText, narrationParts, voiceFor } from "@/lib/speech";
 import { usePref } from "@/lib/prefs";
+import { useT, tr } from "@/lib/i18n";
 
 // Read aloud with the browser's own speech engine: free, offline-capable, and
 // available on phones. Long texts are spoken sentence by sentence because some
@@ -110,7 +111,7 @@ export function useSpeech(resetKey: string | undefined) {
   const fallBack = React.useCallback(
     (parts: string[], lang: string) => {
       stopNatural();
-      toast(`The natural voice is busy: carrying on with this device's voice`);
+      toast(tr("The natural voice is busy: carrying on with this device's voice"));
       if (!supported) {
         setStatus("idle");
         return;
@@ -234,14 +235,15 @@ export function ListenButton({
   html: string;
   className?: string;
 }) {
+  const { t } = useT();
   if (!speech.supported) return null;
   const playing = speech.status === "playing";
   return (
     <button
       type="button"
       onClick={() => (playing ? speech.pause() : speech.play(html))}
-      aria-label={playing ? "Pause reading aloud" : "Listen"}
-      title={playing ? "Pause" : "Listen"}
+      aria-label={playing ? t("Pause reading aloud") : t("Listen")}
+      title={playing ? t("Pause") : t("Listen")}
       className={cn(
         "inline-flex items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
         speech.status !== "idle" && "text-primary",
@@ -261,6 +263,7 @@ export function ListenBar({
   speech: ReturnType<typeof useSpeech>;
   html: string;
 }) {
+  const { t } = useT();
   if (speech.status === "idle") return null;
   const playing = speech.status === "playing" || speech.status === "loading";
   return (
@@ -270,12 +273,12 @@ export function ListenBar({
         <span className="px-1.5 text-xs font-medium">
           {speech.status === "loading" ? (
             <span className="inline-flex items-center gap-1">
-              <Loader2 className="h-3 w-3 animate-spin" /> Preparing the voice…
+              <Loader2 className="h-3 w-3 animate-spin" /> {t("Preparing the voice…")}
             </span>
           ) : playing ? (
-            "Listening"
+            t("Listening")
           ) : (
-            "Paused"
+            t("Paused")
           )}
         </span>
         <button
@@ -292,8 +295,8 @@ export function ListenBar({
             speech.voice === "natural" && "text-primary"
           )}
           aria-pressed={speech.voice === "natural"}
-          aria-label="Natural voice"
-          title="Natural voice (AI)"
+          aria-label={t("Natural voice")}
+          title={t("Natural voice (AI)")}
         >
           <Sparkles className="h-3.5 w-3.5" /> AI
         </button>
@@ -301,7 +304,7 @@ export function ListenBar({
           type="button"
           onClick={() => (playing ? speech.pause() : speech.play(html))}
           className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-accent"
-          aria-label={playing ? "Pause" : "Resume"}
+          aria-label={playing ? t("Pause") : t("Resume")}
         >
           {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
         </button>
@@ -309,7 +312,7 @@ export function ListenBar({
           type="button"
           onClick={speech.cycleRate}
           className="h-8 rounded-full px-2 text-xs font-semibold tabular-nums hover:bg-accent"
-          aria-label="Change speed"
+          aria-label={t("Change speed")}
         >
           {speech.rate}×
         </button>
@@ -317,7 +320,7 @@ export function ListenBar({
           type="button"
           onClick={speech.stop}
           className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-accent"
-          aria-label="Stop"
+          aria-label={t("Stop")}
         >
           <X className="h-4 w-4" />
         </button>

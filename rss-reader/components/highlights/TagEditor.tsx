@@ -6,12 +6,14 @@ import { toast } from "sonner";
 import { updateHighlight } from "@/lib/hooks/useHighlights";
 import { useAiStatus } from "@/lib/hooks/useAi";
 import type { HighlightSummary } from "@/lib/types";
+import { useT, tr } from "@/lib/i18n";
 
 /**
  * A highlight's tags as chips: tap + to add one, × to remove it. The sparkle asks AI for
  * two or three suggestions, shown as chips to tap in.
  */
 export function TagEditor({ highlight }: { highlight: HighlightSummary }) {
+  const { t } = useT();
   const [tags, setTags] = React.useState(highlight.tags ?? []);
   const [adding, setAdding] = React.useState(false);
   const [draft, setDraft] = React.useState("");
@@ -26,11 +28,11 @@ export function TagEditor({ highlight }: { highlight: HighlightSummary }) {
       const res = await fetch(`/api/highlights/${highlight.id}/suggest-tags`, { method: "POST" });
       const body = (await res.json()) as { tags?: string[]; quota?: boolean };
       const fresh = (body.tags ?? []).filter((t) => !tags.includes(t));
-      if (body.quota) toast("Today's AI budget is used up");
-      else if (fresh.length === 0) toast("No tag ideas for this one");
+      if (body.quota) toast(tr("Today's AI budget is used up"));
+      else if (fresh.length === 0) toast(tr("No tag ideas for this one"));
       setSuggested(fresh);
     } catch {
-      toast.error("Could not suggest tags");
+      toast.error(tr("Could not suggest tags"));
     } finally {
       setSuggesting(false);
     }
@@ -44,7 +46,7 @@ export function TagEditor({ highlight }: { highlight: HighlightSummary }) {
       setTags(saved.tags ?? next);
     } catch (error) {
       setTags(previous);
-      toast.error(error instanceof Error ? error.message : "Could not save the tag");
+      toast.error(error instanceof Error ? error.message : tr("Could not save the tag"));
     }
   }
 
@@ -94,8 +96,8 @@ export function TagEditor({ highlight }: { highlight: HighlightSummary }) {
                 setAdding(false);
               }
             }}
-            placeholder="tag"
-            aria-label="New tag"
+            placeholder={t("tag")}
+            aria-label={t("New tag")}
             enterKeyHint="done"
             className="h-6 w-28 rounded-full border bg-background px-2 text-base outline-none focus-visible:border-primary sm:text-xs"
           />
@@ -106,7 +108,7 @@ export function TagEditor({ highlight }: { highlight: HighlightSummary }) {
           onClick={() => setAdding(true)}
           className="inline-flex h-6 items-center gap-0.5 rounded-full border border-dashed px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
         >
-          <Plus className="h-3 w-3" /> Tag
+          <Plus className="h-3 w-3" /> {t("Tag")}
         </button>
       )}
       {suggested?.map((tag) => (
@@ -118,7 +120,7 @@ export function TagEditor({ highlight }: { highlight: HighlightSummary }) {
             void save([...tags, tag]);
           }}
           className="inline-flex h-6 items-center gap-0.5 rounded-full border border-primary/40 px-2 text-xs text-primary hover:bg-primary/10"
-          title="Suggested: tap to add"
+          title={t("Suggested: tap to add")}
         >
           <Plus className="h-3 w-3" /> #{tag}
         </button>
@@ -129,8 +131,8 @@ export function TagEditor({ highlight }: { highlight: HighlightSummary }) {
           onClick={() => void suggest()}
           disabled={suggesting}
           className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-primary"
-          aria-label="Suggest tags"
-          title="Suggest tags"
+          aria-label={t("Suggest tags")}
+          title={t("Suggest tags")}
         >
           {suggesting ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
