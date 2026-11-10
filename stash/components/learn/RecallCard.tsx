@@ -81,12 +81,18 @@ export function RecallCard({
   const verdict = phase.kind === "result" && phase.review.grade !== null ? verdictFromGrade(phase.review.grade) : null;
 
   return (
-    <article aria-label="Recall card" className={cx("relative flex flex-col gap-4 overflow-hidden rounded-xl p-5 text-fg", SPACE_TINT[color])}>
-      <span aria-hidden className={cx("absolute inset-x-0 top-0 h-1", SPACE_BG[color])} />
-      <p className="text-caption text-fg-muted">
-        Recall{spaceName ? ` · ${spaceName}` : ""} · {position} of {total}
-      </p>
-      <h2 className="text-title">{card.prompt}</h2>
+    <article aria-label="Recall card" className="rise-in relative flex flex-col overflow-hidden rounded-xl bg-surface text-fg shadow-pop">
+      {/* The question sits on a solid block of its Space colour. */}
+      <div className={cx("flex flex-col gap-3 p-5 pb-6 text-on-space", SPACE_BG[color])}>
+        <div className="flex items-center justify-between gap-2 text-label">
+          <span className="truncate">Recall{spaceName ? ` · ${spaceName}` : ""}</span>
+          <span className="shrink-0 tabular-nums">
+            {position} of {total}
+          </span>
+        </div>
+        <h2 className="text-title">{card.prompt}</h2>
+      </div>
+      <div className="flex flex-col gap-4 p-5">
 
       {phase.kind === "grading" && (
         <div className="flex flex-col gap-2" role="status">
@@ -98,14 +104,19 @@ export function RecallCard({
 
       {phase.kind === "result" && verdict && (
         <div className="flex flex-col gap-2" role="status">
-          <span className="self-start rounded-full bg-fg px-3 py-1 text-label text-background">{VERDICT_LABEL[verdict]}</span>
+          <span className="pop-in self-start rounded-full bg-fg px-4 py-1.5 text-label text-background">{VERDICT_LABEL[verdict]}</span>
           {phase.review.feedback && <p className="text-body">{phase.review.feedback}</p>}
           {phase.review.text && <p className="text-caption text-fg-muted">You said: “{phase.review.text}”</p>}
           <p className="text-caption text-fg-muted">Answer: {card.answer}</p>
         </div>
       )}
 
-      {phase.kind !== "result" && showAnswer && <p className="text-body">Answer: {card.answer}</p>}
+      {phase.kind !== "result" && showAnswer && (
+        <p className={cx("rise-in rounded-lg p-4 text-body", SPACE_TINT[color])}>
+          <span className="text-label">Answer · </span>
+          {card.answer}
+        </p>
+      )}
 
       {phase.kind === "ask" && (
         <div className="flex flex-wrap gap-2">
@@ -123,7 +134,7 @@ export function RecallCard({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Link href={`/item/${card.saveId}`} className="inline-flex h-12 items-center gap-2 rounded-card px-3 text-label text-fg hover:bg-raised">
+        <Link href={`/item/${card.saveId}`} className="press inline-flex h-12 items-center gap-2 rounded-full px-3 text-label text-fg hover:bg-raised">
           <PlayCircle size={24} strokeWidth={2} aria-hidden />
           Show me
         </Link>
@@ -158,6 +169,8 @@ export function RecallCard({
         </div>
       )}
 
+      </div>
+
       <Sheet open={typeOpen} onClose={() => setTypeOpen(false)} label="Type your answer" title="Type your answer">
         <form
           className="flex flex-col gap-3"
@@ -182,7 +195,7 @@ export function RecallCard({
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
             placeholder="In your own words…"
-            className="w-full rounded-card bg-raised p-3 text-input text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-fg"
+            className="w-full rounded-lg border border-line bg-surface p-4 text-input text-fg outline-none placeholder:text-fg-subtle focus:border-fg"
           />
           <Button type="submit" fullWidth disabled={!typed.trim()}>
             Check my answer

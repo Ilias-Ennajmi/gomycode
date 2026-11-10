@@ -52,10 +52,13 @@ import { cx } from "@/components/ui/cx";
 import { SPACE_BG, SPACE_COLORS, SPACE_LABEL, SPACE_TINT, spaceVar, type SpaceColor } from "@/components/ui/space";
 import { useMotionOK } from "@/lib/hooks/useMotionOK";
 import { useLiveTokens, useSystemTheme } from "./useLiveTokens";
+import { Logo } from "@/components/brand/Logo";
+import { Illustration, type IllustrationName } from "@/components/brand/Illustration";
 
 /* ---------------------------------------------------------------- data */
 
 const SECTIONS = [
+  ["brand", "Brand"],
   ["colours", "Colours"],
   ["spaces", "Space palette"],
   ["accents", "Accent presets"],
@@ -79,6 +82,8 @@ const COLOUR_TOKENS = [
   { name: "textTertiary", cssVar: "--text-tertiary", utility: "text-fg-subtle" },
   { name: "accent", cssVar: "--accent", utility: "bg-accent" },
   { name: "onAccent", cssVar: "--on-accent", utility: "text-on-accent" },
+  { name: "accentLine (accent as a line on the page)", cssVar: "--accent-line", utility: "bg-accent-line" },
+  { name: "onSpace (ink on a solid Space colour)", cssVar: "--on-space", utility: "text-on-space" },
   { name: "insight", cssVar: "--insight", utility: "text-insight" },
   { name: "danger", cssVar: "--danger", utility: "text-danger" },
   { name: "scrim base (used at 80%)", cssVar: "--scrim-base", utility: "bg-scrim" },
@@ -93,13 +98,14 @@ const ACCENT_TOKENS = [
 ] as const;
 
 const TYPE_STYLES = [
-  { name: "Display", cls: "font-display text-display", spec: "30 / 700 · Bricolage Grotesque", sample: "Your 5 for today" },
-  { name: "Title", cls: "font-display text-title", spec: "22 / 700 · Bricolage Grotesque", sample: "Library" },
-  { name: "Heading", cls: "font-display text-heading", spec: "18 / 700 · Bricolage Grotesque", sample: "What these saves say" },
+  { name: "Hero", cls: "font-display text-hero", spec: "44 / 800 · Rubik · -3.5%", sample: "42 saved" },
+  { name: "Display", cls: "font-display text-display", spec: "34 / 800 · Rubik · -3%", sample: "Your 5 for today" },
+  { name: "Title", cls: "font-display text-title", spec: "24 / 800 · Rubik · -2%", sample: "Library" },
+  { name: "Heading", cls: "font-display text-heading", spec: "19 / 700 · Rubik · -1%", sample: "What these saves say" },
   { name: "Body", cls: "text-body", spec: "15 / 500 · Manrope", sample: "Hook viewers in the first second with a question." },
-  { name: "Label", cls: "text-label", spec: "14 / 600 · Manrope", sample: "Start · 6 min" },
-  { name: "Caption", cls: "text-caption", spec: "13 / 500 · Manrope", sample: "3 of 5 this week" },
-  { name: "Tab", cls: "text-tab", spec: "12 / 600 · tab labels only", sample: "Today  Library  Learn  You" },
+  { name: "Label", cls: "text-label", spec: "14 / 700 · Manrope", sample: "Start · 6 min" },
+  { name: "Caption", cls: "text-caption", spec: "13 / 600 · Manrope", sample: "3 of 5 this week" },
+  { name: "Tab", cls: "text-tab", spec: "12 / 700 · tab labels only", sample: "Today  Library  Learn  You" },
   { name: "Input", cls: "text-input", spec: "16 · inputs never zoom", sample: "Search what was said…" },
 ] as const;
 
@@ -114,18 +120,19 @@ const SPACING = [
 ] as const;
 
 const RADII = [
-  { name: "sm", px: 10, cls: "rounded-sm", use: "small" },
-  { name: "card", px: 14, cls: "rounded-card", use: "buttons, cards" },
-  { name: "lg", px: 20, cls: "rounded-lg", use: "large cards" },
-  { name: "xl", px: 24, cls: "rounded-xl", use: "hero" },
-  { name: "sheet", px: 28, cls: "rounded-t-sheet", use: "bottom sheets (top corners)" },
-  { name: "full", px: 9999, cls: "rounded-full", use: "chips, Play, avatars" },
+  { name: "sm", px: 12, cls: "rounded-sm", use: "small tiles" },
+  { name: "card", px: 18, cls: "rounded-card", use: "cards, inputs, icon tiles" },
+  { name: "lg", px: 24, cls: "rounded-lg", use: "large cards, thumbnails" },
+  { name: "xl", px: 32, cls: "rounded-xl", use: "hero, Space blocks" },
+  { name: "sheet", px: 32, cls: "rounded-t-sheet", use: "bottom sheets (top corners)" },
+  { name: "full", px: 9999, cls: "rounded-full", use: "buttons, chips, Play, avatars" },
 ] as const;
 
 const DURATIONS = [
-  { name: "fast", cssVar: "--dur-fast", ms: 150, use: "small changes" },
-  { name: "screen", cssVar: "--dur-screen", ms: 250, use: "screen transitions" },
-  { name: "sheet", cssVar: "--dur-sheet", ms: 350, use: "sheets (spring)" },
+  { name: "press", cssVar: "--dur-press", ms: 120, use: "press-down feedback" },
+  { name: "fast", cssVar: "--dur-fast", ms: 160, use: "small changes, press release" },
+  { name: "screen", cssVar: "--dur-screen", ms: 260, use: "screen transitions, cards flying off" },
+  { name: "sheet", cssVar: "--dur-sheet", ms: 380, use: "sheets, swipe snap-back (spring)" },
 ] as const;
 
 const ICONS = [
@@ -159,6 +166,7 @@ const SIZE_TOKENS = [
 const ELEVATION = [
   { cssVar: "--elev-raised", cls: "shadow-raised", use: "Play, toasts, floating search" },
   { cssVar: "--elev-sheet", cls: "shadow-sheet", use: "bottom sheets" },
+  { cssVar: "--elev-pop", cls: "shadow-pop", use: "cards: a crisp lip plus a soft lift" },
 ] as const;
 
 const INKS = [
@@ -168,7 +176,8 @@ const INKS = [
 
 const EASINGS = [
   { cssVar: "--motion-ease-standard", use: "standard: most transitions" },
-  { cssVar: "--motion-ease-spring", use: "spring: overshoots slightly" },
+  { cssVar: "--motion-ease-out", use: "strong ease-out: things arriving or leaving" },
+  { cssVar: "--motion-ease-spring", use: "spring: a playful overshoot (snap-backs, knobs)" },
 ] as const;
 
 const LIVE_VARS = [
@@ -181,6 +190,62 @@ const LIVE_VARS = [
   ...ACCENT_TOKENS.map((t) => t.cssVar),
   ...SPACE_COLORS.map(spaceVar),
 ];
+
+/* ------------------------------------------------------------- brand */
+
+const ILLUSTRATIONS: IllustrationName[] = ["share", "empty", "done", "search", "learn", "places", "offline", "error"];
+
+function Brand() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="flex flex-col items-start gap-4 rounded-xl bg-surface p-6 shadow-pop md:col-span-2">
+          <Logo variant="lockup" size={64} title="Stash" />
+          <p className="max-w-md text-body text-fg-muted">
+            Lockup: the app tile plus “stash” in Rubik ExtraBold, set as outlines. Files: public/brand/lockup-light.svg and
+            lockup-dark.svg; the paths live in scripts/brand-paths.mjs (npm run icons writes every icon, the favicon and the
+            Android launcher and splash from them).
+          </p>
+        </div>
+        <div className="flex items-center justify-center gap-4 rounded-xl bg-brand-ink p-6">
+          <Logo variant="mark" size={96} animate title="Stash mark" />
+        </div>
+      </div>
+      <div className="flex flex-wrap items-end gap-6">
+        {[96, 64, 48, 32, 24, 16].map((s) => (
+          <div key={s} className="flex flex-col items-center gap-2">
+            <Logo variant="tile" size={s} />
+            <span className="text-caption text-fg-muted">{s}px</span>
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-col gap-3">
+        <h3 className="text-heading">Illustrations</h3>
+        <p className="max-w-2xl text-body text-fg-muted">
+          Spot illustrations for empty, done and error states: chunky tilted cards in Space colours, the lime tile when Stash itself
+          appears. Inline SVG, tokens only, so they follow every theme. components/brand/Illustration.tsx.
+        </p>
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {ILLUSTRATIONS.map((n) => (
+            <li key={n} className="flex flex-col items-center gap-1 rounded-lg bg-surface p-3 shadow-pop">
+              <Illustration name={n} className="h-28" />
+              <span className="text-caption text-fg-muted">{n}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="flex flex-col gap-2">
+        <h3 className="text-heading">Rules</h3>
+        <ul className="flex max-w-2xl list-disc flex-col gap-1 pl-5 text-body text-fg-muted">
+          <li>Accent is for “act now” only: Play, Start, primary buttons, Undo, due items.</li>
+          <li>Space colours categorise, boldly: solid blocks for a Space header, a filled chip when picked, tints for cards.</li>
+          <li>Insight orange is for AI text only. Selected states use the text colour (ink pills), never the accent.</li>
+          <li>Everything tappable squishes on press (utility press) and springs back; reduce motion zeroes every duration.</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------ helpers */
 
@@ -723,7 +788,8 @@ function Components() {
       <Sub title="EmptyState">
         <Card size="lg" padded={false} className="max-w-md">
           <EmptyState
-            icon={Share2}
+            illustration="empty"
+            title="Nothing stashed yet"
             message="Share a reel to Stash to start."
             actionLabel={saved ? "Saved" : "Try a sample save"}
             actionIcon={saved ? Check : Plus}
@@ -933,6 +999,9 @@ export function DesignBoard() {
           Every colour, type style and shape below comes from styles/tokens.css. Switch theme or accent in the header: the
           whole page restyles instantly, and hex values update to the current theme.
         </p>
+        <Section id="brand" title="Brand" intro="Bold and playful. A rounded S built from three stacked cards, electric lime on deep ink. The mark never follows the accent picker.">
+          <Brand />
+        </Section>
         <Section id="colours" title="Colours" intro="Core tokens with their CSS variable, Tailwind utility and live value.">
           <Colours live={live} />
         </Section>

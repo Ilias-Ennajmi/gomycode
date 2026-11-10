@@ -28,8 +28,8 @@ type Pin = PlacePin & { save: SaveItem; color: SpaceColor; distance?: number };
 
 function pinHtml(color: SpaceColor, selected: boolean): string {
   // Class names are spelled out in full so Tailwind generates them.
-  const size = selected ? "h-6 w-6" : "h-4 w-4";
-  return `<span class="block ${size} rounded-full border-2 border-surface shadow-raised ${SPACE_BG[color]}"></span>`;
+  const size = selected ? "h-8 w-8" : "h-6 w-6";
+  return `<span class="block ${size} rounded-full border-3 border-surface shadow-raised ${SPACE_BG[color]}"></span>`;
 }
 
 const HERE_HTML = '<span class="block h-4 w-4 rounded-full border-2 border-surface bg-fg shadow-raised"></span>';
@@ -107,7 +107,7 @@ export default function MapView({
     layer.current.clearLayers();
     for (const p of pins) {
       const isSel = p.id === selected;
-      const size = isSel ? 24 : 16;
+      const size = isSel ? 32 : 24;
       L.marker([p.lat, p.lng], {
         icon: L.divIcon({ className: "", html: pinHtml(p.color, isSel), iconSize: [size, size], iconAnchor: [size / 2, size / 2] }),
         keyboard: true,
@@ -151,7 +151,7 @@ export default function MapView({
 
   return (
     <section aria-label="Map" className="flex flex-col gap-3 px-4">
-      <div className="relative isolate h-96 overflow-hidden rounded-lg border border-line bg-raised">
+      <div className="relative isolate h-96 overflow-hidden rounded-xl bg-raised shadow-pop">
         <div ref={box} className="h-full w-full" />
         {!ready && <Skeleton shape="block" className="absolute inset-0 h-full" />}
         <div className="absolute bottom-3 left-3 z-1000">
@@ -160,10 +160,10 @@ export default function MapView({
           </Button>
         </div>
         {current && (
-          <div className="absolute inset-x-3 bottom-3 z-1000 flex gap-3 rounded-card border border-line bg-surface p-2 shadow-raised">
+          <div className="rise-in absolute inset-x-3 bottom-3 z-1000 flex gap-3 rounded-lg bg-surface p-2 shadow-raised">
             <button type="button" onClick={() => onOpen(current.save)} className="flex min-w-0 flex-1 gap-3 text-left">
               <span className="relative h-20 w-14 shrink-0 overflow-hidden rounded-sm bg-raised">
-                <span aria-hidden className={cx("absolute inset-x-0 top-0 z-10 h-0.75", SPACE_BG[current.color])} />
+                <span aria-hidden className={cx("absolute inset-x-0 top-0 z-10 h-[var(--edge)]", SPACE_BG[current.color])} />
                 {current.save.thumbPath && thumbs[current.save.thumbPath] && (
                   // eslint-disable-next-line @next/next/no-img-element -- signed Storage URL
                   <img src={thumbs[current.save.thumbPath]} alt="" className="h-full w-full object-cover" />

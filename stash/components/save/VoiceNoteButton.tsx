@@ -93,8 +93,8 @@ export function VoiceNoteButton({
       aria-label={recording ? "Recording, release to keep" : holdHint}
       disabled={disabled}
       className={cx(
-        "flex h-12 select-none touch-none items-center justify-center gap-2 rounded-card border px-4 text-label disabled:opacity-40",
-        recording ? "border-fg bg-fg text-background" : "border-line text-fg",
+        "press flex h-12 select-none touch-none items-center justify-center gap-2 rounded-full border px-4 text-label disabled:opacity-40",
+        recording ? "border-fg bg-fg text-background" : "border-line bg-raised text-fg",
         className,
       )}
     >

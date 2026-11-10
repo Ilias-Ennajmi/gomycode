@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useMotionValue, useTransform, type PanInfo } from "framer-motion";
-import { Archive, Bookmark, CheckCheck } from "lucide-react";
+import { Archive, Bookmark } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { SpaceChip } from "@/components/ui/SpaceChip";
@@ -19,7 +19,8 @@ import { moveToSpace, type SaveItem, type Space } from "@/lib/data";
 import { PLATFORM_LABEL } from "@/lib/links";
 import { ageLabel, remainingToday, triageCandidates, TRIAGE_DEFAULT_LIMIT } from "@/lib/triage";
 import { decide, fetchSuggestions, fetchTriageLimit, fetchTriageSeen } from "@/lib/triageData";
-import { tokenSeconds } from "@/lib/motionTokens";
+import { SPRINGS, spring } from "@/lib/motionTokens";
+import { Illustration } from "@/components/brand/Illustration";
 
 const SWIPE_PX = 110;
 const SWIPE_VELOCITY = 600;
@@ -125,7 +126,7 @@ export function TriageView() {
       />
       {totalToday > 0 && current && (
         <div className="px-4 pb-3" aria-hidden>
-          <div className="h-1 overflow-hidden rounded-full bg-raised">
+          <div className="h-2 overflow-hidden rounded-full bg-raised">
             <div className="h-full rounded-full bg-fg transition-[width] duration-[var(--dur-fast)]" style={{ width: `${(doneToday / totalToday) * 100}%` }} />
           </div>
         </div>
@@ -138,15 +139,13 @@ export function TriageView() {
         </div>
       ) : !current ? (
         <section className="flex flex-col items-center gap-4 px-6 py-16 text-center">
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-raised text-fg-muted">
-            <CheckCheck size={24} strokeWidth={2} aria-hidden />
-          </span>
+          <Illustration name="done" className="pop-in h-36" />
           <p className="max-w-xs text-body text-fg">
             {doneToday > 0 && left === 0
               ? `That's ${doneToday} for today. More tomorrow.`
               : "Nothing old to sort. Saves older than a month that you haven't watched show up here."}
           </p>
-          <Link href="/library" className="tap flex items-center justify-center rounded-card border border-line px-6 text-label text-fg">
+          <Link href="/library" className="press tap flex items-center justify-center rounded-full bg-fg px-6 text-label text-background">
             Back to Library
           </Link>
         </section>
@@ -233,24 +232,28 @@ function SwipeCard({
       dragElastic={0.9}
       onDragEnd={onDragEnd}
       variants={{
-        exit: (dir: Dir) => (motionOK ? { x: dir === "keep" ? 480 : -480, opacity: 0, transition: { duration: tokenSeconds("--dur-screen") } } : { opacity: 0, transition: { duration: 0 } }),
+        // Flung off with a spin; the next card springs up from the stack.
+        exit: (dir: Dir) =>
+          motionOK
+            ? { x: dir === "keep" ? 520 : -520, rotate: dir === "keep" ? 18 : -18, opacity: 0, transition: SPRINGS.fling }
+            : { opacity: 0, transition: { duration: 0 } },
       }}
-      initial={motionOK ? { scale: 0.95, opacity: 0.6 } : false}
-      animate={{ scale: 1, opacity: 1, transition: { duration: motionOK ? tokenSeconds("--dur-fast") : 0 } }}
+      initial={motionOK ? { scale: 0.92, y: 16, opacity: 0.6 } : false}
+      animate={{ scale: 1, y: 0, opacity: 1, transition: spring("pop", motionOK) }}
       exit="exit"
     >
       <CardFace save={save} space={space} thumb={thumb} now={now} />
       <motion.span
         aria-hidden
         style={{ opacity: keepHint }}
-        className="absolute left-4 top-4 z-20 rounded-full bg-fg px-3 py-1 text-label text-background"
+        className="absolute left-4 top-4 z-20 -rotate-6 rounded-full bg-fg px-4 py-2 font-display text-heading text-background"
       >
         Keep
       </motion.span>
       <motion.span
         aria-hidden
         style={{ opacity: goHint }}
-        className="absolute right-4 top-4 z-20 rounded-full bg-raised px-3 py-1 text-label text-fg"
+        className="absolute right-4 top-4 z-20 rotate-6 rounded-full bg-raised px-4 py-2 font-display text-heading text-fg"
       >
         Let go
       </motion.span>
@@ -263,9 +266,9 @@ function CardFace({ save, space, thumb, now }: { save: SaveItem; space?: Space; 
   return (
     <article
       aria-label={cardText(save)}
-      className="relative flex h-full flex-col overflow-hidden rounded-lg border border-line bg-surface shadow-raised"
+      className="relative flex h-full flex-col overflow-hidden rounded-xl bg-surface shadow-raised"
     >
-      {space && <span aria-hidden className={cx("absolute inset-x-0 top-0 z-10 h-0.75", SPACE_BG[space.color])} />}
+      {space && <span aria-hidden className={cx("absolute inset-x-0 top-0 z-10 h-[var(--edge)]", SPACE_BG[space.color])} />}
       <div className="relative min-h-0 flex-1 bg-raised">
         {thumb && (
           // eslint-disable-next-line @next/next/no-img-element -- signed Storage URL
@@ -273,7 +276,7 @@ function CardFace({ save, space, thumb, now }: { save: SaveItem; space?: Space; 
         )}
       </div>
       <div className="flex flex-col gap-1 p-4">
-        <p className="line-clamp-3 text-heading text-fg">{cardText(save)}</p>
+        <p className="line-clamp-3 font-display text-title text-fg">{cardText(save)}</p>
         <p className="text-caption text-fg-muted">
           Saved {ageLabel(save.savedAt, now)}
           {who && ` · ${who}`}

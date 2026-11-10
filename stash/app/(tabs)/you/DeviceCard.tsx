@@ -42,9 +42,9 @@ export function DeviceCard() {
   }, []);
 
   return (
-    <section aria-label="This device" className="mx-4 flex flex-col gap-3 rounded-lg border border-line bg-surface p-4">
+    <section aria-label="This device" className="mx-4 flex flex-col gap-3 rounded-xl bg-surface p-4 shadow-pop">
       <div className="flex items-center gap-3">
-        <Cpu size={24} strokeWidth={2} aria-hidden className="shrink-0 text-fg-muted" />
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-raised"><Cpu size={22} strokeWidth={2} aria-hidden /></span>
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="text-label text-fg">Device id</span>
           <span className="truncate font-mono text-caption text-fg-muted">{id ?? "Not connected yet"}</span>

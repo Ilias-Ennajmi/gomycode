@@ -16,6 +16,9 @@ import { compressScreenshot, takeSharedImage } from "@/lib/shareInbox";
 import { getBrowserClient, sessionUser } from "@/lib/supabase/client";
 import { haptic } from "@/lib/haptics";
 import { useMotionOK } from "@/lib/hooks/useMotionOK";
+import { spring } from "@/lib/motionTokens";
+import { Logo } from "@/components/brand/Logo";
+import { Illustration } from "@/components/brand/Illustration";
 
 const CACHE = "stash.library";
 
@@ -210,16 +213,17 @@ export function SaveSheet() {
         onClick={(e) => e.stopPropagation()}
         initial={motionOK ? { y: "100%" } : false}
         animate={{ y: 0 }}
-        transition={{ type: "spring", stiffness: 380, damping: 36 }}
+        transition={spring("sheet", motionOK)}
         drag="y"
         dragConstraints={{ top: 0, bottom: 0 }}
         dragElastic={{ top: 0, bottom: 0.7 }}
         onDragEnd={(_, info) => (info.offset.y > 120 || info.velocity.y > 600) && close()}
         className="mx-auto w-full max-w-lg rounded-t-sheet bg-surface px-5 pt-3 pb-safe shadow-sheet"
       >
-        <div aria-hidden className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" />
+        <div aria-hidden className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-line" />
         {(!url && !imageId) || imageProblem ? (
           <div className="flex flex-col gap-4 pb-8">
+            <Illustration name="error" className="h-28 self-start" />
             <h1 className="text-title">{imageProblem ? "Couldn't save the image" : "No link found"}</h1>
             <p className="text-body text-fg-muted">
               {imageProblem ?? "Share a post or reel link to Stash, or a screenshot of it, or paste a link in the Library."}
@@ -230,23 +234,29 @@ export function SaveSheet() {
           </div>
         ) : (
           <div className="flex flex-col gap-5 pb-6">
-            <div className="flex items-center gap-3">
-              <span
-                aria-hidden
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-fg text-background"
-              >
-                <Check size={24} strokeWidth={2.5} />
+            <div className="flex items-center gap-4">
+              {/* The brand tile with a check that pops in once the save is safe on the phone. */}
+              <span aria-hidden className="relative shrink-0">
+                <Logo variant="tile" size={56} />
+                {saved && (
+                  <span className="pop-in absolute -right-1.5 -bottom-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-fg text-background ring-4 ring-surface">
+                    <Check size={16} strokeWidth={3.5} />
+                  </span>
+                )}
               </span>
-              <h1 className="flex-1 text-title" aria-live="polite">
-                {saved ? "Saved" : "Saving…"}
-              </h1>
-              <Button variant="ghost" onClick={close}>
+              <div className="flex min-w-0 flex-1 flex-col">
+                <h1 className="text-title" aria-live="polite">
+                  {saved ? "Saved" : "Saving…"}
+                </h1>
+                <p className="text-caption text-fg-muted">Back takes you where you were.</p>
+              </div>
+              <Button variant="ink" onClick={close}>
                 Done
               </Button>
             </div>
 
-            <div className="flex items-center gap-3 rounded-card bg-raised p-3">
-              <span className="relative flex h-14 w-10 shrink-0 items-center justify-center overflow-hidden rounded-sm bg-surface text-fg-muted">
+            <div className="flex items-center gap-3 rounded-lg bg-raised p-3">
+              <span className="relative flex h-16 w-12 shrink-0 items-center justify-center overflow-hidden rounded-card bg-surface text-fg-muted">
                 {preview ? (
                   // eslint-disable-next-line @next/next/no-img-element -- local object URL of the shared image
                   <img src={preview} alt="" className="absolute inset-0 h-full w-full object-cover" />
@@ -265,7 +275,9 @@ export function SaveSheet() {
             </div>
 
             <div className="flex flex-col gap-1">
-              <span className="text-caption text-fg-muted">Add to a Space (optional). Skip it and AI files it for you.</span>
+              <span className="text-label">
+                Add to a Space <span className="text-fg-muted">· optional, AI files it otherwise</span>
+              </span>
               <SpacePicker spaces={shown} selectedId={spaceId} onPick={pick} onCreate={create} />
             </div>
 
@@ -278,7 +290,7 @@ export function SaveSheet() {
               <button
                 type="button"
                 onClick={() => setRemindOpen(true)}
-                className="flex h-12 items-center justify-center gap-2 rounded-card border border-line px-4 text-label text-fg"
+                className="press flex h-12 items-center justify-center gap-2 rounded-full border border-line bg-raised px-4 text-label text-fg"
               >
                 <Bell size={24} strokeWidth={2} aria-hidden />
                 <span className="truncate">{reminded ?? "Remind me"}</span>

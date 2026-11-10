@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { ChevronRight, Orbit, Shrink } from "lucide-react";
+import { ChevronRight, Shrink } from "lucide-react";
 import { AiLabel } from "@/components/ui/AiLabel";
 import { IconButton } from "@/components/ui/IconButton";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Illustration } from "@/components/brand/Illustration";
 import { cx } from "@/components/ui/cx";
 import { SPACE_BG, spaceVar, type SpaceColor } from "@/components/ui/space";
 import { cardText } from "@/components/library/SaveGrid";
@@ -52,6 +53,16 @@ export function GalaxyView({
   const [focus, setFocus] = useState<number | null>(null);
   const [size, setSize] = useState<Size>({ width: 0, height: 0 });
   const box = useRef<HTMLDivElement>(null);
+  const byId = useMemo(() => new Map(saves.map((s) => [s.id, s])), [saves]);
+  // Only saves still in the Library (archived and deleted ones drop out at once).
+  const points = useMemo(
+    () => (galaxy?.points ?? []).filter((p) => {
+      const s = byId.get(p.saveId);
+      return s && !s.archivedAt;
+    }),
+    [galaxy, byId],
+  );
+  const hasPoints = points.length > 0;
   const viewRef = useRef(view);
   useEffect(() => {
     viewRef.current = view;
@@ -79,17 +90,10 @@ export function GalaxyView({
     const ro = new ResizeObserver(([entry]) => setSize({ width: entry.contentRect.width, height: entry.contentRect.height }));
     ro.observe(el);
     return () => ro.disconnect();
-  }, [galaxy]);
+    // The box only mounts once there are points (saves can arrive after the layout).
+  }, [galaxy, hasPoints]);
 
-  const byId = useMemo(() => new Map(saves.map((s) => [s.id, s])), [saves]);
-  // Only saves still in the Library (archived and deleted ones drop out at once).
-  const points = useMemo(
-    () => (galaxy?.points ?? []).filter((p) => {
-      const s = byId.get(p.saveId);
-      return s && !s.archivedAt;
-    }),
-    [galaxy, byId],
-  );
+
   const clusters = useMemo(() => {
     const counts = new Map<number, number>();
     for (const p of points) counts.set(p.cluster, (counts.get(p.cluster) ?? 0) + 1);
@@ -221,10 +225,8 @@ export function GalaxyView({
   if (!points.length) {
     return (
       <section aria-label="Galaxy" className="flex flex-col items-center gap-4 px-6 py-12 text-center">
-        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-raised text-fg-muted">
-          <Orbit size={24} strokeWidth={2} aria-hidden />
-        </span>
-        <h2 className="text-heading">{readyCount >= MIN_SAVES ? "Your Galaxy is being drawn" : "Your Galaxy forms at 5 saves"}</h2>
+        <Illustration name="search" />
+        <h2 className="text-title">{readyCount >= MIN_SAVES ? "Your Galaxy is being drawn" : "Your Galaxy forms at 5 saves"}</h2>
         <p className="max-w-xs text-body text-fg-muted">
           {readyCount >= MIN_SAVES
             ? "Saves that mean similar things gather into labelled groups. It appears here in a minute."
@@ -234,7 +236,7 @@ export function GalaxyView({
     );
   }
 
-  const r = Math.max(5, Math.min(9, 6 * Math.sqrt(view.scale)));
+  const r = Math.max(7, Math.min(11, 7.5 * Math.sqrt(view.scale)));
   const topOf = new Map<number, number>();
   for (const p of points) {
     const y = toScreen(view, size, p.x, p.y).y;
@@ -249,7 +251,7 @@ export function GalaxyView({
     <section aria-label="Galaxy" className="flex flex-col gap-3 px-4">
       <div
         ref={box}
-        className="relative aspect-square w-full touch-none select-none overflow-hidden rounded-xl bg-surface"
+        className="relative aspect-square w-full touch-none select-none overflow-hidden rounded-xl bg-surface shadow-pop"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}

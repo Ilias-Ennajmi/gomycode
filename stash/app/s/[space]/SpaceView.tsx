@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation";
 import { Archive, ChevronLeft, Pencil, Play, Share } from "lucide-react";
 import { AiLabel } from "@/components/ui/AiLabel";
 import { Button } from "@/components/ui/Button";
-import { IconButton } from "@/components/ui/IconButton";
 import { Segmented } from "@/components/ui/Segmented";
 import { Sheet } from "@/components/ui/Sheet";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Illustration } from "@/components/brand/Illustration";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { cx } from "@/components/ui/cx";
@@ -86,8 +87,10 @@ export function SpaceView({ id }: { id: string }) {
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <p className="text-body text-fg-muted">This Space isn&apos;t here anymore.</p>
-            <Button variant="secondary" onClick={() => router.replace("/library")}>
+            <Illustration name="error" className="h-36" />
+            <h1 className="text-title">This Space is gone</h1>
+            <p className="text-body text-fg-muted">It was archived or deleted. Its saves are still in your Library.</p>
+            <Button variant="ink" onClick={() => router.replace("/library")}>
               Back to Library
             </Button>
           </div>
@@ -151,31 +154,38 @@ export function SpaceView({ id }: { id: string }) {
 
   return (
     <main className="mx-auto min-h-dvh max-w-xl pb-safe">
-      <header className="flex items-center justify-between px-2 pt-safe">
-        <IconButton
-          label="Back"
-          icon={ChevronLeft}
-          onClick={() => (window.history.length > 1 ? router.back() : router.replace("/library"))}
-        />
-        {!isInbox && <IconButton label="Edit Space" icon={Pencil} onClick={openEdit} />}
-      </header>
-
-      <section className="flex flex-col gap-4 px-4 pb-4">
+      {/* The Space as a bold block of its own colour. */}
+      <section className={cx("rise-in mx-2 mt-2 flex flex-col gap-3 rounded-xl px-4 pb-5 text-on-space", SPACE_BG[space.color])} style={{ marginTop: "calc(env(safe-area-inset-top) + var(--space-2))" }}>
+        <div className="-mx-2 flex items-center justify-between pt-2">
+          <button
+            type="button"
+            aria-label="Back"
+            onClick={() => (window.history.length > 1 ? router.back() : router.replace("/library"))}
+            className="press flex h-12 w-12 items-center justify-center rounded-full bg-on-space/15"
+          >
+            <ChevronLeft size={24} strokeWidth={2.25} aria-hidden />
+          </button>
+          {!isInbox && (
+            <button type="button" aria-label="Edit Space" onClick={openEdit} className="press flex h-12 w-12 items-center justify-center rounded-full bg-on-space/15">
+              <Pencil size={22} strokeWidth={2.25} aria-hidden />
+            </button>
+          )}
+        </div>
         <button
           type="button"
           {...chipPress}
           aria-label={isInbox ? undefined : `${kindLabel(space)}. Hold to change the colour`}
           className="flex h-12 items-center self-start"
         >
-          <span className={cx("inline-flex h-8 items-center gap-2 rounded-full px-3 text-label", SPACE_TINT[space.color], SPACE_TEXT[space.color])}>
-            {space.icon && SPACE_ICONS[space.icon] ? <SpaceIcon name={space.icon} /> : <span aria-hidden className={cx("h-2 w-2 rounded-full", SPACE_BG[space.color])} />}
+          <span className="inline-flex h-9 items-center gap-2 rounded-full border-2 border-on-space/30 px-3 text-label">
+            {space.icon && SPACE_ICONS[space.icon] ? <SpaceIcon name={space.icon} /> : <span aria-hidden className="h-2.5 w-2.5 rounded-full bg-on-space" />}
             {kindLabel(space)}
           </span>
         </button>
         <h1 className="text-display">{space.name}</h1>
-        {space.description && <p className="text-body text-fg-muted">{space.description}</p>}
+        {space.description && <p className="text-body">{space.description}</p>}
 
-        <dl className="grid grid-cols-3 gap-2">
+        <dl className="mt-1 grid grid-cols-3 gap-2">
           {(
             [
               ["saved", items.length],
@@ -183,18 +193,20 @@ export function SpaceView({ id }: { id: string }) {
               ["applied", applied],
             ] as const
           ).map(([label, value]) => (
-            <div key={label} className="flex flex-col-reverse rounded-card border border-line bg-surface p-3">
-              <dt className="text-caption text-fg-muted">{label}</dt>
-              <dd className="text-title">{value}</dd>
+            <div key={label} className="flex flex-col-reverse rounded-lg border-2 border-on-space/25 px-3 py-3">
+              <dt className="text-label">{label}</dt>
+              <dd className="text-hero tabular-nums">{value}</dd>
             </div>
           ))}
         </dl>
+      </section>
 
+      <section className="flex flex-col gap-4 px-4 pt-4 pb-4">
         <div className="flex gap-2">
           {unwatched > 0 && (
             <Link
               href={`/play?space=${isInbox ? "inbox" : space.id}&filter=unwatched`}
-              className="flex h-14 flex-1 items-center justify-center gap-2 rounded-card bg-accent text-label text-on-accent active:scale-95"
+              className="press flex h-14 flex-1 items-center justify-center gap-2 rounded-full bg-accent text-label text-on-accent shadow-pop"
             >
               <Play size={24} strokeWidth={2} fill="currentColor" aria-hidden />
               Play {unwatched} unwatched
@@ -208,7 +220,7 @@ export function SpaceView({ id }: { id: string }) {
         </div>
 
         {synthesis && synthesis.points.length > 0 && (
-          <article className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4">
+          <article className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-5 shadow-pop">
             <AiLabel text="What these saves say" />
             {synthesis.topic && <h2 className="text-heading">{synthesis.topic}</h2>}
             <ul className="flex flex-col gap-2">
@@ -225,9 +237,11 @@ export function SpaceView({ id }: { id: string }) {
       </section>
 
       {items.length === 0 ? (
-        <p className="px-6 py-12 text-center text-body text-fg-muted">
-          Nothing here yet. Pick this Space when you save, or move saves here from the Library.
-        </p>
+        <EmptyState
+          illustration="empty"
+          title="An empty Space"
+          message="Pick this Space when you save a reel, or move saves here from the Library."
+        />
       ) : (
         <SaveGrid
           items={items}

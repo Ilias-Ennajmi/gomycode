@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, ClipboardPaste, Layers, Play, Search, Share2, X } from "lucide-react";
+import { ArrowRight, ClipboardPaste, Layers, Play, Search, X } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Banner } from "@/components/ui/Banner";
 import { Chip } from "@/components/ui/Chip";
@@ -157,12 +157,12 @@ export function LibraryView() {
         title="Library"
         trailing={
           <div className="flex items-center gap-1">
-            <IconButton label="Save a link" icon={ClipboardPaste} onClick={() => setPasteOpen(true)} />
+            <IconButton label="Save a link" icon={ClipboardPaste} variant="raised" onClick={() => setPasteOpen(true)} />
             {!empty && (
               <Link
                 href={playHref}
                 aria-label={selected ? `Play ${selected.name}` : "Play these saves"}
-                className="flex h-12 w-12 items-center justify-center rounded-full bg-raised text-fg active:scale-90"
+                className="press flex h-12 w-12 items-center justify-center rounded-full bg-accent text-on-accent shadow-pop"
               >
                 <Play size={24} strokeWidth={2} fill="currentColor" aria-hidden />
               </Link>
@@ -185,11 +185,11 @@ export function LibraryView() {
 
       {empty && lens === "grid" ? (
         <EmptyState
-          icon={Share2}
-          message="Share a reel to Stash to start: in Instagram or TikTok tap Share, then Stash."
+          illustration="empty"
+          title="Nothing stashed yet"
+          message="In Instagram or TikTok, tap Share on a reel, then pick Stash. It lands here."
           actionLabel="Paste a link"
           actionIcon={ClipboardPaste}
-          actionVariant="secondary"
           onAction={() => setPasteOpen(true)}
         />
       ) : (
@@ -206,16 +206,27 @@ export function LibraryView() {
           </div>
 
           {selected && selected.kind !== "inbox" && (
-            <Link href={`/s/${selected.id}`} className="mx-4 flex min-h-12 items-center gap-3 rounded-card bg-raised px-4 text-label text-fg">
-              <span aria-hidden className={cx("h-2 w-2 rounded-full", SPACE_BG[selected.color])} />
-              <span className="flex-1 truncate">Open {selected.name}</span>
-              <ArrowRight size={24} strokeWidth={2} aria-hidden className="text-fg-muted" />
+            <Link
+              href={`/s/${selected.id}`}
+              className={cx("press rise-in mx-4 flex min-h-16 items-center gap-3 rounded-lg px-5 text-on-space", SPACE_BG[selected.color])}
+            >
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate text-title">{selected.name}</span>
+                <span className="text-caption">
+                  {counts[selected.id] ?? 0} {(counts[selected.id] ?? 0) === 1 ? "save" : "saves"} · open the Space
+                </span>
+              </span>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-on-space/15">
+                <ArrowRight size={22} strokeWidth={2.25} aria-hidden />
+              </span>
             </Link>
           )}
 
           {oldCount > 0 && !selectedId && lens === "grid" && hits === null && (
-            <Link href="/triage" className="mx-4 flex min-h-12 items-center gap-3 rounded-card border border-line px-4 text-label text-fg">
-              <Layers size={24} strokeWidth={2} aria-hidden className="text-fg-muted" />
+            <Link href="/triage" className="press mx-4 flex min-h-14 items-center gap-3 rounded-lg bg-surface px-4 text-label text-fg shadow-pop">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-raised">
+                <Layers size={20} strokeWidth={2} aria-hidden />
+              </span>
               <span className="flex-1 truncate">
                 {oldCount} old {oldCount === 1 ? "save" : "saves"} to sort · 30 s
               </span>
@@ -238,9 +249,9 @@ export function LibraryView() {
                 {hitSaves.length > 0 && (
                   <Link
                     href={`/play?ids=${hitSaves.map((x) => x.hit.saveId).join(",")}`}
-                    className="flex h-12 items-center gap-2 rounded-card px-3 text-label text-fg"
+                    className="press flex h-12 items-center gap-2 rounded-full bg-accent px-4 text-label text-on-accent"
                   >
-                    <Play size={20} strokeWidth={2} aria-hidden /> Play all
+                    <Play size={20} strokeWidth={2} fill="currentColor" aria-hidden /> Play all
                   </Link>
                 )}
               </div>
@@ -250,9 +261,9 @@ export function LibraryView() {
                     <button
                       type="button"
                       onClick={() => open(save!, hit.start)}
-                      className="flex w-full gap-3 rounded-card bg-surface p-2 text-left"
+                      className="press flex w-full gap-3 rounded-lg bg-surface p-2 text-left shadow-pop"
                     >
-                      <span className="relative h-24 w-16 shrink-0 overflow-hidden rounded-sm bg-raised">
+                      <span className="relative h-24 w-16 shrink-0 overflow-hidden rounded-card bg-raised">
                         {save!.thumbPath && lib.thumbs[save!.thumbPath] && (
                           // eslint-disable-next-line @next/next/no-img-element -- signed Storage URL
                           <img src={lib.thumbs[save!.thumbPath]} alt="" className="h-full w-full object-cover" />
@@ -271,7 +282,7 @@ export function LibraryView() {
                 ))}
               </ul>
               {!searching && hitSaves.length === 0 && (
-                <p className="py-8 text-center text-body text-fg-muted">Nothing matches yet. Try other words.</p>
+                <EmptyState illustration="search" title="No match yet" message="Try other words, or something you remember hearing." />
               )}
             </section>
           ) : lens === "map" ? (
@@ -285,7 +296,7 @@ export function LibraryView() {
               ))}
             </div>
           ) : visible.length === 0 && (selectedId || filter !== "all") ? (
-            <p className="px-6 py-12 text-center text-body text-fg-muted">Nothing here with this filter.</p>
+            <EmptyState illustration="done" title="All clear here" message="Nothing matches this filter. Pick another chip or Space." />
           ) : (
             <SaveGrid
               items={visible}
@@ -315,7 +326,7 @@ export function LibraryView() {
           <label htmlFor="library-search" className="sr-only">
             Search what was said
           </label>
-          <div className="flex h-12 w-full items-center gap-2 rounded-full border border-line bg-surface pl-4 pr-1 shadow-raised">
+          <div className="flex h-14 w-full items-center gap-2 rounded-full border border-line bg-surface pl-5 pr-1 shadow-raised focus-within:border-fg">
             <Search size={20} strokeWidth={2} aria-hidden className="shrink-0 text-fg-muted" />
             <input
               id="library-search"

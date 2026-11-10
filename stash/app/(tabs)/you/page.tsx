@@ -12,40 +12,40 @@ export default function YouPage() {
     <>
       <PageHeader title="You" />
       <WrappedCard />
-      <nav aria-label="Settings" className="px-4 pt-4">
-        <ul className="overflow-hidden rounded-lg border border-line bg-surface">
+      <nav aria-label="Settings" className="px-4 pt-6">
+        <ul className="overflow-hidden rounded-xl bg-surface shadow-pop">
           <li>
-            <Link href="/settings#appearance" className="tap flex items-center gap-3 px-4 py-3 text-body text-fg">
-              <Palette size={24} strokeWidth={2} aria-hidden className="text-fg-muted" />
-              <span className="flex-1">Appearance</span>
+            <Link href="/settings#appearance" className="press tap flex items-center gap-3 px-4 py-3 text-body text-fg">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-raised"><Palette size={22} strokeWidth={2} aria-hidden /></span>
+              <span className="flex-1 text-label">Appearance</span>
               <ChevronRight size={24} strokeWidth={2} aria-hidden className="text-fg-subtle" />
             </Link>
           </li>
-          <li className="border-t border-line">
-            <Link href="/import" className="tap flex items-center gap-3 px-4 py-3 text-body text-fg">
-              <Download size={24} strokeWidth={2} aria-hidden className="text-fg-muted" />
-              <span className="flex-1">Import from Instagram or TikTok</span>
+          <li className="border-t border-line/70">
+            <Link href="/import" className="press tap flex items-center gap-3 px-4 py-3 text-body text-fg">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-raised"><Download size={22} strokeWidth={2} aria-hidden /></span>
+              <span className="flex-1 text-label">Import from Instagram or TikTok</span>
               <ChevronRight size={24} strokeWidth={2} aria-hidden className="text-fg-subtle" />
             </Link>
           </li>
-          <li className="border-t border-line">
-            <Link href="/triage" className="tap flex items-center gap-3 px-4 py-3 text-body text-fg">
-              <Layers size={24} strokeWidth={2} aria-hidden className="text-fg-muted" />
-              <span className="flex-1">Sort old saves</span>
+          <li className="border-t border-line/70">
+            <Link href="/triage" className="press tap flex items-center gap-3 px-4 py-3 text-body text-fg">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-raised"><Layers size={22} strokeWidth={2} aria-hidden /></span>
+              <span className="flex-1 text-label">Sort old saves</span>
               <ChevronRight size={24} strokeWidth={2} aria-hidden className="text-fg-subtle" />
             </Link>
           </li>
-          <li className="border-t border-line">
-            <Link href="/settings#reminders" className="tap flex items-center gap-3 px-4 py-3 text-body text-fg">
-              <Bell size={24} strokeWidth={2} aria-hidden className="text-fg-muted" />
-              <span className="flex-1">Reminders</span>
+          <li className="border-t border-line/70">
+            <Link href="/settings#reminders" className="press tap flex items-center gap-3 px-4 py-3 text-body text-fg">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-raised"><Bell size={22} strokeWidth={2} aria-hidden /></span>
+              <span className="flex-1 text-label">Reminders</span>
               <ChevronRight size={24} strokeWidth={2} aria-hidden className="text-fg-subtle" />
             </Link>
           </li>
-          <li className="border-t border-line">
-            <Link href="/design" className="tap flex items-center gap-3 px-4 py-3 text-body text-fg">
-              <Sparkles size={24} strokeWidth={2} aria-hidden className="text-fg-muted" />
-              <span className="flex-1">Design system</span>
+          <li className="border-t border-line/70">
+            <Link href="/design" className="press tap flex items-center gap-3 px-4 py-3 text-body text-fg">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-raised"><Sparkles size={22} strokeWidth={2} aria-hidden /></span>
+              <span className="flex-1 text-label">Design system</span>
               <ChevronRight size={24} strokeWidth={2} aria-hidden className="text-fg-subtle" />
             </Link>
           </li>

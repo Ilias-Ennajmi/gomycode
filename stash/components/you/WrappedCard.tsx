@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { cx } from "@/components/ui/cx";
 import { SPACE_BG } from "@/components/ui/space";
+import { Logo } from "@/components/brand/Logo";
 import { getBrowserClient } from "@/lib/supabase/client";
 import { barPercent, monthKey, monthLabel, parseWrapped, shiftMonth, wrappedShareText, type Wrapped } from "@/lib/wrapped";
 
@@ -67,14 +68,13 @@ export function WrappedCard() {
 
   const isCurrent = month === current;
   const oldest = shiftMonth(current, -OLDEST_MONTHS);
-  const bars = data
+  const stats = data
     ? [
-        { key: "saved", label: "Saved", value: data.saved, fill: "bg-fg-subtle" },
-        { key: "watched", label: "Watched", value: data.watched, fill: "bg-fg-muted" },
-        { key: "applied", label: "Applied", value: data.applied, fill: "bg-accent" },
+        { key: "saved", label: "saved", value: data.saved },
+        { key: "watched", label: "watched", value: data.watched },
+        { key: "applied", label: "applied", value: data.applied },
       ]
     : [];
-  const max = Math.max(1, ...bars.map((b) => b.value));
   const spaceMax = Math.max(1, ...(data?.topSpaces.map((s) => s.count) ?? [1]));
 
   const share = () => {
@@ -85,24 +85,28 @@ export function WrappedCard() {
   };
 
   return (
-    <section aria-labelledby="wrapped-title" className="mx-4 flex flex-col gap-4 rounded-xl border border-line bg-surface p-4">
-      <div className="flex items-center gap-1">
+    // Wrapped is a poster: always the deep-ink brand look (dark tokens), whatever the theme.
+    <section
+      data-theme="dark"
+      aria-labelledby="wrapped-title"
+      className="rise-in relative mx-4 flex flex-col gap-5 overflow-hidden rounded-xl bg-background p-5 text-fg shadow-raised"
+    >
+      <Logo variant="mark" size={180} className="pointer-events-none absolute -right-10 -bottom-8 opacity-10" />
+      <div className="relative flex items-center gap-1">
         <div className="flex min-w-0 flex-1 flex-col">
-          <h2 id="wrapped-title" className="text-heading">
-            Saved Wrapped
-          </h2>
-          <p className="text-caption text-fg-muted" aria-live="polite" suppressHydrationWarning>
+          <p className="text-label text-brand-lime">Saved Wrapped</p>
+          <h2 id="wrapped-title" className="text-title" aria-live="polite" suppressHydrationWarning>
             {monthLabel(month)}
-            {isCurrent ? " · so far" : ""}
-          </p>
+            {isCurrent ? " so far" : ""}
+          </h2>
         </div>
-        <IconButton label="Previous month" icon={ChevronLeft} disabled={month <= oldest} onClick={() => setMonth((m) => shiftMonth(m, -1))} />
-        <IconButton label="Next month" icon={ChevronRight} disabled={isCurrent} onClick={() => setMonth((m) => shiftMonth(m, 1))} />
+        <IconButton label="Previous month" icon={ChevronLeft} variant="raised" disabled={month <= oldest} onClick={() => setMonth((m) => shiftMonth(m, -1))} />
+        <IconButton label="Next month" icon={ChevronRight} variant="raised" disabled={isCurrent} onClick={() => setMonth((m) => shiftMonth(m, 1))} />
       </div>
 
       {state === "loading" && !data ? (
         <div className="flex flex-col gap-3">
-          <Skeleton className="h-6" />
+          <Skeleton className="h-16" />
           <Skeleton className="h-6" />
           <Skeleton className="h-6" />
         </div>
@@ -114,20 +118,18 @@ export function WrappedCard() {
         </p>
       ) : (
         <>
-          <ul aria-label="Saved, watched and applied" className="flex flex-col gap-2">
-            {bars.map((b) => (
-              <li key={b.key} className="grid grid-cols-4 items-center gap-3">
-                <span className="text-label text-fg">{b.label}</span>
-                <span className="col-span-2 h-3 overflow-hidden rounded-full bg-raised" aria-hidden>
-                  <span className={cx("block h-full rounded-full", b.fill)} style={{ width: `${barPercent(b.value, max)}%` }} />
-                </span>
-                <span className="text-right text-label text-fg tabular-nums">{b.value}</span>
-              </li>
+          <dl aria-label="Saved, watched and applied" className="relative grid grid-cols-3 gap-2">
+            {stats.map((b, i) => (
+              <div key={b.key} className="rise-in flex flex-col-reverse rounded-lg bg-surface px-3 py-3" style={{ animationDelay: `calc(var(--dur-press) * ${i})` }}>
+                <dt className="text-label text-fg-muted">{b.label}</dt>
+                <dd className={cx("text-hero tabular-nums", b.key === "applied" && "text-brand-lime")}>{b.value}</dd>
+              </div>
             ))}
-          </ul>
+          </dl>
           {(data.kept > 0 || data.recalled > 0) && (
-            <p className="text-caption text-fg-muted">
+            <p className="-mt-2 text-caption text-fg-muted">
               {data.kept} kept · {data.recalled} recall {data.recalled === 1 ? "answer" : "answers"}
+              {data.saved > 0 ? ` · ${Math.round((data.watched / data.saved) * 100)}% watched` : ""}
             </p>
           )}
 
@@ -136,15 +138,12 @@ export function WrappedCard() {
               <h3 className="text-label text-fg-muted">Top Spaces</h3>
               <ul className="flex flex-col gap-2">
                 {data.topSpaces.map((s) => (
-                  <li key={s.id} className="flex flex-col gap-1">
-                    {/* Name on its own line: Space names are too long for a column at 360 px. */}
-                    <span className="flex items-center gap-2 text-label text-fg">
-                      <span aria-hidden className={cx("h-2 w-2 shrink-0 rounded-full", SPACE_BG[s.color])} />
-                      <span className="min-w-0 flex-1 truncate">{s.name}</span>
-                      <span className="tabular-nums">{s.count}</span>
-                    </span>
-                    <span className="h-3 overflow-hidden rounded-full bg-raised" aria-hidden>
-                      <span className={cx("block h-full rounded-full", SPACE_BG[s.color])} style={{ width: `${barPercent(s.count, spaceMax)}%` }} />
+                  <li key={s.id} className="relative flex h-11 items-center overflow-hidden rounded-full bg-surface">
+                    <span aria-hidden className={cx("absolute inset-y-0 left-0 rounded-full", SPACE_BG[s.color])} style={{ width: `${barPercent(s.count, spaceMax)}%` }} />
+                    {/* Name and count sit on a solid chip so they read over any bar length. */}
+                    <span className="relative ml-1.5 inline-flex h-8 min-w-0 items-center gap-2 rounded-full bg-background px-3 text-label">
+                      <span className="truncate">{s.name}</span>
+                      <span className="tabular-nums text-fg-muted">{s.count}</span>
                     </span>
                   </li>
                 ))}
@@ -157,8 +156,8 @@ export function WrappedCard() {
               <h3 className="text-label text-fg-muted">Top creators</h3>
               <ol className="flex flex-col">
                 {data.topCreators.map((c, i) => (
-                  <li key={c.handle} className="flex min-h-10 items-center gap-3 text-body text-fg">
-                    <span className="w-5 text-caption text-fg-muted tabular-nums">{i + 1}</span>
+                  <li key={c.handle} className="flex min-h-11 items-center gap-3 text-body text-fg">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-surface font-display text-caption tabular-nums">{i + 1}</span>
                     <span className="min-w-0 flex-1 truncate">{c.handle}</span>
                     <span className="text-caption text-fg-muted tabular-nums">
                       {c.count} {c.count === 1 ? "save" : "saves"}
@@ -172,7 +171,7 @@ export function WrappedCard() {
           <button
             type="button"
             onClick={share}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-card border border-line px-4 text-label text-fg active:scale-95"
+            className="press inline-flex h-12 items-center justify-center gap-2 rounded-full bg-fg px-4 text-label text-background"
           >
             <Share2 size={20} strokeWidth={2} aria-hidden />
             Share my month

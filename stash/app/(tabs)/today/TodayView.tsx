@@ -3,20 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Check, Download, Flame, Inbox, Layers, Play, RefreshCw, Share2, Timer, User } from "lucide-react";
+import { Bell, Check, Flame, GraduationCap, Layers, Play, RefreshCw, Timer, User } from "lucide-react";
 import { AiLabel } from "@/components/ui/AiLabel";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { ProgressSegments } from "@/components/ui/ProgressSegments";
 import { Segmented } from "@/components/ui/Segmented";
 import { Sheet } from "@/components/ui/Sheet";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cx } from "@/components/ui/cx";
-import { SPACE_BG, type SpaceColor } from "@/components/ui/space";
+import { SPACE_BG, SPACE_TINT, type SpaceColor } from "@/components/ui/space";
+import { Logo } from "@/components/brand/Logo";
 import { cardText } from "@/components/library/SaveGrid";
 import { PullToRefresh } from "@/components/today/PullToRefresh";
 import { QuickSort } from "@/components/today/QuickSort";
+import { Welcome } from "@/components/today/Welcome";
 import { NearbyCard } from "@/components/places/NearbyCard";
 import { useLoop } from "@/lib/hooks/useLoop";
 import { estimateMinutes, hashString, QUEUE_LENGTHS } from "@/lib/dailyQueue";
@@ -41,11 +41,17 @@ function useInitial(): string | null {
   return initial;
 }
 
-type ForYou =
-  | { kind: "pattern"; id: string; title: string; text: string; href: string }
-  | { kind: "reminder"; id: string; title: string; text: string; href: string }
-  | { kind: "again"; id: string; title: string; text: string; href: string };
-// Phase 3 adds { kind: "nearby" } here: a saved place close to where the phone is.
+type ForYou = {
+  kind: "pattern" | "reminder" | "again";
+  id: string;
+  title: string;
+  text: string;
+  href: string;
+  /** The Space it belongs to: its colour fills the card. */
+  color?: SpaceColor;
+  space?: string;
+};
+// Phase 3 adds a "Place nearby" card (NearbyCard) in front of these.
 
 export function TodayView() {
   const router = useRouter();
@@ -79,11 +85,13 @@ export function TodayView() {
     const syn = loop.syntheses[0];
     if (syn && syn.points[0]) {
       const space = syn.spaceId ? spacesById.get(syn.spaceId) : undefined;
-      out.push({ kind: "pattern", id: syn.id, title: space?.name ?? syn.topic ?? "Your saves", text: syn.points[0], href: "/learn#syntheses" });
+      const title = space?.name ?? syn.topic ?? "Your saves";
+      out.push({ kind: "pattern", id: syn.id, title, text: syn.points[0], href: "/learn#syntheses", color: space?.color, space: title });
     }
     for (const r of loop.reminders.slice(0, 2)) {
       const s = savesById.get(r.saveId);
-      if (s && !s.archivedAt) out.push({ kind: "reminder", id: r.id, title: "Reminder", text: cardText(s), href: `/item/${s.id}` });
+      const sp = s?.spaceId ? spacesById.get(s.spaceId) : undefined;
+      if (s && !s.archivedAt) out.push({ kind: "reminder", id: r.id, title: "Reminder", text: cardText(s), href: `/item/${s.id}`, color: sp?.color, space: sp?.name });
     }
     // An old save worth another look, picked per day so it changes daily but not on every visit.
     const cutoff = Date.parse(`${loop.day}T00:00:00`) - OLD_DAYS * 86_400_000;
@@ -93,103 +101,111 @@ export function TodayView() {
     );
     if (old.length) {
       const pick = old[hashString(loop.day) % old.length];
-      out.push({ kind: "again", id: pick.id, title: "Worth another look", text: cardText(pick), href: `/item/${pick.id}` });
+      const sp = pick.spaceId ? spacesById.get(pick.spaceId) : undefined;
+      out.push({ kind: "again", id: pick.id, title: "Worth another look", text: cardText(pick), href: `/item/${pick.id}`, color: sp?.color, space: sp?.name });
     }
     return out.slice(0, 5);
   }, [loop.syntheses, loop.reminders, loop.queue, loop.day, lib.saves, savesById, spacesById]);
 
   const firstLoad = !loop.loaded || (lib.loading && lib.saves.length === 0);
   const empty = !firstLoad && lib.synced && lib.saves.length === 0 && lib.queued.length === 0;
+  const weekDone = Math.min(loop.weekDays, WEEK_GOAL);
+  const left = remaining.length;
+
+  // First run: no saves yet. Welcome explains how sharing into Stash works.
+  if (empty) return <Welcome />;
 
   const header = (
-    <header className="flex items-start justify-between gap-4 px-4 pt-6 pb-4">
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <p className="text-caption text-fg-muted" suppressHydrationWarning>
+    <header className="flex items-start justify-between gap-4 px-4 pt-6 pb-5">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <p className="flex items-center gap-2 text-label text-fg-muted" suppressHydrationWarning>
+          <Logo variant="tile" size={22} />
           {loop.day ? new Date(`${loop.day}T12:00:00`).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }) : ""}
         </p>
         <h1 className="text-display">Today</h1>
-        <div className="flex items-center gap-3">
-          <ProgressSegments total={WEEK_GOAL} filled={loop.weekDays} accent label={`${Math.min(loop.weekDays, WEEK_GOAL)} of ${WEEK_GOAL} this week`} className="max-w-40" />
+        <div className="mt-2 flex items-center gap-3">
+          <ProgressSegments total={WEEK_GOAL} filled={loop.weekDays} label={`${weekDone} of ${WEEK_GOAL} days this week`} className="max-w-36" />
           <span className="shrink-0 text-caption text-fg-muted">
-            {Math.min(loop.weekDays, WEEK_GOAL)} of {WEEK_GOAL} this week
+            {weekDone} of {WEEK_GOAL} days this week
           </span>
         </div>
       </div>
-      <Link href="/you" aria-label="You" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-raised text-label text-fg">
+      <Link
+        href="/you"
+        aria-label="You"
+        className="press flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-fg font-display text-heading text-background"
+      >
         {initial ?? <User size={24} strokeWidth={2} aria-hidden />}
       </Link>
     </header>
   );
 
-  if (empty) {
-    return (
-      <>
-        {header}
-        <EmptyState
-          icon={Share2}
-          message="Share a reel to Stash to start. Your 5 for today builds from what you save."
-          actionLabel="Paste a link"
-          onAction={() => router.push("/library?paste=1")}
-        />
-        <p className="px-6 text-center">
-          <Link href="/import" className="tap inline-flex items-center justify-center gap-2 px-4 text-label text-fg underline">
-            <Download size={20} strokeWidth={2} aria-hidden />
-            Bring the saves you already have
-          </Link>
-        </p>
-      </>
-    );
-  }
-
   return (
-    <PullToRefresh onRefresh={async () => {
-      await lib.refresh();
-      await loop.rebuild();
-    }}>
+    <PullToRefresh
+      onRefresh={async () => {
+        await lib.refresh();
+        await loop.rebuild();
+      }}
+    >
       {header}
-      <div className="flex flex-col gap-6 px-4 pb-6">
+      <div className="flex flex-col gap-7 px-4 pb-6">
         {/* Hero: accent = act now. */}
         {firstLoad ? (
-          <Skeleton shape="block" className="h-64 rounded-xl" />
+          <Skeleton shape="block" className="h-72 rounded-xl" />
         ) : (
-          <section aria-labelledby="hero-title" className="flex flex-col gap-4 rounded-xl bg-accent p-5 text-on-accent">
+          <section aria-labelledby="hero-title" className="rise-in relative flex flex-col gap-5 overflow-hidden rounded-xl bg-accent p-5 text-on-accent shadow-pop">
             <div className="flex items-start justify-between gap-3">
-              <h2 id="hero-title" className="text-title">
-                {allDone ? `All ${items.length} done` : `Your ${items.length || 5} for today`}
-              </h2>
+              <div className="flex min-w-0 flex-col gap-1">
+                <h2 id="hero-title" className="text-display">
+                  {allDone ? `All ${items.length} done` : `Your ${items.length || 5} for today`}
+                </h2>
+                <p className="text-label">
+                  {allDone
+                    ? "Nice. Lock it in with a quick recall."
+                    : items.length
+                      ? `${left} to watch · about ${minutes} min`
+                      : "Fills in once a save finishes processing."}
+                </p>
+              </div>
               {loop.streak > 0 && (
-                <span className="flex shrink-0 items-center gap-1 text-label" aria-label={`${loop.streak}-day streak`}>
-                  <Flame size={20} strokeWidth={2} aria-hidden /> {loop.streak}
+                <span className="pop-in flex h-10 shrink-0 items-center gap-1 rounded-full bg-on-accent px-3 text-label text-accent" aria-label={`${loop.streak}-day streak`}>
+                  <Flame size={20} strokeWidth={2.25} aria-hidden /> {loop.streak}
                 </span>
               )}
             </div>
-            {items.length > 0 ? (
+            {items.length > 0 && (
               <ul className="grid grid-cols-5 gap-2" aria-label="Today's queue">
-                {items.slice(0, 5).map((s) => (
-                  <QueueThumb key={s.id} save={s} done={done.has(s.id)} src={s.thumbPath ? lib.thumbs[s.thumbPath] : undefined} color={s.spaceId ? spacesById.get(s.spaceId)?.color : undefined} />
+                {items.slice(0, 5).map((s, i) => (
+                  <QueueThumb
+                    key={s.id}
+                    index={i}
+                    save={s}
+                    done={done.has(s.id)}
+                    src={s.thumbPath ? lib.thumbs[s.thumbPath] : undefined}
+                    color={s.spaceId ? spacesById.get(s.spaceId)?.color : undefined}
+                  />
                 ))}
               </ul>
-            ) : (
-              <p className="text-body">Your queue fills in once a save finishes processing.</p>
             )}
-            {items.length > 5 && <p className="text-caption">+ {items.length - 5} more</p>}
-            <div className="flex flex-wrap gap-2">
+            {items.length > 5 && <p className="-mt-2 text-caption">+ {items.length - 5} more</p>}
+            <div className="flex items-center gap-2">
               {allDone ? (
-                <Button variant="on-accent" icon={Play} onClick={() => router.push("/learn")}>
+                <Button variant="on-accent" size="lg" icon={GraduationCap} className="flex-1" onClick={() => router.push("/learn")}>
                   Start recall
                 </Button>
               ) : (
-                <Button variant="on-accent" icon={Play} disabled={!items.length} onClick={() => router.push("/play?queue=today")}>
-                  Start · {minutes} min
+                <Button variant="on-accent" size="lg" icon={Play} className="flex-1" disabled={!items.length} onClick={() => router.push("/play?queue=today")}>
+                  {done.size > 0 && left > 0 ? "Keep going" : "Start"} · {minutes} min
                 </Button>
               )}
               <button
                 type="button"
                 onClick={() => setLengthOpen(true)}
-                className="inline-flex h-12 items-center gap-2 rounded-card border border-on-accent/40 px-4 text-label text-on-accent active:scale-95"
+                aria-label={`Change length, now ${loop.settings.queueMinutes} minutes`}
+                className="press inline-flex h-14 shrink-0 items-center gap-2 rounded-full border-2 border-on-accent/30 px-4 text-label text-on-accent"
               >
-                <Timer size={20} strokeWidth={2} aria-hidden />
-                Change length
+                <Timer size={20} strokeWidth={2.25} aria-hidden />
+                {loop.settings.queueMinutes} min
               </button>
             </div>
           </section>
@@ -197,17 +213,18 @@ export function TodayView() {
 
         {/* The section stays mounted so the Place-nearby card can look for a place; hidden while empty. */}
         <section aria-labelledby="for-you" className={cx("flex flex-col gap-3", forYou.length === 0 && !nearbyShown && "hidden")}>
-          <h2 id="for-you" className="text-heading">
+          <h2 id="for-you" className="text-title">
             For you
           </h2>
-          <ul className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4">
+          <ul className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1">
             <li className={cx("w-4/5 shrink-0 snap-start", !nearbyShown && "hidden")}>
               <NearbyCard className="h-full" onShow={setNearbyShown} />
             </li>
-            {forYou.slice(0, nearbyShown ? 4 : 5).map((f) => (
-              <li key={`${f.kind}-${f.id}`} className="w-4/5 shrink-0 snap-start">
-                <Link href={f.href} className="block h-full">
-                  <Card size="lg" className="flex h-full flex-col gap-2">
+            {forYou.slice(0, nearbyShown ? 4 : 5).map((f, i) => {
+              const color = f.color ?? "inbox";
+              return (
+                <li key={`${f.kind}-${f.id}`} className="rise-in w-4/5 shrink-0 snap-start" style={{ animationDelay: `calc(var(--dur-press) * ${i})` }}>
+                  <Link href={f.href} className={cx("press flex h-full min-h-44 flex-col gap-2 rounded-lg p-5 text-fg", SPACE_TINT[color])}>
                     {f.kind === "pattern" ? (
                       <AiLabel text="Pattern spotted" />
                     ) : (
@@ -216,39 +233,57 @@ export function TodayView() {
                         {f.title}
                       </span>
                     )}
-                    {f.kind === "pattern" && <span className="text-caption text-fg-muted">{f.title}</span>}
-                    <p className="line-clamp-3 text-body">{f.text}</p>
-                  </Card>
-                </Link>
-              </li>
-            ))}
+                    <p className="line-clamp-3 text-heading">{f.text}</p>
+                    {f.space && (
+                      <span className="mt-auto inline-flex items-center gap-2 pt-1 text-caption text-fg-muted">
+                        <span aria-hidden className={cx("h-2.5 w-2.5 rounded-full", SPACE_BG[color])} />
+                        {f.space}
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </section>
 
-        {unsorted.length > 0 && (
-          <Card size="lg" className="flex items-center gap-3">
-            <Inbox size={24} strokeWidth={2} aria-hidden className="shrink-0 text-fg-muted" />
-            <p className="min-w-0 flex-1 text-body">
-              {unsorted.length} {unsorted.length === 1 ? "save" : "saves"} in your Inbox
-            </p>
-            <Button variant="secondary" onClick={() => setSortOpen(true)}>
-              Quick sort · 30 s
-            </Button>
-          </Card>
+        {(unsorted.length > 0 || loop.dueCards.length > 0) && (
+          <section aria-label="To do" className="flex flex-col gap-3">
+            {unsorted.length > 0 && (
+              <div className="rise-in flex items-center gap-4 rounded-lg bg-surface p-4 shadow-pop">
+                <StackPreview srcs={unsorted.slice(0, 3).map((s) => (s.thumbPath ? lib.thumbs[s.thumbPath] : undefined))} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-heading">
+                    {unsorted.length} {unsorted.length === 1 ? "save" : "saves"} to sort
+                  </p>
+                  <p className="text-caption text-fg-muted">In your Inbox · about 30 s</p>
+                </div>
+                <Button variant="ink" onClick={() => setSortOpen(true)} aria-label="Quick sort your Inbox">
+                  Sort
+                </Button>
+              </div>
+            )}
+
+            {loop.dueCards.length > 0 && (
+              <div className="rise-in flex items-center gap-4 rounded-lg bg-surface p-4 shadow-pop" style={{ animationDelay: "var(--dur-press)" }}>
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-card bg-raised text-fg">
+                  <GraduationCap size={26} strokeWidth={2} aria-hidden />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-heading">
+                    {loop.dueCards.length} recall {loop.dueCards.length === 1 ? "card" : "cards"} due
+                  </p>
+                  <p className="text-caption text-fg-muted">Say it out loud, it sticks</p>
+                </div>
+                <Button variant="ink" onClick={() => router.push("/learn")}>
+                  Recall
+                </Button>
+              </div>
+            )}
+          </section>
         )}
 
-        {loop.dueCards.length > 0 && (
-          <Card size="lg" className="flex items-center gap-3">
-            <p className="min-w-0 flex-1 text-body">
-              {loop.dueCards.length} recall {loop.dueCards.length === 1 ? "card" : "cards"} due
-            </p>
-            <Button variant="secondary" onClick={() => router.push("/learn")}>
-              Recall
-            </Button>
-          </Card>
-        )}
-
-        <Link href="/triage" className="flex min-h-12 items-center gap-3 self-start rounded-card px-1 text-label text-fg-muted">
+        <Link href="/triage" className="press flex min-h-12 items-center gap-3 self-start rounded-full border border-line px-4 text-label text-fg">
           <Layers size={20} strokeWidth={2} aria-hidden />
           Sort old saves · 30 s
         </Link>
@@ -282,18 +317,35 @@ export function TodayView() {
   );
 }
 
-function QueueThumb({ save, done, src, color }: { save: SaveItem; done: boolean; src?: string; color?: SpaceColor }) {
+/** Three thumbnails fanned like a little stack of cards. */
+function StackPreview({ srcs }: { srcs: (string | undefined)[] }) {
+  const rot = ["-rotate-12", "rotate-6", "rotate-0"];
   return (
-    <li className="relative aspect-9/16 overflow-hidden rounded-sm bg-on-accent/15">
+    <span aria-hidden className="relative h-16 w-14 shrink-0">
+      {srcs.map((src, i) => (
+        <span key={i} className={cx("absolute inset-x-1 inset-y-0 overflow-hidden rounded-sm bg-raised ring-2 ring-surface", rot[i] ?? "")}>
+          {src && (
+            // eslint-disable-next-line @next/next/no-img-element -- signed Storage URL
+            <img src={src} alt="" className="h-full w-full object-cover" />
+          )}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function QueueThumb({ save, done, src, color, index }: { save: SaveItem; done: boolean; src?: string; color?: SpaceColor; index: number }) {
+  return (
+    <li className="rise-in relative aspect-9/16 overflow-hidden rounded-card bg-on-accent/15" style={{ animationDelay: `calc(var(--dur-press) * ${index} * 0.5)` }}>
       {src && (
         // eslint-disable-next-line @next/next/no-img-element -- signed Storage URL
         <img src={src} alt="" className={cx("absolute inset-0 h-full w-full object-cover", done && "opacity-40")} loading="lazy" />
       )}
-      {color && <span aria-hidden className={cx("absolute inset-x-0 top-0 h-0.75", SPACE_BG[color])} />}
+      {color && <span aria-hidden className={cx("absolute inset-x-0 top-0 h-[var(--edge)]", SPACE_BG[color])} />}
       {done && (
         <span className="absolute inset-0 flex items-center justify-center">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-on-accent text-accent">
-            <Check size={20} strokeWidth={2} aria-hidden />
+          <span className="pop-in flex h-9 w-9 items-center justify-center rounded-full bg-on-accent text-accent">
+            <Check size={20} strokeWidth={3} aria-hidden />
           </span>
         </span>
       )}

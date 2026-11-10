@@ -23,6 +23,8 @@ import { localDay } from "@/lib/dailyQueue";
 import { buildForDay, fetchDailyQueue, markQueueDone, readLoopSettings, storeDailyQueue } from "@/lib/loop";
 import { streak } from "@/lib/streak";
 import { publicUrl } from "@/lib/links";
+import { tokenMs } from "@/lib/motionTokens";
+import { Illustration } from "@/components/brand/Illustration";
 
 const INK = { color: "var(--ink-light)" } as const;
 const RATES = [1, 1.5, 2] as const;
@@ -41,15 +43,39 @@ function readFlag(key: string, fallback: boolean) {
 
 function RailButton({ label, icon: Icon, onClick, pressed }: { label: string; icon: typeof Heart; onClick: () => void; pressed?: boolean }) {
   return (
-    <button type="button" onClick={onClick} aria-pressed={pressed} className="flex w-14 flex-col items-center gap-1 text-tab" style={INK}>
+    <button type="button" onClick={onClick} aria-pressed={pressed} className="press flex w-14 flex-col items-center gap-1 text-tab" style={INK}>
       <span
-        className={cx("flex h-12 w-12 items-center justify-center rounded-full", pressed ? "bg-[var(--ink-light)]" : "")}
+        // The key restarts the pop each time the state flips on.
+        key={pressed ? "on" : "off"}
+        className={cx("flex h-12 w-12 items-center justify-center rounded-full", pressed && "pop-in bg-[var(--ink-light)]")}
         style={pressed ? undefined : { background: "color-mix(in srgb, var(--scrim-base) 55%, transparent)" }}
       >
-        <Icon size={24} strokeWidth={2} aria-hidden style={pressed ? { color: "var(--scrim-base)" } : undefined} />
+        <Icon size={24} strokeWidth={2} aria-hidden fill={pressed ? "currentColor" : "none"} style={pressed ? { color: "var(--scrim-base)" } : undefined} />
       </span>
       {label}
     </button>
+  );
+}
+
+/** Keep / Archive stamp that grows with the swipe and pops once it would commit. */
+function SwipeStamp({ dir, amount }: { dir: "keep" | "archive"; amount: number }) {
+  const ready = amount >= 1;
+  const Icon = dir === "keep" ? Heart : Archive;
+  return (
+    <span
+      aria-hidden
+      className={cx("absolute top-1/3 flex items-center gap-2 rounded-full px-5 py-3 font-display text-title", dir === "keep" ? "left-6" : "right-6")}
+      style={{
+        background: ready ? "var(--ink-light)" : "color-mix(in srgb, var(--scrim-base) 70%, transparent)",
+        color: ready ? "var(--scrim-base)" : "var(--ink-light)",
+        opacity: Math.min(1, 0.3 + amount),
+        transform: `scale(${ready ? 1.12 : 0.85 + Math.min(amount, 1) * 0.15}) rotate(${dir === "keep" ? -6 : 6}deg)`,
+        transition: "transform var(--dur-fast) var(--motion-ease-spring), background-color var(--dur-fast), color var(--dur-fast)",
+      }}
+    >
+      <Icon size={24} strokeWidth={2.5} fill={ready && dir === "keep" ? "currentColor" : "none"} />
+      {dir === "keep" ? "Keep" : "Archive"}
+    </span>
   );
 }
 
@@ -77,6 +103,8 @@ export function PlayView() {
   const [dx, setDx] = useState(0);
   // After a swipe that doesn't commit, the page springs back instead of jumping.
   const [settling, setSettling] = useState(false);
+  // A committed swipe flings the card off screen before the pager moves on.
+  const [fling, setFling] = useState<"keep" | "archive" | null>(null);
   const watched = useRef(new Set<string>());
   const pages = useRef<Array<HTMLElement | null>>([]);
   const scroller = useRef<HTMLDivElement>(null);
@@ -318,13 +346,22 @@ export function PlayView() {
     if (!g) return;
     clearTimeout(g.hold);
     setBoost(false);
-    if (g.horizontal && current) {
-      if (dx > SWIPE_PX) keep(current);
-      else if (dx < -SWIPE_PX) archive(current);
+    const commit = g.horizontal && current ? (dx > SWIPE_PX ? "keep" : dx < -SWIPE_PX ? "archive" : null) : null;
+    if (commit && current) {
+      const s = current;
+      setFling(commit);
+      setDx(0);
+      // tokenMs is 0 with reduce motion: no fling, straight to the next one.
+      setTimeout(() => {
+        if (commit === "keep") keep(s);
+        else archive(s);
+        setFling(null);
+      }, tokenMs("--dur-screen"));
+      return;
     }
     if (dx !== 0) {
       setSettling(true);
-      setTimeout(() => setSettling(false), 300);
+      setTimeout(() => setSettling(false), tokenMs("--dur-sheet"));
     }
     setDx(0);
   };
@@ -348,7 +385,9 @@ export function PlayView() {
   if (order !== null && items.length === 0) {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-background px-6 text-center pt-safe pb-safe">
-        <p className="max-w-xs text-body text-fg">Nothing to play here yet. Share a reel to Stash and it plays here, full screen.</p>
+        <Illustration name="empty" />
+        <h1 className="text-title">Nothing to play yet</h1>
+        <p className="max-w-xs text-body text-fg-muted">Share a reel to Stash and it plays here, full screen.</p>
         <Button variant="secondary" onClick={close}>
           Close
         </Button>
@@ -379,13 +418,20 @@ export function PlayView() {
               aria-label={`${i + 1} of ${items.length}`}
               className="relative h-dvh w-full snap-start snap-always touch-pan-y"
               style={
-                i === active && (dx || settling)
+                i === active && fling
                   ? {
-                      transform: `translateX(${dx}px) rotate(${dx / 40}deg)`,
-                      // 1:1 with the finger while dragging; springs back on release (token duration, 0 with reduce motion).
-                      transition: dx ? "none" : "transform var(--dur-screen) var(--ease-spring)",
+                      // Committed: fly off in the swipe direction (ease-out, screen token).
+                      transform: `translateX(${fling === "keep" ? 120 : -120}vw) rotate(${fling === "keep" ? 14 : -14}deg)`,
+                      opacity: 0.4,
+                      transition: "transform var(--dur-screen) var(--motion-ease-out), opacity var(--dur-screen) var(--motion-ease-out)",
                     }
-                  : undefined
+                  : i === active && (dx || settling)
+                    ? {
+                        transform: `translateX(${dx}px) rotate(${dx / 30}deg)`,
+                        // 1:1 with the finger while dragging; a springy wobble back on release (0 with reduce motion).
+                        transition: dx ? "none" : "transform var(--dur-sheet) var(--ease-spring)",
+                      }
+                    : undefined
               }
             >
               {near ? (
@@ -417,14 +463,8 @@ export function PlayView() {
                   <img src={poster} alt="" className="absolute inset-0 h-full w-full object-contain" />
                 )
               )}
-              {i === active && dx !== 0 && (
-                <span
-                  aria-hidden
-                  className={cx("absolute top-1/3 rounded-full px-4 py-2 text-label", dx > 0 ? "left-6" : "right-6")}
-                  style={{ background: "color-mix(in srgb, var(--scrim-base) 70%, transparent)", opacity: Math.min(1, Math.abs(dx) / SWIPE_PX) }}
-                >
-                  {dx > 0 ? "Keep" : "Archive"}
-                </span>
+              {i === active && (dx !== 0 || fling) && (
+                <SwipeStamp dir={fling ?? (dx > 0 ? "keep" : "archive")} amount={fling ? 1.2 : Math.abs(dx) / SWIPE_PX} />
               )}
             </section>
           );
@@ -438,11 +478,11 @@ export function PlayView() {
             data-index={items.length}
             className="flex h-dvh snap-start flex-col items-center justify-center gap-4 bg-background px-6 text-center text-fg"
           >
-            <CheckCircle2 size={48} strokeWidth={1.5} aria-hidden />
-            <h2 className="text-display">{items.length} done</h2>
+            {finished && <Illustration name="done" className="pop-in h-40" />}
+            <h2 className="text-hero">{items.length} done</h2>
             {streakDays > 0 && (
-              <p className="flex items-center gap-2 text-label">
-                <Flame size={20} strokeWidth={2} aria-hidden /> {streakDays}-day streak
+              <p className="flex h-10 items-center gap-2 rounded-full bg-fg px-4 text-label text-background">
+                <Flame size={20} strokeWidth={2.25} aria-hidden /> {streakDays}-day streak
               </p>
             )}
             <p className="text-body text-fg-muted">Kept saves come back as recall cards in Learn.</p>
@@ -469,14 +509,20 @@ export function PlayView() {
               {items.map((s, i) => (
                 <span
                   key={s.id}
-                  className="h-1 flex-1 rounded-full"
+                  className="h-1.5 flex-1 rounded-full transition-colors duration-[var(--dur-screen)]"
                   style={{ background: i <= active ? "var(--ink-light)" : "color-mix(in srgb, var(--ink-light) 30%, transparent)" }}
                 />
               ))}
             </div>
           </div>
           <div className="pointer-events-auto flex items-center gap-1">
-            <button type="button" aria-label="Close player" onClick={close} className="flex h-12 w-12 items-center justify-center rounded-full">
+            <button
+              type="button"
+              aria-label="Close player"
+              onClick={close}
+              className="press flex h-12 w-12 items-center justify-center rounded-full"
+              style={{ background: "color-mix(in srgb, var(--scrim-base) 55%, transparent)" }}
+            >
               <ChevronDown size={24} strokeWidth={2} aria-hidden />
             </button>
             <span className="flex min-w-0 flex-1 items-center gap-2 truncate text-label">
@@ -489,7 +535,7 @@ export function PlayView() {
               type="button"
               onClick={() => setRate(RATES[(RATES.indexOf(rate) + 1) % RATES.length])}
               aria-label={`Speed ${rate}×`}
-              className="h-12 min-w-12 rounded-full px-3 text-label"
+              className="press h-12 min-w-12 rounded-full px-3 text-label tabular-nums"
               style={{ background: "color-mix(in srgb, var(--scrim-base) 55%, transparent)" }}
             >
               {rate}×
@@ -507,7 +553,7 @@ export function PlayView() {
                   // best-effort
                 }
               }}
-              className={cx("flex h-12 w-12 items-center justify-center rounded-full", !captionsOn && "opacity-60")}
+              className={cx("press flex h-12 w-12 items-center justify-center rounded-full", !captionsOn && "opacity-60")}
               style={{ background: "color-mix(in srgb, var(--scrim-base) 55%, transparent)" }}
             >
               <Captions size={24} strokeWidth={2} aria-hidden />
@@ -575,14 +621,14 @@ export function PlayView() {
               {current.creator && <span className="truncate">@{current.creator.replace(/^@/, "")}</span>}
               {current.duration ? <span>· {formatDuration(current.duration)}</span> : null}
               {space && (
-                <span className="ml-auto flex shrink-0 items-center gap-1 rounded-full px-2 py-1" style={{ background: "color-mix(in srgb, var(--scrim-base) 55%, transparent)" }}>
-                  <span aria-hidden className={cx("h-2 w-2 rounded-full", SPACE_BG[space.color])} />
+                // The Space as a solid chip in its colour (light-theme values so the ink reads on video).
+                <span data-theme="light" className={cx("ml-auto flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-label text-on-space", SPACE_BG[space.color])}>
                   {space.name}
                 </span>
               )}
             </div>
             <button type="button" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded} className="pr-16 text-left">
-              <span className={cx("block text-heading", !expanded && "truncate")}>{cardText(current)}</span>
+              <span className={cx("block font-display text-title", !expanded && "line-clamp-2")}>{cardText(current)}</span>
               {!expanded && (current.takeaways.length > 0 || (segs?.length ?? 0) > 0) && (
                 <span className="text-caption opacity-80">Tap for {current.takeaways.length ? "takeaways" : ""}{current.takeaways.length && segs?.length ? " and " : ""}{segs?.length ? "transcript" : ""}</span>
               )}
@@ -633,7 +679,7 @@ export function PlayView() {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Why you saved it, where you'll use it…"
-            className="w-full rounded-card bg-raised p-3 text-input text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-fg"
+            className="w-full rounded-lg border border-line bg-surface p-4 text-input text-fg outline-none placeholder:text-fg-subtle focus:border-fg"
           />
           <Button type="submit" fullWidth>
             Save note

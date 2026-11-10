@@ -31,7 +31,7 @@ export function NearbySettings() {
   };
 
   return (
-    <section aria-labelledby="nearby-title" className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4">
+    <section aria-labelledby="nearby-title" className="flex flex-col gap-3 rounded-xl bg-surface p-4 shadow-pop">
       <div className="flex items-center gap-3">
         <MapPin size={24} strokeWidth={2} aria-hidden className="text-fg-muted" />
         <h2 id="nearby-title" className="text-heading">

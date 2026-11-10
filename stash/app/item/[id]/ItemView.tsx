@@ -13,6 +13,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Thumbnail, formatDuration } from "@/components/ui/Thumbnail";
 import { useToast } from "@/components/ui/Toast";
 import { cx } from "@/components/ui/cx";
+import { SPACE_BG } from "@/components/ui/space";
+import { Illustration } from "@/components/brand/Illustration";
 import { MediaPlayer, type PlayerHandle } from "@/components/player/MediaPlayer";
 import { SpacePicker } from "@/components/save/SpacePicker";
 import { RemindSheet } from "@/components/save/RemindSheet";
@@ -139,8 +141,10 @@ export function ItemView({ id }: { id: string }) {
   if (missing) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-xl flex-col items-center justify-center gap-4 px-6 pt-safe pb-safe text-center">
-        <p className="text-body text-fg-muted">This save isn&apos;t here anymore.</p>
-        <Button variant="secondary" onClick={() => router.replace("/library")}>
+        <Illustration name="error" className="h-36" />
+        <h1 className="text-title">This save is gone</h1>
+        <p className="text-body text-fg-muted">It was deleted, maybe on another device.</p>
+        <Button variant="ink" onClick={() => router.replace("/library")}>
           Back to Library
         </Button>
       </main>
@@ -240,24 +244,25 @@ export function ItemView({ id }: { id: string }) {
         <IconButton
           label="Back"
           icon={ChevronLeft}
+          variant="raised"
           onClick={() => (window.history.length > 1 ? router.back() : router.replace("/library"))}
         />
-        <div className="flex items-center">
+        <div className="flex items-center gap-1">
+          <IconButton label="More" icon={MoreVertical} onClick={() => setMenuOpen(true)} />
           <Link
             href={`/play?id=${save.id}`}
             aria-label="Play full screen"
-            className="flex h-12 w-12 items-center justify-center rounded-full text-fg"
+            className="press flex h-12 w-12 items-center justify-center rounded-full bg-accent text-on-accent shadow-pop"
           >
-            <Play size={24} strokeWidth={2} aria-hidden />
+            <Play size={22} strokeWidth={2} fill="currentColor" aria-hidden />
           </Link>
-          <IconButton label="More" icon={MoreVertical} onClick={() => setMenuOpen(true)} />
         </div>
       </header>
 
       <div
         data-morph-dst={save.id}
         style={{ viewTransitionName: morphName(save.id) }}
-        className="mx-auto aspect-9/16 max-h-[var(--detail-max-h-lg)] w-full max-w-sm overflow-hidden rounded-card"
+        className="mx-auto aspect-9/16 max-h-[var(--detail-max-h-lg)] w-full max-w-sm overflow-hidden rounded-xl shadow-raised"
       >
         <MediaPlayer
           ref={player}
@@ -286,7 +291,12 @@ export function ItemView({ id }: { id: string }) {
         )}
 
         <section className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-x-2 text-caption text-fg-muted">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-fg-muted">
+            {space && (
+              <span className={cx("mr-1 inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-label text-on-space", SPACE_BG[space.color])}>
+                {space.name}
+              </span>
+            )}
             <span>{PLATFORM_LABEL[save.platform]}</span>
             {save.creator && <span>· @{save.creator.replace(/^@/, "")}</span>}
             {save.duration ? <span>· {formatDuration(save.duration)}</span> : null}
@@ -304,34 +314,48 @@ export function ItemView({ id }: { id: string }) {
                 <WordReveal text={save.keyIdea} animate={revealIdea} />
               </h1>
               {save.takeaways.length > 0 && (
-                <ul className="flex flex-col gap-2">
+                <ol className="flex flex-col gap-2 rounded-lg bg-surface p-4 shadow-pop">
                   {save.takeaways.map((t, i) => (
-                    <li key={i} className="flex gap-3 text-body text-fg">
-                      <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-fg-muted" />
-                      {t}
+                    <li key={i} className="flex items-start gap-3 text-body text-fg">
+                      <span
+                        aria-hidden
+                        className={cx(
+                          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-display text-label",
+                          space ? cx(SPACE_BG[space.color], "text-on-space") : "bg-fg text-background",
+                        )}
+                      >
+                        {i + 1}
+                      </span>
+                      <span className="pt-0.5">{t}</span>
                     </li>
                   ))}
-                </ul>
+                </ol>
               )}
             </>
           ) : (
             <h1 className="text-title">{cardText(save)}</h1>
           )}
-          <Button
-            variant={save.appliedAt ? "secondary" : "ghost"}
-            icon={CheckCircle2}
-            onClick={toggleApplied}
-            className="self-start"
-            aria-pressed={Boolean(save.appliedAt)}
-          >
-            {save.appliedAt ? "Applied" : "Mark as applied"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={save.appliedAt ? "ink" : "secondary"}
+              icon={CheckCircle2}
+              onClick={toggleApplied}
+              aria-pressed={Boolean(save.appliedAt)}
+              className={cx(save.appliedAt && "pop-in")}
+              key={save.appliedAt ? "applied" : "not-applied"}
+            >
+              {save.appliedAt ? "Applied" : "Mark as applied"}
+            </Button>
+            <Button variant="secondary" icon={Bell} onClick={() => setRemindOpen(true)}>
+              Remind me
+            </Button>
+          </div>
         </section>
 
         {save.actions.length > 0 && (
           <section className="flex flex-col gap-2">
             <h2 className="text-heading">To do</h2>
-            <ul className="flex flex-col">
+            <ul className="flex flex-col rounded-lg bg-surface px-3 py-1 shadow-pop">
               {save.actions.map((a, i) => (
                 <li key={i} className="flex items-center gap-1">
                   <button
@@ -341,7 +365,7 @@ export function ItemView({ id }: { id: string }) {
                     className="flex min-h-12 flex-1 items-center gap-3 text-left text-body"
                   >
                     {done.includes(i) ? (
-                      <CheckCircle2 size={24} strokeWidth={2} aria-hidden className="shrink-0 text-fg" />
+                      <CheckCircle2 size={24} strokeWidth={2} aria-hidden className="pop-in shrink-0 text-fg" />
                     ) : (
                       <Circle size={24} strokeWidth={2} aria-hidden className="shrink-0 text-fg-muted" />
                     )}
@@ -357,15 +381,12 @@ export function ItemView({ id }: { id: string }) {
         <section className="flex flex-col gap-2">
           <h2 className="text-heading">Space</h2>
           <SpacePicker spaces={spaces} selectedId={space?.id ?? null} onPick={move} onCreate={newSpace} />
-          <Button variant="secondary" icon={Bell} onClick={() => setRemindOpen(true)} className="self-start">
-            Remind me
-          </Button>
         </section>
 
         {segments.length > 0 && (
           <section className="flex flex-col gap-2">
             <h2 className="text-heading">Transcript</h2>
-            <ol className="flex flex-col">
+            <ol className="flex flex-col rounded-lg bg-surface p-1 shadow-pop">
               {segments.map((seg, i) => (
                 <li key={i}>
                   <button
@@ -373,7 +394,7 @@ export function ItemView({ id }: { id: string }) {
                     disabled={!save.hasVideo}
                     onClick={() => player.current?.seek(seg.start)}
                     className={cx(
-                      "flex w-full gap-3 rounded-sm px-2 py-2 text-left text-body",
+                      "press flex w-full gap-3 rounded-card px-3 py-2 text-left text-body",
                       i === activeSeg ? "bg-raised text-fg" : "text-fg-muted",
                     )}
                   >
@@ -399,7 +420,7 @@ export function ItemView({ id }: { id: string }) {
             onChange={(e) => setNote(e.target.value)}
             onBlur={() => note !== (save.userNote ?? "") && void saveNote(save.id, note).catch(() => {})}
             placeholder="Why you saved it, where you'll use it…"
-            className="w-full rounded-card bg-raised p-3 text-input text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-fg"
+            className="w-full rounded-lg border border-line bg-surface p-4 text-input text-fg outline-none placeholder:text-fg-subtle focus:border-fg"
           />
         </section>
 
@@ -408,7 +429,7 @@ export function ItemView({ id }: { id: string }) {
             <h2 className="text-heading">Related</h2>
             <ul className="scroll-area -mx-4 flex gap-3 overflow-x-auto px-4">
               {related.map((r) => (
-                <li key={r.id} className="w-28 shrink-0">
+                <li key={r.id} className="w-32 shrink-0">
                   <Thumbnail
                     src={r.thumbPath ? thumbs[r.thumbPath] : undefined}
                     spaceColor={spaces.find((s) => s.id === r.spaceId)?.color}

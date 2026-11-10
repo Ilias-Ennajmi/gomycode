@@ -123,9 +123,8 @@ export function ImportView() {
                   restart();
                 }}
                 className={cx(
-                  "flex min-h-16 w-full items-center gap-4 rounded-card border px-4 py-3 text-left",
-                  "transition-colors duration-[var(--dur-fast)]",
-                  selected ? "border-fg bg-raised" : "border-line bg-surface hover:bg-raised",
+                  "press flex min-h-16 w-full items-center gap-4 rounded-lg border-2 px-4 py-3 text-left shadow-pop",
+                  selected ? "border-fg bg-surface" : "border-transparent bg-surface hover:border-line",
                   c.soon && "opacity-60",
                 )}
               >
@@ -141,7 +140,7 @@ export function ImportView() {
             );
           })}
         </div>
-        <p className="flex items-start gap-3 rounded-card bg-raised px-4 py-3 text-body text-fg">
+        <p className="flex items-start gap-3 rounded-lg border-2 border-dashed border-line px-4 py-3 text-body text-fg">
           <ImageIcon size={24} strokeWidth={2} aria-hidden className="shrink-0 text-fg-muted" />
           <span>
             Screenshots: open one in your gallery and tap Share → Stash. The AI reads the post in it and files it for you.
@@ -149,7 +148,7 @@ export function ImportView() {
         </p>
 
         {source && (
-          <section aria-label="Steps" className="flex flex-col gap-4 rounded-lg border border-line bg-surface p-4">
+          <section aria-label="Steps" className="flex flex-col gap-4 rounded-xl bg-surface p-5 shadow-pop">
             <ol className="flex list-decimal flex-col gap-2 pl-5 text-body text-fg-muted">
               {HOW[source].map((line) => (
                 <li key={line}>{line}</li>
@@ -173,7 +172,7 @@ export function ImportView() {
                 {phase.step === "error" && <Banner>{phase.message}</Banner>}
                 <label
                   htmlFor="import-file"
-                  className="flex h-14 cursor-pointer items-center justify-center gap-2 rounded-card bg-accent text-label text-on-accent active:scale-95"
+                  className="press flex h-14 cursor-pointer items-center justify-center gap-2 rounded-full bg-accent text-label text-on-accent shadow-pop"
                 >
                   <FileArchive size={24} strokeWidth={2} aria-hidden />
                   Pick the downloaded ZIP
@@ -220,10 +219,10 @@ export function ImportView() {
                   {phase.queued} {phase.queued === 1 ? "save" : "saves"} queued
                   {phase.offline ? " on this phone. They'll send as soon as you're online." : ". Key ideas fill in over the next minutes."}
                 </p>
-                <Link href="/library?space=inbox" className="flex h-12 items-center justify-center rounded-card border border-line text-label text-fg">
+                <Link href="/library?space=inbox" className="press flex h-12 items-center justify-center rounded-full bg-fg text-label text-background">
                   Open the Inbox
                 </Link>
-                <Link href="/triage" className="flex h-12 items-center justify-center rounded-card text-label text-fg">
+                <Link href="/triage" className="press flex h-12 items-center justify-center rounded-full text-label text-fg">
                   Sort old saves (30 s)
                 </Link>
               </div>
@@ -238,7 +237,7 @@ export function ImportView() {
             </h2>
             <ul className="flex flex-col gap-1">
               {history.map((h) => (
-                <li key={h.id} className="flex min-h-12 items-center justify-between gap-3 rounded-card bg-surface px-4 text-body">
+                <li key={h.id} className="flex min-h-12 items-center justify-between gap-3 rounded-lg bg-surface px-4 text-body">
                   <span className="truncate text-fg">{h.source === "instagram" ? "Instagram" : "TikTok"} · {h.queued} new of {h.total}</span>
                   <span className="shrink-0 text-caption text-fg-muted">{new Date(h.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
                 </li>

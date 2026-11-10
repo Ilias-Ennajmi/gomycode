@@ -11,23 +11,27 @@ export default function SettingsPage() {
   return (
     <main className="mx-auto min-h-dvh max-w-xl pt-safe pb-safe">
       <PageHeader title="Settings" back="/you" />
-      <div className="flex flex-col gap-10 px-4 pb-8">
-        <section id="appearance" aria-labelledby="appearance-title" className="flex scroll-mt-4 flex-col gap-4">
+      <div className="flex flex-col gap-8 px-4 pb-8">
+        <section id="appearance" aria-labelledby="appearance-title" className="flex scroll-mt-4 flex-col gap-3">
           <h2 id="appearance-title" className="text-title">
             Appearance
           </h2>
-          <AppearanceControls />
+          <div className="rounded-xl bg-surface p-4 shadow-pop">
+            <AppearanceControls />
+          </div>
         </section>
-        <section id="reminders" aria-labelledby="reminders-title" className="flex scroll-mt-4 flex-col gap-4">
+        <section id="reminders" aria-labelledby="reminders-title" className="flex scroll-mt-4 flex-col gap-3">
           <h2 id="reminders-title" className="text-title">
             Reminders
           </h2>
-          <ReminderSettings />
+          <div className="rounded-xl bg-surface p-4 shadow-pop">
+            <ReminderSettings />
+          </div>
         </section>
         <section id="nearby" aria-label="Nearby" className="scroll-mt-4">
           <NearbySettings />
         </section>
-        <section id="device" aria-labelledby="device-title" className="flex scroll-mt-4 flex-col gap-4">
+        <section id="device" aria-labelledby="device-title" className="flex scroll-mt-4 flex-col gap-3">
           <h2 id="device-title" className="text-title">
             This device
           </h2>
