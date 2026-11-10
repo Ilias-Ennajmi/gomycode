@@ -1,0 +1,13 @@
+# Only the Edge Function settings live here (contract 0007 §4). Everything else is the project's default.
+
+# The worker has no JWT: it shows the wake-up token, which the function checks on every request.
+[functions.stash-worker-proxy]
+verify_jwt = false
+
+# Called by the signed-in phone (supabase.functions.invoke).
+[functions.stash-embed]
+verify_jwt = true
+
+# `restore` comes from a phone with no session yet; `create` checks the JWT inside the function.
+[functions.stash-recovery]
+verify_jwt = false
