@@ -3,8 +3,11 @@
 // - Network-first with a cached fallback for page navigations and Supabase REST reads.
 // - Stale-while-revalidate for images, with a size cap.
 // - Web Push: reminders and "Your 5 for today" (playbook step 3.9); a tap opens the right screen.
+// - Share target (POST /share/receive, multipart): a shared screenshot is kept in the
+//   "stash-share-inbox" Cache and the save sheet opens on /share?shared-image=<id>.
 // Bump VERSION whenever these caching rules change.
-const VERSION = "v3";
+const VERSION = "v4";
+const SHARE_INBOX = "stash-share-inbox"; // not versioned: a shared image must survive an update
 const SHELL = `stash-shell-${VERSION}`;
 const DATA = `stash-data-${VERSION}`;
 const IMAGES = `stash-img-${VERSION}`;
@@ -40,7 +43,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith("stash-") && ![SHELL, DATA, IMAGES, OPAQUE, STATIC].includes(k)).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith("stash-") && ![SHELL, DATA, IMAGES, OPAQUE, STATIC, SHARE_INBOX].includes(k)).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
@@ -87,10 +90,39 @@ async function staleWhileRevalidate(request) {
   return cached ?? network;
 }
 
+const SHARE_FIELDS = ["title", "text", "url"];
+
+/** The share target: keep the image on the phone (no identity is needed yet), then open the save sheet. */
+async function receiveShare(request) {
+  const params = new URLSearchParams();
+  try {
+    const form = await request.formData();
+    for (const k of SHARE_FIELDS) {
+      const v = form.get(k);
+      if (typeof v === "string" && v.trim()) params.set(k, v.slice(0, 2000));
+    }
+    const file = form.getAll("media").find((f) => typeof f !== "string" && f.type && f.type.startsWith("image/"));
+    if (file) {
+      const id = self.crypto.randomUUID();
+      const cache = await caches.open(SHARE_INBOX);
+      await cache.put(`/share/inbox/${id}`, new Response(file, { headers: { "Content-Type": file.type } }));
+      params.set("shared-image", id);
+    }
+  } catch {
+    // Unreadable form: the sheet says "No link found" and nothing is lost on the phone.
+  }
+  const query = params.toString();
+  return Response.redirect(new URL(`/share${query ? `?${query}` : ""}`, self.location.origin).href, 303);
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
-  if (request.method !== "GET") return;
   const url = new URL(request.url);
+  if (request.method === "POST" && url.origin === self.location.origin && url.pathname === "/share/receive") {
+    event.respondWith(receiveShare(request));
+    return;
+  }
+  if (request.method !== "GET") return;
 
   // Never intercept auth or Next internals that must be fresh.
   if (url.origin === self.location.origin && (url.pathname.startsWith("/auth/") || url.pathname.startsWith("/api/auth"))) return;

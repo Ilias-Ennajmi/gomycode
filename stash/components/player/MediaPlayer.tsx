@@ -12,9 +12,11 @@ export type PlayerHandle = {
   video: () => HTMLVideoElement | null;
 };
 
-type Mode = "video" | "embed" | "card";
+type Mode = "video" | "embed" | "card" | "image";
 
 function initialMode(save: SaveItem): Mode {
+  // A screenshot shared to Stash is its own media: shown whole, never "Open original".
+  if (save.platform === "screenshot") return "image";
   if (save.hasVideo) return "video";
   return embedUrl(save.sourceUrl) ? "embed" : "card";
 }
@@ -127,6 +129,16 @@ export const MediaPlayer = forwardRef<
           loading="lazy"
         />
       )}
+
+      {mode === "image" &&
+        (poster ? (
+          // eslint-disable-next-line @next/next/no-img-element -- signed Storage URL
+          <img src={poster} alt={save.keyIdea ?? "Shared screenshot"} className="absolute inset-0 h-full w-full object-contain" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center px-6 text-center" style={INK_LIGHT}>
+            <p className="text-title">{save.keyIdea ?? save.title ?? "Screenshot"}</p>
+          </div>
+        ))}
 
       {mode === "card" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 py-8 pl-6 pr-20 text-center" style={INK_LIGHT}>

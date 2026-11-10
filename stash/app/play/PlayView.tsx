@@ -22,6 +22,7 @@ import { haptic } from "@/lib/haptics";
 import { localDay } from "@/lib/dailyQueue";
 import { buildForDay, fetchDailyQueue, markQueueDone, readLoopSettings, storeDailyQueue } from "@/lib/loop";
 import { streak } from "@/lib/streak";
+import { publicUrl } from "@/lib/links";
 
 const INK = { color: "var(--ink-light)" } as const;
 const RATES = [1, 1.5, 2] as const;
@@ -271,8 +272,9 @@ export function PlayView() {
 
   const toTask = (s: SaveItem) => {
     const text = s.actions[0] ?? s.keyIdea ?? cardText(s);
-    if (navigator.share) void navigator.share({ title: "From Stash", text, url: s.sourceUrl }).catch(() => {});
-    else void navigator.clipboard?.writeText(`${text}\n${s.sourceUrl}`).then(() => toast({ message: "Copied", aboveBar: false }));
+    const url = publicUrl(s.sourceUrl);
+    if (navigator.share) void navigator.share({ title: "From Stash", text, url }).catch(() => {});
+    else void navigator.clipboard?.writeText(url ? `${text}\n${url}` : text).then(() => toast({ message: "Copied", aboveBar: false }));
   };
 
   const remind = async (choice: ReminderChoice, date?: string) => {

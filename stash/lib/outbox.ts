@@ -16,7 +16,12 @@ export type OutboxItem = {
   spaceId: string | null;
   sharedTitle: string | null;
   savedAt: string;
+  /** A shared screenshot (JPEG). Uploaded to stash-thumbs/<uid>/screenshots/<clientId>.jpg before the row is sent. */
+  image?: Blob;
 };
+
+/** source_url of a screenshot save; the worker turns it into the Storage path under the owner's folder. */
+export const screenshotRef = (clientId: string) => `screenshot:${clientId}.jpg`;
 
 const DB = "stash";
 const STORE = "outbox";
@@ -108,10 +113,23 @@ export function flush(): Promise<number> {
   flushing ??= (async () => {
     const supabase = getBrowserClient();
     if (!supabase || (typeof navigator !== "undefined" && !navigator.onLine)) return 0;
-    const items = await pending();
-    if (!items.length) return 0;
+    const waiting = await pending();
+    if (!waiting.length) return 0;
     // No identity yet (first open, offline at boot): the saves wait here, nothing is lost.
-    if (!(await ensureSession())) return 0;
+    const session = await ensureSession();
+    if (!session) return 0;
+    // Screenshots: the image goes up first, so the worker never sees a save without its file.
+    const items: OutboxItem[] = [];
+    for (const item of waiting) {
+      if (!item.image) {
+        items.push(item);
+        continue;
+      }
+      const { error } = await supabase.storage
+        .from("stash-thumbs")
+        .upload(`${session.user.id}/screenshots/${item.clientId}.jpg`, item.image, { contentType: "image/jpeg", upsert: true });
+      if (!error) items.push(item); // else it stays queued and is tried again next time
+    }
     let sent = 0;
     // Batches keep a big import to a few requests; a single share is a batch of one.
     for (let i = 0; i < items.length; i += FLUSH_BATCH) {

@@ -87,3 +87,8 @@ export const PLATFORM_LABEL: Record<Platform, string> = {
   web: "Web",
   screenshot: "Screenshot",
 };
+
+/** A link worth sharing or opening: screenshots ("screenshot:<id>.jpg") have none. */
+export function publicUrl(sourceUrl: string): string | undefined {
+  return /^https?:\/\//i.test(sourceUrl) ? sourceUrl : undefined;
+}

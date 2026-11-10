@@ -3,15 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Bell, Check, Link2 } from "lucide-react";
+import { Bell, Check, Image as ImageIcon, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { SpacePicker } from "@/components/save/SpacePicker";
 import { RemindSheet } from "@/components/save/RemindSheet";
 import { VoiceNoteButton } from "@/components/save/VoiceNoteButton";
 import { addReminder, createSpace, fetchSaves, fetchSpaces, mostUsed, nextSpaceColor, type ReminderChoice, type Space } from "@/lib/data";
-import { cleanUrl, detectPlatform, extractUrl, PLATFORM_LABEL } from "@/lib/links";
-import { enqueue, flush, serverIdFor, updateSaveByClientId } from "@/lib/outbox";
+import { cleanUrl, detectPlatform, extractUrl, PLATFORM_LABEL, type Platform } from "@/lib/links";
+import { enqueue, flush, screenshotRef, serverIdFor, updateSaveByClientId } from "@/lib/outbox";
+import { compressScreenshot, takeSharedImage } from "@/lib/shareInbox";
 import { getBrowserClient, sessionUser } from "@/lib/supabase/client";
 import { haptic } from "@/lib/haptics";
 import { useMotionOK } from "@/lib/hooks/useMotionOK";
@@ -44,12 +45,16 @@ export function SaveSheet() {
   const { toast } = useToast();
   const motionOK = useMotionOK();
   const sharedTitle = params.get("title");
-  const raw = extractUrl(params.get("url"), params.get("text"), params.get("title"));
+  // A screenshot shared to Stash: the service worker kept the image under this id.
+  const imageId = params.get("shared-image");
+  const raw = imageId ? null : extractUrl(params.get("url"), params.get("text"), params.get("title"));
   const url = raw ? cleanUrl(raw) : null;
-  const platform = url ? detectPlatform(url) : "web";
+  const platform: Platform = imageId ? "screenshot" : url ? detectPlatform(url) : "web";
 
   const clientId = useRef<string>("");
   const [saved, setSaved] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [imageProblem, setImageProblem] = useState<string | null>(null);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [top, setTop] = useState<Space[]>([]);
   const [spaceId, setSpaceId] = useState<string | null>(null);
@@ -76,6 +81,50 @@ export function SaveSheet() {
       void flush();
     });
   }, [url, platform, params, sharedTitle]);
+
+  // 1b · A screenshot: take it from the share inbox, shrink it, queue it with its save.
+  useEffect(() => {
+    if (!imageId || clientId.current) return;
+    clientId.current = crypto.randomUUID();
+    const id = clientId.current;
+    let objectUrl: string | null = null;
+    void (async () => {
+      if (imageId === "too-big") {
+        setImageProblem("That image is too big to save. Try a screenshot instead.");
+        return;
+      }
+      const original = await takeSharedImage(imageId);
+      if (!original) {
+        setImageProblem("This screenshot was already saved, or the phone cleared it. Share it again.");
+        return;
+      }
+      let image: Blob;
+      try {
+        image = await compressScreenshot(original);
+      } catch (e) {
+        setImageProblem(e instanceof Error ? e.message : "This image can't be read on this phone.");
+        return;
+      }
+      objectUrl = URL.createObjectURL(image);
+      setPreview(objectUrl);
+      const text = [params.get("title"), params.get("text")].filter(Boolean).join(" · ").trim();
+      await enqueue({
+        clientId: id,
+        sourceUrl: screenshotRef(id),
+        platform: "screenshot",
+        spaceId: null,
+        sharedTitle: text ? text.slice(0, 300) : null,
+        savedAt: new Date().toISOString(),
+        image,
+      });
+      setSaved(true);
+      haptic();
+      void flush();
+    })();
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [imageId, params]);
 
   // 2 · Then the optional Space row (cached first, fresh when online).
   useEffect(() => {
@@ -169,10 +218,12 @@ export function SaveSheet() {
         className="mx-auto w-full max-w-lg rounded-t-sheet bg-surface px-5 pt-3 pb-safe shadow-sheet"
       >
         <div aria-hidden className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" />
-        {!url ? (
+        {(!url && !imageId) || imageProblem ? (
           <div className="flex flex-col gap-4 pb-8">
-            <h1 className="text-title">No link found</h1>
-            <p className="text-body text-fg-muted">Share a post or reel link to Stash, or paste one in the Library.</p>
+            <h1 className="text-title">{imageProblem ? "Couldn't save the image" : "No link found"}</h1>
+            <p className="text-body text-fg-muted">
+              {imageProblem ?? "Share a post or reel link to Stash, or a screenshot of it, or paste a link in the Library."}
+            </p>
             <Button variant="secondary" onClick={close}>
               Close
             </Button>
@@ -195,11 +246,18 @@ export function SaveSheet() {
             </div>
 
             <div className="flex items-center gap-3 rounded-card bg-raised p-3">
-              <span className="flex h-14 w-10 shrink-0 items-center justify-center rounded-sm bg-surface text-fg-muted">
-                <Link2 size={24} strokeWidth={2} aria-hidden />
+              <span className="relative flex h-14 w-10 shrink-0 items-center justify-center overflow-hidden rounded-sm bg-surface text-fg-muted">
+                {preview ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- local object URL of the shared image
+                  <img src={preview} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                ) : imageId ? (
+                  <ImageIcon size={24} strokeWidth={2} aria-hidden />
+                ) : (
+                  <Link2 size={24} strokeWidth={2} aria-hidden />
+                )}
               </span>
               <div className="flex min-w-0 flex-col gap-1">
-                <span className="line-clamp-2 text-label text-fg">{sharedTitle || host}</span>
+                <span className="line-clamp-2 text-label text-fg">{imageId ? sharedTitle || "Screenshot" : sharedTitle || host}</span>
                 <span className="text-caption text-fg-muted">
                   {PLATFORM_LABEL[platform]} · <span className="text-insight">AI is reading it…</span>
                 </span>

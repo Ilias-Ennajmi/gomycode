@@ -17,7 +17,6 @@ type Choice = { id: ImportSource | "screenshots"; title: string; detail: string;
 const CHOICES: Choice[] = [
   { id: "instagram", title: "Instagram Saved", detail: "From your Instagram data download", icon: Bookmark },
   { id: "tiktok", title: "TikTok Favorites", detail: "From your TikTok data download", icon: Heart },
-  { id: "screenshots", title: "Screenshots", detail: "Coming soon", icon: ImageIcon, soon: true },
 ];
 
 const HOW: Record<ImportSource, string[]> = {
@@ -142,6 +141,12 @@ export function ImportView() {
             );
           })}
         </div>
+        <p className="flex items-start gap-3 rounded-card bg-raised px-4 py-3 text-body text-fg">
+          <ImageIcon size={24} strokeWidth={2} aria-hidden className="shrink-0 text-fg-muted" />
+          <span>
+            Screenshots: open one in your gallery and tap Share → Stash. The AI reads the post in it and files it for you.
+          </span>
+        </p>
 
         {source && (
           <section aria-label="Steps" className="flex flex-col gap-4 rounded-lg border border-line bg-surface p-4">

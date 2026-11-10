@@ -19,11 +19,19 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/icons/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
       { src: "/icons/icon.svg", sizes: "any", type: "image/svg+xml" },
     ],
-    // Same as the Android shell's share target (Phase 4 adds a POST target for screenshots).
+    // Same as the Android shell's share target (android/app/build.gradle). POST multipart so
+    // screenshots can come in too; public/sw.js answers it (app/share/receive/route.ts before
+    // the service worker is installed) and opens the save sheet on /share.
     share_target: {
-      action: "/share",
-      method: "GET",
-      params: { title: "title", text: "text", url: "url" },
+      action: "/share/receive",
+      method: "POST",
+      enctype: "multipart/form-data",
+      params: {
+        title: "title",
+        text: "text",
+        url: "url",
+        files: [{ name: "media", accept: ["image/*"] }],
+      },
     },
     shortcuts: [
       { name: "Play my 5", url: "/play?queue=today" },

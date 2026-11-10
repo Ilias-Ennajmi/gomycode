@@ -61,6 +61,21 @@ adb shell am start -W -a android.intent.action.SEND -t text/plain \
 sleep 20
 shot 2-share
 
+# A screenshot shared from the gallery (image/* → POST multipart share target, v1.1.0+).
+# Informational only: the emulator's media store may not hand the file over like a phone gallery.
+adb push "$OUT/1-launch.png" /sdcard/Pictures/stash-e2e.png > /dev/null 2>&1
+adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/stash-e2e.png > /dev/null 2>&1
+sleep 5
+IMG_ID=$(adb shell content query --uri content://media/external/images/media --projection _id:_display_name 2> /dev/null \
+  | grep stash-e2e | sed -n 's/.*_id=\([0-9]*\).*/\1/p' | head -1)
+if [ -n "$IMG_ID" ]; then
+  adb shell am start -W -a android.intent.action.SEND -t image/png --grant-read-uri-permission \
+    --eu android.intent.extra.STREAM "content://media/external/images/media/$IMG_ID" \
+    -n "$PKG/$LAUNCHER" > "$OUT/share-image.txt" 2>&1
+  sleep 20
+fi
+shot 2b-share-image
+
 adb shell am start -W -a android.intent.action.VIEW -c android.intent.category.BROWSABLE \
   -d "$SITE/today?from=link" > "$OUT/site-link.txt" 2>&1
 sleep 20
@@ -86,6 +101,8 @@ adb logcat -d | grep -iE "TrustedWebActivity|androidbrowserhelper|TwaLauncher|Di
     fi
     echo "$step: $bar | page $(cat "$OUT/$step-url.txt") |$(tr -s ' ' < "$OUT/$step-activity.txt" | head -1)"
   done
+  echo
+  echo "2b-share-image (info): page $(cat "$OUT/2b-share-image-url.txt")"
   echo
   echo "Share intent:"; cat "$OUT/share.txt"
   echo "Site link intent:"; cat "$OUT/site-link.txt"

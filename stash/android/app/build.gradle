@@ -3,8 +3,8 @@ plugins {
 }
 
 // Bump both for every release; the tag is stash-android-v<versionName> (see android/README.md).
-def appVersionCode = 1
-def appVersionName = "1.0.0"
+def appVersionCode = 2
+def appVersionName = "1.1.0"
 
 // The website this app opens. Changing it needs a new release and a matching assetlinks.json.
 def siteHost = "stash-drab-kappa.vercel.app"
@@ -34,9 +34,14 @@ android {
         resValue "string", "assetStatements",
             "[{\\\"relation\\\": [\\\"delegate_permission/common.handle_all_urls\\\"], " +
             "\\\"target\\\": {\\\"namespace\\\": \\\"web\\\", \\\"site\\\": \\\"" + siteUrl + "\\\"}}]"
+        // Same as share_target in the web manifest (app/manifest.ts): POST multipart, so shared
+        // screenshots (image/*) arrive as the "media" file next to title/text. Chrome posts it to
+        // /share/receive; the site's service worker keeps the image and opens /share.
         resValue "string", "shareTarget",
-            "{\\\"action\\\": \\\"" + siteUrl + "/share\\\", \\\"method\\\": \\\"GET\\\", " +
-            "\\\"params\\\": {\\\"title\\\": \\\"title\\\", \\\"text\\\": \\\"text\\\", \\\"url\\\": \\\"url\\\"}}"
+            "{\\\"action\\\": \\\"" + siteUrl + "/share/receive\\\", \\\"method\\\": \\\"POST\\\", " +
+            "\\\"enctype\\\": \\\"multipart/form-data\\\", " +
+            "\\\"params\\\": {\\\"title\\\": \\\"title\\\", \\\"text\\\": \\\"text\\\", \\\"url\\\": \\\"url\\\", " +
+            "\\\"files\\\": [{\\\"name\\\": \\\"media\\\", \\\"accept\\\": [\\\"image/*\\\"]}]}}"
     }
 
     signingConfigs {

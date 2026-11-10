@@ -37,7 +37,7 @@ import {
   type Space,
 } from "@/lib/data";
 import { signedUrls } from "@/lib/media";
-import { PLATFORM_LABEL } from "@/lib/links";
+import { PLATFORM_LABEL, publicUrl } from "@/lib/links";
 import { haptic } from "@/lib/haptics";
 import { cancelDelete, scheduleDelete } from "@/lib/undo";
 import { getBrowserClient } from "@/lib/supabase/client";
@@ -219,9 +219,10 @@ export function ItemView({ id }: { id: string }) {
   };
 
   const shareAction = (text: string) => {
-    const payload = { title: save.aiTitle ?? "Stash", text, url: save.sourceUrl };
+    const url = publicUrl(save.sourceUrl);
+    const payload = { title: save.aiTitle ?? "Stash", text, url };
     if (navigator.share) void navigator.share(payload).catch(() => {});
-    else void navigator.clipboard?.writeText(`${text}\n${save.sourceUrl}`).then(() => toast({ message: "Copied" }));
+    else void navigator.clipboard?.writeText(url ? `${text}\n${url}` : text).then(() => toast({ message: "Copied" }));
   };
 
   return (
@@ -409,7 +410,7 @@ export function ItemView({ id }: { id: string }) {
 
       <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} label="More">
         <ul className="flex flex-col">
-          <li>
+          {publicUrl(save.sourceUrl) && <li>
             <a
               href={save.sourceUrl}
               target="_blank"
@@ -418,7 +419,7 @@ export function ItemView({ id }: { id: string }) {
             >
               <ExternalLink size={24} strokeWidth={2} aria-hidden className="text-fg-muted" /> Open original
             </a>
-          </li>
+          </li>}
           <li>
             <button type="button" onClick={() => void retry()} className="flex min-h-14 w-full items-center gap-3 rounded-card px-3 text-body text-fg hover:bg-raised">
               <RefreshCw size={24} strokeWidth={2} aria-hidden className="text-fg-muted" /> Process again
