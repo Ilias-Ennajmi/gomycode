@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Archive, Bell, Captions, CheckCircle2, ChevronDown, Heart, ListTodo, PencilLine, Volume2 } from "lucide-react";
+import { Archive, Bell, Captions, CheckCircle2, ChevronDown, Flame, GraduationCap, Heart, ListTodo, PencilLine, Volume2 } from "lucide-react";
 import { MediaPlayer } from "@/components/player/MediaPlayer";
 import { RemindSheet } from "@/components/save/RemindSheet";
 import { cardText } from "@/components/library/SaveGrid";
@@ -19,6 +19,9 @@ import { useMotionOK } from "@/lib/hooks/useMotionOK";
 import { addReminder, fetchTranscript, saveNote, setState, type ReminderChoice, type SaveItem, type Segment } from "@/lib/data";
 import { buildQueue } from "@/lib/queue";
 import { haptic } from "@/lib/haptics";
+import { localDay } from "@/lib/dailyQueue";
+import { buildForDay, fetchDailyQueue, markQueueDone, readLoopSettings, storeDailyQueue } from "@/lib/loop";
+import { streak } from "@/lib/streak";
 
 const INK = { color: "var(--ink-light)" } as const;
 const RATES = [1, 1.5, 2] as const;
@@ -80,18 +83,80 @@ export function PlayView() {
   const byId = useMemo(() => new Map(lib.saves.map((s) => [s.id, s])), [lib.saves]);
   const spacesById = useMemo(() => new Map(lib.spaces.map((s) => [s.id, s])), [lib.spaces]);
 
+  // ?queue=today | space:<id> | search:<q> | item:<id>  (older links: ?space=&filter=, ?ids=, ?id=)
+  const queueParam = params.get("queue") ?? "";
+  const sep = queueParam.indexOf(":");
+  const kind = sep === -1 ? queueParam : queueParam.slice(0, sep);
+  const arg = sep === -1 ? "" : queueParam.slice(sep + 1);
+  const isToday =
+    kind === "today" || (!queueParam && !params.get("space") && !params.get("filter") && !params.get("ids") && !params.get("id"));
+  const [today] = useState(() => localDay());
+
   // Freeze the queue once, so live updates never reshuffle what's playing.
   useEffect(() => {
     if (order || !lib.synced) return;
-    const q = buildQueue(
-      lib.saves,
-      { queue: params.get("queue"), space: params.get("space"), filter: params.get("filter"), ids: params.get("ids"), id: params.get("id") },
-      inboxId,
-    );
-    // Building the queue needs the loaded library, so it happens once data arrives.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOrder(q.map((s) => s.id));
-  }, [order, lib.synced, lib.saves, params, inboxId]);
+    let cancelled = false;
+    const settle = (ids: string[]) => {
+      if (!cancelled) setOrder(ids);
+    };
+    const ids = (q: Parameters<typeof buildQueue>[1]) => buildQueue(lib.saves, q, inboxId).map((s) => s.id);
+
+    void (async () => {
+      if (kind === "space" && arg) {
+        settle(ids({ space: arg, filter: params.get("filter") }));
+      } else if (kind === "item" && arg) {
+        settle(ids({ id: arg }));
+      } else if (kind === "search" && arg) {
+        try {
+          const r = await fetch("/api/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ q: arg }),
+          });
+          const json = (await r.json()) as { results?: { saveId: string }[] };
+          settle(ids({ ids: (json.results ?? []).map((h) => h.saveId).join(",") }));
+        } catch {
+          settle([]);
+        }
+      } else if (isToday) {
+        // Today's queue as stored (by the cron or Today), what's left of it first; built here if missing.
+        const playable = new Set(
+          lib.saves.filter((s) => !s.archivedAt && s.status !== "queued" && s.status !== "processing").map((s) => s.id),
+        );
+        try {
+          const q = await fetchDailyQueue(today);
+          if (q) {
+            const all = q.saveIds.filter((id) => playable.has(id));
+            const left = all.filter((id) => !q.doneIds.includes(id));
+            settle(left.length ? left : all);
+            return;
+          }
+        } catch {
+          // offline or not set up: build it here
+        }
+        const minutes = readLoopSettings().queueMinutes;
+        const built = buildForDay(lib.saves, lib.spaces, new Set(), today, minutes);
+        settle(built);
+        void storeDailyQueue(today, built, minutes).catch(() => {});
+      } else {
+        settle(ids({ space: params.get("space"), filter: params.get("filter"), ids: params.get("ids"), id: params.get("id") }));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [order, lib.synced, lib.saves, lib.spaces, params, inboxId, kind, arg, isToday, today]);
+
+  // Every action on an item of today's queue counts it as done (Today ticks its thumbnail).
+  const doneToday = useRef(new Set<string>());
+  const markDone = useCallback(
+    (id: string) => {
+      if (!isToday || doneToday.current.has(id)) return;
+      doneToday.current.add(id);
+      void markQueueDone(today, id).catch(() => {});
+    },
+    [isToday, today],
+  );
 
   useEffect(() => {
     // Preferences live in localStorage, readable only after mount.
@@ -155,10 +220,11 @@ export function PlayView() {
     (s: SaveItem) => {
       if (watched.current.has(s.id) || s.watchedAt) return;
       watched.current.add(s.id);
+      markDone(s.id);
       lib.patchSave(s.id, { watchedAt: new Date().toISOString() });
       void setState(s.id, { watched_at: new Date().toISOString() }).catch(() => {});
     },
-    [lib],
+    [lib, markDone],
   );
 
   const keep = (s: SaveItem) => {
@@ -174,6 +240,7 @@ export function PlayView() {
     haptic();
     const at = new Date().toISOString();
     const index = active;
+    markDone(s.id);
     setOrder((o) => (o ?? []).filter((id) => id !== s.id));
     lib.patchSave(s.id, { archivedAt: at });
     void setState(s.id, { archived_at: at }).catch(() => {});
@@ -197,6 +264,7 @@ export function PlayView() {
   const toggleApplied = (s: SaveItem) => {
     const appliedAt = s.appliedAt ? null : new Date().toISOString();
     haptic();
+    if (appliedAt) markDone(s.id);
     lib.patchSave(s.id, { appliedAt });
     void setState(s.id, { applied_at: appliedAt }).catch(() => {});
   };
@@ -255,13 +323,19 @@ export function PlayView() {
 
   const space = current?.spaceId ? spacesById.get(current.spaceId) : undefined;
   const label = (() => {
-    if (params.get("ids")) return "Search results";
-    const sp = params.get("space");
+    if (params.get("ids") || kind === "search") return "Search results";
+    const sp = kind === "space" ? arg : params.get("space");
     if (sp) return sp === "inbox" ? "Inbox" : (spacesById.get(sp)?.name ?? "Space");
-    if (params.get("id")) return space?.name ?? "Playing";
+    if (params.get("id") || kind === "item") return space?.name ?? "Playing";
     return "Your 5";
   })();
   const segs = current ? segments[current.id] : undefined;
+  const streakDays = useMemo(() => {
+    if (!finished) return 0;
+    const days = new Set(lib.saves.filter((s) => s.watchedAt).map((s) => localDay(new Date(s.watchedAt as string))));
+    days.add(today);
+    return streak(days, today);
+  }, [finished, lib.saves, today]);
 
   if (order !== null && items.length === 0) {
     return (
@@ -350,13 +424,23 @@ export function PlayView() {
           >
             <CheckCircle2 size={48} strokeWidth={1.5} aria-hidden />
             <h2 className="text-display">{items.length} done</h2>
+            {streakDays > 0 && (
+              <p className="flex items-center gap-2 text-label">
+                <Flame size={20} strokeWidth={2} aria-hidden /> {streakDays}-day streak
+              </p>
+            )}
             <p className="text-body text-fg-muted">Kept saves come back as recall cards in Learn.</p>
-            <div className="flex gap-3">
-              <Button variant="secondary" onClick={() => goTo(0)}>
-                Play again
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button icon={GraduationCap} onClick={() => router.push("/learn")}>
+                Start recall
               </Button>
-              <Button onClick={close}>Close</Button>
+              <Button variant="secondary" onClick={close}>
+                Close
+              </Button>
             </div>
+            <Button variant="ghost" onClick={() => goTo(0)}>
+              Play again
+            </Button>
           </section>
         )}
       </div>
