@@ -48,7 +48,7 @@ The phone only ever sends a link. The worker does the heavy lifting, and Supabas
 | Worker | Python 3.12, yt-dlp, ffmpeg on Fly.io or Railway | Vercel functions can't run ffmpeg and yt-dlp within their limits; the worker polls `jobs` |
 | Transcription | A Whisper-class API behind an interface | English, French, Arabic and Darija |
 | Understanding | Claude API: a fast, low-cost model per save, a stronger one for syntheses and exports | Model IDs in env vars `CLAUDE_FAST_MODEL` and `CLAUDE_SMART_MODEL`, set by me |
-| Embeddings | Voyage AI or OpenAI behind an interface | Stored in pgvector |
+| Embeddings | `gte-small` (384 numbers) run by a Supabase Edge Function, no key (contract 0007) | Stored in pgvector |
 | Maps | Google Maps JavaScript API | Pins in Space colours |
 | Icons | lucide-react | One set only |
 

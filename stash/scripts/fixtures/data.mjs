@@ -33,30 +33,50 @@ export const SPACES = [
 ];
 
 let n = 0;
-function save({ space, platform = "instagram", creator, caption, title, key, take = [], actions = [], tags = [], dur = 38, days = 2, status = "ready", watched = null, kept = false, applied = null, archived = null, suggested = null, hue }) {
+// Contract 0007: `video` is the stored copy's state (stored | blocked | too_big | evicted | none),
+// `embed: false` leaves a save without a platform player, `ai` is saves.ai_state, `step` is
+// saves.process_step for a save still being processed, `url` / `yt` set the source link.
+function save({ space, platform = "instagram", creator, caption, title, key, take = [], actions = [], tags = [], intent = null, dur = 38, days = 2, status = "ready", watched = null, kept = false, applied = null, archived = null, suggested = null, hue, video, embed = true, ai = "done", step, url, yt, saveTitle = null }) {
   n += 1;
   const id = `sv-${String(n).padStart(2, "0")}`;
+  const ready = status === "ready";
+  const source_url = url ?? (yt ? `https://www.youtube.com/watch?v=${yt}` : platform === "tiktok" ? `https://www.tiktok.com/@${creator}/video/7${n}0000000` : `https://www.instagram.com/reel/Cx${n}AbCd/`);
+  const embed_url = !embed || platform === "web" || platform === "screenshot"
+    ? null
+    : platform === "youtube"
+      ? `https://www.youtube-nocookie.com/embed/${yt}`
+      : platform === "tiktok"
+        ? `https://www.tiktok.com/player/v1/7${n}0000000`
+        : `https://www.instagram.com/reel/Cx${n}AbCd/embed`;
+  const video_state = video ?? (ready && (platform === "instagram" || platform === "tiktok") ? "stored" : "none");
+  const stored = video_state === "stored";
   return {
     id,
     client_id: null,
-    source_url: platform === "tiktok" ? `https://www.tiktok.com/@${creator}/video/7${n}0000000` : `https://www.instagram.com/reel/Cx${n}AbCd/`,
+    source_url,
     platform,
     status,
     space_id: space,
     thumb_path: status === "queued" ? null : `${USER_ID}/thumbs/${id}.jpg?h=${hue ?? (n * 47) % 360}`,
-    video_path: status === "ready" ? `${USER_ID}/video/${id}.mp4` : null,
+    video_path: stored ? `${USER_ID}/${id}.mp4` : null,
+    video_bytes: stored ? 6_400_000 + n * 310_000 : null,
+    video_state,
+    playback: stored ? "video" : platform === "screenshot" ? "none" : embed_url ? "embed" : "link",
+    embed_url,
+    process_step: step ?? (status === "queued" ? "queued" : status === "processing" ? "fetching" : "ready"),
+    ai_state: ready ? ai : "pending",
     duration_s: dur,
     creator_handle: creator ? `@${creator}` : null,
     caption,
-    title: null,
+    title: saveTitle,
     error: null,
     saved_at: ago(days, n % 7),
     user_note: null,
     voice_note_path: null,
     user_id: USER_ID,
     insights:
-      status === "ready"
-        ? { title, key_idea: key, takeaways: take, actions, tags, suggested_space_id: suggested }
+      ready && ai === "done"
+        ? { title, key_idea: key, takeaways: take, actions, tags, intent, suggested_space_id: suggested }
         : null,
     states: { watched_at: watched, kept, archived_at: archived, applied_at: applied, skip_count: 0 },
   };
@@ -78,10 +98,35 @@ export const SAVES = [
   save({ space: "sp-inbox", platform: "tiktok", creator: "growthwithnora", caption: "Repurpose one video into 6 posts", title: "Repurpose", key: "Cut one long video into a reel, a carousel, a quote and three stories.", take: ["Record once, long", "Pull 3 quotes", "Carousel from the outline"], dur: 51, days: 0, hue: 280, suggested: "sp-mkt" }),
   save({ space: "sp-inbox", creator: "chefyasmine", caption: "Preserved lemons at home", title: "Preserved lemons", key: "Salt, press and wait three weeks; the rind becomes the best part.", take: ["Coarse salt only", "Press until juice covers", "Turn the jar daily"], dur: 44, days: 1, hue: 55, suggested: "sp-food" }),
   save({ space: "sp-inbox", creator: "lisboa.eats", caption: "Miradouros at sunset", title: "Sunset views", key: "Senhora do Monte beats the busy viewpoints for sunset.", take: ["Arrive 40 min early", "Bring a drink", "Tram 28 nearby"], dur: 26, days: 1, hue: 20, suggested: "sp-travel" }),
-  save({ space: "sp-mkt", creator: "newsroom.daily", caption: "Processing…", dur: 47, days: 0, status: "processing", hue: 210 }),
+  save({ space: "sp-mkt", creator: "newsroom.daily", caption: "Why newsletters beat feeds", saveTitle: "Why newsletters beat feeds", dur: 47, days: 0, status: "processing", step: "watching", hue: 210 }),
   save({ space: "sp-food", platform: "tiktok", creator: "streetbites", caption: "Old save: rfissa", title: "Rfissa", key: "Shred msemen into the broth just before serving so it stays chewy.", take: ["Fenugreek overnight", "Ras el hanout", "Lentils last"], dur: 61, days: 45, hue: 15, kept: true, watched: ago(40) }),
   save({ space: "sp-travel", creator: "wanderlou", caption: "Lisbon on a budget", title: "Lisbon budget", key: "Buy the Viva Viagem card and ride the ferries for the best views.", take: ["Zapping balance", "Cacilhas ferry", "Free museum Sundays"], dur: 39, days: 50, hue: 185 }),
+  // sv-19 … : the sources and states added by contract 0007.
+  save({ space: "sp-mkt", platform: "youtube", yt: "Fx7pRiceTalk", creator: "growthwithnora", caption: "How to price a product (full talk)", saveTitle: "How to price a product (full talk)", title: "Pricing a product", key: "Price on the value to the buyer, then test three tiers instead of one number.", take: ["Anchor with a high tier", "Name tiers after the buyer, not the size", "Raise prices on new buyers first"], tags: ["pricing", "hooks"], intent: "learn", dur: 612, days: 2, hue: 232 }),
+  save({ space: "sp-brand", platform: "web", url: "https://www.fieldnotes.example/essays/a-brand-is-a-promise", creator: null, caption: "A brand is a promise you keep in small places", saveTitle: "A brand is a promise you keep in small places", title: "A brand is a promise", key: "A brand is built in the small, repeated moments, long before anyone sees the logo.", take: ["Write the promise in one sentence", "List the ten places it shows up", "Fix the smallest broken one first"], tags: ["branding"], intent: "learn", dur: null, days: 3, hue: 48 }),
+  save({ space: "sp-inbox", platform: "tiktok", creator: "quickbites", caption: "", dur: null, days: 0, status: "queued", hue: 330 }),
+  save({ space: "sp-inbox", platform: "tiktok", creator: "deskstretch", caption: "3 stretches for people who sit all day", saveTitle: "3 stretches for people who sit all day", dur: 34, days: 0, hue: 150, ai: "no_key", video: "none" }),
+  save({ space: "sp-food", creator: "souk.kitchen", caption: "Chermoula in five minutes", saveTitle: "Chermoula in five minutes", title: "Chermoula", key: "Blend herbs, cumin, paprika, garlic and lemon; it keeps a week under oil.", take: ["Equal parts parsley and coriander", "Toast the cumin", "Cover with oil"], tags: ["dinner"], intent: "try", dur: 29, days: 5, hue: 80, video: "blocked", embed: false }),
+  save({ space: "sp-fit", platform: "youtube", yt: "Sh0rtPlank01", url: "https://www.youtube.com/shorts/Sh0rtPlank01", creator: "coachamine", caption: "Plank form in 30 seconds", saveTitle: "Plank form in 30 seconds", title: "Plank form", key: "Squeeze glutes and pull elbows to toes; a 20-second hard plank beats two lazy minutes.", take: ["Ribs down", "Glutes tight", "Stop when form breaks"], tags: ["core"], intent: "try", dur: 31, days: 6, hue: 110 }),
 ];
+
+// The row of smart groups needs a few tags, intents and creators that repeat.
+const TAGS = {
+  hooks: ["sv-01", "sv-05", "sv-09", "sv-13"],
+  lisbon: ["sv-03", "sv-08", "sv-15", "sv-18"],
+  dinner: ["sv-02", "sv-07", "sv-14", "sv-17"],
+};
+const INTENTS = { visit: ["sv-03", "sv-08", "sv-15", "sv-18"], try: ["sv-02", "sv-04", "sv-07", "sv-14"], learn: ["sv-01", "sv-05", "sv-09"] };
+for (const s of SAVES) {
+  if (!s.insights) continue;
+  for (const [tag, list] of Object.entries(TAGS)) if (list.includes(s.id) && !s.insights.tags.includes(tag)) s.insights.tags = [...s.insights.tags, tag];
+  for (const [intent, list] of Object.entries(INTENTS)) if (list.includes(s.id)) s.insights.intent = intent;
+}
+// One save whose stored copy was cleared by retention: it plays through the platform's player.
+{
+  const evicted = SAVES.find((s) => s.id === "sv-06");
+  Object.assign(evicted, { video_path: null, video_bytes: null, video_state: "evicted", playback: "embed" });
+}
 
 const ids = SAVES.map((s) => s.id);
 export const QUEUE_IDS = ["sv-01", "sv-02", "sv-06", "sv-07", "sv-08"];
@@ -105,6 +150,21 @@ export const REVIEWS = [0, 1, 2, 4, 5, 6].map((d, i) => ({
 }));
 
 export const SYNTHESES = [
+  {
+    id: "syn-2",
+    space_id: null,
+    tag: "hooks",
+    topic: "What makes a hook work",
+    points: [
+      "Every one of these opens on the result, never on a greeting.",
+      "The first sentence fits in three seconds of speech.",
+      "A question at the end doubles the comments.",
+    ],
+    disagreements: [],
+    suggested_action: "Write five first lines for the next video and keep the shortest.",
+    source_save_ids: ["sv-01", "sv-05", "sv-09", "sv-13", "sv-19"],
+    created_at: ago(0, 5),
+  },
   {
     id: "syn-1",
     space_id: "sp-mkt",
@@ -199,5 +259,72 @@ export const COLLECTION = {
     applied: i === 0,
   })),
 };
+
+export const TRANSCRIPTS = [
+  { ...TRANSCRIPT, full_text: TRANSCRIPT.segments.map((s) => s.text).join(" ") },
+  {
+    save_id: "sv-20",
+    segments: [],
+    full_text: [
+      "Most teams treat a brand as a logo and a colour. Customers treat it as a prediction: what will happen the next time I deal with these people?",
+      "That prediction is made in small places. The receipt email. The way a refund is handled. The sentence on the error page. None of them is designed by the brand team, and all of them are the brand.",
+      "So write the promise down in one sentence that a new colleague could act on. Then list the ten places where a customer meets you, and ask of each one: does this keep the promise, or break it?",
+      "Fix the smallest broken one first. It is rarely the homepage. It is usually something nobody owns.",
+      "A logo can be changed in a week. A promise that is kept in ten small places takes a year to build, and that is exactly why it is worth more.",
+    ].join("\n\n"),
+  },
+];
+
+export const HIGHLIGHTS = [
+  { id: "hl-1", save_id: "sv-01", user_id: USER_ID, text: "Show the result first, the finished thing, right in the first frame.", start_s: 3.2, end_s: 7.8, card_id: null, source: "user", created_at: ago(0, 2) },
+  { id: "hl-2", save_id: "sv-01", user_id: USER_ID, text: "End with a question so people actually comment.", start_s: 18.4, end_s: 23, card_id: "cd-9", source: "ai", created_at: ago(1) },
+  { id: "hl-3", save_id: "sv-20", user_id: USER_ID, text: "Fix the smallest broken one first. It is rarely the homepage. It is usually something nobody owns.", start_s: null, end_s: null, card_id: null, source: "user", created_at: ago(2) },
+];
+
+export const ASKS = [
+  {
+    id: "ask-1",
+    user_id: USER_ID,
+    question: "Where should I eat in Lisbon?",
+    status: "ready",
+    answer: "Two of your saves point the same way: go to Manteigaria in Chiado before 10 am for pastel de nata, and skip Belém at noon. For the evening, Senhora do Monte is the viewpoint to bring a drink to.",
+    cited_save_ids: ["sv-03", "sv-15"],
+    error: null,
+    created_at: ago(1),
+    updated_at: ago(1),
+  },
+  {
+    id: "ask-2",
+    user_id: USER_ID,
+    question: "Ideas for a quick dinner",
+    status: "ready",
+    answer: "Harissa chickpeas (15 minutes) and chermoula on anything grilled.",
+    cited_save_ids: ["sv-02", "sv-23"],
+    error: null,
+    created_at: ago(3),
+    updated_at: ago(3),
+  },
+];
+
+/** What the worker would answer to a new question in the fixtures. */
+export const ASK_ANSWER = {
+  answer:
+    "Three of your saves agree: open on the result, not on a greeting. Show the finished thing in the first frame, cut every pause longer than half a second, and end on a question so people comment. One of them adds that phone-shot, single-take videos hold attention longer than polished ones.",
+  cited_save_ids: ["sv-01", "sv-05", "sv-13"],
+};
+
+export const BACKUPS = [0, 7, 14].map((d, i) => ({
+  id: `bk-${i + 1}`,
+  user_id: USER_ID,
+  path: `${USER_ID}/backups/${new Date(now - (d + 2) * DAY).toISOString().slice(0, 10)}.json`,
+  bytes: 1_420_000 - i * 90_000,
+  saves: SAVES.length - i * 3,
+  created_at: ago(d + 2),
+}));
+
+export const PIPELINE = { worker: true, ai: true, is_owner: true, owners_set: true, video_bytes: 312 * 1048576, video_cap_bytes: 800 * 1048576 };
+
+/** A recovery code the fixture function hands out (invented, not a real one). */
+export const RECOVERY_CODE = "4F7QK-2M9XA-0TB3R-H8ZNC";
 
 export const RELATED = ids.slice(4, 9).map((save_id) => ({ save_id, score: 0.8 }));

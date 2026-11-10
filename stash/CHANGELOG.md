@@ -1,5 +1,21 @@
 # Changelog
 
+## Free pipeline + features, app side (2026-11-10)
+- **Costs nothing to run**: the website needs only the Supabase address and public key. The R2 video route and the server search route are gone
+- **Videos** play from Supabase Storage through links the phone signs itself (kept until shortly before they end); Play signs the next two ahead so they start at once
+- **Every save plays somehow**: the saved copy, or the official TikTok / Instagram / YouTube player inside Stash with a clear "Open in …" button, or a card that opens the original. When a saved copy was cleared or couldn't be made, one quiet line says why
+- **Live progress** on a new save: Fetching, Watching, Reading, Filing. The title and picture show within seconds
+- **No AI key yet?** Saves still play and can be searched; they say "Summaries turn on once an AI key is added" and fill in by themselves later
+- **Search by meaning** without any key: words answer at once, meaning joins a moment later, and search still works on the phone's own copy when offline
+- **Ask your saves** (Today, and the sparkle in Library search): a question in, an answer from your saves with the saves it came from as cards
+- **Smart groups** in the Library: topics, creators, why you saved it, places. A topic shows what its saves agree on
+- **Highlights**: tap a line of a transcript or an article to keep it; turn any highlight into a recall card; all highlights in Learn
+- **YouTube and articles**: share or paste any link. Articles get a reading view (key idea, takeaways, the text) instead of a player. Import a list of links (pasted, a file, bookmarks, a YouTube Takeout playlist)
+- **Settings → Setup**: what is switched on, in plain words, with the one step left for the owner
+- **Move to a new phone**: a recovery code (shown once, with copy and a QR); "I have a recovery code" in Settings and on the first-run screen; weekly backups to download
+- **Saved Wrapped** shares as a picture; **Galaxy** follows the Space and filter chips; several screenshots can be shared at once; topic syntheses in Learn
+- **Faster**: lighter first load on every screen, Map and Galaxy load only when opened, screens paint from the phone's copy first, the app shell opens instantly offline or on a weak connection
+
 ## Brand and UI refresh (2026-11-10)
 - New brand, bold and playful: a rounded "S" built from three stacked cards, electric lime on deep ink; a wordmark in Rubik ExtraBold; new app icon, maskable icon, favicon and offline page
 - Headlines in Rubik (heavy, softly rounded); body stays in Manrope. Bigger, heavier type scale with a new Hero size for big numbers

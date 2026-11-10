@@ -29,6 +29,123 @@ Written, not applied, nothing deployed: `supabase/migrations/0007_free_pipeline.
   the admin API turning an anonymous user into one with an email, and whether Auth accepts the
   synthetic `.invalid` email domain. Listed as checks in the contract (section 10).
 
+## Free pipeline + features (app) (2026-11-10, branch `stash-free-app` from d508687)
+
+The APP builder's half of `docs/CONTRACT_0007.md`. Local commits only: nothing pushed, deployed or
+applied. It needs migration 0007, the three Edge Functions and the worker (the other builder) before
+it does anything real; until then it was exercised against the fixture Supabase (below).
+
+### What was built
+- **Removed:** `app/api/search`, `app/api/media/[id]`, `lib/r2.ts` and its test; every server-side
+  key from `.env.example` and the README. The app's env is the two `NEXT_PUBLIC_SUPABASE_*` values.
+- **Videos:** `lib/media.ts` signs `stash-video` links with the phone's session (6 h, reused until
+  20 min before the end; thumbnails stay at 7 days), one request per set of paths. The cache rules
+  are pure in `lib/signedCache.ts`. A link that fails is signed once more, then the player falls back.
+- **Playback** (`lib/playback.ts`, `components/player/MediaPlayer.tsx`): `file` → `<video>`;
+  `embed` → the worker's `embed_url` (checked again in the app against the same three patterns as
+  the database) in an iframe with `sandbox="allow-scripts allow-same-origin allow-presentation
+  allow-popups allow-popups-to-escape-sandbox"` (no top navigation), sized portrait / landscape /
+  card, with "Open in TikTok / Instagram / YouTube"; `link` → a card; articles and screenshots as
+  themselves. `evicted` / `blocked` / `too_big` get one quiet line. In Play the frame leaves the top
+  bar, the caption band and the right rail free, so swipes still move the feed. Embeds, links and
+  articles count as watched after 10 s on screen (they have no clock).
+- **CSP** (`next.config.ts`): `frame-src` the three players only; `media-src` self, blob, the
+  Supabase host; `img-src` self, data, blob, the Supabase host and the OpenStreetMap tiles; plus
+  `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'self'`. Scripts and
+  styles are not restricted (Next inlines its bootstrap; a nonce policy would make every page dynamic).
+- **Live progress:** `useLibrary` folds each Realtime `UPDATE` on `saves` into the copy on screen at
+  once (step, title, picture, player), then refreshes. Cards show the title and a four-step bar with
+  the step's name; the item page lists Fetching / Watching / Reading / Filing ("Reading" instead of
+  "Watching" for articles and screenshots).
+- **AI states:** `no_key` → "Summaries turn on once an AI key is added. See Setup"; `not_owner`,
+  `over_budget`, `failed` (with Try again) each have one line.
+- **Search** (`lib/search.ts`): words at once, then `stash-embed` and `search_saves` again with the
+  384-number vector, merged (word matches first). Function error, 429 or offline = words only; no
+  network = the saves on the phone. Used by the Library and by Play's `search:` queue.
+- **Ask your saves** (`lib/askState.ts` reducer, `lib/ask.ts`, `components/ask/`): from Today (a row
+  under the hero) and the Library (sparkle in the search bar; a card above search results that asks
+  the typed question). Insert → Realtime, with a 2.5 s poll as fallback and a 90 s limit. Answer in an
+  insight-ringed card, cited saves as cards, Earlier questions below. SQLSTATE 54000 = today's limit;
+  `no_ai` = "Add an AI key to ask questions" + Setup link; offline and too-short handled before sending.
+- **Smart groups** (`lib/collections.ts`, `useCollections`, `components/library/Collections.tsx`):
+  `auto_collections()` as a row (Places first, then by size, at most 6 of a kind up front), cached,
+  with tags and creators grouped on the phone when offline. Tapping one opens a filtered grid
+  (`/library?c=tag:hooks`) with Play all and, under a topic, its tag synthesis.
+- **Highlights** (`lib/highlightText.ts`, `lib/highlights.ts`, `components/save/Highlights.tsx`):
+  on the item page the time is the seek button and the line itself toggles a highlight; articles
+  highlight by paragraph. "Make a recall card" inserts a `cards` row (first words as the prompt, the
+  line as the answer), links `card_id` and keeps the save, because recall only asks about kept saves.
+  AI highlights wear the AI label. Learn has a Highlights section.
+- **Sources:** YouTube links are tidied to one form (`youtubeId`, `cleanUrl`); any other link is an
+  article. Platform badges use plain lucide icons (lucide has no brand marks). Filter chips YouTube
+  and Articles. Articles get a reading view (picture, "Open the article", key idea, takeaways, the
+  extracted text). Import has a third source, "A list of links" (paste, .txt / .csv, bookmarks HTML,
+  a YouTube Takeout playlist of bare ids).
+- **Settings:** Setup (from `pipeline_status()`, cached; the owner step spelled out; the phone's id
+  shown when it is not an owner; video space bar), Move to a new phone (create / rotate with a
+  warning; the code once, in four groups, Copy, QR to `/restore#<code>`), "I have a recovery code"
+  (type or scan with `BarcodeDetector`, a warning when this phone already has saves, unsent saves must
+  go out first, then `setSession`, local caches cleared, full reload), Backups (list, download through
+  a 10-minute signed link). The same restore sheet is on the first-run screen. `/restore` never
+  creates an identity.
+- **Spec leftovers:** Galaxy draws the Library's current selection (Space chip and filter) and says
+  which; Wrapped is drawn on a canvas from the page's tokens (1080×1440 PNG) and shared with Web Share
+  files, else downloaded; the share target takes up to 10 images (`shared-image=id,id,…`), one save
+  each, the Space applied to all; tag syntheses in Learn link to their topic.
+- **Speed:** see the numbers below. Galaxy is a dynamic import like the Map; the animation engine
+  loads after first paint (`LazyMotion` + `m`, `components/ui/Motion.tsx`); the Ask sheet, the QR
+  generator and the Wrapped drawing code load on first use; Play warms signed links for the playing
+  video and the next two (`preload="auto"`), never embeds; Play starts from the phone's copy when the
+  queue can be built from it; the item page paints from the Library's cached copy; Learn caches due
+  cards; service worker v7 precaches the five main screens and gives a page navigation 2.5 s before
+  showing the cached shell.
+
+### First Load JS (gzip, scripts in the initial HTML, legacy polyfill chunk excluded)
+`next build` no longer prints sizes, so they were measured from the built HTML against the files in
+`.next/static` (fixture env, same method before and after).
+
+| Route | Before (d508687) | After |
+|---|---|---|
+| /today | 279.8 KB | 261.4 KB |
+| /library | 284.1 KB | 260.2 KB |
+| /play | 276.0 KB | 253.6 KB |
+| /learn | 274.5 KB | 254.7 KB |
+| /you | 263.7 KB | 237.7 KB |
+| /settings | 260.8 KB | 244.1 KB |
+| /item/[id] | 275.0 KB | 256.1 KB |
+| /share | 268.8 KB | 243.8 KB |
+| /import | 272.7 KB | 247.3 KB |
+
+The largest chunks that remain are the Supabase client (about 70 KB gzip), React DOM and the Next
+runtime; none of them is waste. Leaflet (about 43 KB gzip) is only fetched by the Map lens.
+
+### Verification
+- `npx tsc --noEmit`, `npx eslint .`, `npm run build`: pass. `npx vitest run`: 281 tests pass
+  (65 new: playback decision and embed checks, signed-URL cache, recovery code tidy / validate /
+  errors, the Ask state machine, collections mapping, search merge, Setup checklist, highlights,
+  link-list import, the Wrapped poster).
+- Fixture harness: `scripts/fixtures/mock-supabase.mjs` now mocks the new columns and tables, both
+  RPCs, `stash-embed`, `stash-recovery` (not found and rate limited by code prefix), the `stash-video`
+  bucket (`FIXTURE_VIDEO`), a worker that answers a question on the second poll, and the modes
+  `nokey`, `limit`, `recovery`. `scripts/screens.mjs` takes 61 screens in light and dark.
+- Not verified here (needs the real project): Realtime delivery of `asks` / `highlights` / `saves`
+  updates, real signed video links and range requests, the three real players inside the sandbox,
+  the camera QR scan and Web Share with files on an Android phone, the real Edge Functions.
+
+### Decisions and things to know
+- The old Android shell (1.0.0) shares text only; that path (`/share?text=…` with the link inside the
+  text) is unchanged and has its own screenshot.
+- Sharing several screenshots at once works in the installed web app. The Android shell declares
+  `SEND` only, so it still sends one image at a time until a later APK adds `SEND_MULTIPLE`
+  (android/ is outside this work).
+- `public/sw.js` is not in either builder's list in the contract; it was changed here (v7) because
+  the share target and the offline shell live in it.
+- A list-of-links import is not written to `imports` (its `source` check only allows instagram and
+  tiktok). Asked of the contract: allow `links` there if the history should show them.
+- Recall cards made from highlights keep their save (`states.kept = true`), otherwise the card would
+  never be asked.
+- `qrcode-generator` (small, no dependencies) was added for the QR; it loads only when a code is shown.
+
 ## Brand and UI refresh (2026-11-10, branch `stash-rebrand` from 64c30f1)
 
 The owner asked for better branding, UX and UI and picked **Bold and playful**. Web changes ship with a
