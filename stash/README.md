@@ -59,6 +59,31 @@ Checks: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 Database changes are SQL files in `supabase/migrations/`, applied in order. After a column
 change, update `scripts/gen-types.py` and run `python3 scripts/gen-types.py`.
 
+## Reminders, the daily queue and notifications (no keys to set)
+
+Supabase runs two scheduled jobs (pg_cron) that call the website:
+
+| Job | When | Route | What it does |
+|---|---|---|---|
+| `stash-reminders` | every 5 minutes | `POST /api/cron/reminders` | Sends a notification for each reminder that is due, unless it's your quiet hours (it waits until they end) |
+| `stash-daily` | every hour | `POST /api/cron/daily` | Once your daily queue time has passed (Settings → Reminders, in your phone's time zone), builds "Your 5 for today" and notifies you |
+
+**There is nothing to set in Vercel for this.** Every secret lives in Supabase Vault and never
+passes through a person:
+
+- `stash_cron_secret` — created at random by migration `0004_loop.sql`. pg_cron sends it as
+  `Authorization: Bearer …`; the website doesn't know it, it hands the token to database
+  functions that compare it with Vault and refuse anything else.
+- `stash_app_url` — the website address the jobs call (`https://stash-drab-kappa.vercel.app`),
+  also set by the migration. If the address ever changes:
+  `select vault.update_secret((select id from vault.secrets where name = 'stash_app_url'), 'https://new-address');`
+- `stash_vapid_public` / `stash_vapid_private` — the Web Push key pair. The first reminders run
+  generates them and stores them in Vault. The phone reads only the public key.
+  (To use your own pair instead, run `npx web-push generate-vapid-keys` and, before the first
+  run, `select vault.create_secret('<public>', 'stash_vapid_public'); select vault.create_secret('<private>', 'stash_vapid_private');`.)
+
+To get notifications on the phone: Stash → You → Reminders → **Enable notifications**.
+The Android app shows them as normal app notifications.
 ## Pages added in Phase 3
 
 | Address | What it is |

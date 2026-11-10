@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -15,7 +15,20 @@ import type { SpaceColor } from "@/components/ui/space";
  * `radius` metres. Renders nothing unless location permission is already
  * granted (it never prompts) and a saved place is close.
  */
-export function NearbyCard({ radius = 1500, className }: { radius?: number; className?: string }) {
+export function NearbyCard({
+  radius = 1500,
+  className,
+  onShow,
+}: {
+  radius?: number;
+  className?: string;
+  /** Called with true once a nearby place is found (so a row can make room for the card). */
+  onShow?: (shown: boolean) => void;
+}) {
+  const onShowRef = useRef(onShow);
+  useEffect(() => {
+    onShowRef.current = onShow;
+  });
   const [hit, setHit] = useState<{ near: NearbyHit; save: SaveItem; color?: SpaceColor } | null>(null);
 
   useEffect(() => {
@@ -29,6 +42,7 @@ export function NearbyCard({ radius = 1500, className }: { radius?: number; clas
       const [save, spaces] = await Promise.all([fetchSave(near.saveId), fetchSpaces()]);
       if (!save || save.archivedAt || !alive) return;
       setHit({ near, save, color: spaces.find((s) => s.id === save.spaceId)?.color });
+      onShowRef.current?.(true);
     })().catch(() => {});
     return () => {
       alive = false;
@@ -37,7 +51,7 @@ export function NearbyCard({ radius = 1500, className }: { radius?: number; clas
 
   if (!hit) return null;
   return (
-    <Card spaceColor={hit.color} className={className}>
+    <Card size="lg" spaceColor={hit.color} className={className}>
       <Link href={`/item/${hit.save.id}`} className="flex min-h-12 flex-col gap-2">
         <span className="inline-flex items-center gap-2 text-label text-fg-muted">
           <MapPin size={20} strokeWidth={2} aria-hidden />

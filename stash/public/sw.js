@@ -2,6 +2,7 @@
 // - Precaches the app shell (start page + offline page).
 // - Network-first with a cached fallback for page navigations and Supabase REST reads.
 // - Stale-while-revalidate for images, with a size cap.
+// - Web Push: reminders and "Your 5 for today" (playbook step 3.9); a tap opens the right screen.
 // Bump VERSION whenever these caching rules change.
 const VERSION = "v3";
 const SHELL = `stash-shell-${VERSION}`;
@@ -126,4 +127,41 @@ self.addEventListener("fetch", (event) => {
       ),
     );
   }
+});
+
+// Web Push. Payload: { title, body, url, tag } (see lib/server/cron.ts).
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { body: event.data ? event.data.text() : "" };
+  }
+  const title = typeof data.title === "string" && data.title ? data.title : "Stash";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: typeof data.body === "string" ? data.body : "",
+      tag: typeof data.tag === "string" ? data.tag : undefined,
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      data: { url: typeof data.url === "string" ? data.url : "/today" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  // Only paths inside Stash: a payload can't send the user to another site.
+  const target = new URL(event.notification.data?.url || "/today", self.location.origin);
+  const url = target.origin === self.location.origin ? target.href : new URL("/today", self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if (client.url.startsWith(self.location.origin) && "focus" in client) {
+          return client.focus().then((c) => (c && "navigate" in c ? c.navigate(url) : undefined));
+        }
+      }
+      return self.clients.openWindow(url);
+    }),
+  );
 });

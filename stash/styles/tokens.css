@@ -80,6 +80,14 @@
   --play-size: 56px;
   --play-raise: 18px;
   --bar-height: 64px;
+  /* Overlay heights and positions (relative to the screen). */
+  --sheet-max-h: 88dvh;
+  --panel-max-h: 40dvh;
+  --detail-max-h: 60dvh;
+  --detail-max-h-lg: 64dvh;
+  --overlay-top: 22%;
+  --captions-bottom: 28%;
+  --demo-col: 8rem;
 
   /* Motion. Zeroed when reduce motion is on (system or in-app). */
   --dur-fast: 150ms;

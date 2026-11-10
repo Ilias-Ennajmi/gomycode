@@ -32,6 +32,8 @@ function save(id: string, over: Partial<SaveItem> = {}): SaveItem {
     kept: false,
     archivedAt: null,
     appliedAt: null,
+    suggestedSpaceId: null,
+    skipCount: 0,
     ...over,
   };
 }

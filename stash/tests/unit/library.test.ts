@@ -26,10 +26,12 @@ const base: SaveItem = {
   takeaways: [],
   actions: [],
   tags: [],
+  suggestedSpaceId: null,
   watchedAt: null,
   kept: false,
   archivedAt: null,
   appliedAt: null,
+  skipCount: 0,
 };
 const save = (over: Partial<SaveItem>): SaveItem => ({ ...base, ...over });
 

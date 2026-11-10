@@ -5,10 +5,25 @@ download (yt-dlp) → 720p MP4 (ffmpeg) → video to Cloudflare R2, thumbnail to
 transcript (Groq) → key idea, takeaways, tags, places, recall cards (Claude) → filed into a Space →
 embedding for search (Voyage).
 
-It also builds exports (Phase 3): a creative brief (PDF + Word), a moodboard (PDF) and a reference
-deck (PowerPoint) from a Space, into the private Supabase Storage bucket `stash-exports`, and it
-geocodes the places the AI finds with OpenStreetMap Nominatim (free, 1 request per second,
-User-Agent "Stash personal app", answers cached) so they can be pinned on the Map.
+Phase 2 adds two more job types:
+
+- **`grade`** — a recall answer from Learn (`payload: {card_id, audio_path | text}`). A spoken answer is
+  downloaded from `stash-voice/<user>/answers/…`, transcribed (Groq), graded against the card's answer and
+  the save's key idea with `CLAUDE_FAST_MODEL` (Got it / Partly / Missed + one line of feedback), written
+  to `reviews`, and the card moves on with SM-2 (unless the owner already graded it by hand). The audio
+  file is deleted afterwards; the transcript stays in the review.
+- **`synthesize`** — queued by the database when a Space gains 5 ready saves since its last synthesis.
+  Reads the Space's saves (key idea, takeaways), asks `CLAUDE_SMART_MODEL` for points of agreement,
+  disagreements (with the saves behind them) and one suggested action, and stores a `syntheses` row.
+
+Phase 3 adds **`export`** jobs: a creative brief (PDF + Word, text by `CLAUDE_SMART_MODEL`), a moodboard
+(PDF) and a reference deck (PowerPoint) from a Space, into the private Supabase Storage bucket
+`stash-exports`. After each ingest it also geocodes the places the AI found with OpenStreetMap Nominatim
+(free, 1 request per second, User-Agent "Stash personal app", answers cached) so they can be pinned on the Map.
+
+Every job type goes through the same owner gate (`OWNER_USER_IDS`) and monthly cost guard. Claude is
+called with `tool_choice: auto` and an instruction to answer through the tool; an answer without the tool
+call counts as invalid and is asked for once more.
 
 It runs on Google Cloud Run and sleeps when idle. Supabase wakes it: a new job calls `POST /run`
 through `pg_net`, and a `pg_cron` sweep calls it every minute for anything left behind.
@@ -22,7 +37,7 @@ Each step degrades gracefully, so the app keeps working while keys are missing:
 | `GROQ_API_KEY` | No transcript; the AI reads the caption only |
 | `VOYAGE_API_KEY` | Search by words only, no "related saves" |
 | `OWNER_USER_IDS` | Nothing is processed (strangers can't spend your budget) |
-| `CLAUDE_SMART_MODEL` | The brief is assembled from the saves' own key ideas and takeaways (no AI writing) |
+| `CLAUDE_SMART_MODEL` | No syntheses (the jobs fail with `ai_off`); briefs are assembled from the saves' own key ideas and takeaways |
 
 ## Environment
 
@@ -35,7 +50,7 @@ Each step degrades gracefully, so the app keeps working while keys are missing:
 | `ANTHROPIC_API_KEY` | console.anthropic.com |
 | `CLAUDE_FAST_MODEL` | The model id you choose for per-save processing |
 | `CLAUDE_FAST_USD_PER_MTOK_IN` / `_OUT` | That model's price per million tokens (cost guard; default 1 / 5) |
-| `CLAUDE_SMART_MODEL` | The model id you choose for exports (creative brief text) |
+| `CLAUDE_SMART_MODEL` | The model id you choose for syntheses and export briefs |
 | `CLAUDE_SMART_USD_PER_MTOK_IN` / `_OUT` | Its price per million tokens (cost guard; default 3 / 15) |
 | `GEOCODE` | Optional. `off` stops place lookups on OpenStreetMap (default on) |
 | `GROQ_API_KEY` | console.groq.com (free tier) |
@@ -83,6 +98,6 @@ letters print. Rebuild and redeploy the worker once after pulling Phase 3.
 ```bash
 cd stash/worker
 pip install -r requirements.txt pytest
-python -m pytest            # rules, ffmpeg steps, the job flow, exports (files opened back) and geocoding (no network)
+python -m pytest            # rules, ffmpeg steps, the job flow, grading, syntheses, exports and geocoding (no network)
 python -m stash_worker      # process the queue once, using the env vars above
 ```

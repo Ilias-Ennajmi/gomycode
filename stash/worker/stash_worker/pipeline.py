@@ -12,7 +12,7 @@ from typing import Any
 
 from . import ai, exports, geocode, media, r2
 from .config import Config
-from .rules import choose_space, detect_platform, embedding_text, is_owner, segments_text
+from .rules import choose_space, detect_platform, embedding_text, is_owner, segments_text, sm2
 from .supa import Supa
 
 log = logging.getLogger("stash.worker")
@@ -61,8 +61,32 @@ def _finish_job(supa: Supa, job: dict[str, Any], state: str, error: str | None =
     supa.update("jobs", {"id": f"eq.{job['id']}"}, values)
 
 
+def _gate(supa: Supa, cfg: Config, user_id: str) -> str | None:
+    """Owner gating + cost guard for every job type. Returns the refusal reason, or None."""
+    if not is_owner(user_id, cfg.owner_user_ids):
+        return "not_owner"
+    if month_spend(supa, user_id) >= _budget(supa, user_id):
+        return "budget"
+    return None
+
+
+def _retry_or_fail(supa: Supa, job: dict[str, Any], exc: Exception) -> str:
+    reason = type(exc).__name__
+    log.warning("job failed: %s", reason)
+    if job.get("attempts", 1) < 3:
+        retry_at = (datetime.now(timezone.utc) + timedelta(minutes=2 ** job.get("attempts", 1))).isoformat()
+        _finish_job(supa, job, "queued", reason, run_after=retry_at)
+        return "retry"
+    _finish_job(supa, job, "failed", reason)
+    return "failed"
+
+
 def process_job(supa: Supa, cfg: Config, job: dict[str, Any]) -> str:
     """Returns a short outcome word for the run summary (never user data)."""
+    if job["type"] == "grade":
+        return process_grade(supa, cfg, job)
+    if job["type"] == "synthesize":
+        return process_synthesize(supa, cfg, job)
     if job["type"] == "export":
         return exports.process_export(supa, cfg, job)
     if job["type"] not in ("ingest", "reprocess"):
@@ -249,6 +273,155 @@ def _ingest(supa: Supa, cfg: Config, save: dict[str, Any], workdir: Path) -> str
     _log_usage(supa, usage)
     supa.update("saves", {"id": f"eq.{save_id}"}, {"status": "ready", "processed_at": _now(), "error": note})
     return "ready"
+
+
+# --- Recall grading ------------------------------------------------------------------------
+
+AUDIO_MIME = {".webm": "audio/webm", ".ogg": "audio/ogg", ".m4a": "audio/mp4", ".mp4": "audio/mp4", ".mp3": "audio/mpeg"}
+
+
+def _log_failed_call(supa: Supa, exc: Exception, row: dict[str, Any], usd_in: float, usd_out: float) -> None:
+    tokens = getattr(exc, "tokens", None)
+    if tokens:
+        _log_usage(supa, [{**row, "input_tokens": tokens[0], "output_tokens": tokens[1],
+                           "usd": ai.claude_cost(tokens[0], tokens[1], usd_in, usd_out)}])
+
+
+def process_grade(supa: Supa, cfg: Config, job: dict[str, Any]) -> str:
+    """payload {card_id, audio_path | text}: transcribe (Groq), grade (fast model), write the review,
+    and move the card on with SM-2 unless the owner already graded it themselves."""
+    payload = job.get("payload") or {}
+    card = supa.one("cards", {"select": "*", "id": f"eq.{payload.get('card_id')}"})
+    if not card:
+        _finish_job(supa, job, "done", "card gone")
+        return "gone"
+    user_id = card["user_id"]
+    if job.get("user_id") and job["user_id"] != user_id:
+        _finish_job(supa, job, "failed", "not_owner")
+        return "not_owner"
+    refused = _gate(supa, cfg, user_id)
+    if refused:
+        _finish_job(supa, job, "failed", refused)
+        return refused
+    if not cfg.has_claude:
+        _finish_job(supa, job, "failed", "ai_off")
+        return "ai_off"
+
+    audio_path = payload.get("audio_path")
+    answer = str(payload.get("text") or "").strip()[:2000]
+    usage: list[dict[str, Any]] = []
+    try:
+        if audio_path:
+            # Only the owner's own answers folder (the phone wrote the path).
+            if not isinstance(audio_path, str) or not audio_path.startswith(f"{user_id}/answers/") or ".." in audio_path:
+                _finish_job(supa, job, "failed", "bad_path")
+                return "failed"
+            if not cfg.groq_key:
+                _finish_job(supa, job, "failed", "no_transcription")
+                return "no_transcription"
+            workdir = Path(tempfile.mkdtemp(prefix="stash-grade-"))
+            try:
+                suffix = Path(audio_path).suffix.lower() or ".webm"
+                local = workdir / f"answer{suffix}"
+                local.write_bytes(supa.download("stash-voice", audio_path))
+                tr = ai.transcribe(cfg, local, AUDIO_MIME.get(suffix, "audio/webm"))
+            finally:
+                shutil.rmtree(workdir, ignore_errors=True)
+            if tr:
+                answer = tr.text.strip()[:2000]
+                usage.append({"user_id": user_id, "save_id": card["save_id"], "kind": "transcribe",
+                              "audio_seconds": round(tr.seconds, 1),
+                              "usd": round(tr.seconds / 3600 * cfg.groq_usd_per_hour, 6)})
+
+        insight = supa.one("insights", {"select": "key_idea", "save_id": f"eq.{card['save_id']}"}) or {}
+        try:
+            g = ai.grade_answer(cfg, question=card["prompt"], expected=card["answer"],
+                                key_idea=insight.get("key_idea"), answer=answer)
+        except ai.InsightError as exc:
+            _log_failed_call(supa, exc, {"user_id": user_id, "save_id": card["save_id"], "kind": "grade"},
+                             cfg.fast_usd_in, cfg.fast_usd_out)
+            _log_usage(supa, usage)
+            _finish_job(supa, job, "failed", "unusable_answer")
+            return "failed"
+        usage.append({"user_id": user_id, "save_id": card["save_id"], "kind": "grade",
+                      "input_tokens": g.input_tokens, "output_tokens": g.output_tokens, "usd": g.usd})
+
+        supa.insert("reviews", {"card_id": card["id"], "user_id": user_id, "grade": g.grade,
+                                "voice_answer_text": answer or None, "feedback": g.feedback or None,
+                                "answered_at": _now()})
+        # The owner may have tapped Got it / Partly / Missed while this ran: then the card has moved on already.
+        due = card.get("due_at")
+        if not due or datetime.fromisoformat(str(due).replace("Z", "+00:00")) <= datetime.now(timezone.utc):
+            ease, interval, reps = sm2(card.get("ease") or 2.5, card.get("interval_days") or 0,
+                                       card.get("repetitions") or 0, g.grade)
+            supa.update("cards", {"id": f"eq.{card['id']}"}, {
+                "ease": ease, "interval_days": interval, "repetitions": reps,
+                "due_at": (datetime.now(timezone.utc) + timedelta(days=interval)).isoformat()})
+        _log_usage(supa, usage)
+        if audio_path:
+            try:
+                supa.remove("stash-voice", [audio_path])  # the transcript is kept in the review
+            except Exception:  # noqa: BLE001 — left for the owner's storage, harmless
+                pass
+        _finish_job(supa, job, "done")
+        return "graded"
+    except Exception as exc:  # noqa: BLE001
+        _log_usage(supa, usage)
+        return _retry_or_fail(supa, job, exc)
+
+
+# --- Syntheses ------------------------------------------------------------------------------
+
+MIN_SYNTH_SAVES = 3
+MAX_SYNTH_SAVES = 30
+
+
+def process_synthesize(supa: Supa, cfg: Config, job: dict[str, Any]) -> str:
+    """A Space's ready saves → points of agreement, disagreements (with save ids) and one action."""
+    space = supa.one("spaces", {"select": "id,name,user_id", "id": f"eq.{job.get('space_id')}"})
+    if not space:
+        _finish_job(supa, job, "done", "space gone")
+        return "gone"
+    user_id = space["user_id"]
+    refused = _gate(supa, cfg, user_id)
+    if refused:
+        _finish_job(supa, job, "failed", refused)
+        return refused
+    if not cfg.has_smart:
+        _finish_job(supa, job, "failed", "ai_off")
+        return "ai_off"
+
+    rows = supa.select("saves", {
+        "select": "id,insights(title,key_idea,takeaways)",
+        "space_id": f"eq.{space['id']}", "status": "eq.ready",
+        "order": "processed_at.desc.nullslast", "limit": str(MAX_SYNTH_SAVES),
+    })
+    saves = []
+    for r in rows:
+        ins = r.get("insights")
+        ins = ins[0] if isinstance(ins, list) and ins else ins
+        if isinstance(ins, dict) and ins.get("key_idea"):
+            saves.append({"id": r["id"], "title": ins.get("title"), "key_idea": ins["key_idea"],
+                          "takeaways": ins.get("takeaways") or []})
+    if len(saves) < MIN_SYNTH_SAVES:
+        _finish_job(supa, job, "done", "too_few")
+        return "too_few"
+
+    try:
+        s = ai.synthesize(cfg, space_name=space["name"], saves=saves)
+    except ai.InsightError as exc:
+        _log_failed_call(supa, exc, {"user_id": user_id, "kind": "synthesize"}, cfg.smart_usd_in, cfg.smart_usd_out)
+        _finish_job(supa, job, "failed", "unusable_answer")
+        return "failed"
+    except Exception as exc:  # noqa: BLE001
+        return _retry_or_fail(supa, job, exc)
+
+    supa.insert("syntheses", {"space_id": space["id"], "user_id": user_id, **s.value,
+                              "source_save_ids": [x["id"] for x in saves]})
+    _log_usage(supa, [{"user_id": user_id, "kind": "synthesize", "input_tokens": s.input_tokens,
+                       "output_tokens": s.output_tokens, "usd": s.usd}])
+    _finish_job(supa, job, "done")
+    return "synthesized"
 
 
 def empty_trash(supa: Supa, cfg: Config) -> int:

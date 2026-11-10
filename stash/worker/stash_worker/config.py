@@ -32,6 +32,10 @@ class Config:
     # USD per million tokens for the fast model, used by the cost guard.
     fast_usd_in: float = field(default_factory=lambda: _float("CLAUDE_FAST_USD_PER_MTOK_IN", 1.0))
     fast_usd_out: float = field(default_factory=lambda: _float("CLAUDE_FAST_USD_PER_MTOK_OUT", 5.0))
+    # The stronger model for syntheses and exports (creative brief text). Prices feed the cost guard.
+    smart_model: str = field(default_factory=lambda: _env("CLAUDE_SMART_MODEL"))
+    smart_usd_in: float = field(default_factory=lambda: _float("CLAUDE_SMART_USD_PER_MTOK_IN", 3.0))
+    smart_usd_out: float = field(default_factory=lambda: _float("CLAUDE_SMART_USD_PER_MTOK_OUT", 15.0))
 
     groq_key: str = field(default_factory=lambda: _env("GROQ_API_KEY"))
     groq_model: str = field(default_factory=lambda: _env("GROQ_TRANSCRIBE_MODEL", "whisper-large-v3-turbo"))
@@ -48,11 +52,6 @@ class Config:
 
     # Optional Netscape cookies file (base64) for Instagram when it asks for a login.
     ig_cookies_b64: str = field(default_factory=lambda: _env("INSTAGRAM_COOKIES_B64"))
-
-    # Stronger model for exports (creative brief text). Prices feed the cost guard.
-    smart_model: str = field(default_factory=lambda: _env("CLAUDE_SMART_MODEL"))
-    smart_usd_in: float = field(default_factory=lambda: _float("CLAUDE_SMART_USD_PER_MTOK_IN", 3.0))
-    smart_usd_out: float = field(default_factory=lambda: _float("CLAUDE_SMART_USD_PER_MTOK_OUT", 15.0))
 
     # Place names → coordinates through OpenStreetMap Nominatim (free, 1 request/second). "off" disables it.
     geocode: bool = field(default_factory=lambda: _env("GEOCODE", "on").lower() not in ("off", "0", "false", "no"))

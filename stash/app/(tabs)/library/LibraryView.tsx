@@ -48,7 +48,8 @@ export function LibraryView() {
 
   const [space, setSpace] = useState<string | null>(params.get("space"));
   const [filter, setFilter] = useState<Filter>(isFilter(params.get("filter")) ? (params.get("filter") as Filter) : "all");
-  const [pasteOpen, setPasteOpen] = useState(false);
+  // Today's empty state links here with ?paste=1 to open "Paste a link" straight away.
+  const [pasteOpen, setPasteOpen] = useState(params.get("paste") === "1");
   const [colorFor, setColorFor] = useState<string | null>(null);
   const [lens, setLens] = useState<Lens>(isLens(params.get("lens")) ? (params.get("lens") as Lens) : "grid");
   const [query, setQuery] = useState("");

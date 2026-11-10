@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import re
 from typing import Any
 from urllib.parse import urlparse
@@ -155,3 +156,76 @@ def embedding_text(insights: dict[str, Any], caption: str | None, transcript: st
 
 def segments_text(segments: list[dict[str, Any]]) -> str:
     return " ".join(str(s.get("text", "")).strip() for s in segments if s.get("text")).strip()
+
+
+# --- Recall (Phase 2) ---------------------------------------------------------
+
+VERDICT_GRADE = {"got": 5, "partly": 3, "missed": 1}
+MIN_EASE = 1.3
+
+
+def _js_round(x: float) -> int:
+    # JavaScript's Math.round (Python's round() rounds half to even).
+    return math.floor(x + 0.5)
+
+
+def sm2(ease: float, interval_days: int, repetitions: int, grade: int) -> tuple[float, int, int]:
+    """SM-2, mirrored from lib/sm2.ts: returns (ease, interval_days, repetitions)."""
+    q = max(0, min(5, _js_round(float(grade))))
+    try:
+        ease = float(ease)
+    except (TypeError, ValueError):
+        ease = 2.5
+    if not ease > 0:
+        ease = 2.5
+    interval_days, repetitions = int(interval_days or 0), int(repetitions or 0)
+    if q < 3:
+        repetitions, interval_days = 0, 1
+    else:
+        repetitions += 1
+        if repetitions == 1:
+            interval_days = 1
+        elif repetitions == 2:
+            interval_days = 6
+        else:
+            interval_days = max(1, _js_round(interval_days * ease))
+    ease = ease + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02))
+    ease = max(MIN_EASE, _js_round(ease * 100) / 100)
+    return ease, interval_days, repetitions
+
+
+def normalize_grade(raw: Any) -> dict[str, Any]:
+    """The model's grading answer → {"grade": 0..5, "feedback": str}. Raises InsightError when unusable."""
+    if not isinstance(raw, dict):
+        raise InsightError("not an object")
+    verdict = raw.get("verdict")
+    if verdict not in VERDICT_GRADE:
+        raise InsightError("verdict missing")
+    return {"grade": VERDICT_GRADE[verdict], "feedback": _clean_text(raw.get("feedback"), 300)}
+
+
+def normalize_synthesis(raw: Any, refs: dict[str, str]) -> dict[str, Any]:
+    """Validates a synthesis. refs maps the short labels shown to the model (S1, S2…) to save ids."""
+    if not isinstance(raw, dict):
+        raise InsightError("not an object")
+    points = [p for p in (_clean_text(x, 280) for x in raw.get("points") or []) if p][:5]
+    if not points:
+        raise InsightError("points missing")
+    disagreements = []
+    for d in raw.get("disagreements") or []:
+        if not isinstance(d, dict):
+            continue
+        point = _clean_text(d.get("point"), 280)
+        ids: list[str] = []
+        for r in d.get("save_refs") or []:
+            sid = refs.get(_clean_text(r, 10).upper())
+            if sid and sid not in ids:
+                ids.append(sid)
+        if point and ids:  # a disagreement nobody can watch is dropped
+            disagreements.append({"point": point, "save_ids": ids})
+    return {
+        "topic": _clean_text(raw.get("topic"), 120) or None,
+        "points": points,
+        "disagreements": disagreements[:3],
+        "suggested_action": _clean_text(raw.get("suggested_action"), 280) or None,
+    }

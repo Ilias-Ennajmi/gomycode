@@ -42,15 +42,30 @@ export type SaveItem = {
   takeaways: string[];
   actions: string[];
   tags: string[];
+  suggestedSpaceId: string | null;
   // loop state
   watchedAt: string | null;
   kept: boolean;
   archivedAt: string | null;
   appliedAt: string | null;
+  skipCount: number;
 };
 
-type InsightRow = { title: string | null; key_idea: string | null; takeaways: Json; actions: Json; tags: string[] | null };
-type StateRow = { watched_at: string | null; kept: boolean; archived_at: string | null; applied_at: string | null };
+type InsightRow = {
+  title: string | null;
+  key_idea: string | null;
+  takeaways: Json;
+  actions: Json;
+  tags: string[] | null;
+  suggested_space_id?: string | null;
+};
+type StateRow = {
+  watched_at: string | null;
+  kept: boolean;
+  archived_at: string | null;
+  applied_at: string | null;
+  skip_count?: number | null;
+};
 type SaveRow = {
   id: string;
   client_id: string | null;
@@ -74,7 +89,7 @@ type SaveRow = {
 
 const SAVE_SELECT =
   "id,client_id,source_url,platform,status,space_id,thumb_path,video_path,duration_s,creator_handle,caption,title,error,saved_at,user_note,voice_note_path," +
-  "insights(title,key_idea,takeaways,actions,tags),states(watched_at,kept,archived_at,applied_at)";
+  "insights(title,key_idea,takeaways,actions,tags,suggested_space_id),states(watched_at,kept,archived_at,applied_at,skip_count)";
 
 const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
 const strings = (v: Json | undefined): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
@@ -104,10 +119,12 @@ export function toSaveItem(row: SaveRow): SaveItem {
     takeaways: strings(ins?.takeaways),
     actions: strings(ins?.actions),
     tags: ins?.tags ?? [],
+    suggestedSpaceId: ins?.suggested_space_id ?? null,
     watchedAt: st?.watched_at ?? null,
     kept: st?.kept ?? false,
     archivedAt: st?.archived_at ?? null,
     appliedAt: st?.applied_at ?? null,
+    skipCount: st?.skip_count ?? 0,
   };
 }
 
@@ -172,7 +189,7 @@ export async function fetchRelated(saveId: string): Promise<string[]> {
   return (data ?? []).map((r) => r.save_id);
 }
 
-export type StatePatch = Partial<Pick<StateRow, "watched_at" | "kept" | "archived_at" | "applied_at">>;
+export type StatePatch = Partial<Pick<StateRow, "watched_at" | "kept" | "archived_at" | "applied_at">> & { skip_count?: number };
 
 export async function setState(saveId: string, patch: StatePatch): Promise<void> {
   const { error } = await client().from("states").update(patch).eq("save_id", saveId);
