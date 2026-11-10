@@ -115,16 +115,26 @@ function Service({
               size="sm"
               variant="outline"
               disabled={busy !== null}
-              onClick={() =>
-                run(
+              onClick={() => {
+                // Readwise recognises what it already has. Notion can't: sending everything
+                // again makes new pages next to the old ones.
+                if (
+                  service === "notion" &&
+                  !window.confirm(
+                    "Send everything to Notion again? This makes new pages; the ones already there stay. Use it after emptying the database."
+                  )
+                ) {
+                  return;
+                }
+                void run(
                   "all",
                   { action: "send", all: true },
                   (d: { sent: number }) => `${d.sent} sent to ${name}`
-                )
-              }
+                );
+              }}
             >
               {busy === "all" && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-              Send all again
+              {service === "notion" ? "Start over" : "Send all again"}
             </Button>
             <Button
               size="sm"

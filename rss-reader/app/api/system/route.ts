@@ -5,6 +5,7 @@ import { readSetting } from "@/lib/push";
 import { readErrorLog } from "@/lib/errlog";
 import { pushConfigured } from "@/lib/push";
 import { isAiEnabled } from "@/lib/ai";
+import { voiceCheck } from "@/lib/voice-check";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ export async function GET() {
       readSetting<{ at?: number }>("video-tick", {}),
       readErrorLog(),
     ]);
+  const voice = await voiceCheck();
   return NextResponse.json({
     build: {
       commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
@@ -35,7 +37,7 @@ export async function GET() {
       node: process.version,
     },
     database: { bytes: size, articles, feeds, highlights, pushSubscriptions },
-    services: { ai: isAiEnabled(), push: pushConfigured() },
+    services: { ai: isAiEnabled(), push: pushConfigured(), voice },
     lastTick,
     lastVideoTick: lastVideo,
     errors,

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   SESSION_COOKIE,
-  SESSION_MAX_AGE_SECONDS,
   createSessionToken,
+  sessionCookieOptions,
   verifyPassword,
 } from "@/lib/auth";
 
@@ -52,12 +52,6 @@ export async function POST(request: NextRequest) {
   if (existing) await prisma.setting.delete({ where: { key } });
 
   const response = NextResponse.json({ ok: true });
-  response.cookies.set(SESSION_COOKIE, await createSessionToken(), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: SESSION_MAX_AGE_SECONDS,
-  });
+  response.cookies.set(SESSION_COOKIE, await createSessionToken(), sessionCookieOptions());
   return response;
 }

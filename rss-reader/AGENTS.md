@@ -102,6 +102,13 @@ cached fallback, keeps images stale-while-revalidate, and pre-caches everything 
 the "cache-later" message. Uncached pages fall back to the static `public/offline.html`
 (it can't be a Next page: its scripts wouldn't be cached). Bump `VERSION` in `sw.js` when
 its rules change. Pull-to-refresh lives in `lib/hooks/usePullToRefresh.tsx`.
+A connection that neither answers nor fails no longer hangs the app: `networkFirst` waits
+3.5 s for a page and 6 s for data, then serves the saved copy while the network answer
+refreshes it (`PAGE_PATIENCE_MS`, `DATA_PATIENCE_MS`). And if the app still hasn't come
+up after 12 s, a plain inline script in `app/layout.tsx` (no bundle needed) shows "Try
+again / Reset the saved copy and reload / Keep waiting"; `Providers` sets
+`window.__readerReady` to stand it down. `e2e/offline.spec.ts` stalls and cuts the
+worker's requests (`PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS`).
 
 **Notifications.** Web Push with VAPID keys (`VAPID_*` env vars): devices subscribe from
 `components/layout/NotificationSettings.tsx` (Settings, and the bell in the desktop
@@ -295,7 +302,11 @@ notify pref `problems`). A feed or page that fails to load is a warning (Sources
 failing feeds). The client `ErrorBoundary` (around the list, the reader and each full page;
 `app/error.tsx` for a whole page) records errors too. Don't add bare `console.error` in
 server code. _Health_: `GET /api/health` (public, no data) answers 200 when the database
-answers and the hourly refresh ran within 3 hours, else 503, for an uptime monitor. _System sheet_ (Settings →
+answers and the hourly refresh ran within 3 hours, else 503. `.github/workflows/reader-uptime.yml`
+asks it every half hour and fails (GitHub emails the owner) after three bad answers; the
+daily Vercel cron also reports a stale hourly refresh. _Voice check_ (`lib/voice-check.ts`,
+after the hourly refresh): one sentence through the natural voice, weekly while it works,
+twice a day while it doesn't; the System sheet shows the result. _System sheet_ (Settings →
 Under the hood, `GET /api/system`): build, database size and counts, last tick summary
 (`last-tick` Setting), offline state, the error log. _Backup_: `GET /api/backup` downloads
 sources, categories, rules, highlights, saved articles and preferences as JSON. _French_:
@@ -414,7 +425,21 @@ budget bucket `voice`, `GEMINI_VOICE_DAILY`, default 60), kept in the `narration
 the device, the next fetched while one plays. Busy or out of quota, it carries on with the
 device's voice from that passage.
 
+**Passkeys** (`lib/passkeys.ts`, `/api/auth/passkey/*`, `@simplewebauthn`). Added from
+Settings → App while signed in; the login page offers "Unlock with a passkey" when one
+exists. User verification is required; public keys sit in the `passkeys` Setting; each
+ceremony's challenge travels in a 5-minute signed cookie (`rss_passkey`). The password
+still works. Tests use Chromium's virtual authenticator (`e2e/security.spec.ts`).
+
+**Restore** (`lib/restore.ts`, `POST /api/backup`, Settings → Your data). Additive only:
+categories by name, sources by feed address, rules (source rules by `feedUrl`), saved
+articles and highlights by link (missing articles come back as saved links), settings
+only where unset. Backups are version 2 (highlight anchors, snip fields, `feedUrl`).
+
 **Highlight exports** (`lib/exports.ts`, `/api/highlights/send`, Highlights → Send to…).
+Tokens are encrypted in the database (`lib/secret-box.ts`, AES-256-GCM keyed on
+`AUTH_SECRET` + the password); each highlight records where it went (`exportedTo`), so
+nothing is sent twice.
 Readwise (token checked at `/auth/`, highlights posted in hundreds) and a Notion database
 (integration secret + database link; one page per article in the database's title
 property, quotes and notes as blocks; later highlights appended, page ids in the
@@ -458,6 +483,10 @@ bundle on first run and from Settings.
   `lib/http.ts`: a cut-off body throws `BadRequest`, which routes answer with 400
   (`if (error instanceof BadRequest) return badRequest(error)`), not a 500 and an alert.
 
+- **Every push makes about seven deployments** (one per linked project; the ones the
+  ignored-build step cancels and the three broken ones count too), so about fourteen
+  pushes use up the day's hundred, and the next merge to main is silently not deployed.
+  Push once per batch, not per commit.
 - Vercel Hobby allows 100 deployments a day across the team. Every project linked to this
   repo has the Ignored Build Step `git diff --quiet HEAD^ HEAD -- .` (only builds when its
   own folder changed), so a Reader push builds Reader alone. Three projects (ps-planning,
@@ -583,6 +612,8 @@ Built in this order (see `git log -- rss-reader`):
     Then: DeArrow titles, episode downloads, car mode, voice boost and silence trimming.
     Then: natural AI voice for Listen, search by meaning, month in review, morning digest at
     a chosen hour, highlights to Readwise and Notion.
+28. Reliability and security: worker patience and a stuck-screen way out, uptime workflow,
+    voice check, passkeys, backup restore, encrypted export tokens, no double exports.
 
 ## Open ideas (not built yet)
 

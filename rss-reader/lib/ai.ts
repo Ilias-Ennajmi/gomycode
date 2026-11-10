@@ -446,7 +446,7 @@ export function wavFromPcm(pcm: Uint8Array, sampleRate = 24_000, channels = 1, b
 }
 
 /** Reads a passage aloud in a natural voice; a WAV file. Throws AiError (429 when out). */
-export async function narrate(text: string, lang: "en" | "fr") {
+export async function narrate(text: string, lang: "en" | "fr", priority: AiPriority = "user") {
   const passage = text.slice(0, NARRATE_MAX_CHARS);
   let lastError: unknown;
   for (const model of TTS_MODELS) {
@@ -475,7 +475,7 @@ export async function narrate(text: string, lang: "en" | "fr") {
             },
           },
         },
-        { bucket: "voice", priority: "user" },
+        { bucket: "voice", priority },
         60_000
       );
       const part = (

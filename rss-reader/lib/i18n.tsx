@@ -174,6 +174,27 @@ export const FR: Record<string, string> = {
   "Open original": "Ouvrir l'original",
   "Save offline": "Garder hors ligne",
   // Reading sessions, triage, player, snooze, media cards
+  "Passkey added: next time, unlock without the password":
+    "Clé d'accès ajoutée : la prochaine fois, déverrouillez sans le mot de passe",
+  "This device already has a passkey": "Cet appareil a déjà une clé d'accès",
+  "Couldn't add the passkey": "Impossible d'ajouter la clé d'accès",
+  "Add a passkey": "Ajouter une clé d'accès",
+  "Unlock with your fingerprint, face or PIN instead of the password":
+    "Déverrouillez avec votre empreinte, votre visage ou votre code plutôt que le mot de passe",
+  Passkeys: "Clés d'accès",
+  "Remove passkey": "Supprimer la clé d'accès",
+  "Restore a backup": "Restaurer une sauvegarde",
+  "Adds what's missing from a backup file; nothing is deleted":
+    "Ajoute ce qui manque depuis un fichier de sauvegarde ; rien n'est supprimé",
+  "Backup file": "Fichier de sauvegarde",
+  "Restoring…": "Restauration…",
+  "Couldn't restore that backup": "Impossible de restaurer cette sauvegarde",
+  highlights: "surlignages",
+  "saved articles": "articles enregistrés",
+  categories: "catégories",
+  rules: "règles",
+  Restored: "Restauré",
+  "Everything was already here": "Tout était déjà là",
   "Share this moment": "Partager ce moment",
   "Car mode": "Mode voiture",
   "Leave car mode": "Quitter le mode voiture",

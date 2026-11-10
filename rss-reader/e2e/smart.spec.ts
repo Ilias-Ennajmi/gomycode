@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { PrismaClient } from "@prisma/client";
 import { goToTab, openApp, reset } from "./helpers";
 
 test.beforeAll(async ({ browser }) => {
@@ -41,6 +42,23 @@ test("highlights go to Readwise and Notion with your own tokens", async ({ page 
   // The tokens never come back to the browser.
   const status = await (await page.request.get("/api/highlights/send")).text();
   expect(status).not.toContain("good-");
+  // Nor sit readable in the database.
+  const prisma = new PrismaClient();
+  try {
+    const stored = await prisma.setting.findUnique({ where: { key: "highlight-exports" } });
+    expect(stored?.value).toContain("enc:v1:");
+    expect(stored?.value).not.toContain("good-");
+  } finally {
+    await prisma.$disconnect();
+  }
+
+  // Nothing goes twice.
+  await readwise.getByRole("button", { name: "Send new now" }).click();
+  await expect(page.getByText("Nothing new to send").first()).toBeVisible();
+  await notion.getByRole("button", { name: "Send new now" }).click();
+  await expect(page.getByText("Nothing new to send").first()).toBeVisible();
+  const after = await (await page.request.get(`${process.env.FIXTURES_URL}/_received`)).json();
+  expect(after.length).toBe(received.length);
 });
 
 test("the month in review", async ({ page }) => {

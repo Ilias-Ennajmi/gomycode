@@ -5,6 +5,7 @@ import { readSetting, writeSetting } from "@/lib/push";
 import { fillVideoPages, scanVideoChannels } from "@/lib/video-maintenance";
 import { applyDeArrow } from "@/lib/dearrow";
 import { runHighlightExports } from "@/lib/exports";
+import { runVoiceCheck } from "@/lib/voice-check";
 import { DAY_MS, KEEP_PER_FEED, NEWS_RETENTION_DAYS, RETENTION_DAYS } from "@/lib/retention";
 import { reportProblem } from "@/lib/errlog";
 
@@ -257,6 +258,11 @@ export async function runMaintenance(deadline: number) {
     result.plainTitles = await applyDeArrow(deadline);
   } catch (error) {
     await reportProblem("DeArrow titles", error);
+  }
+  try {
+    await runVoiceCheck();
+  } catch (error) {
+    await reportProblem("Natural voice check", error);
   }
   try {
     result.highlightsSent = await runHighlightExports();

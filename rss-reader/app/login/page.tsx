@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, Rss } from "lucide-react";
+import { Fingerprint, Loader2, Rss } from "lucide-react";
+import { browserSupportsWebAuthn, startAuthentication } from "@simplewebauthn/browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,49 @@ function LoginForm() {
   const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
+  // Whether a passkey can unlock this reader from this browser.
+  const [passkey, setPasskey] = React.useState(false);
+  const [unlocking, setUnlocking] = React.useState(false);
+
+  const enter = React.useCallback(() => {
+    const next = searchParams.get("next");
+    router.replace(next && next.startsWith("/") && !next.startsWith("//") ? next : "/reader");
+    router.refresh();
+  }, [router, searchParams]);
+
+  React.useEffect(() => {
+    if (!browserSupportsWebAuthn()) return;
+    fetch("/api/auth/passkey/login")
+      .then((res) => res.json())
+      .then((body) => setPasskey(Boolean(body.available)))
+      .catch(() => undefined);
+  }, []);
+
+  async function unlock() {
+    setUnlocking(true);
+    setError(null);
+    try {
+      // A fresh challenge each time: the one from page load may have expired.
+      const start = await (await fetch("/api/auth/passkey/login")).json();
+      if (!start.available) throw new Error("No passkey is set up");
+      const response = await startAuthentication({ optionsJSON: start.options });
+      const res = await fetch("/api/auth/passkey/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ response }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Could not sign in");
+      }
+      enter();
+    } catch (error) {
+      // Dismissing the phone's prompt isn't an error worth showing.
+      if ((error as Error).name !== "NotAllowedError") setError((error as Error).message);
+    } finally {
+      setUnlocking(false);
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -29,9 +73,7 @@ function LoginForm() {
         setError(body.error || "Could not sign in");
         return;
       }
-      const next = searchParams.get("next");
-      router.replace(next && next.startsWith("/") && !next.startsWith("//") ? next : "/reader");
-      router.refresh();
+      enter();
     } finally {
       setSubmitting(false);
     }
@@ -72,6 +114,22 @@ function LoginForm() {
       <Button type="submit" className="h-11 w-full" disabled={!password || submitting}>
         {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
       </Button>
+      {passkey && (
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11 w-full gap-2"
+          disabled={unlocking}
+          onClick={() => void unlock()}
+        >
+          {unlocking ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Fingerprint className="h-4 w-4" />
+          )}
+          Unlock with a passkey
+        </Button>
+      )}
     </form>
   );
 }

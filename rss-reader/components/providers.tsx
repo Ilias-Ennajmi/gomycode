@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { SWRConfig } from "swr";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -25,6 +26,11 @@ async function fetcher(url: string) {
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  // The app runs: the stuck-screen watchdog (app/layout.tsx) stands down.
+  React.useEffect(() => {
+    (window as unknown as { __readerReady?: boolean }).__readerReady = true;
+    document.getElementById("reader-stuck")?.remove();
+  }, []);
   return (
     <ThemeProvider
       attribute="class"

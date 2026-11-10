@@ -1,11 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { readSetting, writeSetting } from "@/lib/push";
 import { HIGHLIGHT_ARTICLE_INCLUDE } from "@/lib/highlights";
+import { isSealed, open, seal } from "@/lib/secret-box";
 
 // Highlights sent to Readwise or a Notion database, by hand ("Send now") and after each
 // hourly refresh (new ones only). The tokens are the reader's own, pasted in Highlights →
-// Send to…; they stay in the database (the `highlight-exports` Setting) and never go back
-// to the browser. The API addresses can be pointed elsewhere for tests.
+// Send to…; they stay in the database (the `highlight-exports` Setting), encrypted
+// (lib/secret-box.ts), and never go back to the browser. What was sent where is marked on
+// each highlight (`exportedTo`), so nothing goes twice. The API addresses can be pointed
+// elsewhere for tests.
 
 const READWISE = process.env.READWISE_API_URL || "https://readwise.io/api/v2";
 const NOTION = process.env.NOTION_API_URL || "https://api.notion.com/v1";
@@ -24,9 +27,31 @@ const EMPTY: ExportSettings = { readwise: {}, notion: {} };
 
 export class ExportError extends Error {}
 
-async function settings() {
+/** The settings with the tokens readable (in memory only). */
+async function settings(): Promise<ExportSettings> {
   const value = await readSetting<ExportSettings>(KEY, EMPTY);
-  return { readwise: value.readwise ?? {}, notion: value.notion ?? {} };
+  const out: ExportSettings = { readwise: { ...value.readwise }, notion: { ...value.notion } };
+  let legacy = false;
+  for (const service of ["readwise", "notion"] as const) {
+    const stored = out[service].token;
+    if (!stored) continue;
+    if (isSealed(stored)) {
+      // Unreadable (the server's secret changed): as good as not connected.
+      out[service].token = open(stored) ?? undefined;
+    } else legacy = true;
+  }
+  // Tokens saved before they were encrypted: seal them now.
+  if (legacy) await save(out);
+  return out;
+}
+
+function save(s: ExportSettings) {
+  const sealed: ExportSettings = { readwise: { ...s.readwise }, notion: { ...s.notion } };
+  for (const service of ["readwise", "notion"] as const) {
+    const token = sealed[service].token;
+    if (token) sealed[service].token = seal(token);
+  }
+  return writeSetting(KEY, sealed);
 }
 
 /** What the browser may know: connected or not, and when it last sent. No tokens. */
@@ -41,11 +66,12 @@ export async function exportStatus() {
   };
 }
 
-type HighlightRow = Awaited<ReturnType<typeof highlightsSince>>[number];
+type HighlightRow = Awaited<ReturnType<typeof highlightsToSend>>[number];
 
-function highlightsSince(since: Date | null) {
+/** Highlights not yet sent to this service (or every one, to send again), oldest first. */
+function highlightsToSend(service: ExportService, all: boolean) {
   return prisma.highlight.findMany({
-    where: since ? { createdAt: { gt: since } } : {},
+    where: all ? {} : { NOT: { exportedTo: { has: service } } },
     orderBy: { createdAt: "asc" },
     take: 500,
     include: HIGHLIGHT_ARTICLE_INCLUDE,
@@ -116,27 +142,56 @@ export async function connect(service: ExportService, token: string, database?: 
     const databaseId = notionDatabaseId(database ?? "");
     if (!databaseId) throw new ExportError("That doesn't look like a Notion database link or ID.");
     await call(`${NOTION}/databases/${databaseId}`, { headers: notionHeaders(token) }, "Notion");
+    // Another database starts empty: everything is to send there.
+    if (s.notion.databaseId && s.notion.databaseId !== databaseId) await forget("notion");
     s.notion = { ...s.notion, token, databaseId };
   }
-  await writeSetting(KEY, s);
+  await save(s);
 }
 
 export async function disconnect(service: ExportService) {
   const s = await settings();
   s[service] = {};
-  await writeSetting(KEY, s);
+  await save(s);
+}
+
+/** Forgets what was sent to a service, so everything counts as new there. */
+async function forget(service: ExportService) {
+  const sent = await prisma.highlight.findMany({
+    where: { exportedTo: { has: service } },
+    select: { id: true, exportedTo: true },
+  });
+  for (const h of sent) {
+    await prisma.highlight.update({
+      where: { id: h.id },
+      data: { exportedTo: h.exportedTo.filter((x) => x !== service) },
+    });
+  }
+  if (service === "notion") await writeSetting(PAGES_KEY, {});
+}
+
+function markSent(service: ExportService, ids: string[]) {
+  return prisma.highlight.updateMany({
+    where: { id: { in: ids }, NOT: { exportedTo: { has: service } } },
+    data: { exportedTo: { push: service } },
+  });
 }
 
 async function sendToReadwise(token: string, highlights: HighlightRow[]) {
   for (let i = 0; i < highlights.length; i += 100) {
+    const batch = highlights.slice(i, i + 100);
     await call(
       `${READWISE}/highlights/`,
       {
         method: "POST",
         headers: readwiseHeaders(token),
-        body: JSON.stringify(readwisePayload(highlights.slice(i, i + 100))),
+        body: JSON.stringify(readwisePayload(batch)),
       },
       "Readwise"
+    );
+    await markSent(
+      "readwise",
+      batch.map((h) => h.id)
     );
   }
 }
@@ -168,6 +223,10 @@ async function sendToNotion(token: string, databaseId: string, highlights: Highl
             "Notion"
           );
         }
+        await markSent(
+          "notion",
+          items.map((h) => h.id)
+        );
         continue;
       } catch (error) {
         // The page was deleted in Notion: make a new one below.
@@ -208,12 +267,18 @@ async function sendToNotion(token: string, databaseId: string, highlights: Highl
     ).json()) as { id: string };
     pages[`${databaseId}:${articleId}`] = page.id;
     await writeSetting(PAGES_KEY, pages);
+    await markSent(
+      "notion",
+      items.map((h) => h.id)
+    );
   }
 }
 
 /**
- * Sends highlights made since the last send (or all of them, up to 500). Returns how many
- * went. Throws ExportError with a readable message.
+ * Sends the highlights a service doesn't have yet (up to 500 a time). With `all`, sends
+ * everything again: Readwise recognises what it has; Notion gets fresh pages (the old ones
+ * are left alone), so that's for a database that was emptied. Returns how many went.
+ * Throws ExportError with a readable message.
  */
 export async function sendHighlights(service: ExportService, { all = false } = {}) {
   const s = await settings();
@@ -221,18 +286,15 @@ export async function sendHighlights(service: ExportService, { all = false } = {
   if (!conf.token || (service === "notion" && !s.notion.databaseId)) {
     throw new ExportError("Not connected.");
   }
-  const since = all || !conf.lastAt ? null : new Date(conf.lastAt);
-  const highlights = await highlightsSince(since);
+  if (all && service === "notion") await forget("notion");
+  const highlights = await highlightsToSend(service, all && service === "readwise");
   if (highlights.length) {
     if (service === "readwise") await sendToReadwise(conf.token, highlights);
     else await sendToNotion(conf.token, s.notion.databaseId!, highlights);
   }
   const fresh = await settings();
-  fresh[service] = {
-    ...fresh[service],
-    lastAt: (highlights.at(-1)?.createdAt ?? new Date()).toISOString(),
-  };
-  await writeSetting(KEY, fresh);
+  fresh[service] = { ...fresh[service], lastAt: new Date().toISOString() };
+  await save(fresh);
   return highlights.length;
 }
 

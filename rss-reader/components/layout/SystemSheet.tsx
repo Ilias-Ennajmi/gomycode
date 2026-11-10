@@ -26,7 +26,11 @@ interface SystemInfo {
     highlights: number;
     pushSubscriptions: number;
   };
-  services: { ai: boolean; push: boolean };
+  services: {
+    ai: boolean;
+    push: boolean;
+    voice?: { ok: boolean | null; at: number; detail: string };
+  };
   lastTick: Record<string, unknown>;
   lastVideoTick: { at?: number };
   errors: LoggedError[];
@@ -114,6 +118,16 @@ export function SystemSheet({
         [
           "Services",
           `AI ${data.services.ai ? "on" : "off"} · push ${data.services.push ? "on" : "off"} (${data.database.pushSubscriptions} device${data.database.pushSubscriptions === 1 ? "" : "s"})`,
+        ],
+        [
+          "Natural voice",
+          !data.services.ai
+            ? "off (no AI)"
+            : data.services.voice?.ok === true
+              ? `working · checked ${formatRelativeTime(new Date(data.services.voice.at))}`
+              : data.services.voice?.ok === false
+                ? `not working: ${data.services.voice.detail}`
+                : "not checked yet",
         ],
         [
           "Last hourly refresh",

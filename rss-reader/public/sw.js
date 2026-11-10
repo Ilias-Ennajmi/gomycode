@@ -8,7 +8,7 @@
 //   version bumps, and are served at /offline-audio/<id> with byte ranges, so seeking works.
 // Bump VERSION when this file's caching rules change.
 
-const VERSION = "v4";
+const VERSION = "v5";
 const APP_CACHE = `reader-app-${VERSION}`;
 const DATA_CACHE = `reader-data-${VERSION}`;
 const IMAGE_CACHE = `reader-images-${VERSION}`;
@@ -73,19 +73,39 @@ function worthKeeping(response) {
   return response && response.ok && !response.redirected;
 }
 
-async function networkFirst(request, cacheName, fallbackUrl) {
+// A connection that neither answers nor fails (weak signal, a sleeping radio) used to leave
+// the app on its splash screen for as long as the browser cared to wait. Past this long,
+// the saved copy is shown and the network answer, when it comes, refreshes it for next time.
+const PAGE_PATIENCE_MS = 3500;
+const DATA_PATIENCE_MS = 6000;
+
+async function networkFirst(request, cacheName, fallbackUrl, patienceMs) {
   const cache = await caches.open(cacheName);
-  try {
-    const response = await fetch(request);
+  const fromCache = async () =>
+    (await cache.match(request, MATCH)) ||
+    (fallbackUrl && (await caches.match(fallbackUrl, MATCH))) ||
+    null;
+  const fromNetwork = fetch(request).then((response) => {
     if (worthKeeping(response)) {
       cache.put(request, response.clone());
       if (cacheName === DATA_CACHE) trim(DATA_CACHE, MAX_DATA);
     }
     return response;
+  });
+  try {
+    if (!patienceMs) return await fromNetwork;
+    const slow = new Promise((resolve) => setTimeout(() => resolve("slow"), patienceMs));
+    const first = await Promise.race([fromNetwork, slow]);
+    if (first !== "slow") return first;
+    // Still waiting: the saved copy now, if there is one; else keep waiting.
+    const cached = await fromCache();
+    if (cached) {
+      fromNetwork.catch(() => {});
+      return cached;
+    }
+    return await fromNetwork;
   } catch (error) {
-    const cached =
-      (await cache.match(request, MATCH)) ||
-      (fallbackUrl && (await caches.match(fallbackUrl, MATCH)));
+    const cached = await fromCache();
     if (cached) return cached;
     throw error;
   }
@@ -189,7 +209,7 @@ self.addEventListener("fetch", (event) => {
   if (request.mode === "navigate") {
     // Only the app's own pages; /login and /share always need the network.
     if (url.pathname === "/reader" || url.pathname === "/") {
-      event.respondWith(networkFirst(request, APP_CACHE, "/reader"));
+      event.respondWith(networkFirst(request, APP_CACHE, "/reader", PAGE_PATIENCE_MS));
     } else if (!url.pathname.startsWith("/login") && !url.pathname.startsWith("/share")) {
       event.respondWith(
         fetch(request).catch(async () => (await caches.match("/offline.html")) || Response.error())
@@ -198,7 +218,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (CACHEABLE_API.some((pattern) => pattern.test(url.pathname + url.search))) {
-    event.respondWith(networkFirst(request, DATA_CACHE));
+    event.respondWith(networkFirst(request, DATA_CACHE, null, DATA_PATIENCE_MS));
   }
 });
 
@@ -212,9 +232,21 @@ async function cacheArticle(cache, id) {
 }
 
 // The app asks for everything in Later ("cache-later") or one article ("cache-article")
-// to be saved for offline reading.
+// to be saved for offline reading. "reset" is the stuck-screen way out (app/layout.tsx):
+// every cache but downloads and narration goes, and the worker with them.
 self.addEventListener("message", (event) => {
   const type = event.data?.type;
+  if (type === "reset") {
+    event.waitUntil(
+      caches
+        .keys()
+        .then((keys) =>
+          Promise.all(keys.filter((key) => key.startsWith("reader-")).map((k) => caches.delete(k)))
+        )
+        .then(() => self.registration.unregister())
+    );
+    return;
+  }
   if (type === "cache-article" && event.data.id) {
     event.waitUntil(caches.open(DATA_CACHE).then((cache) => cacheArticle(cache, event.data.id)));
     return;
