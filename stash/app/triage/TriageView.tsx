@@ -76,27 +76,38 @@ export function TriageView() {
     haptic(10);
     setLastDir(dir);
     setSeen((s) => ({ ...s, [save.id]: stamp }));
+    const restoreSeen = () =>
+      setSeen((s) => {
+        const next = { ...s };
+        if (prevSeen) next[save.id] = prevSeen;
+        else delete next[save.id];
+        return next;
+      });
 
     if (dir === "keep") {
       lib.patchSave(save.id, { kept: true, ...(fileInto ? { spaceId: fileInto.id } : {}) });
-      void decide(save.id, { kept: true, triage_seen_at: stamp }).catch(() => toast({ message: "Couldn't save that. Check your connection." }));
+      void decide(save.id, { kept: true, triage_seen_at: stamp }).catch(() => {
+        lib.patchSave(save.id, { kept: false, spaceId: save.spaceId });
+        restoreSeen();
+        toast({ message: "Couldn't save that. Check your connection." });
+      });
       if (fileInto) void moveToSpace(save.id, fileInto.id).catch(() => {});
       return;
     }
 
     lib.patchSave(save.id, { archivedAt: stamp });
-    void decide(save.id, { archived_at: stamp, triage_seen_at: stamp }).catch(() => toast({ message: "Couldn't save that. Check your connection." }));
+    void decide(save.id, { archived_at: stamp, triage_seen_at: stamp }).catch(() => {
+      // Nothing reached the server: bring the card back (this also replaces the Undo toast, which is moot now).
+      lib.patchSave(save.id, { archivedAt: null });
+      restoreSeen();
+      toast({ message: "Couldn't save that. Check your connection." });
+    });
     toast({
       message: "Let go. It's in Archived.",
       actionLabel: "Undo",
       onAction: () => {
         lib.patchSave(save.id, { archivedAt: null });
-        setSeen((s) => {
-          const next = { ...s };
-          if (prevSeen) next[save.id] = prevSeen;
-          else delete next[save.id];
-          return next;
-        });
+        restoreSeen();
         void decide(save.id, { archived_at: null, triage_seen_at: prevSeen }).catch(() => {});
       },
     });
