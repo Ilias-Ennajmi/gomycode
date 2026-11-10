@@ -2,7 +2,74 @@
 
 Read this at the start of every session. Updated after every task.
 
-## Current phase: 1 · Save, process, watch — built on branch, waiting for the database step and keys
+## Phase 3 · Projects, places, import — built on branch, not applied or deployed
+
+Built in parallel with Phase 2 (which owns Today, Learn, reminders/push, syntheses and migration 0004).
+Nothing was applied to Supabase, nothing deployed, nothing pushed.
+
+### Phase 3 status (2026-11-10)
+- `supabase/migrations/0005_projects_places_import.sql` (written, **NOT APPLIED**; apply after 0004):
+  exports status/error/files/updated_at + column guard + `export` job trigger (collection links get their
+  slug from the database at once, no worker needed), private bucket `stash-exports` (`<uid>/` policies),
+  `stash.get_collection(slug)` + `stash.is_shared_thumb(path)` (security definer, the only two functions
+  anon can execute; anon gets schema usage but still no table privileges), `stash.nearby_places(lat,lng)`,
+  `places.geocoded_at`, `stash.imports`, `settings.triage_daily_limit`, `states.triage_seen_at`,
+  `usage.kind` + 'export' (keeps whatever 0004 allows), exports in the Realtime publication.
+- Worker: `export` jobs (brief PDF + DOCX written by `CLAUDE_SMART_MODEL`, moodboard PDF, deck PPTX),
+  owner gating + budget guard + usage log, retry once; Nominatim geocoding after ingest. 60 pytest tests.
+- Web: Space page (kind chip with due date, icon, stats, Play N unwatched + Export, AI card from the latest
+  synthesis, Applied first + badge, Edit sheet with kind/colour/icon/due date/description, hold chip → colour),
+  Export sheet (4 options, 2 toggles, live progress via Realtime + 5 s poll, Web Share with files, download
+  fallback, collection link share/copy/stop sharing with Undo), `/c/[slug]` public page, `/api/exports/[id]`,
+  Library lenses (Grid · Map · Galaxy placeholder), `NearbyCheck` in the tabs layout, Enable Nearby in
+  Settings, `components/places/NearbyCard.tsx` for Phase 2's For-you row, `/import`, `/triage`.
+- tsc, eslint, 61 Vitest + 60 pytest tests, next build: green. Playwright at 360 px (dark + light):
+  /library?lens=map, /library?lens=galaxy, /s/<fake id>, /import, /triage, /c/doesnotexist (404 page),
+  /settings, /today, /you render with no page errors and no horizontal scroll, without Supabase env;
+  Space page, Export sheet and triage cards also checked with cached data.
+
+### Phase 3 acceptance checks
+- [ ] PENDING (needs 0005 applied + worker redeployed with the new libraries) — "Exporting a Space of 20 saves
+  produces a usable brief PDF in under 2 minutes". Verified locally: the job for 20 saves (fake database,
+  real files) writes a PDF + DOCX that open; rendering 20-save brief + moodboard + deck takes ~0.6 s; the
+  only other cost is one smart-model call (typically 15–40 s) and a few Storage uploads. Not yet run end to end.
+- [ ] PENDING (needs 0005 applied) — "Importing an Instagram data export queues every saved post link".
+  Verified locally: parsers read the old (`string_map_data`), newer (`string_list_data`, `label_values`) and
+  HTML shapes from fixtures; the ZIP is streamed (only `saved_posts.*` is inflated); in the browser the
+  fixture file shows "Found 2 saved posts → Import 2 saves". Not yet run against a real export + Supabase.
+
+### Owner setup for Phase 3 (in order)
+1. Apply 0004 (Phase 2), then `supabase/migrations/0005_projects_places_import.sql`.
+2. Worker env: add `CLAUDE_SMART_MODEL` (+ optional `CLAUDE_SMART_USD_PER_MTOK_IN/_OUT`), then rebuild and
+   redeploy (`gcloud run deploy …`, new Python libraries and fonts). No new Vercel env, no new APK.
+3. On the phone: You → Settings → **Enable Nearby** once.
+
+### Decisions added in Phase 3
+| Topic | Decision | Why |
+|---|---|---|
+| Maps | **Leaflet + OpenStreetMap tiles** (spec said Google Maps JavaScript API) | No API key, no billing account, free; pins only need tiles and markers. Attribution shown on the map |
+| Geocoding | OpenStreetMap Nominatim in the worker, ≤ 1 req/s, cached, custom User-Agent | Free; Google Places would need a key and billing |
+| Collection links | Slug minted by the database trigger (16 URL-safe chars, 96 bits); public page reads through a security-definer function with the anon key | Works without the worker and without a service key on Vercel; only share-safe fields leave the database |
+| Shared thumbnails | Storage policy for anon on `stash-thumbs`, limited by `stash.is_shared_thumb()` to saves inside a live collection | Thumbnails stay private otherwise |
+| anon and `stash` | anon gets schema usage; EXECUTE revoked from PUBLIC on every function, re-granted to authenticated/service_role; anon may run only the two collection functions | Needed so PostgREST can serve the public page; nothing else opens up |
+| Brief formats | One export row writes PDF + DOCX (`exports.files`), file_path = PDF | Spec: "PDF and DOCX" |
+| Deck and moodboard | No AI; built from key ideas, takeaways and thumbnails | Fast and free; only the brief needs writing |
+| Without the smart model | Brief is assembled from the saves' insights | An export never fails for lack of a key |
+| Import | Parsed on the phone (fflate, streamed), queued through the existing outbox in batches of 50 per request; `saved_at` = original save date | Offline-safe, big exports don't load into memory, old imports appear in triage |
+| Nearby | Checked on app open and when the app comes back after ≥ 10 min, only if permission is already granted; one toast, reminder marked fired | No background geofencing in a TWA (spec) |
+| Triage | Oldest first; Let go = archive (Undo 4 s), Keep = kept; a skipped card returns after 30 days | Spec: daily limit 20 |
+
+### Known limits / follow-ups (Phase 3)
+- Every imported save is a full ingest job (AI cost per save); the budget guard stops processing when the
+  month's budget is reached. A 500-post import at ~$0.01/save ≈ $5.
+- Each inserted save's job wakes the worker through pg_net (one call per row on bulk inserts); the worker's
+  per-instance lock makes extra calls return `busy`. Could batch wake-ups in a later migration.
+- Today's For-you row should render `<NearbyCard />` (Phase 2 owns Today). Today currently only links to
+  /import and /triage from its empty state.
+- TikTok links from exports are stored as `https://www.tiktok.com/@/video/<id>` (no username in the export);
+  the worker rewrites it to the canonical URL after download.
+
+## Phase 1 · Save, process, watch — built on branch, waiting for the database step and keys
 
 ### Phase 1 status (2026-10-08)
 Built and pushed to `claude/magical-turing-jwi3nx` (not merged to `main` yet):
@@ -91,6 +158,7 @@ Estimated running cost at ~300 saves/month: ≈ $2.70 (Claude only). See the app
 - `search_saves()` and the worker queue functions are Phase 1 migrations (0003, 0004).
 
 ## Log
+- 2026-11-10 — Phase 3 built on the branch (migration 0005 written, worker exports + geocoding, Space/Export/collection, Map lens + Nearby, import, triage). Local checks green; migration not applied, nothing deployed.
 - 2026-10-08 — Phase 1 built (6 commits), reviewed, fixed and pushed. Migration 0003 waiting for approval; worker waiting for Google Cloud + R2.
 - 2026-10-03 — Owner asked for no authentication. Removed /login, /auth/*, sign-out and the email allowlist; proxy.ts now creates an anonymous Supabase session on the first page load (document requests only, so prefetches can't create duplicates). Vercel var ALLOWED_EMAILS is now unused.
 - 2026-10-02 — Reviewer subagent pass. Fixed: custom-accent ink lost after sync (FAIL), remote settings overwriting newer local choice (FAIL), android/README host text (FAIL); back-gesture stack, service-worker redirect/quota/query issues, proxy (public pages skip auth, getClaims, cookies on redirect, fail closed), min text sizes at 90%, /design coverage (shell, sizes, elevation, ink, easing, scrim), preset Space-clash warning, spacing on 4px steps, back chevrons use history, Supabase Site URL guidance.

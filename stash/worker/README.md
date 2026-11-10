@@ -5,6 +5,11 @@ download (yt-dlp) → 720p MP4 (ffmpeg) → video to Cloudflare R2, thumbnail to
 transcript (Groq) → key idea, takeaways, tags, places, recall cards (Claude) → filed into a Space →
 embedding for search (Voyage).
 
+It also builds exports (Phase 3): a creative brief (PDF + Word), a moodboard (PDF) and a reference
+deck (PowerPoint) from a Space, into the private Supabase Storage bucket `stash-exports`, and it
+geocodes the places the AI finds with OpenStreetMap Nominatim (free, 1 request per second,
+User-Agent "Stash personal app", answers cached) so they can be pinned on the Map.
+
 It runs on Google Cloud Run and sleeps when idle. Supabase wakes it: a new job calls `POST /run`
 through `pg_net`, and a `pg_cron` sweep calls it every minute for anything left behind.
 
@@ -17,6 +22,7 @@ Each step degrades gracefully, so the app keeps working while keys are missing:
 | `GROQ_API_KEY` | No transcript; the AI reads the caption only |
 | `VOYAGE_API_KEY` | Search by words only, no "related saves" |
 | `OWNER_USER_IDS` | Nothing is processed (strangers can't spend your budget) |
+| `CLAUDE_SMART_MODEL` | The brief is assembled from the saves' own key ideas and takeaways (no AI writing) |
 
 ## Environment
 
@@ -29,6 +35,9 @@ Each step degrades gracefully, so the app keeps working while keys are missing:
 | `ANTHROPIC_API_KEY` | console.anthropic.com |
 | `CLAUDE_FAST_MODEL` | The model id you choose for per-save processing |
 | `CLAUDE_FAST_USD_PER_MTOK_IN` / `_OUT` | That model's price per million tokens (cost guard; default 1 / 5) |
+| `CLAUDE_SMART_MODEL` | The model id you choose for exports (creative brief text) |
+| `CLAUDE_SMART_USD_PER_MTOK_IN` / `_OUT` | Its price per million tokens (cost guard; default 3 / 15) |
+| `GEOCODE` | Optional. `off` stops place lookups on OpenStreetMap (default on) |
 | `GROQ_API_KEY` | console.groq.com (free tier) |
 | `VOYAGE_API_KEY` | dash.voyageai.com (free tokens) |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | Cloudflare → R2 (below) |
@@ -63,11 +72,17 @@ Each step degrades gracefully, so the app keeps working while keys are missing:
 
 Rebuild every few weeks (`gcloud run deploy …` again) so yt-dlp keeps up with Instagram and TikTok.
 
+## Libraries for exports
+
+`reportlab` (PDF), `python-docx` (Word), `python-pptx` (PowerPoint) and `pillow` (frames) are in
+`requirements.txt`; the image also installs `fonts-dejavu-core` so French accents and Arabic
+letters print. Rebuild and redeploy the worker once after pulling Phase 3.
+
 ## Develop
 
 ```bash
 cd stash/worker
 pip install -r requirements.txt pytest
-python -m pytest            # rules, ffmpeg steps and the job flow (no network)
+python -m pytest            # rules, ffmpeg steps, the job flow, exports (files opened back) and geocoding (no network)
 python -m stash_worker      # process the queue once, using the env vars above
 ```

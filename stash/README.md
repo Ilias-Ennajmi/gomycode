@@ -59,6 +59,22 @@ Checks: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 Database changes are SQL files in `supabase/migrations/`, applied in order. After a column
 change, update `scripts/gen-types.py` and run `python3 scripts/gen-types.py`.
 
+## Pages added in Phase 3
+
+| Address | What it is |
+|---|---|
+| `/s/<space>` | A Space: kind and due date, stats, Play unwatched, **Export**, the AI card, Applied first |
+| `/library?lens=map` | Map of saved places with **Nearby** (Galaxy lens arrives in Phase 4) |
+| `/import` | Bring your Instagram Saved and TikTok Favorites from their data downloads |
+| `/triage` | Sort old saves, one card at a time (20 a day) |
+| `/c/<link>` | A shared collection: public, read-only, never creates an identity |
+| `/api/exports/<id>` | Owner-checked, 10-minute link to a finished export file |
+
+**Map data:** the Map uses [Leaflet](https://leafletjs.com) with tiles and place search from
+**© OpenStreetMap contributors** (ODbL). No API key and no cost. The attribution is shown on
+the map, as the OpenStreetMap tile and Nominatim usage policies require. The worker asks
+Nominatim for at most one place per second, with its own User-Agent, and remembers answers.
+
 ## Secrets
 
 Nothing secret lives in this repository. The browser only gets the Supabase URL and the
