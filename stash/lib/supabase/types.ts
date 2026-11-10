@@ -224,6 +224,7 @@ export type Database = {
           address: string | null;
           maps_place_id: string | null;
           created_at: string;
+          geocoded_at: string | null;
         };
         Insert: {
           id?: string;
@@ -235,6 +236,7 @@ export type Database = {
           address?: string | null;
           maps_place_id?: string | null;
           created_at?: string;
+          geocoded_at?: string | null;
         };
         Update: {
           id?: string;
@@ -246,6 +248,7 @@ export type Database = {
           address?: string | null;
           maps_place_id?: string | null;
           created_at?: string;
+          geocoded_at?: string | null;
         };
         Relationships: [];
       };
@@ -260,6 +263,7 @@ export type Database = {
           skip_count: number;
           last_shown_at: string | null;
           created_at: string;
+          triage_seen_at: string | null;
         };
         Insert: {
           save_id: string;
@@ -271,6 +275,7 @@ export type Database = {
           skip_count?: number;
           last_shown_at?: string | null;
           created_at?: string;
+          triage_seen_at?: string | null;
         };
         Update: {
           save_id?: string;
@@ -282,6 +287,7 @@ export type Database = {
           skip_count?: number;
           last_shown_at?: string | null;
           created_at?: string;
+          triage_seen_at?: string | null;
         };
         Relationships: [];
       };
@@ -481,6 +487,10 @@ export type Database = {
           file_path: string | null;
           share_slug: string | null;
           created_at: string;
+          status: string;
+          error: string | null;
+          files: Json;
+          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -491,6 +501,10 @@ export type Database = {
           file_path?: string | null;
           share_slug?: string | null;
           created_at?: string;
+          status?: string;
+          error?: string | null;
+          files?: Json;
+          updated_at?: string;
         };
         Update: {
           id?: string;
@@ -501,6 +515,10 @@ export type Database = {
           file_path?: string | null;
           share_slug?: string | null;
           created_at?: string;
+          status?: string;
+          error?: string | null;
+          files?: Json;
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -556,6 +574,7 @@ export type Database = {
           quiet_hours: Json;
           created_at: string;
           updated_at: string;
+          triage_daily_limit: number;
         };
         Insert: {
           user_id?: string;
@@ -572,6 +591,7 @@ export type Database = {
           quiet_hours?: Json;
           created_at?: string;
           updated_at?: string;
+          triage_daily_limit?: number;
         };
         Update: {
           user_id?: string;
@@ -588,6 +608,37 @@ export type Database = {
           quiet_hours?: Json;
           created_at?: string;
           updated_at?: string;
+          triage_daily_limit?: number;
+        };
+        Relationships: [];
+      };
+      imports: {
+        Row: {
+          id: string;
+          user_id: string;
+          source: string;
+          file_name: string | null;
+          total: number;
+          queued: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string;
+          source: string;
+          file_name?: string | null;
+          total?: number;
+          queued?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          source?: string;
+          file_name?: string | null;
+          total?: number;
+          queued?: number;
+          created_at?: string;
         };
         Relationships: [];
       };
@@ -597,6 +648,8 @@ export type Database = {
       search_saves: { Args: { p_query: string; p_space_id?: string | null; p_embedding?: string | null; p_limit?: number }; Returns: { save_id: string; score: number; snippet: string | null; snippet_start: number | null }[] };
       related_saves: { Args: { p_save_id: string; p_limit?: number }; Returns: { save_id: string; similarity: number }[] };
       request_reprocess: { Args: { p_save_id: string }; Returns: undefined };
+      nearby_places: { Args: { p_lat: number; p_lng: number; p_limit?: number }; Returns: { id: string; save_id: string; name: string; lat: number; lng: number; address: string | null; distance_m: number }[] };
+      get_collection: { Args: { p_slug: string }; Returns: Json };
     };
     Enums: {
       space_kind: "topic" | "project" | "inbox";

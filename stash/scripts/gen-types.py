@@ -11,16 +11,17 @@ TABLES = {
  "insights": "save_id:uuid user_id:uuid! title:text? key_idea:text? takeaways:json! actions:json! intent:intent? tags:text[]! language:text? suggested_space_id:uuid? confidence:num? created_at:ts! updated_at:ts!",
  "transcripts": "save_id:uuid user_id:uuid! segments:json! full_text:text! tsv:unknown?! created_at:ts!",
  "embeddings": "save_id:uuid user_id:uuid! vector:text model:text created_at:ts!",
- "places": "id:uuid! save_id:uuid user_id:uuid! name:text lat:num? lng:num? address:text? maps_place_id:text? created_at:ts!",
- "states": "save_id:uuid user_id:uuid! watched_at:ts? kept:bool! archived_at:ts? applied_at:ts? skip_count:int! last_shown_at:ts? created_at:ts!",
+ "places": "id:uuid! save_id:uuid user_id:uuid! name:text lat:num? lng:num? address:text? maps_place_id:text? created_at:ts! geocoded_at:ts?",
+ "states": "save_id:uuid user_id:uuid! watched_at:ts? kept:bool! archived_at:ts? applied_at:ts? skip_count:int! last_shown_at:ts? created_at:ts! triage_seen_at:ts?",
  "cards": "id:uuid! save_id:uuid user_id:uuid! prompt:text answer:text ease:num! interval_days:int! repetitions:int! due_at:ts! created_at:ts!",
  "reviews": "id:uuid! card_id:uuid user_id:uuid! answered_at:ts! grade:int? voice_answer_text:text? created_at:ts!",
  "syntheses": "id:uuid! space_id:uuid? user_id:uuid! topic:text? points:json! disagreements:json! suggested_action:text? source_save_ids:uuid[]! created_at:ts!",
  "reminders": "id:uuid! save_id:uuid user_id:uuid! kind:reminder_kind fire_at:ts? geofence:json? fired:bool! created_at:ts!",
  "jobs": "id:uuid! save_id:uuid? space_id:uuid? user_id:uuid! type:job_type state:job_state! attempts:int! error:text? locked_at:ts? run_after:ts! payload:json! created_at:ts! updated_at:ts!",
- "exports": "id:uuid! space_id:uuid user_id:uuid! kind:export_kind options:json! file_path:text? share_slug:text? created_at:ts!",
+ "exports": "id:uuid! space_id:uuid user_id:uuid! kind:export_kind options:json! file_path:text? share_slug:text? created_at:ts! status:text! error:text? files:json! updated_at:ts!",
  "usage": "id:uuid! user_id:uuid! save_id:uuid? kind:text input_tokens:int! output_tokens:int! audio_seconds:num! usd:num! created_at:ts!",
- "settings": "user_id:uuid! theme:theme_pref! accent:text! accent_custom:text? text_scale:num! density:int! reduce_motion:bool! haptics:bool! monthly_budget_usd:num! queue_time:text! queue_minutes:int! quiet_hours:json! created_at:ts! updated_at:ts!",
+ "settings": "user_id:uuid! theme:theme_pref! accent:text! accent_custom:text? text_scale:num! density:int! reduce_motion:bool! haptics:bool! monthly_budget_usd:num! queue_time:text! queue_minutes:int! quiet_hours:json! created_at:ts! updated_at:ts! triage_daily_limit:int!",
+ "imports": "id:uuid! user_id:uuid! source:text file_name:text? total:int! queued:int! created_at:ts!",
 }
 ENUMS = {
  "space_kind": ["topic", "project", "inbox"],
@@ -65,6 +66,8 @@ FUNCTIONS = [
   '      search_saves: { Args: { p_query: string; p_space_id?: string | null; p_embedding?: string | null; p_limit?: number }; Returns: { save_id: string; score: number; snippet: string | null; snippet_start: number | null }[] };',
   '      related_saves: { Args: { p_save_id: string; p_limit?: number }; Returns: { save_id: string; similarity: number }[] };',
   '      request_reprocess: { Args: { p_save_id: string }; Returns: undefined };',
+  '      nearby_places: { Args: { p_lat: number; p_lng: number; p_limit?: number }; Returns: { id: string; save_id: string; name: string; lat: number; lng: number; address: string | null; distance_m: number }[] };',
+  '      get_collection: { Args: { p_slug: string }; Returns: Json };',
 ]
 out += ["    };", "    Views: { [_ in never]: never };", "    Functions: {", *FUNCTIONS, "    };", "    Enums: {"]
 for e, vals in ENUMS.items():
