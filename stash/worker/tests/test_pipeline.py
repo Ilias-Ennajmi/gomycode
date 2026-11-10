@@ -93,7 +93,7 @@ def db():
     return d
 
 
-JOB = {"id": "j1", "type": "ingest", "save_id": "s1", "attempts": 1}
+JOB = {"id": "j1", "type": "ingest", "save_id": "s1", "user_id": OWNER, "attempts": 1}
 
 
 def stub_network(monkeypatch, tmp_path, *, download=None):

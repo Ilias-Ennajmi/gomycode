@@ -160,7 +160,7 @@ def edb():
 def job_for(db, kind, options=None, attempts=1):
     db.tables["exports"].append({"id": f"e-{kind}", "user_id": OWNER, "space_id": "sp", "kind": kind,
                                  "options": options or {}, "status": "queued", "share_slug": None})
-    j = {"id": f"j-{kind}", "type": "export", "space_id": "sp", "attempts": attempts,
+    j = {"id": f"j-{kind}", "type": "export", "space_id": "sp", "user_id": OWNER, "attempts": attempts,
          "payload": {"export_id": f"e-{kind}"}, "state": "running"}
     db.tables["jobs"].append(dict(j))
     return j

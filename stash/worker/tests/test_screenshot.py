@@ -40,7 +40,7 @@ def db():
     return d
 
 
-JOB = {"id": "j1", "type": "ingest", "save_id": "s1", "attempts": 1}
+JOB = {"id": "j1", "type": "ingest", "save_id": "s1", "user_id": OWNER, "attempts": 1}
 
 VISION = {
     "title": "Best msemen in Maarif", "key_idea": "Try the msemen at Café Lune on a weekend morning.",

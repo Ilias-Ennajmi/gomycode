@@ -75,6 +75,21 @@ def _gate(supa: Supa, cfg: Config, user_id: str) -> str | None:
     return None
 
 
+def owner_mismatch(job: dict[str, Any], row_user_id: Any) -> bool:
+    """True when the job's user isn't the owner of the row it points at (or either is unknown).
+
+    The database refuses cross-owner references, but the worker checks again before spending
+    anything: a job may only touch its own user's saves, Spaces, cards and exports."""
+    job_user = job.get("user_id")
+    return not job_user or not row_user_id or str(job_user) != str(row_user_id)
+
+
+def _refuse_mismatch(supa: Supa, job: dict[str, Any]) -> str:
+    log.warning("job refused: owner_mismatch")
+    _finish_job(supa, job, "failed", "owner_mismatch")
+    return "owner_mismatch"
+
+
 def _retry_or_fail(supa: Supa, job: dict[str, Any], exc: Exception) -> str:
     reason = type(exc).__name__
     log.warning("job failed: %s", reason)
@@ -95,7 +110,10 @@ def process_job(supa: Supa, cfg: Config, job: dict[str, Any]) -> str:
     if job["type"] == "export":
         return exports.process_export(supa, cfg, job)
     if job["type"] == "galaxy":
-        return galaxy.process_galaxy(supa, cfg, job, _gate)
+        try:
+            return galaxy.process_galaxy(supa, cfg, job, _gate)
+        except Exception as exc:  # noqa: BLE001 — back off and retry like the other job types
+            return _retry_or_fail(supa, job, exc)
     if job["type"] not in ("ingest", "reprocess"):
         _finish_job(supa, job, "failed", "job type arrives in a later phase")
         return "skipped"
@@ -106,6 +124,8 @@ def process_job(supa: Supa, cfg: Config, job: dict[str, Any]) -> str:
         return "gone"
 
     user_id = save["user_id"]
+    if owner_mismatch(job, user_id):
+        return _refuse_mismatch(supa, job)  # the save isn't touched: it belongs to someone else
     if not is_owner(user_id, cfg.owner_user_ids):
         _finish_job(supa, job, "failed", "not_owner")
         supa.update("saves", {"id": f"eq.{save['id']}"},
@@ -334,9 +354,8 @@ def process_grade(supa: Supa, cfg: Config, job: dict[str, Any]) -> str:
         _finish_job(supa, job, "done", "card gone")
         return "gone"
     user_id = card["user_id"]
-    if job.get("user_id") and job["user_id"] != user_id:
-        _finish_job(supa, job, "failed", "not_owner")
-        return "not_owner"
+    if owner_mismatch(job, user_id):
+        return _refuse_mismatch(supa, job)
     refused = _gate(supa, cfg, user_id)
     if refused:
         _finish_job(supa, job, "failed", refused)
@@ -392,7 +411,12 @@ def process_grade(supa: Supa, cfg: Config, job: dict[str, Any]) -> str:
         if not due or datetime.fromisoformat(str(due).replace("Z", "+00:00")) <= datetime.now(timezone.utc):
             ease, interval, reps = sm2(card.get("ease") or 2.5, card.get("interval_days") or 0,
                                        card.get("repetitions") or 0, g.grade)
-            supa.update("cards", {"id": f"eq.{card['id']}"}, {
+            # Conditional on the due_at we read: a self-grade that lands meanwhile moves due_at,
+            # and then this update matches nothing (the hand grade wins).
+            match = {"id": f"eq.{card['id']}"}
+            if due:
+                match["due_at"] = f"eq.{due}"
+            supa.update("cards", match, {
                 "ease": ease, "interval_days": interval, "repetitions": reps,
                 "due_at": (datetime.now(timezone.utc) + timedelta(days=interval)).isoformat()})
         _log_usage(supa, usage)
@@ -421,6 +445,8 @@ def process_synthesize(supa: Supa, cfg: Config, job: dict[str, Any]) -> str:
         _finish_job(supa, job, "done", "space gone")
         return "gone"
     user_id = space["user_id"]
+    if owner_mismatch(job, user_id):
+        return _refuse_mismatch(supa, job)
     refused = _gate(supa, cfg, user_id)
     if refused:
         _finish_job(supa, job, "failed", refused)
@@ -431,7 +457,7 @@ def process_synthesize(supa: Supa, cfg: Config, job: dict[str, Any]) -> str:
 
     rows = supa.select("saves", {
         "select": "id,insights(title,key_idea,takeaways)",
-        "space_id": f"eq.{space['id']}", "status": "eq.ready",
+        "space_id": f"eq.{space['id']}", "user_id": f"eq.{user_id}", "status": "eq.ready",
         "order": "processed_at.desc.nullslast", "limit": str(MAX_SYNTH_SAVES),
     })
     saves = []
@@ -491,7 +517,13 @@ def run(supa: Supa, cfg: Config) -> dict[str, int]:
         if not jobs:
             break
         for job in jobs:
-            outcome = process_job(supa, cfg, job)
+            try:
+                outcome = process_job(supa, cfg, job)
+            except Exception as exc:  # noqa: BLE001 — one bad job never stops the run
+                try:
+                    outcome = _retry_or_fail(supa, job, exc)
+                except Exception:  # noqa: BLE001 — the sweep re-queues a stuck job
+                    outcome = "error"
             summary[outcome] = summary.get(outcome, 0) + 1
     try:
         summary["trash"] = empty_trash(supa, cfg)

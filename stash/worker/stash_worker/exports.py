@@ -270,6 +270,14 @@ def process_export(supa: Supa, cfg: Config, job: dict[str, Any]) -> str:
         return "gone"
 
     user_id = export["user_id"]
+    from .pipeline import owner_mismatch  # circular at import time
+    if owner_mismatch(job, user_id):
+        # Not this job's export: leave the row alone, fail only the job.
+        _finish_job(supa, job, "failed", "owner_mismatch")
+        return "owner_mismatch"
+    space_row = supa.one("spaces", {"select": "user_id", "id": f"eq.{export['space_id']}"})
+    if not space_row or str(space_row.get("user_id")) != str(user_id):
+        return _fail(supa, job, export["id"], "This Space isn't yours.", "owner_mismatch")
     if not is_owner(user_id, cfg.owner_user_ids):
         return _fail(supa, job, export["id"], "This device isn't allowed to use the worker yet (add its id to OWNER_USER_IDS).", "not_owner")
 
