@@ -333,6 +333,7 @@ export type Database = {
           grade: number | null;
           voice_answer_text: string | null;
           created_at: string;
+          feedback: string | null;
         };
         Insert: {
           id?: string;
@@ -342,6 +343,7 @@ export type Database = {
           grade?: number | null;
           voice_answer_text?: string | null;
           created_at?: string;
+          feedback?: string | null;
         };
         Update: {
           id?: string;
@@ -351,6 +353,7 @@ export type Database = {
           grade?: number | null;
           voice_answer_text?: string | null;
           created_at?: string;
+          feedback?: string | null;
         };
         Relationships: [];
       };

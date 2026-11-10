@@ -38,6 +38,9 @@ alter type stash.job_type add value if not exists 'card_gen';
 alter table stash.settings add column if not exists timezone text not null default 'Africa/Casablanca';
 comment on column stash.settings.timezone is 'IANA time zone; queue_time and quiet_hours are read in it.';
 
+-- The grader's one-line feedback ("You missed the decoy tier.").
+alter table stash.reviews add column if not exists feedback text;
+
 -- Cost log learns the grading step.
 alter table stash.usage drop constraint if exists usage_kind_check;
 alter table stash.usage add constraint usage_kind_check

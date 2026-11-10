@@ -14,7 +14,7 @@ TABLES = {
  "places": "id:uuid! save_id:uuid user_id:uuid! name:text lat:num? lng:num? address:text? maps_place_id:text? created_at:ts!",
  "states": "save_id:uuid user_id:uuid! watched_at:ts? kept:bool! archived_at:ts? applied_at:ts? skip_count:int! last_shown_at:ts? created_at:ts!",
  "cards": "id:uuid! save_id:uuid user_id:uuid! prompt:text answer:text ease:num! interval_days:int! repetitions:int! due_at:ts! created_at:ts!",
- "reviews": "id:uuid! card_id:uuid user_id:uuid! answered_at:ts! grade:int? voice_answer_text:text? created_at:ts!",
+ "reviews": "id:uuid! card_id:uuid user_id:uuid! answered_at:ts! grade:int? voice_answer_text:text? created_at:ts! feedback:text?",
  "syntheses": "id:uuid! space_id:uuid? user_id:uuid! topic:text? points:json! disagreements:json! suggested_action:text? source_save_ids:uuid[]! created_at:ts!",
  "reminders": "id:uuid! save_id:uuid user_id:uuid! kind:reminder_kind fire_at:ts? geofence:json? fired:bool! created_at:ts!",
  "jobs": "id:uuid! save_id:uuid? space_id:uuid? user_id:uuid! type:job_type state:job_state! attempts:int! error:text? locked_at:ts? run_after:ts! payload:json! created_at:ts! updated_at:ts!",
