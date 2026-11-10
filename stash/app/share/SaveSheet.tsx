@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import { SpacePicker } from "@/components/save/SpacePicker";
 import { RemindSheet } from "@/components/save/RemindSheet";
 import { VoiceNoteButton } from "@/components/save/VoiceNoteButton";
-import { addReminder, createSpace, fetchSaves, fetchSpaces, mostUsed, nextSpaceColor, type ReminderChoice, type Space } from "@/lib/data";
+import { addReminder, createSpace, fetchSaves, fetchSpaces, mostUsed, nextSpaceColor, reminderLabel, type ReminderChoice, type Space } from "@/lib/data";
 import { cleanUrl, detectPlatform, extractUrl, PLATFORM_LABEL, type Platform } from "@/lib/links";
 import { enqueue, flush, screenshotRef, serverIdFor, updateSaveByClientId } from "@/lib/outbox";
 import { compressScreenshot, takeSharedImage } from "@/lib/shareInbox";
@@ -187,7 +187,7 @@ export function SaveSheet() {
     }
     try {
       await addReminder(id, choice, date);
-      setReminded(choice === "nearby" ? "When you're nearby" : choice === "tonight" ? "Tonight" : choice === "weekend" ? "This weekend" : date ?? "Set");
+      setReminded(reminderLabel(choice, date));
       haptic();
     } catch {
       toast({ message: "Couldn't set the reminder.", aboveBar: false });

@@ -4,6 +4,7 @@ import { getBrowserClient } from "@/lib/supabase/client";
 import type { Platform } from "@/lib/links";
 import type { Enums, Json } from "@/lib/supabase/types";
 import { SPACE_COLORS, type SpaceColor } from "@/components/ui/space";
+import { CONTEXT_LABEL, isContextRule, nextWeekendMorning, type ContextRule } from "@/lib/contextRules";
 
 export type Space = {
   id: string;
@@ -254,7 +255,16 @@ export async function archiveSpace(id: string) {
   if (error) throw error;
 }
 
-export type ReminderChoice = "tonight" | "weekend" | "date" | "nearby";
+export type ReminderChoice = "tonight" | "weekend" | "date" | "nearby" | ContextRule;
+
+/** What a reminder chip says once set. */
+export function reminderLabel(choice: ReminderChoice, date?: string): string {
+  if (isContextRule(choice)) return CONTEXT_LABEL[choice];
+  if (choice === "nearby") return "When you're nearby";
+  if (choice === "tonight") return "Tonight";
+  if (choice === "weekend") return "This weekend";
+  return date ?? "Set";
+}
 
 export function reminderTime(choice: ReminderChoice, date?: string, now = new Date()): string | null {
   const d = new Date(now);
@@ -273,14 +283,15 @@ export function reminderTime(choice: ReminderChoice, date?: string, now = new Da
     const picked = new Date(`${date}T09:00:00`);
     return Number.isNaN(picked.getTime()) ? null : picked.toISOString();
   }
-  return null;
+  if (choice === "weekend_morning") return nextWeekendMorning(now).toISOString();
+  return null; // place and the other context rules fire on the phone
 }
 
 export async function addReminder(saveId: string, choice: ReminderChoice, date?: string): Promise<void> {
-  const kind = choice === "nearby" ? "place" : "time";
+  const kind = choice === "nearby" ? "place" : isContextRule(choice) ? "context" : "time";
   const { error } = await client()
     .from("reminders")
-    .insert({ save_id: saveId, kind, fire_at: reminderTime(choice, date) });
+    .insert({ save_id: saveId, kind, fire_at: reminderTime(choice, date), rule: isContextRule(choice) ? { type: choice } : null });
   if (error) throw error;
 }
 

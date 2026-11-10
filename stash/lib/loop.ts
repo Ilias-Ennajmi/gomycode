@@ -348,7 +348,7 @@ export async function fetchFiredReminders(days = 3): Promise<FiredReminder[]> {
   const { data, error } = await client()
     .from("reminders")
     .select("id,save_id,fire_at")
-    .eq("kind", "time")
+    .in("kind", ["time", "context"])
     .lte("fire_at", new Date().toISOString())
     .gte("fire_at", since)
     .order("fire_at", { ascending: false })

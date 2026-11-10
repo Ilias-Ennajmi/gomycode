@@ -13,6 +13,7 @@ import { cx } from "@/components/ui/cx";
 import { SPACE_BG } from "@/components/ui/space";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { RecallCard } from "@/components/learn/RecallCard";
+import { ContextCheck } from "@/components/reminders/ContextCheck";
 import { useLoop } from "@/lib/hooks/useLoop";
 import { gradeCard, type Review } from "@/lib/loop";
 import { DAILY_CAP, VERDICT_GRADE, VERDICT_LABEL, sm2, type Verdict } from "@/lib/sm2";
@@ -58,6 +59,7 @@ export function LearnView() {
 
   return (
     <>
+      <ContextCheck rule="learn_open" />
       <PageHeader
         title="Learn"
         trailing={
