@@ -270,7 +270,7 @@ export function LibraryView() {
           ) : lens === "map" ? (
             <MapView saves={visible} spacesById={spacesById} thumbs={lib.thumbs} onOpen={(s) => open(s)} />
           ) : lens === "galaxy" ? (
-            <GalaxyView />
+            <GalaxyView saves={lib.saves} spacesById={spacesById} onOpen={(s) => open(s)} />
           ) : lib.loading && lib.saves.length === 0 ? (
             <div className="grid grid-cols-2 gap-3 px-4">
               {Array.from({ length: 4 }, (_, i) => (
