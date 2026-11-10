@@ -1,0 +1,20 @@
+{
+  "Activity": {
+    "Favorite Videos": {
+      "FavoriteVideoList": [
+        { "Date": "2023-01-15 10:22:33", "Link": "https://www.tiktokv.com/share/video/7189012345678901234/" },
+        { "Date": "2023-02-01 08:00:00", "Link": "https://www.tiktok.com/@cafe.casa/video/7190000000000000001" },
+        { "Date": "2023-03-01 08:00:00", "Link": "https://www.tiktokv.com/share/video/7189012345678901234/" }
+      ]
+    },
+    "Like List": {
+      "ItemFavoriteList": [
+        { "Date": "2023-01-01 00:00:00", "Link": "https://www.tiktokv.com/share/video/7000000000000000000/" }
+      ]
+    },
+    "Video Browsing History": {
+      "VideoList": [{ "Date": "2023-01-01 00:00:00", "Link": "https://www.tiktokv.com/share/video/7111111111111111111/" }]
+    }
+  },
+  "Profile": { "Profile Information": { "ProfileMap": { "userName": "me" } } }
+}

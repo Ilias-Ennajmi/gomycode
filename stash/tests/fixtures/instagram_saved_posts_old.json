@@ -1,0 +1,40 @@
+{
+  "saved_saved_media": [
+    {
+      "title": "cafe.casa",
+      "string_map_data": {
+        "Saved on": {
+          "href": "https://www.instagram.com/reel/C1aBcDeFgHi/",
+          "timestamp": 1700000000
+        }
+      }
+    },
+    {
+      "title": "marketing.daily",
+      "string_map_data": {
+        "Saved on": {
+          "href": "https://www.instagram.com/p/C2xYz123AbC/",
+          "timestamp": 1690000000
+        }
+      }
+    },
+    {
+      "title": "dupe.of.first",
+      "string_map_data": {
+        "Saved on": {
+          "href": "https://www.instagram.com/p/C1aBcDeFgHi/?igsh=abc",
+          "timestamp": 1710000000
+        }
+      }
+    },
+    {
+      "title": "profile.not.a.post",
+      "string_map_data": {
+        "Saved on": {
+          "href": "https://www.instagram.com/someone/",
+          "timestamp": 1700000500
+        }
+      }
+    }
+  ]
+}

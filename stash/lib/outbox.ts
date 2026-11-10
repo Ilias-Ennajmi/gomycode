@@ -63,6 +63,26 @@ export async function enqueue(item: OutboxItem): Promise<void> {
   changed();
 }
 
+/** Many saves in one IndexedDB transaction (imports). */
+export async function enqueueMany(items: OutboxItem[]): Promise<void> {
+  if (!items.length) return;
+  const db = await open();
+  await new Promise<void>((resolve, reject) => {
+    const t = db.transaction(STORE, "readwrite");
+    const store = t.objectStore(STORE);
+    for (const item of items) store.put(item);
+    t.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    t.onerror = () => {
+      db.close();
+      reject(t.error);
+    };
+  });
+  changed();
+}
+
 export async function pending(): Promise<OutboxItem[]> {
   try {
     return await tx("readonly", (s) => s.getAll() as IDBRequest<OutboxItem[]>);
@@ -81,6 +101,7 @@ export async function patchPending(clientId: string, patch: Partial<OutboxItem>)
 }
 
 let flushing: Promise<number> | null = null;
+const FLUSH_BATCH = 50;
 
 /** Sends waiting saves. Returns how many reached the server. Safe to call often. */
 export function flush(): Promise<number> {
@@ -89,21 +110,32 @@ export function flush(): Promise<number> {
     if (!supabase || (typeof navigator !== "undefined" && !navigator.onLine)) return 0;
     const items = await pending();
     let sent = 0;
-    for (const item of items) {
+    // Batches keep a big import to a few requests; a single share is a batch of one.
+    for (let i = 0; i < items.length; i += FLUSH_BATCH) {
+      const batch = items.slice(i, i + FLUSH_BATCH);
       const { error } = await supabase.from("saves").upsert(
-        {
+        batch.map((item) => ({
           client_id: item.clientId,
           source_url: item.sourceUrl,
           platform: item.platform,
           space_id: item.spaceId,
           title: item.sharedTitle,
           saved_at: item.savedAt,
-        },
+        })),
         { onConflict: "user_id,client_id", ignoreDuplicates: true },
       );
       if (error) break; // offline or no session yet: try again later
-      await tx("readwrite", (s) => s.delete(item.clientId));
-      sent++;
+      const db = await open();
+      await new Promise<void>((resolve) => {
+        const t = db.transaction(STORE, "readwrite");
+        for (const item of batch) t.objectStore(STORE).delete(item.clientId);
+        t.oncomplete = t.onerror = () => {
+          db.close();
+          resolve();
+        };
+      });
+      sent += batch.length;
+      if (items.length > FLUSH_BATCH) changed(); // progress for long imports
     }
     if (sent) changed();
     return sent;

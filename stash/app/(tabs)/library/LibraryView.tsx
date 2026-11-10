@@ -268,7 +268,7 @@ export function LibraryView() {
           ) : (
             <SaveGrid
               items={visible}
-              queued={!selectedId && filter === "all" ? lib.queued : []}
+              queued={!selectedId && filter === "all" ? lib.queued.slice(0, 6) : []}
               thumbs={lib.thumbs}
               spacesById={spacesById}
               justReady={lib.justReady}

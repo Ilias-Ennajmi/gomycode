@@ -1,0 +1,29 @@
+[
+  {
+    "timestamp": 1720000000,
+    "media": [],
+    "label_values": [
+      { "label": "URL", "value": "https://www.instagram.com/reel/DAbCdEf1234/", "href": "https://www.instagram.com/reel/DAbCdEf1234/" },
+      { "label": "Owner", "dict": [{ "dict": [{ "label": "Username", "value": "studio.rabat" }], "title": "" }] }
+    ],
+    "fbid": "1"
+  },
+  {
+    "title": "nested.variant",
+    "string_list_data": [
+      { "href": "https://instagram.com/studio.rabat/p/DXyZ98765ab", "value": "", "timestamp": 1721000000 }
+    ]
+  },
+  {
+    "saved_saved_collections": [
+      {
+        "title": "Collection",
+        "string_map_data": {
+          "Name": { "value": "Ramadan ideas" },
+          "Added time": { "timestamp": 1722000000 },
+          "URL": { "href": "https://www.instagram.com/tv/CTvAbCdE123/" }
+        }
+      }
+    ]
+  }
+]

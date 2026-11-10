@@ -1,0 +1,16 @@
+{
+  "Likes and Favorites": {
+    "Favorite Videos": {
+      "FavoriteVideoList": [
+        { "date": "2024-06-02 19:05:11", "link": "https://www.tiktokv.com/share/video/7375000000000000002/" },
+        { "date": "2024-06-03 19:05:11", "link": "https://vm.tiktok.com/ZMabc123/" }
+      ]
+    },
+    "Like List": {
+      "ItemFavoriteList": [{ "date": "2024-01-01 00:00:00", "link": "https://www.tiktokv.com/share/video/7000000000000000000/" }]
+    }
+  },
+  "Your Activity": {
+    "Favorite Sounds": { "FavoriteSoundList": [{ "Date": "2024-01-01", "Link": "https://www.tiktok.com/music/x-123" }] }
+  }
+}
