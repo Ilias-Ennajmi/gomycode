@@ -149,8 +149,8 @@ def test_groq_gets_the_file_itself(tmp_path):
     clip.write_bytes(b"mp4bytes")
     http = FakeHttp([Resp(200, {"segments": [{"start": 0, "end": 1.5, "text": " hello "}], "language": "en",
                                 "text": "hello", "duration": 1.5})])
-    out = Groq(SECRET, http, nosleep).transcribe(model="whisper-id", path=clip, mime="video/mp4")
-    assert out["seconds"] == 1.5 and http.requests[0]["data"]["model"] == "whisper-id"
+    out = Groq(SECRET, http, nosleep).transcribe(model="transcribe-id", path=clip, mime="video/mp4")
+    assert out["seconds"] == 1.5 and http.requests[0]["data"]["model"] == "transcribe-id"
     assert http.requests[0]["files"]["file"] == ("video.mp4", b"mp4bytes", "video/mp4")
 
 

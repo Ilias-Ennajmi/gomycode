@@ -1,4 +1,6 @@
 tests
+smoke
 .pytest_cache
 __pycache__
+pytest.ini
 requirements-dev.txt

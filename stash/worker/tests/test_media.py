@@ -253,7 +253,9 @@ def test_thumbnails_must_be_small_images_and_come_out_as_jpeg():
 
 
 def test_the_download_asks_for_one_progressive_mp4_and_only_from_video_platforms(tmp_path):
-    assert media.VIDEO_FORMAT == "best[ext=mp4][vcodec!=none][acodec!=none]"  # contract: no merge, so no ffmpeg
+    # One file with picture and sound: no "+" (merge) and no "/" fallback to split streams, so no ffmpeg.
+    assert media.VIDEO_FORMAT == "best[ext=mp4][vcodec!=?none][acodec!=?none]"
+    assert "+" not in media.VIDEO_FORMAT and "/" not in media.VIDEO_FORMAT
     with pytest.raises(media.DownloadFailed):
         media.download("http://169.254.169.254/video.mp4", tmp_path, max_seconds=600, max_bytes=10)
 

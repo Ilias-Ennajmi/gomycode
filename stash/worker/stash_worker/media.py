@@ -32,7 +32,9 @@ PAGE_MAX = 1_500_000
 ARTICLE_MAX = 20_000
 
 # Contract 0007: exactly one progressive MP4 (video + audio in one file), so nothing needs merging.
-VIDEO_FORMAT = "best[ext=mp4][vcodec!=none][acodec!=none]"
+# "!=?" rather than the contract's "!=": yt-dlp's "!=" drops a format whose codecs are simply not
+# announced (Instagram's direct MP4s), which would refuse files that are perfectly fine.
+VIDEO_FORMAT = "best[ext=mp4][vcodec!=?none][acodec!=?none]"
 VIDEO_SORT = ["vcodec:h264", "res:720"]  # plays everywhere, and small enough to keep
 
 
@@ -444,6 +446,15 @@ def _cookie_file(workdir: Path, cookies_b64: str) -> str | None:
         return None
 
 
+class _Quiet:
+    """yt-dlp prints its errors unless it is given a logger; the worker logs its own one-word reason."""
+
+    def debug(self, msg: str) -> None: ...
+    def info(self, msg: str) -> None: ...
+    def warning(self, msg: str) -> None: ...
+    def error(self, msg: str) -> None: ...
+
+
 def _first_entry(info: Any) -> dict[str, Any]:
     if isinstance(info, dict) and info.get("_type") == "playlist" and info.get("entries"):
         return next((e for e in info["entries"] if e), info)
@@ -469,6 +480,14 @@ def download(url: str, workdir: Path, *, max_seconds: int, max_bytes: int, cooki
         raise DownloadFailed("not a video platform")
     import yt_dlp  # heavy import kept lazy
 
+    rejected: list[str] = []
+
+    def too_long(info: dict[str, Any], *, incomplete: bool = False) -> str | None:
+        if (info.get("duration") or 0) > max_seconds:
+            rejected.append("too long")  # yt-dlp skips the video quietly; remember why
+            return "too long"
+        return None
+
     opts: dict[str, Any] = {
         "outtmpl": str(workdir / "video.%(ext)s"),
         "format": VIDEO_FORMAT,
@@ -478,14 +497,13 @@ def download(url: str, workdir: Path, *, max_seconds: int, max_bytes: int, cooki
         "quiet": True,
         "no_warnings": True,
         "noprogress": True,
+        "logger": _Quiet(),
         "socket_timeout": 15,
         "retries": 1,
         "fragment_retries": 1,
         "max_filesize": max_bytes,
         "cachedir": False,  # only /tmp is writable on the function
-        "match_filter": lambda info, *, incomplete=False: (
-            "too long" if (info.get("duration") or 0) > max_seconds else None
-        ),
+        "match_filter": too_long,
     }
     cookiefile = _cookie_file(workdir, cookies_b64)
     if cookiefile:
@@ -497,7 +515,7 @@ def download(url: str, workdir: Path, *, max_seconds: int, max_bytes: int, cooki
     except Exception as exc:  # yt-dlp raises many types
         raise DownloadFailed(type(exc).__name__) from None
 
-    if (info.get("duration") or 0) > max_seconds:
+    if rejected or (info.get("duration") or 0) > max_seconds:
         raise TooBig("too long")
     video = next((p for p in workdir.glob("video.*") if p.suffix == ".mp4"), None)
     if video is None:
@@ -555,7 +573,7 @@ def youtube_captions(url: str, get: Callable[..., Page] = safe_get) -> dict[str,
     try:
         import yt_dlp
 
-        opts = {"skip_download": True, "quiet": True, "no_warnings": True, "noplaylist": True, "socket_timeout": 15,
+        opts = {"skip_download": True, "quiet": True, "no_warnings": True, "logger": _Quiet(), "noplaylist": True, "socket_timeout": 15,
                 "retries": 1, "cachedir": False, "ignore_no_formats_error": True}
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = _first_entry(ydl.extract_info(url, download=False))

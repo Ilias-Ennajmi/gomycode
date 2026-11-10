@@ -24,6 +24,15 @@ logging.getLogger("httpx").setLevel(logging.WARNING)  # its INFO lines print ful
 app = FastAPI(title="Stash worker", docs_url=None, redoc_url=None, openapi_url=None)
 
 
+@app.middleware("http")
+async def strip_function_prefix(request, call_next):
+    """Vercel rewrites everything to /api/index; if the function ever sees that path, treat it as the root."""
+    path = request.scope.get("path", "")
+    if path == "/api/index" or path.startswith("/api/index/"):
+        request.scope["path"] = path[len("/api/index"):] or "/"
+    return await call_next(request)
+
+
 @app.get("/")
 def root() -> dict:
     return {"ok": True, "supabase_url_set": bool(supabase_url_from_env())}
