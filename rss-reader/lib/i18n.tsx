@@ -245,6 +245,17 @@ export const FR: Record<string, string> = {
   "Settings → Your data": "Réglages → Vos données",
   "On a computer: press ? or ⌘K": "Sur ordinateur : appuyez sur ? ou ⌘K",
   // The rest of the interface (wrapped by script, translated by hand)
+  "The player → ⋯ → Download new episodes on Wi-Fi":
+    "Le lecteur → ⋯ → Télécharger les nouveaux épisodes en Wi-Fi",
+  "This show doesn't allow sound effects: playing it as it is":
+    "Cette émission n’autorise pas les effets sonores : lecture telle quelle",
+  "From the next episode, if its show allows it, or on a download":
+    "Dès l’épisode suivant, si son émission l’autorise, ou sur un téléchargement",
+  "Download new episodes on Wi-Fi": "Télécharger les nouveaux épisodes en Wi-Fi",
+  "Automatic downloads": "Téléchargements automatiques",
+  "New episodes of {n} shows, on Wi-Fi, when Reader is open":
+    "Nouveaux épisodes de {n} émissions, en Wi-Fi, quand Reader est ouvert",
+  "Storage limit": "Limite de stockage",
   Everything: "Tout",
   Highlighted: "Surlignés",
   "Full article": "Article complet",

@@ -82,3 +82,22 @@ test("Listen: the natural voice falls back to the device's when it can't", async
   await expect(page.getByText(/natural voice is busy/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();
 });
+
+test("Listen to Later: the natural voice falls back to the device's when it can't", async ({
+  page,
+}) => {
+  await openApp(page);
+  const supported = await page.evaluate(() => "speechSynthesis" in window);
+  test.skip(!supported, "No speech engine in this browser");
+  await goToTab(page, "Later");
+  await page.getByRole("button", { name: "List options" }).first().click();
+  await page.getByRole("menuitem", { name: "Listen to Later" }).click();
+  const player = page
+    .getByRole("region", { name: "Listen to Later" })
+    .or(page.locator('[aria-label="Listen to Later"]'));
+  await expect(player.first()).toBeVisible();
+  await page.getByRole("button", { name: "Natural voice" }).click();
+  // No AI in tests: the server says no, and the device's voice carries on.
+  await expect(page.getByText(/natural voice is busy/)).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("button", { name: /^(Pause|Play)$/ })).toBeVisible();
+});

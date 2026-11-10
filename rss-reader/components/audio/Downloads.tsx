@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { Sheet } from "@/components/ui/sheet";
 import { useT, tr } from "@/lib/i18n";
 import { haptic } from "@/lib/native";
+import { usePref } from "@/lib/prefs";
+import { AUTO_DEFAULTS, LIMITS_MB, type AutoDownloadPrefs } from "@/lib/auto-downloads";
 import { useAudio, type Episode } from "@/components/audio/AudioProvider";
 import {
   DownloadError,
@@ -104,8 +106,36 @@ export function DownloadsSheet({
   const { list } = useDownloads();
   const audio = useAudio();
   const total = list.reduce((sum, d) => sum + d.bytes, 0);
+  const [auto, setAuto] = usePref<AutoDownloadPrefs>("auto-download", AUTO_DEFAULTS);
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title={t("Downloads")}>
+      {auto.shows.length > 0 && (
+        <label className="mx-4 mb-2 flex items-center gap-3 rounded-xl bg-muted/60 px-3 py-2.5 text-sm">
+          <span className="min-w-0 flex-1">
+            <span className="block font-medium">{t("Automatic downloads")}</span>
+            <span className="block text-xs text-muted-foreground">
+              {t("New episodes of {n} shows, on Wi-Fi, when Reader is open").replace(
+                "{n}",
+                String(auto.shows.length)
+              )}
+            </span>
+          </span>
+          <select
+            value={auto.limitMB}
+            onChange={(event) =>
+              setAuto((prev) => ({ ...prev, limitMB: Number(event.target.value) }))
+            }
+            aria-label={t("Storage limit")}
+            className="h-9 rounded-md border bg-background px-2 text-sm"
+          >
+            {LIMITS_MB.map((mb) => (
+              <option key={mb} value={mb}>
+                {mb >= 1000 ? `${mb / 1000} GB` : `${mb} MB`}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       {list.length === 0 ? (
         <p className="px-5 py-10 text-center text-sm text-muted-foreground">
           {t("Nothing downloaded. Use the arrow in the player to keep an episode for offline.")}

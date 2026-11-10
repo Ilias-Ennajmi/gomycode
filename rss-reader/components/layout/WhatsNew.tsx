@@ -7,10 +7,26 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.11.10b";
+export const WHATS_NEW_VERSION = "2026.11.10c";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "Episodes download by themselves",
+    text: 'In the player\'s ⋯, tick "Download new episodes on Wi-Fi" for a show: its two newest unplayed episodes are kept on your phone whenever Reader is open on Wi-Fi, up to the storage limit you set in Downloads. Finished ones delete themselves.',
+  },
+  {
+    title: "Sound effects on streams too",
+    text: "Voice boost and Trim silences now work on streamed episodes when the show's server allows it, not only on downloads. When it doesn't, the episode simply plays as it is.",
+  },
+  {
+    title: "Longer transcripts, better titles",
+    text: "Transcripts that were cut short are continued, and now go up to 75 minutes for videos and 100 for episodes. Plain YouTube titles are looked up for videos up to two weeks old. Search by meaning now looks through everything you've stored.",
+  },
+  {
+    title: "Natural voice in Listen to Later",
+    text: 'Listen to Later has the "AI" switch too: your queue read by the natural voice, with the phone\'s voice as the backup.',
+  },
   {
     title: "Everything Reader can do",
     text: "Settings → Help has a searchable list of every feature and where to find it, with a button that takes you there. Handy for what hides behind ⋯ menus and long-presses.",

@@ -54,7 +54,10 @@ function emptyFeed(title) {
 }
 
 function send(res, status, type, body, extra = {}) {
-  res.writeHead(status, { "Content-Type": type, "Access-Control-Allow-Origin": "*", ...extra });
+  // The "plain" audio is a show whose server doesn't allow pages to read it (no CORS).
+  const cors = extra.noCors ? {} : { "Access-Control-Allow-Origin": "*" };
+  delete extra.noCors;
+  res.writeHead(status, { "Content-Type": type, ...cors, ...extra });
   res.end(body);
 }
 
@@ -104,9 +107,10 @@ http
   .createServer(async (req, res) => {
     const url = new URL(req.url, base);
     if ((await exportApis(req, res, url)) !== false) return;
-    const audio = url.pathname.match(/^\/audio\/(\d+)\.wav$/);
+    const audio = url.pathname.match(/^\/audio(-plain)?\/(\d+)\.wav$/);
     if (audio) {
-      const seconds = Number(audio[1]);
+      const seconds = Number(audio[2]);
+      const noCors = Boolean(audio[1]);
       if (!wavCache.has(seconds)) wavCache.set(seconds, silentWav(seconds));
       const body = wavCache.get(seconds);
       const range = req.headers.range?.match(/bytes=(\d*)-(\d*)/);
@@ -117,11 +121,13 @@ http
           "Accept-Ranges": "bytes",
           "Content-Range": `bytes ${start}-${end}/${body.length}`,
           "Content-Length": String(end - start + 1),
+          noCors,
         });
       }
       return send(res, 200, "audio/wav", body, {
         "Accept-Ranges": "bytes",
         "Content-Length": String(body.length),
+        noCors,
       });
     }
     if (url.pathname === "/art.png") return send(res, 200, "image/png", PNG);

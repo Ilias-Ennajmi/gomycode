@@ -64,7 +64,6 @@ export async function searchArticleIds(search: string): Promise<string[]> {
   );
 }
 
-const MEANING_CANDIDATES = 1500;
 const MEANING_RESULTS = 60;
 // gemini-embedding scores: the same subject in other words lands around 0.6 and up.
 const MEANING_MIN = 0.55;
@@ -72,29 +71,41 @@ const meaningCache = new Map<string, { at: number; ids: string[] }>();
 
 /**
  * Search by meaning: the query is embedded (one Gemini call, cached ten minutes so the next
- * pages don't ask again) and compared with the stored article embeddings, newest 1,500;
- * the best matches come first, then the word matches that aren't among them.
+ * pages don't ask again) and compared, in the database, with every stored article embedding
+ * (unit-length vectors, so the dot product is the cosine); the best matches come first, then
+ * the word matches that aren't among them. Nothing but ids comes back from the database.
  */
 export async function searchByMeaning(search: string): Promise<string[]> {
   const key = search.trim().toLowerCase();
   const hit = meaningCache.get(key);
   if (hit && Date.now() - hit.at < 10 * 60 * 1000) return hit.ids;
-  const [[vector], candidates, words] = await Promise.all([
+  const [[vector], words] = await Promise.all([
     embedTexts([search], "user"),
-    prisma.article.findMany({
-      where: { NOT: { embedding: { isEmpty: true } } },
-      orderBy: { publishedAt: "desc" },
-      take: MEANING_CANDIDATES,
-      select: { id: true, embedding: true },
-    }),
     searchArticleIds(search),
   ]);
-  const ids = rankByMeaning(vector, candidates);
+  const rows = await meaningIds(vector);
+  const ids = rows.map((r) => r.id);
   const seen = new Set(ids);
   const merged = [...ids, ...words.filter((id) => !seen.has(id))];
   meaningCache.set(key, { at: Date.now(), ids: merged });
   if (meaningCache.size > 50) meaningCache.delete(meaningCache.keys().next().value!);
   return merged;
+}
+
+/** The articles closest to a query vector, best first, scored in the database. */
+export async function meaningIds(vector: number[]) {
+  return prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+    SELECT "id" FROM (
+      SELECT "id", (
+        SELECT sum(t.x * t.y) FROM unnest("embedding", ${vector}::float8[]) AS t(x, y)
+      ) AS score
+      FROM ${sqlName("Article")}
+      WHERE cardinality("embedding") = ${vector.length}
+    ) scored
+    WHERE score >= ${MEANING_MIN}
+    ORDER BY score DESC
+    LIMIT ${MEANING_RESULTS}
+  `);
 }
 
 /** The candidates closest to the query vector, best first. Exported for tests. */

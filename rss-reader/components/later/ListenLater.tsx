@@ -1,10 +1,19 @@
 "use client";
 
 import * as React from "react";
-import { Headphones, Pause, Play, SkipBack, SkipForward, X } from "lucide-react";
+import { Headphones, Pause, Play, SkipBack, SkipForward, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { chunks, guessLang, htmlToText, speechSupported, voiceFor } from "@/lib/speech";
+import {
+  chunks,
+  guessLang,
+  htmlToText,
+  narrationParts,
+  speechSupported,
+  voiceFor,
+} from "@/lib/speech";
+import { NaturalPlayer } from "@/lib/narration";
+import { usePref } from "@/lib/prefs";
 import { toggleArticleRead } from "@/lib/hooks/useArticles";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
@@ -37,6 +46,8 @@ export function ListenLater({
   const [status, setStatus] = React.useState<"loading" | "playing" | "paused" | "idle">("idle");
   const [rate, setRate] = React.useState(1);
   const [sentence, setSentence] = React.useState({ at: 0, of: 0 });
+  // Bumped to start the article over (after switching voice).
+  const [replay, setReplay] = React.useState(0);
   const current = playable[index];
   // The sentences of the article being read; replaced whole when the article changes, so
   // an utterance ending late can tell it belongs to an old article.
@@ -48,10 +59,16 @@ export function ListenLater({
   });
   const rateRef = React.useRef(rate);
   rateRef.current = rate;
+  // The natural voice (Gemini): a minute at a time, the device's voice when it's busy.
+  const [voice, setVoice] = usePref<"device" | "natural">("listen-voice", "device");
+  const natural = React.useRef<NaturalPlayer | null>(null);
+  const naturalOn = React.useRef(false);
 
   const stopSpeaking = React.useCallback(() => {
     run.current.token += 1;
     run.current.parts = [];
+    naturalOn.current = false;
+    natural.current?.stop();
     if (speechSupported()) window.speechSynthesis.cancel();
   }, []);
 
@@ -59,21 +76,25 @@ export function ListenLater({
     setIndex((i) => (i + 1 < playable.length ? i + 1 : i));
   }, [playable.length]);
 
+  const finishArticle = React.useCallback(() => {
+    // Done with this one: mark it read and move on.
+    const article = playable[index];
+    if (article && !article.isRead) toggleArticleRead(article.id, true).catch(() => undefined);
+    if (index + 1 < playable.length) next();
+    else {
+      setStatus("idle");
+      toast(tr("That's everything in Later"), {
+        description: tr("Nothing left to read aloud."),
+      });
+    }
+  }, [index, next, playable]);
+
   const speakFrom = React.useCallback(
     (at: number, token: number) => {
       const { parts, lang } = run.current;
       if (token !== run.current.token) return;
       if (at >= parts.length) {
-        // Done with this one: mark it read and move on.
-        const article = playable[index];
-        if (article && !article.isRead) toggleArticleRead(article.id, true).catch(() => undefined);
-        if (index + 1 < playable.length) next();
-        else {
-          setStatus("idle");
-          toast(tr("That's everything in Later"), {
-            description: tr("Nothing left to read aloud."),
-          });
-        }
+        finishArticle();
         return;
       }
       run.current.at = at;
@@ -89,12 +110,12 @@ export function ListenLater({
       };
       window.speechSynthesis.speak(utterance);
     },
-    [index, next, playable]
+    [finishArticle]
   );
 
   // A new article: fetch its text, then read.
   React.useEffect(() => {
-    if (!current || !speechSupported()) return;
+    if (!current || (!speechSupported() && voice !== "natural")) return;
     let cancelled = false;
     stopSpeaking();
     const token = run.current.token;
@@ -110,16 +131,42 @@ export function ListenLater({
       }
       if (cancelled || token !== run.current.token) return;
       const text = `${current.title}. ${htmlToText(html)}`;
-      run.current = { parts: chunks(text), at: 0, lang: guessLang(text), token };
+      const lang = guessLang(text);
+      run.current = { parts: chunks(text), at: 0, lang, token };
+      if (voice === "natural") {
+        const player = (natural.current ??= new NaturalPlayer({
+          onPassage: () => setStatus("playing"),
+          onDone: () => {
+            if (naturalOn.current) finishArticle();
+          },
+          onFail: (rest) => {
+            // The device's voice from the passage that didn't come.
+            naturalOn.current = false;
+            toast(tr("The natural voice is busy: carrying on with this device's voice"));
+            if (!speechSupported()) return setStatus("idle");
+            run.current = {
+              parts: chunks(rest.join(" ")),
+              at: 0,
+              lang: run.current.lang,
+              token: run.current.token,
+            };
+            setStatus("playing");
+            speakFrom(0, run.current.token);
+          },
+        }));
+        naturalOn.current = true;
+        player.start(narrationParts(text), lang, rateRef.current);
+        return;
+      }
       setStatus("playing");
       speakFrom(0, token);
     })();
     return () => {
       cancelled = true;
     };
-    // Only when the article changes.
+    // Only when the article changes (or is started over with the other voice).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id]);
+  }, [current?.id, replay]);
 
   React.useEffect(() => () => stopSpeaking(), [stopSpeaking]);
 
@@ -150,18 +197,24 @@ export function ListenLater({
   }, [current?.id]);
 
   function pause() {
-    window.speechSynthesis.pause();
+    if (naturalOn.current) natural.current?.pause();
+    else window.speechSynthesis.pause();
     setStatus("paused");
   }
   function resume() {
     if (status === "paused") {
-      window.speechSynthesis.resume();
+      if (naturalOn.current) natural.current?.resume();
+      else window.speechSynthesis.resume();
       setStatus("playing");
     }
   }
   function cycleRate() {
     const nextRate = RATES[(RATES.indexOf(rate) + 1) % RATES.length];
     setRate(nextRate);
+    if (naturalOn.current) {
+      natural.current?.setRate(nextRate);
+      return;
+    }
     if (status === "playing") {
       const { at, token } = run.current;
       window.speechSynthesis.cancel();
@@ -223,6 +276,27 @@ export function ListenLater({
             </span>
           </span>
         </span>
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          // The other voice, from the start of this article.
+          const next = voice === "natural" ? "device" : "natural";
+          stopSpeaking();
+          setVoice(next);
+          setStatus("idle");
+          setIndex((i) => i);
+          setReplay((n) => n + 1);
+        }}
+        aria-pressed={voice === "natural"}
+        aria-label={t("Natural voice")}
+        title={t("Natural voice (AI)")}
+        className={cn(
+          "flex h-9 items-center gap-1 rounded-full px-2 text-xs font-semibold hover:bg-accent",
+          voice === "natural" && "text-primary"
+        )}
+      >
+        <Sparkles className="h-3.5 w-3.5" /> AI
       </button>
       <button
         type="button"

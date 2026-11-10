@@ -146,6 +146,34 @@ export function useAudio() {
   return value;
 }
 
+const BLOCKED_KEY = "fx-blocked-origins";
+
+function originOf(url: string) {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return "";
+  }
+}
+
+/** Servers that refused CORS: their episodes stream plainly, without effects. */
+function originBlocked(origin: string) {
+  try {
+    return (JSON.parse(localStorage.getItem(BLOCKED_KEY) ?? "[]") as string[]).includes(origin);
+  } catch {
+    return false;
+  }
+}
+
+function blockOrigin(origin: string) {
+  try {
+    const list = JSON.parse(localStorage.getItem(BLOCKED_KEY) ?? "[]") as string[];
+    localStorage.setItem(BLOCKED_KEY, JSON.stringify([...new Set([...list, origin])].slice(-100)));
+  } catch {
+    // Not remembered: asked again next time.
+  }
+}
+
 function readRate() {
   try {
     const value = Number(localStorage.getItem(RATE_KEY));
@@ -209,12 +237,38 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [fxActive, setFxActive] = React.useState(false);
   const fxWanted = React.useRef({ boost, trim });
   fxWanted.current = { boost, trim };
-  /** Attaches the effects if they're wanted and a downloaded episode is loaded. From a tap. */
+  /**
+   * Sets what an episode plays from. Effects need audio the page may read: a saved copy,
+   * or a stream asked for with CORS (crossOrigin), which only shows whose servers allow it
+   * answer; the first refusal is remembered (onError) and that show plays plainly.
+   */
+  const assignSource = React.useCallback((audio: HTMLAudioElement, episode: Episode) => {
+    const src = sourceOf(episode);
+    const { boost: b, trim: t } = fxWanted.current;
+    const origin = originOf(episode.audioUrl);
+    if (!src.startsWith("/offline-audio/") && (b || t) && origin && !originBlocked(origin)) {
+      audio.crossOrigin = "anonymous";
+    } else audio.removeAttribute("crossorigin");
+    audio.src = src;
+  }, []);
+  /** Whether the effects can stay on while this episode loads. */
+  const fxFits = React.useCallback((episode: Episode) => {
+    if (sourceOf(episode).startsWith("/offline-audio/")) return true;
+    const { boost: b, trim: t } = fxWanted.current;
+    const origin = originOf(episode.audioUrl);
+    return (b || t) && Boolean(origin) && !originBlocked(origin);
+  }, []);
+  /** Attaches the effects if they're wanted and the audio allows it. From a tap. */
   const ensureFx = React.useCallback(() => {
     const audio = audioRef.current;
     const { boost: b, trim: t } = fxWanted.current;
     if (!audio || fxRef.current || !(b || t)) return;
-    if (!audio.getAttribute("src")?.startsWith("/offline-audio/")) return;
+    if (
+      !audio.getAttribute("src")?.startsWith("/offline-audio/") &&
+      audio.crossOrigin !== "anonymous"
+    ) {
+      return;
+    }
     fxRef.current = attachFx(audio, audio.playbackRate);
     fxRef.current?.setBoost(b);
     fxRef.current?.setTrim(t);
@@ -260,7 +314,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       if (!audio) return;
       // The element goes through Web Audio: a streamed file might come out silent, so it
       // gets a fresh element first (the load runs again once it's mounted).
-      if (fxRef.current && !sourceOf(next).startsWith("/offline-audio/")) {
+      if (fxRef.current && !fxFits(next)) {
         fxRef.current = null;
         setFxActive(false);
         audio.pause();
@@ -283,7 +337,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         audio.removeAttribute("src");
         pendingSeek.current = startAt > 0 ? startAt : null;
       } else if (audio.getAttribute("src") !== sourceOf(next)) {
-        audio.src = sourceOf(next);
+        assignSource(audio, next);
         pendingSeek.current = startAt > 0 ? startAt : null;
       } else if (startAt >= 0) {
         audio.currentTime = startAt;
@@ -308,7 +362,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         });
       }
     },
-    [save, time]
+    [save, time, assignSource, fxFits]
   );
 
   const play = React.useCallback(
@@ -317,7 +371,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       const audio = audioRef.current;
       if (current?.id === next.id && audio) {
         if (!audio.getAttribute("src")) {
-          audio.src = sourceOf(next);
+          assignSource(audio, next);
           if (startAt !== undefined) pendingSeek.current = startAt;
         } else if (startAt !== undefined) {
           audio.currentTime = startAt;
@@ -329,14 +383,14 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       load(next, startAt ?? 0, true);
       ensureFx();
     },
-    [load, ensureFx]
+    [load, ensureFx, assignSource]
   );
 
   const toggle = React.useCallback(() => {
     const audio = audioRef.current;
     const current = episodeRef.current;
     if (!audio || !current) return;
-    if (!audio.getAttribute("src")) audio.src = sourceOf(current);
+    if (!audio.getAttribute("src")) assignSource(audio, current);
     if (audio.paused) {
       // Back up a little after a long pause, so the thread is easy to pick up again.
       if (
@@ -354,7 +408,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     } else {
       audio.pause();
     }
-  }, [time, ensureFx]);
+  }, [time, ensureFx, assignSource]);
 
   const seek = React.useCallback(
     (seconds: number) => {
@@ -792,6 +846,25 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             audio.src = current.audioUrl;
             pendingSeek.current = at > 0 ? at : null;
             void audio.play().catch(() => undefined);
+            return;
+          }
+          // Asked for with CORS and refused: the show doesn't let pages read its audio. Play
+          // it as it is, without effects, and don't ask that server again.
+          if (audio && audio.crossOrigin === "anonymous") {
+            blockOrigin(originOf(current.audioUrl));
+            const at = time.get();
+            toast(tr("This show doesn't allow sound effects: playing it as it is"));
+            if (fxRef.current) {
+              fxRef.current = null;
+              setFxActive(false);
+              pendingLoad.current = { next: current, startAt: at, autoplay: true };
+              setElementKey((k) => k + 1);
+            } else {
+              audio.removeAttribute("crossorigin");
+              audio.src = current.audioUrl;
+              pendingSeek.current = at > 0 ? at : null;
+              void audio.play().catch(() => undefined);
+            }
             return;
           }
           setPlaying(false);

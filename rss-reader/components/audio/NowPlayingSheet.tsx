@@ -74,7 +74,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useT, tr } from "@/lib/i18n";
+import { usePref } from "@/lib/prefs";
 import { DownloadButton } from "@/components/audio/Downloads";
+import { AUTO_DEFAULTS, type AutoDownloadPrefs } from "@/lib/auto-downloads";
 import { requestAppEvent } from "@/lib/app-events";
 
 /**
@@ -893,6 +895,8 @@ function PlayerMenu({
   const [skipSponsors, setSkipSponsors] = useSkipSponsors();
   const catalogue = episode.id.startsWith("ext:");
   const { t } = useT();
+  const [auto, setAuto] = usePref<AutoDownloadPrefs>("auto-download", AUTO_DEFAULTS);
+  const autoOn = auto.shows.includes(episode.feedId);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -923,6 +927,21 @@ function PlayerMenu({
         <DropdownMenuCheckboxItem checked={skipSponsors} onCheckedChange={setSkipSponsors}>
           {t("Skip sponsors")}
         </DropdownMenuCheckboxItem>
+        {!catalogue && (
+          <DropdownMenuCheckboxItem
+            checked={autoOn}
+            onCheckedChange={(on) =>
+              setAuto((prev) => ({
+                ...prev,
+                shows: on
+                  ? [...prev.shows.filter((id) => id !== episode.feedId), episode.feedId]
+                  : prev.shows.filter((id) => id !== episode.feedId),
+              }))
+            }
+          >
+            {t("Download new episodes on Wi-Fi")}
+          </DropdownMenuCheckboxItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-xs">
           {t("Sound")}
@@ -931,7 +950,7 @@ function PlayerMenu({
               ? fx.trim && fx.saved() >= 1
                 ? `${t("Silences trimmed")}: ${clock(fx.saved())}`
                 : t("On for this episode")
-              : t("Applies to downloaded episodes")}
+              : t("From the next episode, if its show allows it, or on a download")}
           </span>
         </DropdownMenuLabel>
         <DropdownMenuCheckboxItem checked={fx.boost} onCheckedChange={fx.setBoost}>
