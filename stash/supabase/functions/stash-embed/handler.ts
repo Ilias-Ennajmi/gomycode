@@ -24,6 +24,8 @@ export function makeHandler(deps: Deps): (req: Request) => Promise<Response> {
       const inputs = cleanInputs(body.input, 4, true);
       if (!inputs) return fail(400, "bad_request", CORS);
       if (!(await deps.rateLimitTake(`u:${uid}`, "embed", 60, 60))) return fail(429, "rate_limited", CORS);
+      // Everyone together: many throw-away identities cannot use the model without limit.
+      if (!(await deps.rateLimitTake("all", "embed_all", 3000, 60))) return fail(429, "rate_limited", CORS);
       return json(embedResponse(await deps.embed(inputs, 1000)), 200, CORS);
     } catch (e) {
       logFailure("stash-embed", e);

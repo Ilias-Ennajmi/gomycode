@@ -2,7 +2,8 @@
 //
 // create  (needs the device's session): makes a 20-character code, gives the user a synthetic
 //         email + a password derived from the code, stores only a hash of the code as lookup id.
-//         Calling it again rotates: the old code stops working.
+//         Calling it again rotates: the old code stops working. The password change ends the
+//         user's sessions, so the answer carries a fresh session for this phone next to the code.
 // restore (no session): code → lookup id → user → password sign-in → a session for the new phone.
 //
 // The code and the password are never stored and never logged. Wrong codes all get the same
@@ -29,9 +30,16 @@ export type Deps = {
   now?: () => Date;
 };
 
-function clientIp(req: Request): string {
-  const forwarded = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim();
-  return forwarded || req.headers.get("cf-connecting-ip") || "unknown";
+/**
+ * The caller's address for the restore limit. `cf-connecting-ip` is set by the edge; without it the
+ * LAST x-forwarded-for hop is the one our own gateway appended (earlier hops are whatever the
+ * caller typed, so they cannot be used to dodge the limit).
+ */
+export function clientIp(req: Request): string {
+  const cf = (req.headers.get("cf-connecting-ip") ?? "").trim();
+  if (cf) return cf;
+  const hops = (req.headers.get("x-forwarded-for") ?? "").split(",").map((h) => h.trim()).filter(Boolean);
+  return hops[hops.length - 1] ?? "unknown";
 }
 
 export function makeHandler(deps: Deps): (req: Request) => Promise<Response> {
@@ -45,12 +53,30 @@ export function makeHandler(deps: Deps): (req: Request) => Promise<Response> {
     if (!(await deps.setCredentials(uid, email, password))) return fail(500, "auth_update_failed", CORS);
     await deps.recoverySet(uid, lookup);
     const createdAt = (deps.now ?? (() => new Date()))().toISOString();
-    return json({ code: formatCode(code), created_at: createdAt }, 200, CORS);
+    // Changing the password ends the sessions this user had (this phone's included), so sign in
+    // again right here and hand the phone a fresh session together with the code. If the sign-in
+    // fails the code is still returned: it is then the way back in.
+    let session: Session | null = null;
+    try {
+      session = await deps.signIn(email, password);
+      if (session && session.user_id !== uid) session = null;
+    } catch {
+      session = null;
+    }
+    return json({
+      code: formatCode(code),
+      created_at: createdAt,
+      access_token: session?.access_token ?? null,
+      refresh_token: session?.refresh_token ?? null,
+      expires_at: session?.expires_at ?? null,
+    }, 200, CORS);
   }
 
   async function restore(req: Request, body: Record<string, unknown>): Promise<Response> {
     const subject = "ip:" + (await sha256Hex(clientIp(req))).slice(0, 32);
     if (!(await deps.rateLimitTake(subject, "recovery_restore", 10, 3600))) return fail(429, "rate_limited", CORS);
+    // All callers together: guesses spread over many addresses are still slow.
+    if (!(await deps.rateLimitTake("all", "recovery_restore_all", 600, 3600))) return fail(429, "rate_limited", CORS);
     const norm = normalizeCode(body.code);
     if (!norm) return fail(400, "invalid_code", CORS);
     const { lookup, password } = await derive(norm);

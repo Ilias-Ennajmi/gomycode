@@ -106,7 +106,7 @@ Deno.test("anything off the allowlist is 403; an unfiltered PATCH or DELETE is 4
   const forbidden = [
     "/rest/config", "/rest/recovery", "/rest/rate_limits", "/rest/push_subscriptions", "/rest/rpc/worker_config",
     "/rest/rpc/worker_token_ok", "/rest/rpc/recovery_find", "/rest/rpc/owner_ids", "/rest/users", "/rest/",
-    "/rest/saves/../config", "/rest/saves%2F..%2Fconfig", "/rest/saves?select=*,config(*)", "/rest/saves?select=id,x:recovery!inner(lookup)",
+    "/rest/saves/../config", "/rest/saves%2F..%2Fconfig", "/rest/saves?select=*,config(*)", '/rest/saves?select=*,"config"(*)', "/rest/saves?select=*,%22recovery%22(lookup)", "/rest/saves?select=id,x:recovery!inner(lookup)",
     "/rest/saves?select=id&select=*,rate_limits(*)", "/auth/v1/admin/users", "/storage/v1/object/x", "/nothing", "",
   ];
   for (const path of forbidden) {
@@ -183,6 +183,10 @@ Deno.test("rules: routes, selects, filters, paths", () => {
   assertEquals(routeOf("/other/config"), "");
   assert(selectOk("id,insights(title,key_idea),states!inner(kept)") && selectOk("*") && selectOk(null));
   assert(!selectOk("id,config(*)") && !selectOk("usd.sum()") && !selectOk("a:recovery ( lookup )") && !selectOk("x".repeat(2001)));
+  // A quoted name would not look like an embedded table to the pattern: any double quote is refused.
+  for (const quoted of ['id,"config"(*)', 'id,x:"recovery"!inner(lookup)', '"id"', 'id,insights("title")', '*,"push_subscriptions" (*)']) {
+    assert(!selectOk(quoted), quoted);
+  }
   const q = (s: string) => new URLSearchParams(s);
   assert(hasFilter(q("id=eq.1")) && hasFilter(q("id=in.(1,2)")) && hasFilter(q("space_id=is.null&select=id")) && hasFilter(q("or=(a.eq.1,b.eq.2)")) && hasFilter(q("id=not.eq.1")));
   assert(!hasFilter(q("")) && !hasFilter(q("select=id&limit=1&order=id&offset=2&on_conflict=id&columns=a")) && !hasFilter(q("id=")) && !hasFilter(q("id=1")) && !hasFilter(q("insights.tags=cs.{a}")));

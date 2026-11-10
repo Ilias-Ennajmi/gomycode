@@ -34,7 +34,8 @@ export function routeOf(pathname: string, fn = "stash-worker-proxy"): string {
  */
 export function selectOk(select: string | null): boolean {
   if (select === null) return true;
-  if (select.length > 2000) return false;
+  // A quoted name ("config"(*)) would slip past the pattern below, and no worker query needs one.
+  if (select.length > 2000 || select.includes('"')) return false;
   for (const m of select.matchAll(/([A-Za-z_][\w]*)((?:![\w]+)*)\s*\(/g)) {
     if (!TABLES.has(m[1])) return false;
   }

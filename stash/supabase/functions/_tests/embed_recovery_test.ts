@@ -3,7 +3,7 @@ import { assert, assertEquals, assertMatch, assertNotEquals } from "jsr:@std/ass
 import { cleanInputs } from "../_shared/embed.ts";
 import { ALPHABET, derive, EMAIL_DOMAIN, formatCode, generateCode, normalizeCode } from "../_shared/recovery_code.ts";
 import { makeHandler as embedHandler } from "../stash-embed/handler.ts";
-import { type Deps, makeHandler as recoveryHandler, type Session } from "../stash-recovery/handler.ts";
+import { clientIp, type Deps, makeHandler as recoveryHandler, type Session } from "../stash-recovery/handler.ts";
 
 const UID = "0f8fad5b-d9cb-469f-a165-70867728950e";
 const code = async (r: Response) => [r.status, (await r.json()).error];
@@ -65,6 +65,28 @@ Deno.test("embed: no session, a bad token or an anon key is 401; the 61st call i
   assertEquals([options.status, options.headers.get("access-control-allow-headers")], [204, "authorization, x-client-info, apikey, content-type"]);
   assertEquals((await handler(new Request("https://p.supabase.co/functions/v1/stash-embed"))).status, 405);
   assertEquals(cleanInputs("x", 16, false), null); // the proxy's /embed takes arrays only
+});
+
+Deno.test("embed: everyone together is limited to 3000 a minute, whatever identity asks", async () => {
+  const seen: string[] = [];
+  let all = 0;
+  const handler = embedHandler({
+    userId: (token) => Promise.resolve(token.startsWith("jwt-") ? token : null), // a new identity per call
+    rateLimitTake: (subject, bucket, max, windowS) => {
+      seen.push(`${subject}|${bucket}|${max}|${windowS}`);
+      return Promise.resolve(subject === "all" ? ++all <= max : true);
+    },
+    embed: (inputs) => Promise.resolve(inputs.map(() => new Array(384).fill(0))),
+  });
+  const post = (i: number) =>
+    handler(new Request("https://p.supabase.co/functions/v1/stash-embed", {
+      method: "POST",
+      body: JSON.stringify({ input: "x" }),
+      headers: { authorization: `Bearer jwt-${i}` },
+    }));
+  for (let i = 0; i < 3000; i++) assertEquals((await post(i)).status, 200);
+  assertEquals(await code(await post(3000)), [429, "rate_limited"]);
+  assertEquals(seen.slice(0, 2), ["u:jwt-0|embed|60|60", "all|embed_all|3000|60"]);
 });
 
 // --- recovery codes ---------------------------------------------------------------------------
@@ -132,6 +154,7 @@ function recoverySetup(over: Partial<Deps> = {}) {
     recoveryFind: (lookup) => Promise.resolve(lookups.get(lookup) ?? null),
     emailOf: (uid) => Promise.resolve(users.get(uid)?.email ?? null),
     signIn: (email, password): Promise<Session | null> => {
+      log.push("signIn");
       const hit = [...users].find(([, u]) => u.email === email && u.password === password);
       return Promise.resolve(hit ? { access_token: "at", refresh_token: "rt", expires_at: 123, user_id: hit[0] } : null);
     },
@@ -139,11 +162,16 @@ function recoverySetup(over: Partial<Deps> = {}) {
     now: () => new Date("2026-11-10T12:00:00Z"),
     ...over,
   });
-  const post = (body: unknown, opts: { token?: string; ip?: string } = {}) =>
+  const post = (body: unknown, opts: { token?: string; ip?: string; forged?: string; cf?: string } = {}) =>
     handler(new Request("https://p.supabase.co/functions/v1/stash-recovery", {
       method: "POST",
       body: typeof body === "string" ? body : JSON.stringify(body),
-      headers: { "x-forwarded-for": `${opts.ip ?? "203.0.113.7"}, 10.0.0.1`, ...(opts.token ? { authorization: `Bearer ${opts.token}` } : {}) },
+      // The last hop is the one our gateway appended; what comes before it is whatever the caller sent.
+      headers: {
+        "x-forwarded-for": `${opts.forged ?? "10.0.0.1"}, ${opts.ip ?? "203.0.113.7"}`,
+        ...(opts.cf ? { "cf-connecting-ip": opts.cf } : {}),
+        ...(opts.token ? { authorization: `Bearer ${opts.token}` } : {}),
+      },
     }));
   return { handler, post, lim, users, lookups, log };
 }
@@ -151,8 +179,15 @@ function recoverySetup(over: Partial<Deps> = {}) {
 Deno.test("recovery: create gives a code once; restore with it returns a session for the same user", async () => {
   const { post, users, lookups, lim, log } = recoverySetup();
   const created = await post({ action: "create" }, { token: "device-jwt" });
-  assertEquals(await created.json(), { code: "AAAAA-BBBBB-CCCCC-DDDDD", created_at: "2026-11-10T12:00:00.000Z" });
-  assertEquals(log, ["setCredentials", "recoverySet"]);
+  // The code, and a fresh session for this phone: setting the password ended the one it had.
+  assertEquals(await created.json(), {
+    code: "AAAAA-BBBBB-CCCCC-DDDDD",
+    created_at: "2026-11-10T12:00:00.000Z",
+    access_token: "at",
+    refresh_token: "rt",
+    expires_at: 123,
+  });
+  assertEquals(log, ["setCredentials", "recoverySet", "signIn"]);
   assertEquals(lim.seen[0], `u:${UID}|recovery_create|5|86400`);
   // What is stored: a synthetic email, a password, a lookup id. Never the code.
   const stored = JSON.stringify([...users, ...lookups]);
@@ -163,6 +198,35 @@ Deno.test("recovery: create gives a code once; restore with it returns a session
   assertEquals(restored.headers.get("access-control-allow-origin"), "*");
   assertMatch(lim.seen[1], /^ip:[0-9a-f]{32}\|recovery_restore\|10\|3600$/);
   assert(!lim.seen[1].includes("203.0.113.7")); // the address itself is not kept
+  assertEquals(lim.seen[2], "all|recovery_restore_all|600|3600");
+});
+
+Deno.test("recovery: create signs in with the new credentials after they are stored; rotating does the same", async () => {
+  const { post, users, log } = recoverySetup();
+  await post({ action: "create" }, { token: "device-jwt" });
+  const first = { ...users.get(UID)! };
+  log.length = 0;
+  const second = await (await post({ action: "create" }, { token: "device-jwt" })).json();
+  assertEquals(log, ["setCredentials", "recoverySet", "signIn"]); // the sign-in uses what was just set
+  assertEquals([second.code, second.access_token, second.refresh_token], ["22222-33333-44444-55555", "at", "rt"]);
+  assertNotEquals(users.get(UID)!.password, first.password);
+});
+
+Deno.test("recovery: when the sign-in after create fails, the code is still returned, without a session", async () => {
+  for (const signIn of [() => Promise.resolve(null), () => Promise.reject(new Error("auth down")),
+    () => Promise.resolve({ access_token: "at", refresh_token: "rt", expires_at: 1, user_id: "someone-else" })] as Deps["signIn"][]) {
+    const { post, lookups } = recoverySetup({ signIn });
+    const created = await post({ action: "create" }, { token: "device-jwt" });
+    assertEquals(created.status, 200);
+    assertEquals(await created.json(), {
+      code: "AAAAA-BBBBB-CCCCC-DDDDD",
+      created_at: "2026-11-10T12:00:00.000Z",
+      access_token: null,
+      refresh_token: null,
+      expires_at: null,
+    });
+    assertEquals(lookups.size, 1); // the code works: it is the way back in
+  }
 });
 
 Deno.test("recovery: rotating makes the old code useless; wrong codes all look the same", async () => {
@@ -192,7 +256,7 @@ Deno.test("recovery: create needs the device's own session and is limited per us
   assertEquals(log, []);
   for (let i = 0; i < 5; i++) assertEquals((await post({ action: "create" }, { token: "device-jwt" })).status, 200);
   assertEquals(await code(await post({ action: "create" }, { token: "device-jwt" })), [429, "rate_limited"]);
-  assertEquals(log.length, 10); // the sixth changed nothing
+  assertEquals(log.length, 15); // the sixth changed nothing
 });
 
 Deno.test("recovery: the 11th restore attempt in an hour from one address is 429, others are not affected", async () => {
@@ -201,6 +265,28 @@ Deno.test("recovery: the 11th restore attempt in an hour from one address is 429
   assertEquals(await code(await post({ action: "restore", code: "ZZZZZ-ZZZZZ-ZZZZZ-ZZZZZ" })), [429, "rate_limited"]);
   assertEquals(await code(await post({ action: "restore", code: "garbage" })), [429, "rate_limited"]); // counted before the code is read
   assertEquals((await post({ action: "restore", code: "ZZZZZ-ZZZZZ-ZZZZZ-ZZZZZ" }, { ip: "198.51.100.9" })).status, 404);
+  // A made-up first hop does not buy a fresh allowance: the last hop is what counts.
+  assertEquals(await code(await post({ action: "restore", code: "ZZZZZ-ZZZZZ-ZZZZZ-ZZZZZ" }, { forged: "1.2.3.4" })), [429, "rate_limited"]);
+  assertEquals(await code(await post({ action: "restore", code: "ZZZZZ-ZZZZZ-ZZZZZ-ZZZZZ" }, { forged: "5.6.7.8, 9.9.9.9" })), [429, "rate_limited"]);
+});
+
+Deno.test("recovery: the caller's address is cf-connecting-ip when the edge sets it, else the last forwarded hop", () => {
+  const req = (headers: Record<string, string>) => new Request("https://p.supabase.co/", { headers });
+  assertEquals(clientIp(req({ "cf-connecting-ip": "203.0.113.7", "x-forwarded-for": "1.2.3.4, 198.51.100.9" })), "203.0.113.7");
+  assertEquals(clientIp(req({ "x-forwarded-for": "1.2.3.4, 198.51.100.9" })), "198.51.100.9");
+  assertEquals(clientIp(req({ "x-forwarded-for": " 198.51.100.9 " })), "198.51.100.9");
+  assertEquals(clientIp(req({ "x-forwarded-for": "1.2.3.4, , " })), "1.2.3.4");
+  assertEquals(clientIp(req({})), "unknown");
+});
+
+Deno.test("recovery: 600 restore attempts an hour for everyone together, however many addresses they come from", async () => {
+  const { post } = recoverySetup();
+  for (let i = 0; i < 600; i++) {
+    const ip = `198.51.${Math.floor(i / 250)}.${i % 250}`;
+    assertEquals((await post({ action: "restore", code: "ZZZZZ-ZZZZZ-ZZZZZ-ZZZZZ" }, { ip })).status, 404);
+  }
+  assertEquals(await code(await post({ action: "restore", code: "ZZZZZ-ZZZZZ-ZZZZZ-ZZZZZ" }, { ip: "192.0.2.1" })), [429, "rate_limited"]);
+  // The owner's own code is refused as well while the limit holds; it works again the next hour.
 });
 
 Deno.test("recovery: Auth refusing the update is reported and stores nothing; odd requests are refused", async () => {
