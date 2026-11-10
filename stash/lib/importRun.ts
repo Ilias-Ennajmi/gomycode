@@ -3,7 +3,7 @@
 import { getBrowserClient } from "@/lib/supabase/client";
 import { detectPlatform } from "@/lib/links";
 import { enqueueMany, flush, pending, type OutboxItem } from "@/lib/outbox";
-import type { ImportedLink, ImportSource } from "@/lib/importers";
+import type { ImportedLink, ImportKind } from "@/lib/importers";
 
 /** Every saved link already on the server or waiting in the outbox (for de-duplication). */
 export async function existingUrls(): Promise<string[]> {
@@ -54,13 +54,13 @@ export async function queueLinks(links: ImportedLink[], onProgress: (sent: numbe
   return items.length - (await left());
 }
 
-export async function recordImport(source: ImportSource, fileName: string, total: number, queued: number): Promise<void> {
+export async function recordImport(source: ImportKind, fileName: string, total: number, queued: number): Promise<void> {
   const supabase = getBrowserClient();
   if (!supabase) return;
   await supabase.from("imports").insert({ source, file_name: fileName.slice(0, 200), total, queued });
 }
 
-export type ImportRecord = { id: string; source: ImportSource; fileName: string | null; total: number; queued: number; createdAt: string };
+export type ImportRecord = { id: string; source: ImportKind; fileName: string | null; total: number; queued: number; createdAt: string };
 
 export async function importHistory(): Promise<ImportRecord[]> {
   const supabase = getBrowserClient();
@@ -72,7 +72,7 @@ export async function importHistory(): Promise<ImportRecord[]> {
     .limit(10);
   return (data ?? []).map((r) => ({
     id: r.id,
-    source: r.source === "tiktok" ? "tiktok" : "instagram",
+    source: r.source === "tiktok" || r.source === "links" ? r.source : "instagram",
     fileName: r.file_name,
     total: r.total,
     queued: r.queued,

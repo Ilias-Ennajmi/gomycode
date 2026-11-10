@@ -65,6 +65,24 @@ describe("links", () => {
     expect(detectPlatform("https://example.com")).toBe("web");
   });
 
+  it("is not fooled by a host that only ends in a platform's name", () => {
+    for (const url of [
+      "https://evilinstagram.com/reel/C1x2/",
+      "https://instagram.com.evil.example/reel/C1x2/",
+      "https://nottiktok.com/@a/video/7234567890123456789",
+      "https://fakeyoutube.com/watch?v=dQw4w9WgXcQ",
+      "https://evilyoutu.be/dQw4w9WgXcQ",
+      "https://myinstagr.am/p/abc",
+    ]) {
+      expect(detectPlatform(url)).toBe("web");
+    }
+    expect(detectPlatform("https://www.instagram.com/reel/C1x2/")).toBe("instagram");
+    expect(detectPlatform("https://instagr.am/p/abc")).toBe("instagram");
+    expect(detectPlatform("https://m.tiktok.com/v/1.html")).toBe("tiktok");
+    expect(detectPlatform("https://music.youtube.com/watch?v=dQw4w9WgXcQ")).toBe("youtube");
+    expect(detectPlatform("https://YOUTUBE.com./watch?v=dQw4w9WgXcQ")).toBe("youtube");
+  });
+
   it("reads the video id out of every kind of YouTube link", () => {
     expect(youtubeId("https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL1")).toBe("dQw4w9WgXcQ");
     expect(youtubeId("https://youtu.be/dQw4w9WgXcQ?si=abc")).toBe("dQw4w9WgXcQ");

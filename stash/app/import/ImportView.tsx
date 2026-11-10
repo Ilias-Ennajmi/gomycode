@@ -102,8 +102,7 @@ export function ImportView() {
     setPhase({ step: "sending", fileName, found, sent: 0, total: fresh.length });
     const sent = await queueLinks(fresh, (s, total) => setPhase({ step: "sending", fileName, found, sent: s, total }));
     haptic();
-    // The import log only knows the two data downloads; a list of links is not recorded there.
-    if (source && source !== "links") await recordImport(source, fileName, found, fresh.length).catch(() => {});
+    if (source) await recordImport(source, fileName, found, fresh.length).catch(() => {});
     setPhase({ step: "done", found, queued: fresh.length, offline: sent < fresh.length });
     importHistory()
       .then(setHistory)
@@ -273,7 +272,7 @@ export function ImportView() {
             <ul className="flex flex-col gap-1">
               {history.map((h) => (
                 <li key={h.id} className="flex min-h-12 items-center justify-between gap-3 rounded-lg bg-surface px-4 text-body">
-                  <span className="truncate text-fg">{h.source === "instagram" ? "Instagram" : "TikTok"} · {h.queued} new of {h.total}</span>
+                  <span className="truncate text-fg">{h.source === "instagram" ? "Instagram" : h.source === "tiktok" ? "TikTok" : "Links"} · {h.queued} new of {h.total}</span>
                   <span className="shrink-0 text-caption text-fg-muted">{new Date(h.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
                 </li>
               ))}

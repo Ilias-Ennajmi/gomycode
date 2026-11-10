@@ -29,10 +29,16 @@ export function detectPlatform(url: string): Platform {
   } catch {
     return "web";
   }
-  if (host.endsWith("instagram.com") || host === "instagr.am") return "instagram";
-  if (host.endsWith("tiktok.com")) return "tiktok";
-  if (host.endsWith("youtube.com") || host === "youtu.be") return "youtube";
+  if (hostIn(host, "instagram.com", "instagr.am")) return "instagram";
+  if (hostIn(host, "tiktok.com")) return "tiktok";
+  if (hostIn(host, "youtube.com", "youtu.be")) return "youtube";
   return "web";
+}
+
+/** True when host is one of the domains or a subdomain of one. `evilinstagram.com` is not `instagram.com`. */
+export function hostIn(host: string, ...domains: string[]): boolean {
+  const h = host.toLowerCase().replace(/\.$/, "");
+  return domains.some((d) => h === d || h.endsWith(`.${d}`));
 }
 
 /** The video id of a YouTube link (watch, youtu.be, /shorts/, /embed/, /live/). Null for channels, playlists, etc. */

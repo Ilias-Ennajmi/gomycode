@@ -5,16 +5,17 @@
 // - Web Push: reminders and "Your 5 for today" (playbook step 3.9); a tap opens the right screen.
 // - Share target (POST /share/receive, multipart): a shared screenshot is kept in the
 //   "stash-share-inbox" Cache and the save sheet opens on /share?shared-image=<id>.
-// - A new identity on this device (message "identity-changed") empties the Supabase REST
-//   cache, so nothing cached for the previous identity is served offline to the new one.
+// - A new identity on this device (message "identity-changed") empties the Supabase REST cache and
+//   both image caches (signed thumbnails and pictures of the previous identity),
+//   so nothing cached for the previous identity is served offline to the new one.
 // - Shared images left in the inbox for more than an hour are deleted (on activate and
 //   on each share).
 // - Several screenshots shared at once all land in the inbox: /share?shared-image=<id>,<id>,…
 // - Page navigations wait at most NAV_TIMEOUT_MS for the network, then the cached shell shows
 //   (a weak connection opens the app as fast as no connection).
 // Bump VERSION whenever these caching rules or the precached files change (v7: main tabs precached,
-// navigation timeout, multi-image share).
-const VERSION = "v7";
+// navigation timeout, multi-image share; v8: a new identity also clears the image caches).
+const VERSION = "v8";
 const NAV_TIMEOUT_MS = 2500;
 const MAX_SHARED_IMAGES = 10;
 const SHARED_AT = "X-Stash-Shared-At"; // header on inbox entries (epoch ms)
@@ -86,7 +87,8 @@ async function pruneShareInbox(now = Date.now()) {
 self.addEventListener("message", (event) => {
   if (event.origin && event.origin !== self.location.origin) return;
   if (event.data && event.data.type === "identity-changed") {
-    event.waitUntil(caches.delete(DATA));
+    // The previous identity's thumbnails and pictures go too, not only its rows.
+    event.waitUntil(Promise.all([DATA, IMAGES, OPAQUE].map((name) => caches.delete(name))));
   }
 });
 

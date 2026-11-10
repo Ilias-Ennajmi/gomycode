@@ -25,6 +25,8 @@ export function RecoverySection() {
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [code, setCode] = useState<string | null>(null);
+  // False when making the code ended this phone's session and the new one could not be put in place.
+  const [signedIn, setSignedIn] = useState(true);
   const [restoreOpen, setRestoreOpen] = useState(false);
 
   useEffect(() => {
@@ -45,6 +47,7 @@ export function RecoverySection() {
     try {
       const made = await createRecoveryCode();
       haptic();
+      setSignedIn(made.signedIn);
       setCode(made.code);
       setState({ createdAt: made.createdAt, lastRestoredAt: null });
     } catch (e) {
@@ -107,7 +110,7 @@ export function RecoverySection() {
         <div className="flex flex-col gap-4">
           <p className="flex items-start gap-3 text-body text-fg">
             <TriangleAlert size={20} strokeWidth={2} aria-hidden className="mt-0.5 shrink-0" />
-            The code you made before stops working. Phones that are already in keep working.
+            The code you made before stops working, and your other phones are signed out. Enter the new code on each of them to get back in. This phone stays in.
           </p>
           <Button variant="ink" fullWidth onClick={() => void create()}>
             Make a new code
@@ -121,6 +124,15 @@ export function RecoverySection() {
       <Sheet open={code !== null} onClose={() => setCode(null)} label="Your recovery code" title="Your recovery code">
         {code && (
           <div className="flex flex-col gap-4">
+            {!signedIn && (
+              <p role="alert" className="flex items-start gap-3 rounded-lg bg-raised p-4 text-body text-danger">
+                <TriangleAlert size={20} strokeWidth={2} aria-hidden className="mt-0.5 shrink-0" />
+                <span>
+                  <strong className="text-label">This phone needs the code too.</strong> Making it signed this phone out, and signing back in didn&apos;t work. Save the code now, then use
+                  &ldquo;I have a recovery code&rdquo; to get back to your saves.
+                </span>
+              </p>
+            )}
             <p className="flex items-start gap-3 rounded-lg bg-raised p-4 text-body text-fg">
               <TriangleAlert size={20} strokeWidth={2} aria-hidden className="mt-0.5 shrink-0" />
               <span>

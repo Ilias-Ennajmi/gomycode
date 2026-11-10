@@ -49,14 +49,38 @@ export async function fetchRecoveryState(): Promise<RecoveryState> {
   return data ? { createdAt: data.created_at, lastRestoredAt: data.last_restored_at } : null;
 }
 
+export type CreatedCode = { code: string; createdAt: string; signedIn: boolean };
+type CreateAnswer = { code?: string; created_at?: string; access_token?: string | null; refresh_token?: string | null };
+type SetSession = (tokens: { access_token: string; refresh_token: string }) => Promise<{ data: { session: unknown }; error: unknown }>;
+
+/**
+ * Takes the answer of `create`: the code, and the fresh session that comes with it.
+ *
+ * Making a code gives this identity a password, which ends the session this phone had. The
+ * function signs in again and returns the new session next to the code, so it is put in place
+ * before the code is shown. If that fails, the code is still handed back (`signedIn: false`):
+ * it is then the only way back in, and the caller says so.
+ */
+export async function adoptCreatedCode(out: CreateAnswer | null, setSession: SetSession): Promise<CreatedCode> {
+  if (!out?.code || !isValidCode(out.code)) throw new RecoveryFailure("failed");
+  let signedIn = false;
+  if (out.access_token && out.refresh_token) {
+    try {
+      const { data, error } = await setSession({ access_token: out.access_token, refresh_token: out.refresh_token });
+      signedIn = !error && !!data.session;
+    } catch {
+      signedIn = false;
+    }
+  }
+  return { code: out.code, createdAt: out.created_at ?? new Date().toISOString(), signedIn };
+}
+
 /** Makes (or replaces) the recovery code. It is returned once and never again. */
-export async function createRecoveryCode(): Promise<{ code: string; createdAt: string }> {
+export async function createRecoveryCode(): Promise<CreatedCode> {
   const supabase = client();
   const { data, error } = await supabase.functions.invoke("stash-recovery", { body: { action: "create" } });
   if (error) throw await failureOf(error);
-  const out = data as { code?: string; created_at?: string } | null;
-  if (!out?.code || !isValidCode(out.code)) throw new RecoveryFailure("failed");
-  return { code: out.code, createdAt: out.created_at ?? new Date().toISOString() };
+  return adoptCreatedCode(data as CreateAnswer | null, (tokens) => supabase.auth.setSession(tokens));
 }
 
 // Things the previous identity left on this phone. Look and player preferences stay.

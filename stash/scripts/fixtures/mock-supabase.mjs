@@ -207,7 +207,8 @@ const server = http.createServer(async (req, res) => {
     return send(res, 200, { embeddings: Array.from({ length: n }, () => one), model: "gte-small", dims: 384 });
   }
   if (p === "/functions/v1/stash-recovery") {
-    if (body.action === "create") return send(res, 200, { code: F.RECOVERY_CODE, created_at: new Date().toISOString() });
+    // create answers with the code and a fresh session (making the code ends the old one)
+    if (body.action === "create") return send(res, 200, { code: F.RECOVERY_CODE, created_at: new Date().toISOString(), access_token: TOKEN, refresh_token: "fixture-refresh", expires_at: 4102444800 });
     if (body.action === "restore") {
       const code = String(body.code ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
       if (code.length !== 20) return send(res, 400, { error: "invalid_code" });

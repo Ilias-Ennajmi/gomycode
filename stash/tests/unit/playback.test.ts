@@ -123,6 +123,8 @@ describe("plain words", () => {
   it("is calm about a missing AI key", () => {
     expect(aiNote("no_key")).toEqual({ text: "Summaries turn on once an AI key is added.", link: { href: "/settings#setup", label: "See Setup" } });
     expect(aiNote("failed")?.retry).toBe(true);
+    // Busy provider or a run that ran out of time: the sweep retries, nothing for the owner to tap.
+    expect(aiNote("retry")).toEqual({ text: "The summary is on its way. The AI was busy, so Stash is trying again by itself." });
     expect(aiNote("over_budget")?.text).toMatch(/budget/);
     expect(aiNote("done")).toBeNull();
     expect(aiNote("pending")).toBeNull();

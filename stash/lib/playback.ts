@@ -134,6 +134,8 @@ export function aiNote(aiState: Enums<"ai_state"> | null | undefined): AiNote | 
   switch (aiState) {
     case "no_key":
       return { text: "Summaries turn on once an AI key is added.", link: { href: "/settings#setup", label: "See Setup" } };
+    case "retry":
+      return { text: "The summary is on its way. The AI was busy, so Stash is trying again by itself." };
     case "not_owner":
       return { text: "Summaries are on for the owner's phones only.", link: { href: "/settings#setup", label: "See Setup" } };
     case "over_budget":
