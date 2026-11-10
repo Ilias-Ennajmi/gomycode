@@ -10,12 +10,17 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from . import ai, exports, geocode, media, r2
+from . import ai, exports, galaxy, geocode, media, r2
 from .config import Config
-from .rules import choose_space, detect_platform, embedding_text, is_owner, segments_text, sm2
+from .rules import (SCREENSHOT_MIME, choose_space, detect_platform, embedding_text, is_owner, screenshot_path,
+                    segments_text, sm2)
 from .supa import Supa
 
 log = logging.getLogger("stash.worker")
+
+
+class ScreenshotMissing(Exception):
+    """A screenshot save whose image isn't in Storage (upload never landed, or a bad reference)."""
 
 
 def _now() -> str:
@@ -89,6 +94,8 @@ def process_job(supa: Supa, cfg: Config, job: dict[str, Any]) -> str:
         return process_synthesize(supa, cfg, job)
     if job["type"] == "export":
         return exports.process_export(supa, cfg, job)
+    if job["type"] == "galaxy":
+        return galaxy.process_galaxy(supa, cfg, job, _gate)
     if job["type"] not in ("ingest", "reprocess"):
         _finish_job(supa, job, "failed", "job type arrives in a later phase")
         return "skipped"
@@ -121,6 +128,11 @@ def process_job(supa: Supa, cfg: Config, job: dict[str, Any]) -> str:
         supa.update("saves", {"id": f"eq.{save['id']}"}, {"status": "dead_link", "processed_at": _now()})
         _finish_job(supa, job, "done", "dead_link")
         return "dead_link"
+    except ScreenshotMissing as exc:
+        _finish_job(supa, job, "failed", str(exc))
+        supa.update("saves", {"id": f"eq.{save['id']}"},
+                    {"status": "failed", "error": "The screenshot didn't arrive. Share it to Stash again."})
+        return "failed"
     except Exception as exc:  # noqa: BLE001 — report, back off, retry
         reason = type(exc).__name__
         log.warning("job failed: %s", reason)
@@ -146,6 +158,31 @@ def _ingest(supa: Supa, cfg: Config, save: dict[str, Any], workdir: Path) -> str
     existing = supa.one("transcripts", {"select": "segments,full_text", "save_id": f"eq.{save_id}"})
     transcript_segments: list[dict[str, Any]] = (existing or {}).get("segments") or []
     have_video = bool(save.get("video_path"))
+
+    # 0 · A screenshot shared to Stash: Claude vision reads it (no download, no transcript) ----
+    vision: ai.Understanding | None = None
+    if platform == "screenshot":
+        path = screenshot_path(save["source_url"], user_id)
+        if not path:
+            raise ScreenshotMissing("bad screenshot reference")
+        try:
+            image = supa.download("stash-thumbs", path)
+        except Exception as exc:  # noqa: BLE001 — the upload never landed
+            raise ScreenshotMissing("screenshot not in storage") from exc
+        if not image:
+            raise ScreenshotMissing("empty screenshot")
+        update["thumb_path"] = path  # the screenshot is its own thumbnail
+        if cfg.has_claude:
+            space_names, _ = _spaces(supa, user_id)
+            vision = ai.read_screenshot(cfg, image=image, media_type=SCREENSHOT_MIME[path.rsplit(".", 1)[1]],
+                                        space_names=space_names, user_note=save.get("user_note"))
+            v = vision.insights
+            update.update({
+                "caption": v.get("caption_text") or save.get("caption"),
+                "creator_handle": v.get("creator") or save.get("creator_handle"),
+                "title": v.get("what_it_is") or save.get("title"),
+            })
+        have_video = True  # nothing to fetch
 
     # 1 · Fetch ----------------------------------------------------------------
     fetched: media.Fetched | None = None
@@ -228,8 +265,9 @@ def _ingest(supa: Supa, cfg: Config, save: dict[str, Any], workdir: Path) -> str
     insights: dict[str, Any] | None = None
     if cfg.has_claude:
         space_names, inbox_id = _spaces(supa, user_id)
-        u = ai.understand(cfg, platform=platform, creator=creator, title=title, caption=caption,
-                          transcript=transcript_text, space_names=space_names, user_note=save.get("user_note"))
+        u = vision or ai.understand(cfg, platform=platform, creator=creator, title=title, caption=caption,
+                                    transcript=transcript_text, space_names=space_names,
+                                    user_note=save.get("user_note"))
         insights = u.insights
         usage.append({"user_id": user_id, "save_id": save_id, "kind": "understand",
                       "input_tokens": u.input_tokens, "output_tokens": u.output_tokens, "usd": u.usd})

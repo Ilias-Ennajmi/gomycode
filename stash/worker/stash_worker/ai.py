@@ -9,7 +9,8 @@ from typing import Any, Callable, TypeVar
 import httpx
 
 from .config import Config
-from .rules import INTENTS, InsightError, claude_cost, normalize_grade, normalize_insights, normalize_synthesis
+from .rules import (INTENTS, InsightError, claude_cost, normalize_grade, normalize_insights, normalize_screenshot,
+                    normalize_synthesis)
 
 T = TypeVar("T")
 
@@ -133,13 +134,65 @@ def understand(
                          claude_cost(tokens_in, tokens_out, cfg.fast_usd_in, cfg.fast_usd_out))
 
 
+SCREENSHOT_SYSTEM = SYSTEM.replace(
+    "You read one saved social video (or post)",
+    "You read one screenshot of a social post (Instagram, TikTok or similar) that the owner shared to save it",
+) + """
+This is an image, not a video: read everything visible in it.
+- creator: the account handle or name shown (with @ when it is a handle), else null.
+- caption_text: the post's caption and any on-screen text, transcribed as written (original language), else empty.
+- what_it_is: one short phrase saying what the post shows (e.g. "recipe reel", "pricing carousel", "café review").
+- visible_url: a link printed in the image, else null.
+- places: only when a real, named venue is visible or written. Never invent facts that are not in the image."""
+
+SCREENSHOT_TOOL = {
+    **TOOL,
+    "input_schema": {
+        **TOOL["input_schema"],
+        "properties": {
+            **TOOL["input_schema"]["properties"],
+            "creator": {"type": ["string", "null"]},
+            "caption_text": {"type": "string"},
+            "what_it_is": {"type": "string"},
+            "visible_url": {"type": ["string", "null"]},
+        },
+    },
+}
+
+
+def read_screenshot(
+    cfg: Config,
+    *,
+    image: bytes,
+    media_type: str,
+    space_names: dict[str, str],
+    user_note: str | None,
+) -> Understanding:
+    """Claude vision on a shared screenshot: the same insights as a video, plus who posted it and its text."""
+    import base64
+
+    spaces = ", ".join(sorted({n for n in space_names})) or "(none yet)"
+    content = [
+        {"type": "image", "source": {"type": "base64", "media_type": media_type,
+                                     "data": base64.b64encode(image).decode("ascii")}},
+        {"type": "text", "text": f"Owner's Spaces: {spaces}\nOwner's note: {user_note or '(none)'}\n\n"
+                                 "Read this screenshot and call save_insights."},
+    ]
+    insights, tokens_in, tokens_out = call_tool(
+        _client(cfg), model=cfg.fast_model, system=SCREENSHOT_SYSTEM, tool=SCREENSHOT_TOOL, content=content,
+        max_tokens=1500, validate=lambda raw: normalize_screenshot(raw, space_names),
+    )
+    return Understanding(insights, tokens_in, tokens_out,
+                         claude_cost(tokens_in, tokens_out, cfg.fast_usd_in, cfg.fast_usd_out))
+
+
 def call_tool(
     client: Any,
     *,
     model: str,
     system: str,
     tool: dict[str, Any],
-    content: str,
+    content: str | list[dict[str, Any]],
     max_tokens: int,
     validate: Callable[[Any], T],
 ) -> tuple[T, int, int]:
@@ -153,9 +206,13 @@ def call_tool(
     tokens_in = tokens_out = 0
     last_error: Exception | None = None
     for attempt in range(2):
-        text = content
-        if attempt == 1 and last_error is not None:
-            text += f"\n\nYour previous answer was unusable ({last_error}). Call {name} again with every required field."
+        retry_note = (f"Your previous answer was unusable ({last_error}). Call {name} again with every required field."
+                      if attempt == 1 and last_error is not None else None)
+        text: Any
+        if isinstance(content, str):
+            text = content + (f"\n\n{retry_note}" if retry_note else "")
+        else:  # content blocks (an image and its instructions, for vision)
+            text = list(content) + ([{"type": "text", "text": retry_note}] if retry_note else [])
         msg = client.messages.create(
             model=model,
             max_tokens=max_tokens,

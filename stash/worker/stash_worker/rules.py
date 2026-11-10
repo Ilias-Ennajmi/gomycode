@@ -127,6 +127,36 @@ def normalize_insights(raw: Any, space_names: dict[str, str]) -> dict[str, Any]:
     }
 
 
+SCREENSHOT_NAME_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp)$")
+SCREENSHOT_MIME = {"jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
+
+
+def screenshot_path(source_url: str, user_id: str) -> str | None:
+    """source_url "screenshot:<client_id>.jpg" → "<user_id>/screenshots/<client_id>.jpg" (None if malformed)."""
+    if not isinstance(source_url, str) or not source_url.startswith("screenshot:"):
+        return None
+    name = source_url[len("screenshot:"):].lower()
+    return f"{user_id}/screenshots/{name}" if SCREENSHOT_NAME_RE.match(name) else None
+
+
+def normalize_screenshot(raw: Any, space_names: dict[str, str]) -> dict[str, Any]:
+    """The insights of a screenshot plus what vision read off it (creator, text, kind, a visible link)."""
+    insights = normalize_insights(raw, space_names)
+    creator = _clean_text(raw.get("creator"), 80) or None
+    if creator and not creator.startswith("@") and re.fullmatch(r"[A-Za-z0-9._]{2,40}", creator):
+        creator = "@" + creator
+    url = _clean_text(raw.get("visible_url"), 300) or None
+    if url and not re.match(r"^https?://", url):
+        url = None
+    insights.update({
+        "creator": creator,
+        "caption_text": _clean_text(raw.get("caption_text"), 4000) or None,
+        "what_it_is": _clean_text(raw.get("what_it_is"), 80) or None,
+        "visible_url": url,
+    })
+    return insights
+
+
 def claude_cost(input_tokens: int, output_tokens: int, usd_in: float, usd_out: float) -> float:
     return round(input_tokens / 1e6 * usd_in + output_tokens / 1e6 * usd_out, 6)
 
