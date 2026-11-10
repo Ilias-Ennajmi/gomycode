@@ -9,8 +9,9 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from "@/lib/sup
  * opens the URL gets their own empty space, never the owner's saves.
  */
 
-// Pages that never need an identity.
-const PUBLIC_PREFIXES = ["/design", "/offline"];
+// Pages that never need an identity. /c/<slug> is a shared collection: a visitor
+// must never get an anonymous identity (or a cookie) just for opening a link.
+const PUBLIC_PREFIXES = ["/design", "/offline", "/c"];
 
 function isPublic(pathname: string) {
   return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));

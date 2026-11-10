@@ -13,12 +13,13 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { SpacePicker } from "@/components/save/SpacePicker";
 import { PasteLinkSheet } from "@/components/library/PasteLinkSheet";
+import { SpaceColorSheet } from "@/components/space/ColorPicker";
 import { SaveGrid, cardText } from "@/components/library/SaveGrid";
 import { SPACE_BG } from "@/components/ui/space";
 import { cx } from "@/components/ui/cx";
 import { useAppearance } from "@/components/theme/ThemeProvider";
 import { useLibrary } from "@/lib/hooks/useLibrary";
-import { createSpace, nextSpaceColor, type SaveItem } from "@/lib/data";
+import { createSpace, nextSpaceColor, updateSpace, type SaveItem } from "@/lib/data";
 import { FILTER_LABEL, FILTERS, filterSaves, isFilter, spaceCounts, type Filter } from "@/lib/queue";
 import { formatDuration } from "@/components/ui/Thumbnail";
 
@@ -34,6 +35,7 @@ export function LibraryView() {
   const [space, setSpace] = useState<string | null>(params.get("space"));
   const [filter, setFilter] = useState<Filter>(isFilter(params.get("filter")) ? (params.get("filter") as Filter) : "all");
   const [pasteOpen, setPasteOpen] = useState(false);
+  const [colorFor, setColorFor] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<Hit[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -169,7 +171,7 @@ export function LibraryView() {
               counts={counts}
               onPick={(id) => setSpace(id && id === inboxId ? "inbox" : id)}
               onCreate={newSpace}
-              onLongPress={(id) => id !== inboxId && router.push(`/s/${id}`)}
+              onLongPress={(id) => id !== inboxId && setColorFor(id)}
             />
           </div>
 
@@ -286,6 +288,23 @@ export function LibraryView() {
             {(query || hits) && <IconButton label="Clear search" icon={X} onClick={clearSearch} />}
           </div>
         </form>
+      )}
+
+      {colorFor && spacesById.get(colorFor) && (
+        <SpaceColorSheet
+          open
+          onClose={() => setColorFor(null)}
+          name={spacesById.get(colorFor)!.name}
+          value={spacesById.get(colorFor)!.color}
+          onPick={(c) => {
+            const id = colorFor;
+            lib.setSpaces((prev) => prev.map((s) => (s.id === id ? { ...s, color: c } : s)));
+            updateSpace(id, { color_token: c }).catch(() => {
+              toast({ message: "Couldn't change the colour. Check your connection." });
+              void lib.refresh();
+            });
+          }}
+        />
       )}
 
       <PasteLinkSheet open={pasteOpen} onClose={() => setPasteOpen(false)} spaceId={selectedId === inboxId ? null : selectedId} onSaved={() => toast({ message: "Saved" })} />

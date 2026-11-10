@@ -22,6 +22,7 @@ export function SaveGrid({
   spacesById,
   justReady,
   density = 2,
+  badge,
   onOpen,
 }: {
   items: SaveItem[];
@@ -30,6 +31,8 @@ export function SaveGrid({
   spacesById: Map<string, Space>;
   justReady?: Set<string>;
   density?: 2 | 3;
+  /** Small label over the card's top-left corner, e.g. "Applied" on a Space page. */
+  badge?: (s: SaveItem) => string | null;
   onOpen: (s: SaveItem) => void;
 }) {
   return (
@@ -42,8 +45,9 @@ export function SaveGrid({
       {items.map((s) => {
         const space = s.spaceId ? spacesById.get(s.spaceId) : undefined;
         const processing = s.status === "queued" || s.status === "processing";
+        const label = badge?.(s);
         return (
-          <li key={s.id}>
+          <li key={s.id} className="relative">
             <Thumbnail
               src={s.thumbPath ? thumbs[s.thumbPath] : undefined}
               spaceColor={space?.color}
@@ -55,6 +59,11 @@ export function SaveGrid({
               label={processing ? "Processing save" : cardText(s)}
               onClick={() => onOpen(s)}
             />
+            {label && (
+              <span className="pointer-events-none absolute left-2 top-2 z-20 rounded-full bg-fg px-2 text-caption text-background">
+                {label}
+              </span>
+            )}
           </li>
         );
       })}

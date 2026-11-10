@@ -13,6 +13,8 @@ export type Space = {
   sortOrder: number;
   description: string | null;
   dueDate: string | null;
+  /** Key in components/ui/spaceIcons (optional: older cached copies don't have it). */
+  icon?: string | null;
 };
 
 export type Segment = { start: number; end: number; text: string };
@@ -120,7 +122,7 @@ const asColor = (c: string): SpaceColor => ((SPACE_COLORS as readonly string[]).
 export async function fetchSpaces(): Promise<Space[]> {
   const { data, error } = await client()
     .from("spaces")
-    .select("id,name,kind,color_token,sort_order,description,due_date")
+    .select("id,name,kind,color_token,sort_order,description,due_date,icon")
     .eq("archived", false)
     .order("sort_order")
     .order("created_at");
@@ -133,6 +135,7 @@ export async function fetchSpaces(): Promise<Space[]> {
     sortOrder: s.sort_order,
     description: s.description,
     dueDate: s.due_date,
+    icon: s.icon,
   }));
 }
 
@@ -200,7 +203,7 @@ export async function createSpace(name: string, color: SpaceColor, kind: "topic"
   const { data, error } = await client()
     .from("spaces")
     .insert({ name: name.trim(), color_token: color, kind })
-    .select("id,name,kind,color_token,sort_order,description,due_date")
+    .select("id,name,kind,color_token,sort_order,description,due_date,icon")
     .single();
   if (error) throw error;
   return {
@@ -211,10 +214,20 @@ export async function createSpace(name: string, color: SpaceColor, kind: "topic"
     sortOrder: data.sort_order,
     description: data.description,
     dueDate: data.due_date,
+    icon: data.icon,
   };
 }
 
-export async function updateSpace(id: string, values: { name?: string; color_token?: SpaceColor; kind?: "topic" | "project" }) {
+export type SpacePatch = {
+  name?: string;
+  color_token?: SpaceColor;
+  kind?: "topic" | "project";
+  icon?: string | null;
+  due_date?: string | null;
+  description?: string | null;
+};
+
+export async function updateSpace(id: string, values: SpacePatch) {
   const { error } = await client().from("spaces").update(values).eq("id", id);
   if (error) throw error;
 }
