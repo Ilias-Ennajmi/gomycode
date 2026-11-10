@@ -7,7 +7,6 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { cx } from "@/components/ui/cx";
 import { SPACE_BG } from "@/components/ui/space";
-import { Logo } from "@/components/brand/Logo";
 import { getBrowserClient } from "@/lib/supabase/client";
 import { barPercent, monthKey, monthLabel, parseWrapped, shiftMonth, wrappedShareText, type Wrapped } from "@/lib/wrapped";
 
@@ -89,9 +88,8 @@ export function WrappedCard() {
     <section
       data-theme="dark"
       aria-labelledby="wrapped-title"
-      className="rise-in relative mx-4 flex flex-col gap-5 overflow-hidden rounded-xl bg-background p-5 text-fg shadow-raised"
+      className="rise-in relative mx-4 flex flex-col gap-5 overflow-hidden rounded-xl bg-surface p-5 text-fg shadow-raised ring-1 ring-line"
     >
-      <Logo variant="mark" size={180} className="pointer-events-none absolute -right-10 -bottom-8 opacity-10" />
       <div className="relative flex items-center gap-1">
         <div className="flex min-w-0 flex-1 flex-col">
           <p className="text-label text-brand-lime">Saved Wrapped</p>
@@ -120,7 +118,7 @@ export function WrappedCard() {
         <>
           <dl aria-label="Saved, watched and applied" className="relative grid grid-cols-3 gap-2">
             {stats.map((b, i) => (
-              <div key={b.key} className="rise-in flex flex-col-reverse rounded-lg bg-surface px-3 py-3" style={{ animationDelay: `calc(var(--dur-press) * ${i})` }}>
+              <div key={b.key} className="rise-in flex flex-col-reverse rounded-lg bg-raised px-3 py-3" style={{ animationDelay: `calc(var(--dur-press) * ${i})` }}>
                 <dt className="text-label text-fg-muted">{b.label}</dt>
                 <dd className={cx("text-hero tabular-nums", b.key === "applied" && "text-brand-lime")}>{b.value}</dd>
               </div>
@@ -138,7 +136,7 @@ export function WrappedCard() {
               <h3 className="text-label text-fg-muted">Top Spaces</h3>
               <ul className="flex flex-col gap-2">
                 {data.topSpaces.map((s) => (
-                  <li key={s.id} className="relative flex h-11 items-center overflow-hidden rounded-full bg-surface">
+                  <li key={s.id} className="relative flex h-11 items-center overflow-hidden rounded-full bg-raised">
                     <span aria-hidden className={cx("absolute inset-y-0 left-0 rounded-full", SPACE_BG[s.color])} style={{ width: `${barPercent(s.count, spaceMax)}%` }} />
                     {/* Name and count sit on a solid chip so they read over any bar length. */}
                     <span className="relative ml-1.5 inline-flex h-8 min-w-0 items-center gap-2 rounded-full bg-background px-3 text-label">
@@ -157,7 +155,7 @@ export function WrappedCard() {
               <ol className="flex flex-col">
                 {data.topCreators.map((c, i) => (
                   <li key={c.handle} className="flex min-h-11 items-center gap-3 text-body text-fg">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-surface font-display text-caption tabular-nums">{i + 1}</span>
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-raised font-display text-caption tabular-nums">{i + 1}</span>
                     <span className="min-w-0 flex-1 truncate">{c.handle}</span>
                     <span className="text-caption text-fg-muted tabular-nums">
                       {c.count} {c.count === 1 ? "save" : "saves"}
