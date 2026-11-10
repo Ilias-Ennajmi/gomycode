@@ -42,7 +42,7 @@ export type GateOptions = {
 export const IDENTITY_FLAG = "stash.identity";
 
 /** Paths that never get an identity. Same list proxy.ts used to skip. */
-export const PUBLIC_PREFIXES = ["/design", "/offline", "/api/cron", "/c"];
+export const PUBLIC_PREFIXES = ["/design", "/offline", "/api/cron", "/c", "/restore"];
 
 export function isPublicPath(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));

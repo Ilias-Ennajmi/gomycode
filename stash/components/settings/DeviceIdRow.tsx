@@ -7,9 +7,8 @@ import { useToast } from "@/components/ui/Toast";
 import { sessionUser } from "@/lib/supabase/client";
 
 /**
- * This phone's id, to copy into the worker's OWNER_USER_IDS and the Supabase Vault
- * secret `stash_owner_ids` (both decide which devices get AI processing, reminders
- * and the daily queue).
+ * This phone's id, to copy into the Supabase Vault secret `stash_owner_ids` (it decides
+ * which devices get AI processing, saved video copies, reminders and the daily queue).
  */
 export function DeviceIdRow() {
   const { toast } = useToast();

@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ClipboardPaste, Download, Share2, Sparkles, SquareMousePointer } from "lucide-react";
+import { ClipboardPaste, Download, KeyRound, Share2, Sparkles, SquareMousePointer } from "lucide-react";
+import { RestoreSheet } from "@/components/settings/RestoreForm";
 import { Logo } from "@/components/brand/Logo";
 import { Illustration } from "@/components/brand/Illustration";
 import { Button } from "@/components/ui/Button";
@@ -10,7 +12,7 @@ import { cx } from "@/components/ui/cx";
 import { SPACE_BG, type SpaceColor } from "@/components/ui/space";
 
 const STEPS: { icon: typeof Share2; color: SpaceColor; title: string; text: string }[] = [
-  { icon: Share2, color: "violet", title: "Tap Share on a reel", text: "In Instagram or TikTok, on any video you want to keep." },
+  { icon: Share2, color: "violet", title: "Tap Share on a reel", text: "In Instagram, TikTok or YouTube, on any video you want to keep. Articles work too." },
   { icon: SquareMousePointer, color: "amber", title: "Pick Stash", text: "It saves in a second, even offline. Back takes you to the reel." },
   { icon: Sparkles, color: "teal", title: "Stash reads it for you", text: "The key idea, takeaways and a Space. Your 5 for today builds from it." },
 ];
@@ -21,13 +23,14 @@ const STEPS: { icon: typeof Share2; color: SpaceColor; title: string; text: stri
  */
 export function Welcome() {
   const router = useRouter();
+  const [restoreOpen, setRestoreOpen] = useState(false);
   return (
     <div className="flex flex-col gap-6 px-4 pt-8 pb-8">
       <header className="flex flex-col gap-5">
         <Logo variant="lockup" size={40} animate title="Stash" />
         <div className="rise-in flex flex-col gap-2">
           <h1 className="text-display">Keep the reels worth keeping.</h1>
-          <p className="text-body text-fg-muted">Save from Instagram and TikTok, watch in one place, and actually use what you learn.</p>
+          <p className="text-body text-fg-muted">Save from Instagram, TikTok, YouTube and the web, watch in one place, and actually use what you learn.</p>
         </div>
       </header>
 
@@ -64,7 +67,12 @@ export function Welcome() {
           <Download size={20} strokeWidth={2} aria-hidden />
           Bring the saves you already have
         </Link>
+        <button type="button" onClick={() => setRestoreOpen(true)} className="press tap inline-flex items-center justify-center gap-2 rounded-full px-4 text-label text-fg">
+          <KeyRound size={20} strokeWidth={2} aria-hidden />
+          I have a recovery code
+        </button>
       </div>
+      <RestoreSheet open={restoreOpen} onClose={() => setRestoreOpen(false)} />
     </div>
   );
 }
