@@ -170,15 +170,58 @@ export type RecallCard = {
   dueAt: string;
 };
 
-export async function fetchDueCards(): Promise<RecallCard[]> {
-  const { data, error } = await client()
+/**
+ * Cards of kept saves only, filtered in the query (cards → saves → states, inner joins on
+ * kept = true), so a backlog of unkept cards can't fill the 100 rows and hide kept ones.
+ */
+export const DUE_CARDS_SELECT =
+  "id,save_id,prompt,answer,ease,interval_days,repetitions,due_at,saves!inner(states!inner(kept))";
+
+type DueCardRow = {
+  id: string;
+  save_id: string;
+  prompt: string;
+  answer: string;
+  ease: number | string;
+  interval_days: number;
+  repetitions: number;
+  due_at: string;
+  saves?: unknown;
+};
+
+const one = (v: unknown): Record<string, unknown> | null => {
+  const x: unknown = Array.isArray(v) ? v[0] : v;
+  return x && typeof x === "object" ? (x as Record<string, unknown>) : null;
+};
+
+/** Safety net behind the query filter: drops any row whose save isn't kept. */
+export function keptCardRows<T extends DueCardRow>(rows: T[]): T[] {
+  return rows.filter((r) => one(one(r.saves)?.states)?.kept === true);
+}
+
+type DueCardsQuery = {
+  from(table: "cards"): {
+    select(cols: string): {
+      eq(col: string, v: boolean): {
+        lte(col: string, v: string): {
+          order(col: string): { limit(n: number): PromiseLike<{ data: unknown[] | null; error: unknown }> };
+        };
+      };
+    };
+  };
+};
+
+export async function fetchDueCards(sb?: DueCardsQuery, now = new Date()): Promise<RecallCard[]> {
+  const q = sb ?? (client() as unknown as DueCardsQuery);
+  const { data, error } = await q
     .from("cards")
-    .select("id,save_id,prompt,answer,ease,interval_days,repetitions,due_at")
-    .lte("due_at", new Date().toISOString())
+    .select(DUE_CARDS_SELECT)
+    .eq("saves.states.kept", true)
+    .lte("due_at", now.toISOString())
     .order("due_at")
     .limit(100);
   if (error) throw error;
-  return (data ?? []).map((c) => ({
+  return keptCardRows((data ?? []) as DueCardRow[]).map((c) => ({
     id: c.id,
     saveId: c.save_id,
     prompt: c.prompt,
