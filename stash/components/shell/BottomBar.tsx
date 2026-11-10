@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CalendarDays, CircleUser, GraduationCap, LayoutGrid, Play, type LucideIcon } from "lucide-react";
+import { useDueFlag } from "@/lib/dueFlag";
 
 type Tab = { href: string; label: string; icon: LucideIcon };
 
@@ -36,8 +37,11 @@ function TabLink({ tab, active }: { tab: Tab; active: boolean }) {
  * 18px above the bar; a soft accent ring shows when something is due today.
  * `playHref` carries the queue of wherever the user is (Phase 1+).
  */
-export function BottomBar({ hasDue = false, playHref = "/play?queue=today" }: { hasDue?: boolean; playHref?: string }) {
+export function BottomBar({ hasDue: hasDueProp, playHref = "/play?queue=today" }: { hasDue?: boolean; playHref?: string }) {
   const pathname = usePathname();
+  // Today and Learn record whether anything is due (today's queue or recall cards).
+  const dueFlag = useDueFlag();
+  const hasDue = hasDueProp ?? dueFlag;
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   return (
