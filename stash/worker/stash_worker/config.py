@@ -130,6 +130,11 @@ class Config:
         return int(min(280.0, max(5.0, self.num("run_budget_seconds", 240))))
 
     @property
+    def worker_max_seconds(self) -> int:
+        """The function's maximum duration (vercel.json `maxDuration`). Change both together."""
+        return int(min(800.0, max(30.0, self.num("worker_max_seconds", 300))))
+
+    @property
     def backup_keep(self) -> int:
         return int(min(52.0, max(1.0, self.num("backup_keep", 4))))
 

@@ -325,7 +325,7 @@ def test_provider_error_never_fails_a_save(db, monkeypatch):
         raise err
 
     monkeypatch.setattr(ai, "understand", bad)
-    monkeypatch.setattr(ai, "transcribe", lambda *a, **k: (_ for _ in ()).throw(ai.ProviderError("groq", "transcribe", 503)))
+    monkeypatch.setattr(ai, "transcribe", lambda *a, **k: (_ for _ in ()).throw(ai.ProviderError("groq", "transcribe", 500)))
     assert run(db) == "ready"
     save = db.tables["saves"][0]
     assert save["status"] == "ready" and save["ai_state"] == "failed" and save["error"] is None

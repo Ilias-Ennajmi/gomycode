@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from . import ai
@@ -63,6 +64,12 @@ def process_ask(supa: Any, cfg: Config, job: dict[str, Any]) -> str:
     except (ai.InsightError, ai.ProviderError, ai.NoProvider) as exc:
         log.warning("ask failed: %s", exc)
         _log_usage(supa, _failed_usage(exc, user_id=user_id, kind="ask"))
+        if getattr(exc, "retry_later", False) and int(job.get("attempts") or 1) < 3:
+            # The provider is busy (429 / 503 / 529) or the run is nearly over: ask again in a minute or two.
+            again = datetime.now(timezone.utc) + timedelta(minutes=int(job.get("attempts") or 1))
+            supa.update("asks", match, {"status": "queued", "error": None})
+            _finish_job(supa, job, "queued", "busy", run_after=again.isoformat())
+            return "retry"
         return fail("ai_error")
 
     known = {str(c["save_id"]) for c in context}

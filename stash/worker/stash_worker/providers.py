@@ -19,18 +19,27 @@ from typing import Any
 
 import httpx
 
+from . import deadline
 from .rules import InsightError
 
 INLINE_MAX = 14 * 1024 * 1024  # larger media goes through the provider's file upload
 RETRY_STATUS = (408, 429, 500, 502, 503, 504, 529)
+# Rate limited or overloaded: nothing is wrong with the request, so the work is tried again later
+# (a save gets ai_state = 'retry' and the sweep re-queues its insights) instead of ending `failed`.
+RETRY_LATER_STATUS = (429, 503, 529)
+MIN_CALL_S = 3.0  # don't start a provider call with less than this left of the run
 
 
 class ProviderError(Exception):
-    """The provider could not be reached or refused the call (after retries). No key, no body."""
+    """The provider could not be reached or refused the call (after retries). No key, no body.
 
-    def __init__(self, provider: str, what: str, status: int = 0):
+    `retry_later` is true when trying again in a while should work: the provider was busy
+    (429 / 503 / 529) or this run had no time left for the call."""
+
+    def __init__(self, provider: str, what: str, status: int = 0, retry_later: bool = False):
         super().__init__(f"{provider} {what}" + (f" -> {status}" if status else ""))
         self.status = status
+        self.retry_later = retry_later or status in RETRY_LATER_STATUS
 
 
 @dataclass
@@ -42,26 +51,42 @@ class Media:
     url: str | None = None
 
 
+def _bounded(http: Any, kw: dict[str, Any], provider: str, what: str) -> dict[str, Any]:
+    """The call's keyword arguments with its timeout cut to what is left of the run (no deadline: unchanged)."""
+    left = deadline.remaining()
+    if left is None:
+        return kw
+    left -= deadline.MARGIN_S
+    if left < MIN_CALL_S:
+        raise ProviderError(provider, f"{what}: out of time", retry_later=True)
+    usual = getattr(getattr(http, "timeout", None), "read", None) or 150.0
+    return {**kw, "timeout": httpx.Timeout(min(float(usual), left), connect=min(10.0, left))}
+
+
 def _request(provider: str, what: str, http: Any, method: str, url: str, *, sleep=time.sleep, retries: int = 2,
              **kw: Any) -> httpx.Response:
     last_status = 0
     for attempt in range(retries + 1):
         try:
-            r = http.request(method, url, **kw)
+            r = http.request(method, url, **_bounded(http, kw, provider, what))
         except httpx.HTTPError as exc:
             if attempt == retries:
-                raise ProviderError(provider, f"{what}: {type(exc).__name__}") from None
-            sleep(1.5 * (attempt + 1))
-            continue
-        if r.status_code in RETRY_STATUS and attempt < retries:
+                # A timeout that the deadline shortened is "no time left", not a broken provider.
+                late = isinstance(exc, httpx.TimeoutException) and not deadline.has(deadline.MARGIN_S + MIN_CALL_S)
+                raise ProviderError(provider, f"{what}: {type(exc).__name__}", retry_later=late) from None
+            wait = 1.5 * (attempt + 1)
+        else:
+            if r.status_code not in RETRY_STATUS or attempt == retries:
+                return r
             last_status = r.status_code
             try:
                 wait = float(r.headers.get("retry-after") or 0)
             except ValueError:
                 wait = 0
-            sleep(min(12.0, max(1.5 * (attempt + 1), wait)))
-            continue
-        return r
+            wait = min(12.0, max(1.5 * (attempt + 1), wait))
+        if not deadline.has(wait + deadline.MARGIN_S + MIN_CALL_S):  # no time to wait and ask again
+            raise ProviderError(provider, what, last_status, retry_later=True)
+        sleep(wait)
     raise ProviderError(provider, what, last_status)
 
 
@@ -144,6 +169,8 @@ class Gemini:
                 break
             if info.get("state") == "FAILED":
                 raise ProviderError(self.name, "file processing failed")
+            if not deadline.has(20):
+                raise ProviderError(self.name, "file processing: out of time", retry_later=True)
             self._sleep(1.5)
             r = _request(self.name, "file state", self.http, "GET", f"{self.base}/v1beta/{info.get('name')}",
                          sleep=self._sleep, headers=self._headers)

@@ -21,15 +21,16 @@ shown to the proxy, and lives in memory for that request. API keys and model ids
 
 | path | what |
 |---|---|
-| `api/index.py`, `vercel.json` | Vercel entry: every path is rewritten to the one function; `maxDuration` 300 |
+| `api/index.py`, `vercel.json` | Vercel entry: every path is rewritten to the one function; `maxDuration` 300, `fluid` on |
 | `requirements.txt` | what Vercel installs: about **66 MB** unpacked (limit 250). No ffmpeg, numpy, cloud or AI SDKs |
 | `stash_worker/app.py` | `GET /`, `GET /health`, `POST /run` |
 | `stash_worker/proxy.py` | the client for `stash-worker-proxy` (replaces direct Supabase access) |
 | `stash_worker/providers.py`, `ai.py` | Gemini, Claude, Groq over plain HTTPS behind one seam; prompts and schemas |
 | `stash_worker/media.py` | oEmbed / Open Graph metadata, the embed players, yt-dlp (one progressive MP4), captions, article text, the guarded fetch |
 | `stash_worker/pipeline.py` | the run loop and the ingest / reprocess / grade / synthesize jobs |
+| `stash_worker/deadline.py` | how long this run may still take; read by every slow step (see "Time limit" below) |
 | `stash_worker/ask.py`, `backup.py`, `exports.py`, `galaxy.py`, `geocode.py` | the other jobs |
-| `tests/` | `pytest` (193 tests, no network) |
+| `tests/` | `pytest` (247 tests, no network) |
 | `smoke/` | a local end-to-end run against a real Postgres with the migrations (not deployed) |
 | `../supabase/functions/` | the three Edge Functions and their Deno tests |
 
@@ -80,7 +81,7 @@ Project settings the recovery flow relies on (Dashboard → Authentication):
 | Build / Output / Install commands | leave empty (Vercel installs `requirements.txt` itself) |
 | Environment variables | `SUPABASE_URL` = `https://<project-ref>.supabase.co` — the only one, not secret |
 | Python | 3.12 (`.python-version`) |
-| Function max duration | 300 s (set in `vercel.json`; Hobby allows it with Fluid Compute, on by default) |
+| Function max duration | 300 s (`maxDuration` in `vercel.json`), which needs **Fluid compute**: `vercel.json` sets `"fluid": true`, so it does not depend on the project's setting. See "Time limit" below |
 | Deployment Protection | must not cover the production domain (the default "Standard Protection" does not) |
 
 Check: `curl https://<worker>.vercel.app/health` → `{"ok":true,"supabase_url_set":true,"python":"3.12.x","yt_dlp":"…"}`
@@ -136,6 +137,51 @@ curl -s -X POST "$SUPABASE_URL/functions/v1/stash-embed" -H "Authorization: Bear
 Then save one TikTok link in the app before the key is added (expect: title and thumbnail within
 seconds, `ready`, `ai_state = no_key`), add the key, and wait a minute or two for the insights.
 
+## Time limit
+
+Vercel stops a function at its maximum duration without warning. What the Vercel documentation says
+(checked through the Vercel documentation search, November 2026):
+
+- `maxDuration` for a Python function is set in `vercel.json` under `functions`, keyed by the entry file.
+- Fluid compute is on by default for projects created since 23 April 2025, and `"fluid": true` in
+  `vercel.json` turns it on for a deployment whatever the project setting says.
+- **Not confirmed from the documentation here:** the per-plan numbers. The limits page itself could not be
+  opened from the build machine and the search index returned only configuration examples. The design
+  assumes what Vercel has published for Hobby: 300 s (default and maximum) with Fluid compute, 60 s at
+  most without it. **Check at the first deploy:** if Vercel refuses `maxDuration: 300` for the plan, the
+  deploy is refused with a message about the allowed duration. Then put the allowed number in `vercel.json` and
+  in the config row `worker_max_seconds` (same value in both), nothing else changes:
+  `insert into stash.config (key, value) values ('worker_max_seconds', '60') on conflict (key) do update set value = excluded.value;`
+
+How the worker stays inside it (all in `deadline.py`, set once per `/run`):
+
+| | |
+|---|---|
+| deadline | `worker_max_seconds` − 15 s (285 s by default: `HARD_LIMIT_S`) |
+| new job claimed | only with ≥ 90 s left (and inside `run_budget_seconds`) |
+| video download | started only with ≥ 60 s left; yt-dlp is cancelled from its progress hook with < 25 s left |
+| transcription | started only with ≥ 60 s left; insights only with ≥ 40 s left |
+| provider calls, Storage `PUT` | timeouts cut to the time left; no retry that could not finish |
+
+A step skipped for time, or refused by a busy provider (HTTP 429 / 503 / 529), sets
+`ai_state = 'retry'`: the save still ends `ready`, and the minute sweep queues
+`reprocess {"mode":"insights"}` for it (10 minutes apart, at most 8 tries a day). If the function is
+killed anyway, the sweep frees the job after 7 minutes; after four such timeouts it fails the job and
+the save (`Processing timed out. Tap Retry.`) instead of leaving it in `processing`.
+
+## What yt-dlp and the guarded fetch may reach
+
+- A platform is recognised by its exact host or a subdomain (`instagram.com`, `instagr.am`,
+  `tiktok.com`, `youtube.com`, `youtu.be`), never by a name that merely ends the same way.
+- yt-dlp is started only for an `https` address on such a host. YouTube is rebuilt from the video id
+  (`https://www.youtube.com/watch?v=<id>`), with `noplaylist` and `playlist_items: "1"`. Each call
+  passes `allowed_extractors` with that platform's extractor only, so the generic extractor (which
+  would fetch any address) is not loaded at all.
+- `safe_get` resolves a name once, refuses it unless every address is public, and connects to that
+  address (the name stays in `Host` and as the TLS server name, so the certificate is still checked
+  against it). A DNS answer that changes between the check and the connection cannot redirect it.
+- Thumbnails over 40 megapixels are refused from the image header, before decoding.
+
 ## Routes
 
 | | |
@@ -149,12 +195,15 @@ seconds, `ready`, `ai_state = no_key`), add the key, and wait a minute or two fo
 ```bash
 cd stash/worker
 python -m venv .venv && . .venv/bin/activate && pip install -r requirements-dev.txt
-pytest                       # 193 tests, no network (a real HTTP call fails the test)
+pytest                       # 247 tests, no network (a real HTTP call fails the test)
 
 cd ../supabase/functions     # Edge Functions: type-check and tests
 DENO_NO_PACKAGE_JSON=1 deno check stash-worker-proxy/index.ts stash-embed/index.ts stash-recovery/index.ts
 DENO_NO_PACKAGE_JSON=1 deno test _tests
 ```
+
+`DENO_NO_PACKAGE_JSON=1` is required: without it Deno finds the app's `package.json` one level up,
+expects the imports in its `node_modules` and fails with "Could not find a matching package".
 
 `tests/test_proxy_app.py` compares the document colours in `render.py` with the light theme in
 `styles/tokens.css` and fails when they drift.
@@ -192,9 +241,15 @@ Done:
   really is in the transcript, caption or article; the platform is read from the address, not the row.
 - Jobs: ingest, reprocess (full and `{"mode":"insights"}`), grade, synthesize (Space and tag), export,
   galaxy, ask, backup, trash (50 per run).
-- Edge Functions with Deno tests (19) for the allowlist, the token check, rate limits and the code
+- Edge Functions with Deno tests (24) for the allowlist, the token check, rate limits and the code
   derivation.
-- Smoke run against a real Postgres with all migrations: 47 checks pass.
+- Smoke run against a real Postgres with all migrations: all checks pass.
+- Review fixes (see "Time limit" and "What yt-dlp and the guarded fetch may reach" above): the run
+  deadline and `ai_state = 'retry'`; strict platform hosts and one extractor per platform; the fetch
+  pinned to the checked address; the 40-megapixel cap; `stash-recovery` `create` answers with a fresh
+  session; restore is limited by `cf-connecting-ip` / the last forwarded hop and by a global bucket
+  (600 an hour); `stash-embed` has a global bucket (3000 a minute); the proxy refuses any `select`
+  with a double quote.
 
 Decisions and deviations from the contract (each small; say if you want it the other way):
 
@@ -239,9 +294,10 @@ Not verified from this machine (no route to these hosts here):
 - `gte-small` is trained on English text; French and Arabic queries will match less well by meaning
   (word search is unaffected).
 
-Suggestions for the migration (not changed here):
+Migration notes:
 
-- `reprocess {"mode":"insights"}` leaves `status` alone, so `on_save_ready_or_moved` does not fire and
-  a tag synthesis is not considered for saves that got their insights late. Calling
-  `maybe_synthesize_tag` from a trigger on `insights` would cover it.
-- `sweep()` re-queues `no_key` saves 5 at a time per minute; with a large backlog that is slow but safe.
+- Tag syntheses are now also considered when insights arrive late (trigger `on_insights_tags`).
+- `sweep()` re-queues `no_key` / `retry` saves 5 at a time per minute; with a large backlog that is
+  slow but safe.
+- Making or rotating a recovery code signs the owner's other phones out (Auth ends a user's sessions
+  when the password changes). The phone that made the code gets a new session in the same answer.

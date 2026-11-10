@@ -8,6 +8,10 @@ Contract: docs/CONTRACT_0007.md. The rules that shape this file:
 * `video_path`, `video_bytes`, `video_state` and `playback` change together in one PATCH
   (the database checks they agree).
 * AI and video storage are for owners only (`worker_config().owner_ids`), under the monthly budget.
+* The function is killed at its maximum duration, so every slow step looks at the run's deadline
+  (deadline.py): no new job with under 90 s left, no download or AI step it could not finish. A
+  step skipped for time, or refused by a busy provider (429 / 503 / 529), leaves
+  `ai_state = 'retry'`; the save is still `ready` and the sweep re-queues its insights.
 """
 
 from __future__ import annotations
@@ -20,7 +24,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from . import ai, exports, galaxy, geocode, media
+from . import ai, deadline as run_deadline, exports, galaxy, geocode, media
 from .config import EMBED_MODEL, Config
 from .proxy import ProxyError, vector_literal
 from .rules import (SCREENSHOT_MIME, choose_space, decide_playback, detect_platform, embedding_text, is_owner,
@@ -28,8 +32,12 @@ from .rules import (SCREENSHOT_MIME, choose_space, decide_playback, detect_platf
 
 log = logging.getLogger("stash.worker")
 
-HARD_LIMIT_S = 285          # the function is killed at 300 s
+KILL_MARGIN_S = 15          # the deadline sits this long before the platform kills the function
+HARD_LIMIT_S = 300 - KILL_MARGIN_S  # with the default maximum duration (config worker_max_seconds = 300)
+CLAIM_NEEDS_S = 90          # don't claim a new job with less than this left
 DOWNLOAD_NEEDS_S = 60       # don't start a video download with less than this left
+AI_NEEDS_S = 60             # don't start transcription with less than this left (insights are skipped with it)
+INSIGHTS_NEEDS_S = 40       # don't start the insights call with less than this left
 TRASH_BATCH = 50
 VIDEO_PLATFORMS = ("instagram", "tiktok")
 AI_ERRORS = (ai.InsightError, ai.ProviderError, ai.NoProvider)
@@ -133,8 +141,25 @@ def _retry_or_fail(supa: Any, job: dict[str, Any], exc: Exception) -> str:
     return "failed"
 
 
+def _retry_later(exc: Exception) -> bool:
+    """The provider was busy (429 / 503 / 529) or the run had no time left: worth another try later."""
+    return bool(getattr(exc, "retry_later", False))
+
+
 def process_job(supa: Any, cfg: Config, job: dict[str, Any], deadline: float | None = None) -> str:
-    """Returns a short outcome word for the run summary (never user data)."""
+    """Returns a short outcome word for the run summary (never user data).
+
+    `deadline` (time.monotonic clock) is when this run must be finished; None keeps the one already set."""
+    if deadline is None:
+        return _process_job(supa, cfg, job)
+    token = run_deadline.set_deadline(deadline)
+    try:
+        return _process_job(supa, cfg, job)
+    finally:
+        run_deadline.reset(token)
+
+
+def _process_job(supa: Any, cfg: Config, job: dict[str, Any]) -> str:
     kind = job["type"]
     if kind == "grade":
         return process_grade(supa, cfg, job)
@@ -167,7 +192,7 @@ def process_job(supa: Any, cfg: Config, job: dict[str, Any], deadline: float | N
     insights_only = kind == "reprocess" and (job.get("payload") or {}).get("mode") == "insights"
     workdir = Path(tempfile.mkdtemp(prefix="stash-"))
     try:
-        outcome = _ingest(supa, cfg, save, workdir, insights_only=insights_only, deadline=deadline)
+        outcome = _ingest(supa, cfg, save, workdir, insights_only=insights_only)
         _finish_job(supa, job, "done")
         return outcome
     except media.DeadLink:
@@ -215,8 +240,7 @@ def _store_thumb(supa: Any, user_id: str, save_id: str, thumb_url: str | None) -
         return None
 
 
-def _ingest(supa: Any, cfg: Config, save: dict[str, Any], workdir: Path, *, insights_only: bool = False,
-            deadline: float | None = None) -> str:
+def _ingest(supa: Any, cfg: Config, save: dict[str, Any], workdir: Path, *, insights_only: bool = False) -> str:
     save_id, user_id = save["id"], save["user_id"]
     match = {"id": f"eq.{save_id}"}
     url = save["source_url"]
@@ -282,8 +306,7 @@ def _ingest(supa: Any, cfg: Config, save: dict[str, Any], workdir: Path, *, insi
 
         # The video: owners only; YouTube only when switched on.
         wants_video = owner and (platform in VIDEO_PLATFORMS or (platform == "youtube" and cfg.youtube_download))
-        has_time = deadline is None or deadline - time.monotonic() > DOWNLOAD_NEEDS_S
-        if wants_video and not stored and has_time:
+        if wants_video and not stored and run_deadline.has(DOWNLOAD_NEEDS_S):
             state = "blocked"
             try:
                 got = media.download(url, workdir, max_seconds=cfg.max_video_seconds, max_bytes=cfg.video_max_bytes,
@@ -302,6 +325,9 @@ def _ingest(supa: Any, cfg: Config, save: dict[str, Any], workdir: Path, *, insi
                     state = "none"
             except media.TooBig:
                 state = "too_big"
+            except run_deadline.OutOfTime:  # the run is nearly over: not the platform's refusal
+                log.info("download stopped: out of time")
+                state = "none"
             except media.DownloadFailed as exc:
                 log.info("download refused: %s", exc)
             if state != "stored":
@@ -333,6 +359,11 @@ def _ingest(supa: Any, cfg: Config, save: dict[str, Any], workdir: Path, *, insi
     visual: str | None = None
     vision: ai.Understanding | None = None
     ai_state = "not_owner" if not owner else "over_budget" if over_budget else None if cfg.has_ai else "no_key"
+    # Too little time left for the AI steps: the save still ends ready, and the sweep asks again.
+    if ai_state is None and not run_deadline.has(AI_NEEDS_S):
+        log.info("ai steps skipped: out of time")
+        ai_state = "retry"
+    hurried = ai_state == "retry"
 
     if platform == "screenshot":
         if ai_state is None and image:
@@ -347,13 +378,13 @@ def _ingest(supa: Any, cfg: Config, save: dict[str, Any], workdir: Path, *, insi
             except AI_ERRORS as exc:
                 log.warning("vision failed: %s", exc)
                 usage += _failed_usage(exc, user_id=user_id, save_id=save_id, kind="vision")
-                ai_state = "failed"
+                ai_state = "retry" if _retry_later(exc) else "failed"
     elif platform == "web":
         if article and article != existing.get("full_text"):
             transcript_text = article
             supa.insert("transcripts", {"save_id": save_id, "user_id": user_id, "segments": [],
                                         "full_text": article}, upsert_on="save_id")
-    elif not transcript_text:
+    elif not transcript_text and not hurried:
         tr: ai.Transcript | None = None
         if platform == "youtube":  # the platform's own captions: free, and no AI key needed
             got_captions = media.youtube_captions(url)
@@ -383,6 +414,8 @@ def _ingest(supa: Any, cfg: Config, save: dict[str, Any], workdir: Path, *, insi
             except AI_ERRORS + (ProxyError,) as exc:  # no transcript: the caption still gives insights
                 log.warning("transcription failed: %s", exc)
                 usage += _failed_usage(exc, user_id=user_id, save_id=save_id, kind="transcribe")
+                if _retry_later(exc) and ai_state is None:
+                    ai_state = "retry"  # busy or out of time: transcript and insights together, later
         if tr is not None:
             segments, transcript_text, visual = tr.segments, tr.text, tr.visual
             if segments:
@@ -395,6 +428,9 @@ def _ingest(supa: Any, cfg: Config, save: dict[str, Any], workdir: Path, *, insi
     # 3 · Reading: insights from whatever exists ---------------------------------------------------
     step("reading")
     insights: dict[str, Any] | None = None
+    if ai_state is None and vision is None and not run_deadline.has(INSIGHTS_NEEDS_S):
+        log.info("insights skipped: out of time")
+        ai_state = "retry"
     if ai_state is None:
         if vision is None and not any((transcript_text, caption, title, visual)):
             ai_state = "failed"  # nothing to read: better no summary than an invented one
@@ -407,7 +443,7 @@ def _ingest(supa: Any, cfg: Config, save: dict[str, Any], workdir: Path, *, insi
             except AI_ERRORS as exc:
                 log.warning("insights failed: %s", exc)
                 usage += _failed_usage(exc, user_id=user_id, save_id=save_id, kind="understand")
-                ai_state = "failed"
+                ai_state = "retry" if _retry_later(exc) else "failed"
             else:
                 insights = u.insights
                 usage.append(_usage(u, user_id=user_id, save_id=save_id, kind="vision" if vision else "understand"))
@@ -659,24 +695,29 @@ def run(supa: Any, cfg: Config, clock=time.monotonic) -> dict[str, int]:
 
     Returns {"done", "failed", "requeued", "trashed"}: counts only, never user data."""
     started = clock()
-    deadline = started + HARD_LIMIT_S
+    # One deadline for the whole request, a little before the platform's kill. Everything slow reads it.
+    token = run_deadline.set_deadline(time.monotonic() + cfg.worker_max_seconds - KILL_MARGIN_S)
     summary = {"done": 0, "failed": 0, "requeued": 0, "trashed": 0}
-    while clock() - started < cfg.run_budget_seconds:
-        jobs = supa.rpc("claim_jobs", {"p_limit": 1}) or []
-        if not jobs:
-            break
-        for job in jobs:
-            try:
-                outcome = process_job(supa, cfg, job, deadline=deadline)
-            except Exception as exc:  # noqa: BLE001 — one bad job never stops the run
-                try:
-                    outcome = _retry_or_fail(supa, job, exc)
-                except Exception:  # noqa: BLE001 — the sweep re-queues a stuck job
-                    outcome = "error"
-            key = "requeued" if outcome == "retry" else "failed" if outcome in FAILED else "done"
-            summary[key] += 1
     try:
-        summary["trashed"] = empty_trash(supa, cfg)
-    except Exception:  # noqa: BLE001 — cleanup retries on the next sweep
-        pass
+        while clock() - started < cfg.run_budget_seconds and run_deadline.has(CLAIM_NEEDS_S):
+            jobs = supa.rpc("claim_jobs", {"p_limit": 1}) or []
+            if not jobs:
+                break
+            for job in jobs:
+                try:
+                    outcome = process_job(supa, cfg, job)
+                except Exception as exc:  # noqa: BLE001 — one bad job never stops the run
+                    try:
+                        outcome = _retry_or_fail(supa, job, exc)
+                    except Exception:  # noqa: BLE001 — the sweep re-queues a stuck job
+                        outcome = "error"
+                key = "requeued" if outcome == "retry" else "failed" if outcome in FAILED else "done"
+                summary[key] += 1
+        try:
+            if run_deadline.has(KILL_MARGIN_S):
+                summary["trashed"] = empty_trash(supa, cfg)
+        except Exception:  # noqa: BLE001 — cleanup retries on the next sweep
+            pass
+    finally:
+        run_deadline.reset(token)
     return summary

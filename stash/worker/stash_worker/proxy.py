@@ -17,9 +17,12 @@ from typing import Any
 
 import httpx
 
+from . import deadline
+
 FUNCTION = "stash-worker-proxy"
 INSERT_CHUNK = 500  # rows per POST: keeps every body far below the proxy's 1 MB limit
 TRANSIENT = (502, 503, 504)
+UPLOAD_TIMEOUT_S = 180.0
 
 
 class ProxyError(Exception):
@@ -41,7 +44,7 @@ class Proxy:
         self.http = http or httpx.Client(timeout=httpx.Timeout(60.0, connect=10.0),
                                          headers={"x-stash-worker-token": token})
         # Signed Storage URLs: no token, long timeout for a 45 MB video.
-        self.plain = plain or httpx.Client(timeout=httpx.Timeout(180.0, connect=10.0), follow_redirects=False)
+        self.plain = plain or httpx.Client(timeout=httpx.Timeout(UPLOAD_TIMEOUT_S, connect=10.0), follow_redirects=False)
         self._sleep = sleep
 
     def close(self) -> None:
@@ -115,12 +118,20 @@ class Proxy:
         size = data.stat().st_size if isinstance(data, Path) else len(data)
         headers = {"Content-Type": content_type, "x-upsert": "true", "Cache-Control": "max-age=31536000",
                    "Content-Length": str(size)}
+        # Bounded by what is left of the run: a slow upload must not outlive the function.
+        extra: dict[str, Any] = {}
+        if deadline.remaining() is not None:
+            try:
+                left = deadline.cap(UPLOAD_TIMEOUT_S, floor=5.0)
+            except deadline.OutOfTime:
+                raise ProxyError(f"PUT storage {bucket}: out of time") from None
+            extra["timeout"] = httpx.Timeout(left, connect=min(10.0, left))
         try:
             if isinstance(data, Path):
                 with data.open("rb") as fh:
-                    r = self.plain.put(signed["url"], content=fh, headers=headers)
+                    r = self.plain.put(signed["url"], content=fh, headers=headers, **extra)
             else:
-                r = self.plain.put(signed["url"], content=data, headers=headers)
+                r = self.plain.put(signed["url"], content=data, headers=headers, **extra)
         except httpx.HTTPError as exc:
             raise ProxyError(f"PUT storage {bucket}: {type(exc).__name__}") from None
         if r.status_code >= 400:

@@ -2,7 +2,8 @@
 article text. No ffmpeg anywhere: nothing is merged, transcoded or probed.
 
 Every plain HTTP fetch goes through `safe_get`, which refuses private addresses (a save's URL is
-whatever a phone sent) and caps the size it reads.
+whatever a phone sent), connects to the very address it checked, and caps the size it reads.
+yt-dlp only ever gets an address on the platform's own host, with only that platform's extractor.
 """
 
 from __future__ import annotations
@@ -22,7 +23,8 @@ from urllib.parse import parse_qs, quote, urljoin, urlparse
 
 import httpx
 
-from .rules import detect_platform
+from . import deadline
+from .rules import detect_platform, host_in, url_host
 
 UA = "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36"
 # Instagram and others serve Open Graph tags to link-preview bots more readily than to browsers.
@@ -74,32 +76,58 @@ class Page:
         return self.content.decode("utf-8", "replace")
 
 
-def host_is_public(host: str, resolver: Callable[..., Any] = socket.getaddrinfo) -> bool:
+def public_addresses(host: str, resolver: Callable[..., Any] = socket.getaddrinfo) -> list[str]:
+    """Every address the host resolves to, or [] when it is unknown or ANY of them is not public."""
     try:
         infos = resolver(host, None)
     except OSError:
-        return False
-    addrs = {i[4][0] for i in infos}
-    if not addrs:
-        return False
-    for a in addrs:
+        return []
+    addrs: list[str] = []
+    for i in infos:
+        a = str(i[4][0]).split("%")[0]
         try:
-            if not ipaddress.ip_address(a.split("%")[0]).is_global:
-                return False
+            if not ipaddress.ip_address(a).is_global:
+                return []
         except ValueError:
-            return False
-    return True
+            return []
+        if a not in addrs:
+            addrs.append(a)
+    return addrs
+
+
+def host_is_public(host: str, resolver: Callable[..., Any] = socket.getaddrinfo) -> bool:
+    return bool(public_addresses(host, resolver))
 
 
 def check_url(url: str, resolver: Callable[..., Any] = socket.getaddrinfo) -> str:
-    u = urlparse(url)
+    """The address to connect to for this URL (one the host resolves to, all of them public). Blocked otherwise."""
+    try:
+        u = urlparse(url)
+        port = u.port
+    except ValueError:
+        raise Blocked("not a public http(s) address") from None
     if u.scheme not in ("http", "https") or not u.hostname or u.username or u.password:
         raise Blocked("not a public http(s) address")
-    if u.port not in (None, 80, 443):
+    if port not in (None, 80, 443):
         raise Blocked("unusual port")
-    if not host_is_public(u.hostname, resolver):
+    addrs = public_addresses(u.hostname, resolver)
+    if not addrs:
         raise Blocked("private or unknown host")
-    return url
+    return next((a for a in addrs if ":" not in a), addrs[0])  # IPv4 first: not every runtime routes IPv6
+
+
+def pinned(url: str, address: str) -> tuple[str, str]:
+    """(the URL with its host replaced by the checked address, the original host[:port] for the Host header).
+
+    The name is resolved once, by check_url. Connecting to that address (instead of letting the HTTP
+    client resolve the name again) closes the gap in which DNS could answer differently the second
+    time and point at a private network."""
+    u = urlparse(url)
+    literal = f"[{address}]" if ":" in address else address
+    netloc = literal if u.port is None else f"{literal}:{u.port}"
+    host = u.hostname or ""
+    host_header = (f"[{host}]" if ":" in host else host) + ("" if u.port is None else f":{u.port}")
+    return u._replace(netloc=netloc).geturl(), host_header
 
 
 _client: httpx.Client | None = None
@@ -114,11 +142,18 @@ def _http() -> httpx.Client:
 
 def safe_get(url: str, *, max_bytes: int = PAGE_MAX, headers: dict[str, str] | None = None,
              resolver: Callable[..., Any] = socket.getaddrinfo, http: Any | None = None) -> Page:
-    """GET with every hop checked (public host, http(s), default port) and the body capped at max_bytes."""
+    """GET with every hop checked (public host, http(s), default port) and the body capped at max_bytes.
+
+    Each hop connects to the address that was checked: the request goes to that IP with the original
+    name in the Host header and, for https, as the TLS server name (so the certificate is still
+    verified against the name)."""
     http = http or _http()
     for _ in range(6):
-        check_url(url, resolver)
-        with http.stream("GET", url, headers={"User-Agent": UA, "Accept-Language": "en", **(headers or {})}) as r:
+        target, host_header = pinned(url, check_url(url, resolver))
+        name = urlparse(url).hostname or ""
+        with http.stream("GET", target, headers={"User-Agent": UA, "Accept-Language": "en", **(headers or {}),
+                                                 "Host": host_header},
+                         extensions={"sni_hostname": name} if url.startswith("https://") else {}) as r:
             if r.status_code in (301, 302, 303, 307, 308) and r.headers.get("location"):
                 url = urljoin(url, r.headers["location"])
                 continue
@@ -128,7 +163,7 @@ def safe_get(url: str, *, max_bytes: int = PAGE_MAX, headers: dict[str, str] | N
                 if size > max_bytes:
                     break
                 chunks.append(chunk)
-            return Page(r.status_code, str(r.url), {k.lower(): v for k, v in r.headers.items()}, b"".join(chunks))
+            return Page(r.status_code, url, {k.lower(): v for k, v in r.headers.items()}, b"".join(chunks))
     raise Blocked("too many redirects")
 
 
@@ -138,12 +173,14 @@ _YT_ID = r"[A-Za-z0-9_-]{6,20}"
 
 
 def youtube_id(url: str) -> str | None:
+    host = url_host(url)
+    if not host:
+        return None
     u = urlparse(url)
-    host = (u.hostname or "").lower()
-    if host == "youtu.be":
+    if host_in(host, "youtu.be"):
         m = re.match(rf"^/({_YT_ID})", u.path)
         return m.group(1) if m else None
-    if host.endswith("youtube.com") or host.endswith("youtube-nocookie.com"):
+    if host_in(host, "youtube.com", "youtube-nocookie.com"):
         v = parse_qs(u.query).get("v", [None])[0]
         if v and re.fullmatch(_YT_ID, v):
             return v
@@ -316,7 +353,7 @@ def metadata(url: str, platform: str | None = None, get: Callable[..., Page] = s
     if platform == "tiktok":
         if not tiktok_id(url):  # vm.tiktok.com / vt.tiktok.com / tiktok.com/t/…: follow to the real post
             page = _page(url, get)
-            if page is not None and tiktok_id(page.url):
+            if page is not None and tiktok_id(page.url) and detect_platform(page.url) == "tiktok":
                 meta.canonical_url = page.url.split("?")[0]
                 url = meta.canonical_url
         status, o = _oembed("https://www.tiktok.com/oembed?url=", url, get)
@@ -412,18 +449,26 @@ def fetch_image(url: str, get: Callable[..., Page] = safe_get) -> bytes | None:
     return page.content
 
 
+MAX_PIXELS = 40_000_000  # a 2 MB file can claim to be far larger once decoded
+
+
 def to_jpeg(data: bytes, max_side: int = 720) -> bytes | None:
-    """Re-encodes as a modest JPEG (the thumbnail's path ends in .jpg). None when it is not an image."""
+    """Re-encodes as a modest JPEG (the thumbnail's path ends in .jpg). None when it is not an image,
+    or when it would decode to more than 40 megapixels (checked on the header, before any decoding)."""
     try:
         from PIL import Image  # lazy
 
-        img = Image.open(io.BytesIO(data))
+        img = Image.open(io.BytesIO(data))  # reads the header only
+        width, height = img.size
+        if width <= 0 or height <= 0 or width * height > MAX_PIXELS:
+            return None
+        img.draft("RGB", (max_side, max_side))  # JPEG: decode at a reduced size straight away
         img.thumbnail((max_side, max_side))
         buf = io.BytesIO()
         img.convert("RGB").save(buf, "JPEG", quality=82, optimize=True)
         return buf.getvalue()
-    except Exception:  # noqa: BLE001
-        return data if data[:3] == b"\xff\xd8\xff" else None
+    except Exception:  # noqa: BLE001 — includes Pillow's own decompression-bomb refusal
+        return None
 
 
 # --- The video: one progressive MP4 ------------------------------------------------------------------
@@ -474,13 +519,54 @@ def info_fields(info: dict[str, Any]) -> dict[str, Any]:
             "webpage_url": info.get("webpage_url")}
 
 
+# The yt-dlp extractors each platform may use, by name (yt-dlp matches these as whole-name patterns;
+# "vm.tiktok" is its short-link extractor). Everything else, the "generic" extractor above all (it
+# fetches any address it is given), is switched off.
+EXTRACTORS = {"youtube": ["youtube"], "instagram": ["Instagram"], "tiktok": ["TikTok", r"vm\.tiktok"]}
+DOWNLOAD_STOP_S = 25.0  # stop a download when less than this is left of the run
+
+
+def platform_target(url: str) -> tuple[str, str] | None:
+    """(platform, the address yt-dlp may be given), or None.
+
+    Only https addresses whose host really is the platform's (exact, or a subdomain), with no
+    credentials and no odd port. YouTube is rebuilt from the video id, so nothing else in the
+    address a phone sent (a playlist, a redirect parameter) reaches yt-dlp."""
+    try:
+        u = urlparse(url)
+        port = u.port
+    except ValueError:
+        return None
+    if u.scheme != "https" or u.username or u.password or port not in (None, 443):
+        return None
+    platform = detect_platform(url)
+    if platform == "youtube":
+        vid = youtube_id(url)
+        return ("youtube", f"https://www.youtube.com/watch?v={vid}") if vid else None
+    if platform in ("instagram", "tiktok"):
+        return platform, url
+    return None
+
+
 def download(url: str, workdir: Path, *, max_seconds: int, max_bytes: int, cookies_b64: str = "") -> Download:
-    """One progressive MP4, no merge. TooBig over the limits, DownloadFailed for anything else."""
-    if detect_platform(url) not in ("instagram", "tiktok", "youtube"):
+    """One progressive MP4, no merge. TooBig over the limits, deadline.OutOfTime when the run is
+    nearly over, DownloadFailed for anything else."""
+    target = platform_target(url)
+    if target is None:
         raise DownloadFailed("not a video platform")
+    platform, url = target
+    if not deadline.has(DOWNLOAD_STOP_S):
+        raise deadline.OutOfTime("out of time")
     import yt_dlp  # heavy import kept lazy
+    from yt_dlp.utils import DownloadCancelled
 
     rejected: list[str] = []
+    timed_out: list[bool] = []
+
+    def stop_when_late(_progress: dict[str, Any]) -> None:
+        if not deadline.has(DOWNLOAD_STOP_S):
+            timed_out.append(True)
+            raise DownloadCancelled("out of time")
 
     def too_long(info: dict[str, Any], *, incomplete: bool = False) -> str | None:
         if (info.get("duration") or 0) > max_seconds:
@@ -504,6 +590,8 @@ def download(url: str, workdir: Path, *, max_seconds: int, max_bytes: int, cooki
         "max_filesize": max_bytes,
         "cachedir": False,  # only /tmp is writable on the function
         "match_filter": too_long,
+        "allowed_extractors": EXTRACTORS[platform],
+        "progress_hooks": [stop_when_late],
     }
     cookiefile = _cookie_file(workdir, cookies_b64)
     if cookiefile:
@@ -512,7 +600,11 @@ def download(url: str, workdir: Path, *, max_seconds: int, max_bytes: int, cooki
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = _first_entry(ydl.extract_info(url, download=True))
-    except Exception as exc:  # yt-dlp raises many types
+    except BaseException as exc:  # yt-dlp raises many types (DownloadCancelled is not an Exception everywhere)
+        if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+            raise
+        if timed_out:
+            raise deadline.OutOfTime("out of time") from None
         raise DownloadFailed(type(exc).__name__) from None
 
     if rejected or (info.get("duration") or 0) > max_seconds:
@@ -569,14 +661,20 @@ def pick_caption_track(info: dict[str, Any]) -> tuple[str, str] | None:
 
 
 def youtube_captions(url: str, get: Callable[..., Page] = safe_get) -> dict[str, Any] | None:
-    """{"segments", "language", "info"} from the platform's own captions, or None. Never raises."""
+    """{"segments", "language", "info"} from the platform's own captions, or None. Never raises.
+
+    Only for a real YouTube video address; yt-dlp is given the watch URL rebuilt from the id."""
+    target = platform_target(url)
+    if target is None or target[0] != "youtube" or not deadline.has(DOWNLOAD_STOP_S):
+        return None
     try:
         import yt_dlp
 
-        opts = {"skip_download": True, "quiet": True, "no_warnings": True, "logger": _Quiet(), "noplaylist": True, "socket_timeout": 15,
-                "retries": 1, "cachedir": False, "ignore_no_formats_error": True}
+        opts = {"skip_download": True, "quiet": True, "no_warnings": True, "logger": _Quiet(), "noplaylist": True,
+                "playlist_items": "1", "socket_timeout": 15, "retries": 1, "cachedir": False,
+                "ignore_no_formats_error": True, "allowed_extractors": EXTRACTORS["youtube"]}
         with yt_dlp.YoutubeDL(opts) as ydl:
-            info = _first_entry(ydl.extract_info(url, download=False))
+            info = _first_entry(ydl.extract_info(target[1], download=False))
         track = pick_caption_track(info)
         if not track:
             return {"segments": [], "language": None, "info": info}

@@ -12,13 +12,26 @@ INTENTS = ("learn", "try", "visit", "buy", "inspire", "fun")
 KEY_IDEA_MAX_WORDS = 16
 
 
+def host_in(host: str | None, *domains: str) -> bool:
+    """True when host is one of the domains or a subdomain of one. `evilinstagram.com` is not `instagram.com`."""
+    h = (host or "").lower().rstrip(".")
+    return any(h == d or h.endswith("." + d) for d in domains)
+
+
+def url_host(url: str) -> str:
+    try:
+        return (urlparse(url).hostname or "").lower()
+    except ValueError:  # e.g. a broken IPv6 literal
+        return ""
+
+
 def detect_platform(url: str) -> str:
-    host = (urlparse(url).hostname or "").lower()
-    if host.endswith("instagram.com") or host == "instagr.am":
+    host = url_host(url)
+    if host_in(host, "instagram.com", "instagr.am"):
         return "instagram"
-    if host.endswith("tiktok.com"):
+    if host_in(host, "tiktok.com"):
         return "tiktok"
-    if host.endswith("youtube.com") or host == "youtu.be":
+    if host_in(host, "youtube.com", "youtu.be"):
         return "youtube"
     return "web"
 

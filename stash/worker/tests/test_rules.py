@@ -43,6 +43,15 @@ def good(**over):
         ("https://m.youtube.com/shorts/abc", "youtube"),
         ("https://example.com/post", "web"),
         ("not a url", "web"),
+        # Ending in a platform's name is not being on it.
+        ("https://evilinstagram.com/reel/abc/", "web"),
+        ("https://instagram.com.evil.example/reel/abc/", "web"),
+        ("https://nottiktok.com/@a/video/1", "web"),
+        ("https://fakeyoutube.com/watch?v=abcdefghijk", "web"),
+        ("https://evilyoutu.be/abcdefghijk", "web"),
+        ("https://INSTAGRAM.com./reel/abc/", "instagram"),
+        ("https://music.youtube.com/watch?v=abcdefghijk", "youtube"),
+        ("https://[::1/broken", "web"),
     ],
 )
 def test_detect_platform(url, platform):
