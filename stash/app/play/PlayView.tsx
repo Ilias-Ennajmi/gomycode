@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { Archive, Bell, Captions, CheckCircle2, ChevronDown, Flame, GraduationCap, Heart, ListTodo, PencilLine, Volume2 } from "lucide-react";
 import { MediaPlayer } from "@/components/player/MediaPlayer";
 import { RemindSheet } from "@/components/save/RemindSheet";
@@ -593,7 +593,7 @@ export function PlayView() {
 
       <AnimatePresence>
         {showHints && !finished && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -605,7 +605,7 @@ export function PlayView() {
             <span className="flex items-center gap-2 rounded-full px-3 py-2" style={{ background: "color-mix(in srgb, var(--scrim-base) 70%, transparent)" }}>
               Keep → <Heart size={20} strokeWidth={2} aria-hidden />
             </span>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
 

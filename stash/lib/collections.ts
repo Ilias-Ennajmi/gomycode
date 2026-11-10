@@ -32,7 +32,7 @@ const INTENT_LABEL: Record<string, string> = {
   fun: "Just for fun",
 };
 
-export const KIND_LABEL: Record<CollectionKind, string> = { tag: "Topic", creator: "Creator", intent: "Why you saved it", places: "Places" };
+export const KIND_LABEL: Record<CollectionKind, string> = { tag: "Topic", creator: "Creator", intent: "Why you saved it", places: "Saves with a place" };
 
 export const collectionId = (kind: CollectionKind, key: string) => `${kind}:${key}`;
 

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AtSign, Hash, MapPin, Play, Target, X, type LucideIcon } from "lucide-react";
 import { AiLabel } from "@/components/ui/AiLabel";
-import { IconButton } from "@/components/ui/IconButton";
 import { cx } from "@/components/ui/cx";
 import { KIND_LABEL, type AutoCollection, type CollectionKind } from "@/lib/collections";
 import { getBrowserClient } from "@/lib/supabase/client";
@@ -111,7 +110,9 @@ export function CollectionHeader({ collection, count, playHref, onClose }: { col
             <Play size={22} strokeWidth={2} fill="currentColor" aria-hidden />
           </Link>
         )}
-        <IconButton label="Close this group" icon={X} onClick={onClose} className="text-background hover:bg-background/15" />
+        <button type="button" aria-label="Close this group" onClick={onClose} className="press flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-background/15">
+          <X size={24} strokeWidth={2} aria-hidden />
+        </button>
       </div>
       {synthesis && synthesis.points.length > 0 && (
         <article className="flex flex-col gap-3 rounded-lg bg-surface p-4 shadow-pop ring-1 ring-insight/40">

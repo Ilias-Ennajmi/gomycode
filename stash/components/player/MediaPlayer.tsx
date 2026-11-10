@@ -143,8 +143,8 @@ export const MediaPlayer = forwardRef<
       href={original}
       target="_blank"
       rel="noreferrer"
-      className={cx("press relative flex h-12 shrink-0 items-center gap-2 rounded-full px-4 text-label", feed ? "" : "self-center")}
-      style={{ ...INK_LIGHT, ...CHIP_BG }}
+      className={cx("press relative flex h-12 shrink-0 items-center gap-2 rounded-full border px-4 text-label", feed ? "" : "self-center")}
+      style={{ ...INK_LIGHT, ...CHIP_BG, borderColor: "color-mix(in srgb, var(--ink-light) 45%, transparent)" }}
     >
       <ExternalLink size={20} strokeWidth={2} aria-hidden /> {openInLabel(save.platform)}
     </a>

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { useMotionOK } from "@/lib/hooks/useMotionOK";
 import { cx } from "./cx";
 import { spring } from "@/lib/motionTokens";
@@ -67,7 +67,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       >
         <AnimatePresence>
           {current && (
-            <motion.div
+            <m.div
               key={current.id}
               initial={motionOK ? { opacity: 0, y: 24, scale: 0.96 } : false}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -91,7 +91,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   {current.actionLabel}
                 </button>
               )}
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
       </div>

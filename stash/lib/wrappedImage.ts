@@ -10,7 +10,7 @@ import { barPercent, monthLabel, type Wrapped } from "@/lib/wrapped";
  * (the Wrapped card forces the dark brand tokens), so nothing is hard-coded here.
  */
 
-export const POSTER = { width: 1080, height: 1350 } as const;
+export const POSTER = { width: 1080, height: 1440 } as const;
 
 export type PosterModel = {
   title: string;
@@ -184,14 +184,14 @@ export async function drawPoster(model: PosterModel, el: HTMLElement): Promise<H
     }
   }
 
-  if (model.creators.length && y < H - 330) {
+  if (model.creators.length && y < H - 300) {
     y += 56;
     ctx.fillStyle = c("--text-secondary");
     ctx.font = body(30, 700);
     ctx.fillText("Top creators", pad, y);
     y += 20;
     for (const cr of model.creators) {
-      if (y > H - 190) break;
+      if (y > H - 190) break; // keep clear of the footer
       y += 58;
       ctx.fillStyle = c("--surface-raised");
       ctx.beginPath();

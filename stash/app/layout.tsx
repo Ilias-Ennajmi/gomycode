@@ -3,6 +3,7 @@ import { Manrope, Rubik } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { NativeBoot } from "@/components/shell/NativeBoot";
 import { ToastProvider } from "@/components/ui/Toast";
+import { MotionProvider } from "@/components/ui/Motion";
 import { PREPAINT_SCRIPT } from "@/lib/theme/appearance";
 import { BRAND } from "@/lib/theme/brand";
 import "@/styles/globals.css";
@@ -45,10 +46,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <ThemeProvider>
-          <ToastProvider>
-            <NativeBoot />
-            {children}
-          </ToastProvider>
+          <MotionProvider>
+            <ToastProvider>
+              <NativeBoot />
+              {children}
+            </ToastProvider>
+          </MotionProvider>
         </ThemeProvider>
       </body>
     </html>

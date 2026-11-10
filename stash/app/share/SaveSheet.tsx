@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Bell, Check, Image as ImageIcon, Link2 } from "lucide-react";
 import { PlatformBadge } from "@/components/ui/PlatformBadge";
 import { Button } from "@/components/ui/Button";
@@ -229,7 +229,7 @@ export function SaveSheet() {
 
   return (
     <div className="fixed inset-0 flex items-end bg-scrim" onClick={close}>
-      <motion.section
+      <m.section
         role="dialog"
         aria-label="Saved to Stash"
         onClick={(e) => e.stopPropagation()}
@@ -332,7 +332,7 @@ export function SaveSheet() {
             </div>
           </div>
         )}
-      </motion.section>
+      </m.section>
       <RemindSheet open={remindOpen} onClose={() => setRemindOpen(false)} onPick={(c, d) => void remind(c, d)} />
     </div>
   );

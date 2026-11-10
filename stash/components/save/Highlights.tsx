@@ -132,7 +132,7 @@ export function HighlightList({
             </div>
             <div className="flex flex-wrap items-center gap-2 pl-8">
               {from && onOpen && (
-                <button type="button" onClick={() => onOpen(h)} className="press flex min-h-12 min-w-0 flex-1 items-center text-left text-caption text-fg-muted underline">
+                <button type="button" onClick={() => onOpen(h)} className="press flex min-h-12 min-w-0 basis-full items-center text-left text-caption text-fg-muted underline">
                   <span className="line-clamp-2">
                     {from}
                     {h.start !== null ? ` · ${formatDuration(h.start)}` : ""}

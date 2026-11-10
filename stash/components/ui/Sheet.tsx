@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { AnimatePresence, motion, useDragControls, type PanInfo } from "framer-motion";
+import { AnimatePresence, m, useDragControls, type PanInfo } from "framer-motion";
 import { useBackToClose } from "@/lib/hooks/useBackToClose";
 import { useMotionOK } from "@/lib/hooks/useMotionOK";
 import { cx } from "./cx";
@@ -80,7 +80,7 @@ export function Sheet({ open, onClose, label, title, children, className }: Shee
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-50">
-          <motion.div
+          <m.div
             aria-hidden
             className="absolute inset-0 bg-scrim"
             initial={{ opacity: 0 }}
@@ -89,7 +89,7 @@ export function Sheet({ open, onClose, label, title, children, className }: Shee
             transition={fade}
             onClick={onClose}
           />
-          <motion.div
+          <m.div
             ref={panelRef}
             role="dialog"
             aria-modal="true"
@@ -130,7 +130,7 @@ export function Sheet({ open, onClose, label, title, children, className }: Shee
             <button type="button" className="sr-only focus:not-sr-only" onClick={onClose}>
               Close
             </button>
-          </motion.div>
+          </m.div>
         </div>
       )}
     </AnimatePresence>
