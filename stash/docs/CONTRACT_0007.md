@@ -60,8 +60,11 @@ Vault (Supabase Dashboard → Vault, or `select vault.create_secret(value, name)
 | `youtube_download` | `off` | off = YouTube is embed-only |
 | `tag_synth_min` | `5` | ready saves a tag needs for a tag synthesis |
 | `backup_keep` | `4` | weekly backups kept per owner |
-| `ask_daily_limit` | `40` | asks per identity per 24 h (enforced by a trigger) |
+| `ask_daily_limit` | `40` | asks per identity per 24 h (enforced by a trigger; counted on the `ask` jobs, so deleting asks does not reset it) |
+| `save_hourly_limit` | `300` | new saves per identity per clock hour; owner identities are exempt. Over it the insert raises SQLSTATE `54000` and the outbox tries again later |
+| `job_hourly_limit` | `120` | `grade` / `reprocess` jobs a phone may queue per identity per clock hour (SQLSTATE `54000`) |
 | `run_budget_seconds` | `240` | worker stops claiming jobs after this long |
+| `worker_max_seconds` | `300` | the function's maximum duration; must equal `maxDuration` in `worker/vercel.json`. The worker's deadline is this minus 15 s |
 
 A provider is usable only when its key **and** its model id exist. "fast" = understand, vision,
 transcription, grade, ask. "smart" = synthesize, export text (falls back to fast when unset).
@@ -78,7 +81,7 @@ The per-user monthly budget stays `settings.monthly_budget_usd` (cost = usage ro
 | `playback` | text, default `link` | `video` \| `embed` \| `link` \| `none` |
 | `embed_url` | text null | iframe URL, checked by the database (see §7) |
 | `video_bytes` | bigint null | size of the stored MP4 |
-| `ai_state` | text, default `pending` | `pending` \| `done` \| `no_key` \| `not_owner` \| `over_budget` \| `failed` |
+| `ai_state` | text, default `pending` | `pending` \| `done` \| `no_key` \| `retry` \| `not_owner` \| `over_budget` \| `failed` |
 
 Constraint `saves_video_consistent`: `video_state = 'stored'` ⇔ `video_path is not null`;
 `playback = 'video'` needs `stored`; `playback = 'embed'` needs `embed_url`. So the worker sets
@@ -86,6 +89,22 @@ Constraint `saves_video_consistent`: `video_state = 'stored'` ⇔ `video_path is
 
 `status` keeps its enum. `request_reprocess(save_id)` still works; the guard resets `process_step`
 to `queued` when the phone moves status back to `queued`.
+
+`ai_state = 'retry'`: the save is `ready` but its AI steps did not run because the provider was busy
+(HTTP 429 / 503 / 529) or the worker's run was nearly over. The sweep re-queues
+`reprocess {"mode": "insights"}` for it (10 minutes apart, at most 8 tries a day). The app shows
+"The summary is on its way"; nothing for the owner to do.
+
+### jobs: what a phone may do
+
+The phone inserts `grade` jobs itself and `reprocess` through `request_reprocess()`. A trigger
+(`guard_job_insert`, fired only for statements the phone runs itself: `current_user` is
+`authenticated`) refuses every other type, forces `state = queued`, `attempts = 0`,
+`run_after = now()`, keeps only `card_id` / `audio_path` / `text` in a grade payload, empties a
+reprocess payload, and silently skips a `reprocess` while an `ingest` or full `reprocess` for the
+same save is still queued or running. Phones can read their jobs but not update or delete them.
+Jobs made by SECURITY DEFINER triggers and functions (ingest, export, ask, synthesize, galaxy,
+backup, the sweep) are untouched: inside those, `current_user` is the function's owner.
 
 `process_step` meaning (the app shows one line per step):
 
@@ -102,14 +121,15 @@ to `queued` when the phone moves status back to `queued`.
 
 | table | columns | phone access | Realtime |
 |---|---|---|---|
-| `asks` | `id, user_id, question (2–500 chars), status (queued\|running\|ready\|failed), answer, cited_save_ids uuid[], error, created_at, updated_at` | owner_all, but a trigger lets the phone set only `question` (insert) and delete; answers come from the worker. Insert past `ask_daily_limit` raises SQLSTATE `54000` | yes |
+| `asks` | `id, user_id, question (2–500 chars), status (queued\|running\|ready\|failed), answer, cited_save_ids uuid[], error, created_at, updated_at` | owner_all, but a trigger lets the phone set only `question` (insert) and delete; answers come from the worker. Insert past `ask_daily_limit` raises SQLSTATE `54000`. `error = 'timeout'` when its job timed out four times | yes |
 | `highlights` | `id, save_id, user_id, text (1–2000), start_s, end_s, card_id (→ cards, set null), source (user\|ai), created_at` | owner_all; `guard_same_owner(save_id, card_id)` | yes |
 | `backups` | `id, user_id, path, bytes, saves, created_at` | read own | no |
 | `recovery` | `user_id, lookup, created_at, last_restored_at` | read own `user_id, created_at, last_restored_at` only (**select those columns by name**, `select *` is denied) | no |
 | `config` | `key, value, note, updated_at` | none | no |
 | `rate_limits` | `subject, bucket, window_start, count` | none | no |
 
-Other changes: `syntheses.tag text null`; `usage.provider text null`; `usage.kind` gains `ask`,
+Other changes: `imports.source` also accepts `links` (a pasted or picked list of links);
+`syntheses.tag text null`; `usage.provider text null`; `usage.kind` gains `ask`,
 `vision`, `backup`; `job_type` gains `ask`, `backup`; `embeddings.vector` is `vector(384)`;
 `media_trash` rows for videos are now `store = 'storage', bucket = 'stash-video'`.
 
@@ -142,9 +162,15 @@ Service only (each also refuses other callers itself):
 | `recovery_find(p_lookup)` | uuid or null (stamps `last_restored_at`) | stash-recovery |
 | `queue_backups()` | int | pg_cron, Sunday 04:41 UTC |
 
-Cron jobs: `stash-sweep` (1 min: frees jobs stuck > 7 min, re-queues insights for `ai_state = 'no_key'`
-once a key exists, wakes the worker), `stash-evict-videos` (hourly), `stash-backup` (weekly), plus the
-existing ones.
+Cron jobs: `stash-sweep` (1 min: frees jobs stuck > 7 min; after four timeouts fails the job and sets
+its save to `status = 'failed', process_step = 'ready', error = 'Processing timed out. Tap Retry.'`
+(an insights-only job leaves its save alone; an ask gets `failed` / `timeout`); fails saves that have
+been `queued` / `processing` for 30 minutes with no live job; re-queues insights for
+`ai_state = 'no_key'` once a key exists and for `ai_state = 'retry'`; wakes the worker),
+`stash-evict-videos` (hourly), `stash-backup` (weekly), plus the existing ones.
+
+Tag syntheses are also considered when insights arrive on a save that is already `ready`
+(trigger `on_insights_tags`), which is what `reprocess {"mode": "insights"}` does.
 
 ### Storage
 
@@ -203,7 +229,8 @@ Embeddings (shared with stash-embed in `supabase/functions/_shared/embed.ts`):
 `POST` with the phone's session (`supabase.functions.invoke('stash-embed', {body})`).
 
 - Request `{"input": string | string[]}` (≤ 4 strings, each cut to 1000 chars).
-- Rate limit: `rate_limit_take('u:' + sub, 'embed', 60, 60)`; over → `429 rate_limited`.
+- Rate limit: `rate_limit_take('u:' + sub, 'embed', 60, 60)`, then all callers together
+  `rate_limit_take('all', 'embed_all', 3000, 60)`; over either → `429 rate_limited`.
 - Response `{"embeddings": number[][], "model": "gte-small", "dims": 384}`.
 
 ### 4.3 `stash-recovery` (verify_jwt = false; the function checks the JWT itself for `create`)
@@ -225,13 +252,21 @@ Derivation (only in this function; the app never derives anything):
 2. `rate_limit_take('u:' + uid, 'recovery_create', 5, 86400)`, else `429 rate_limited`.
 3. Generate the code; `auth.admin.updateUserById(uid, {email, password, email_confirm: true})`.
 4. `recovery_set(uid, lookup)`.
-5. `200 {"code": "XXXXX-XXXXX-XXXXX-XXXXX", "created_at": "<iso>"}`. Shown once; calling again rotates
-   (the old code stops working). The user id and all data stay the same; the device keeps its session.
+5. Setting a password ends every session the user had, this device's included. So the function signs
+   in right away with the new email and password (anon client, `signInWithPassword`).
+6. `200 {"code": "XXXXX-XXXXX-XXXXX-XXXXX", "created_at": "<iso>", "access_token", "refresh_token",
+   "expires_at"}` (the three session fields are `null` when the sign-in failed). The app calls
+   `supabase.auth.setSession(…)` **before** it shows the code; if that fails it still shows the code and
+   says this phone needs it to get back in. Shown once; calling again rotates: the old code stops
+   working and the owner's **other phones are signed out** (they enter the new code). The user id and
+   all data stay the same.
 
 `POST {"action": "restore", "code": "…"}` (no session needed):
 
-1. `rate_limit_take('ip:' + sha256(x-forwarded-for first hop).slice(0,32), 'recovery_restore', 10, 3600)`,
-   else `429 rate_limited`.
+1. `rate_limit_take('ip:' + sha256(ip).slice(0,32), 'recovery_restore', 10, 3600)`, where `ip` is
+   `cf-connecting-ip` when present, else the **last** `x-forwarded-for` hop (earlier hops are whatever
+   the caller sent); then all callers together `rate_limit_take('all', 'recovery_restore_all', 600, 3600)`;
+   over either → `429 rate_limited`.
 2. `norm`, `lookup`; `recovery_find(lookup)` → null → `404 not_found`.
 3. `auth.admin.getUserById(uid)` → email; anon client `signInWithPassword({email, password})`;
    failure → `404 not_found`.
@@ -245,7 +280,7 @@ and two dates. The code itself is stored nowhere. `cleanup_anonymous_users` skip
 ## 5. Worker (WORKER/BACKEND builder; Vercel project, root `stash/worker`, Hobby)
 
 - Entry `api/index.py` (FastAPI/ASGI), `vercel.json`: rewrite `/(.*)` → `/api/index`,
-  `functions.api/index.py.maxDuration = 300`. Env: `SUPABASE_URL` only. Proxy base =
+  `functions.api/index.py.maxDuration = 300`, `"fluid": true`. Env: `SUPABASE_URL` only. Proxy base =
   `${SUPABASE_URL}/functions/v1/stash-worker-proxy`.
 - Bundle under 250 MB: no ffmpeg, no boto3. numpy only if the Galaxy job cannot do without
   (prefer pure Python PCA + k-means on ≤ 2 000 × 384). Keep reportlab / python-docx / python-pptx.
@@ -258,9 +293,13 @@ Endpoints:
 | `GET /` | `{"ok": true, "supabase_url_set": bool}`. No secrets, no feature probing |
 | `POST /run` | header `x-stash-worker-token`. Missing or shorter than 32 → `401`. Calls proxy `/config`; proxy `401` → `401`. Then runs the queue and answers `{"done", "failed", "requeued", "trashed"}` |
 
-Run loop: `claim_jobs(1)` through the proxy, process, repeat until the queue is empty or
-`run_budget_seconds` have passed; then delete up to 50 `media_trash` rows (`/storage/remove`, then
-delete the rows). The token and the keys live in local variables only, never logged, never written
+Run loop: `claim_jobs(1)` through the proxy, process, repeat until the queue is empty,
+`run_budget_seconds` have passed or fewer than 90 s are left before the deadline
+(`worker_max_seconds` − 15 s); then delete up to 50 `media_trash` rows (`/storage/remove`, then
+delete the rows). Everything slow reads the same deadline: no video download with under 60 s left
+(yt-dlp is cancelled from its progress hook with under 25 s), no transcription with under 60 s, no
+insights call with under 40 s, and provider calls and the Storage `PUT` use timeouts cut to the time
+left. A step skipped for time leaves `ai_state = 'retry'`; the save still ends `ready`. The token and the keys live in local variables only, never logged, never written
 to disk. Concurrent invocations are fine (`claim_jobs` skips locked rows).
 
 ### Jobs
@@ -289,8 +328,11 @@ Every job: refuse when the row it names belongs to another user than `job.user_i
      `stash-thumbs/<uid>/<save_id>.jpg` through a signed upload URL. No frame extraction.
    - 404/410 from both oEmbed and the page → `status = dead_link`, `process_step = ready`, stop.
 3. **Video** (owner only; Instagram and TikTok; YouTube only when `youtube_download = on`): yt-dlp, one
-   progressive MP4, no merge (`best[ext=mp4][vcodec!=none][acodec!=none]`), refuse over
-   `max_video_seconds` or `video_max_mb` (`too_big`). Then `evict_videos(bytes)`, sign-upload to
+   progressive MP4, no merge (`best[ext=mp4][vcodec!=?none][acodec!=?none]`, sorted `vcodec:h264,
+   res:720`; the `?` keeps a direct MP4 whose codecs are not announced), refuse over
+   `max_video_seconds` or `video_max_mb` (`too_big`). yt-dlp is only ever given an `https` address whose
+   host is the platform's own (exact or a subdomain; YouTube as the watch URL rebuilt from the video
+   id), with `allowed_extractors` set to that platform's extractor, so its generic extractor never runs. Then `evict_videos(bytes)`, sign-upload to
    `stash-video/<uid>/<save_id>.mp4`, `PUT`, one PATCH `{video_path, video_bytes, video_state: 'stored', playback: 'video'}`.
    Any download failure → `video_state = 'blocked'`, keep going.
 4. `process_step = watching`: transcript → `transcripts`.
@@ -301,14 +343,17 @@ Every job: refuse when the row it names belongs to another user than `job.user_i
 5. `process_step = reading`: insights from whatever exists (transcript, caption, title, article text;
    caption alone is enough) → `insights`, `places`, `cards`, up to 3 `highlights` (`source = 'ai'`).
    No usable provider → `ai_state = 'no_key'` and skip (the sweep re-queues it later). Not an owner →
-   `not_owner`. Budget reached → `over_budget`. Provider error after retries → `failed` (the save is still ready).
+   `not_owner`. Budget reached → `over_budget`. Provider busy (429 / 503 / 529) or no time left in this
+   run → `retry` (the sweep re-queues it). Any other provider error after retries → `failed` (the save
+   is still ready).
 6. `process_step = filing`: embed `title + key idea + caption + transcript[:1500]` through proxy
    `/embed` (works with no AI key; skip only when there is no text at all) → upsert `embeddings`
    `{save_id, user_id, vector: "[…]", model: "gte-small"}`; `usage` rows (`provider` set).
 7. One PATCH: `status = ready`, `process_step = ready`, `processed_at`, `ai_state`, `error = null`.
 
 Only an unexpected exception retries the job (3 attempts) and can end in `status = failed`
-(`process_step = ready`). A blocked download, a missing key or an AI error never fails a save.
+(`process_step = ready`); the sweep does the same for a job whose worker died four times. A blocked
+download, a missing key or an AI error never fails a save.
 
 ### AI provider abstraction (`worker/stash_worker/ai/` or equivalent)
 
@@ -325,7 +370,8 @@ embedding, 8)`. 4. No rows → `ready` with answer "Nothing in your saves about 
 citations. 5. Otherwise the fast model answers from the context only, returning JSON
 `{"answer": string, "cited": [save_id…]}`; keep only ids that were in the context. 6. PATCH
 `{status: 'ready', answer, cited_save_ids}`; no provider → `{status: 'failed', error: 'no_ai'}`;
-other failure → `failed` with a short error. `usage.kind = 'ask'`.
+provider busy (429 / 503 / 529) → the ask goes back to `queued` and the job is retried a minute or
+two later (3 attempts); other failure → `failed` with a short error. `usage.kind = 'ask'`.
 
 ### Backup job
 
@@ -364,10 +410,10 @@ Add / change:
 | Highlights | create from a transcript line (`text`, `start_s`, `end_s`), list on the item page and in a Highlights view; "Make a card" inserts a `cards` row then sets `card_id` |
 | Auto-collections | `rpc('auto_collections')` in Library; tapping one filters to `save_ids` |
 | Tag syntheses | `syntheses` rows with `tag` set (and `space_id` null) shown under the tag's auto-collection |
-| Recovery | Settings → "Move to a new phone": `functions.invoke('stash-recovery', {body: {action: 'create'}})`, show the code once with copy; state from `recovery` (`select('user_id, created_at, last_restored_at')`). First-run / Settings "I have a code": `{action: 'restore', code}` → `auth.setSession` → clear local caches → reload. Warn when this device already has saves |
+| Recovery | Settings → "Move to a new phone": `functions.invoke('stash-recovery', {body: {action: 'create'}})`, `auth.setSession` with the session in the answer, then show the code once with copy; state from `recovery` (`select('user_id, created_at, last_restored_at')`). First-run / Settings "I have a code": `{action: 'restore', code}` → `auth.setSession` → clear local caches → reload. Warn when this device already has saves |
 | Backups | Settings lists `backups` (date, size); download = `storage.from('stash-exports').createSignedUrl(path, 600)` |
 | Setup status | Settings → Processing uses `rpc('pipeline_status')`: worker deployed, AI key present, this device is an owner (shows the device id to send to the owner), video space used / cap |
-| Insights later | a ready save with `ai_state = 'no_key'` shows "Insights arrive once an AI key is added"; nothing to do in the app |
+| Insights later | a ready save with `ai_state = 'no_key'` shows "Insights arrive once an AI key is added", with `retry` "The summary is on its way"; nothing to do in the app |
 
 `lib/server/cron.ts` and the cron routes stay as they are.
 
@@ -432,7 +478,8 @@ into `docs/PROGRESS.md`.
 - Proxy: wrong token → 401; `/rest/config`, `/rest/recovery`, `rpc/worker_config`, a `public` table,
   bucket `avatars`, path with `..` → 403; `DELETE /rest/saves` without a filter → 400.
 - Embed: 384 numbers, unit length; the 61st call in a minute → 429.
-- Recovery: create → code; restore on a clean browser profile → same `user_id` and saves; old code
+- Recovery: create → code, and the device that made it is still signed in afterwards (same `user_id`,
+  its saves still load); restore on a clean browser profile → same `user_id` and saves; old code
   fails after rotate; 11th restore attempt in an hour from one IP → 429.
 - App: `tsc`, `eslint`, `vitest`, `next build` pass; no reference to `/api/search`, `/api/media`,
   `R2_`, `VOYAGE_` remains.
@@ -440,4 +487,6 @@ into `docs/PROGRESS.md`.
   read asks, highlights, backups, recovery rows or video objects; cannot call `worker_config`,
   `worker_token_ok`, `owner_ids`, `ask_context`, `evict_videos`, `rate_limit_take`, `recovery_*`,
   `cfg`, `vault_text`; cannot forge answers, playback columns or a highlight on someone else's save;
-  a wrong, short or prefix token is refused.
+  a wrong, short or prefix token is refused; a phone cannot queue any job but `grade` / `reprocess`,
+  cannot set a job's state or attempts, cannot update or delete jobs, and cannot reset the ask, save
+  or job limits by deleting rows.

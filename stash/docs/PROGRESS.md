@@ -565,6 +565,18 @@ Estimated running cost at ~300 saves/month: ≈ $2.70 (Claude only). See the app
 - `search_saves()` and the worker queue functions are Phase 1 migrations (0003, 0004).
 
 ## Log
+- 2026-11-10 — Review fixes for the free pipeline on branch `stash-free-fixes` (from e712878); 0007 edited in
+  place (not applied anywhere yet). Recovery: `create` returns a fresh session and the app sets it before
+  showing the code (rotating signs the other phones out). Worker: platform hosts matched exactly, yt-dlp
+  limited to the platform's own extractor, a run deadline read by every slow step, `ai_state = 'retry'`
+  for a busy provider or a run out of time, the guarded fetch pinned to the checked address, 40 MP cap on
+  thumbnails. Database: the sweep fails saves and asks whose job timed out four times, phones may queue
+  only grade / reprocess jobs and cannot update or delete jobs, hourly caps on saves and phone jobs, ask
+  limit counted on jobs, tag syntheses after late insights, `imports.source = 'links'`. Edge Functions:
+  global rate buckets, last forwarded hop for the restore limit, no quoted names in the proxy's `select`.
+  App: service worker v8 clears the image caches on a new identity, list-of-links imports are recorded,
+  Android manifest accepts several shared images (shell not rebuilt). Local checks green; nothing applied,
+  pushed or deployed. Open: confirm at the first worker deploy that Vercel accepts `maxDuration: 300`.
 - 2026-11-10 — Review fixes on branch `stash-review-fixes` (from 21289f5): 0004–0006 edited in place (time
   zone guard, push host check, owner ids from Vault, same-owner trigger, collection without save ids, claim
   before send, usage-kind bug), worker owner checks + crash safety + conditional grade, Learn query, push

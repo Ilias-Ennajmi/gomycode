@@ -28,7 +28,7 @@ Build a Next.js web app on Vercel, wrap it in a TWA Android shell, and release i
 
 1. The Android app (Next.js in a TWA) saves a link.
 2. The backend (Vercel API routes, Supabase with pgvector) stores it and creates a job.
-3. The download worker (Python, yt-dlp, ffmpeg) picks up the job and sends audio and caption to the AI services (transcription, Claude, embeddings).
+3. Postgres wakes the worker (one Vercel Python function with yt-dlp; no ffmpeg). It picks up the job and sends the video file and caption to the AI services (transcription, understanding); embeddings are computed inside Supabase. Every Supabase call it makes goes through the Edge Function `stash-worker-proxy`, so no service key leaves Supabase (docs/CONTRACT_0007.md).
 4. The worker stores the video and the insights back in Supabase.
 5. Supabase Realtime pushes a live update to the app.
 
@@ -45,7 +45,7 @@ The phone only ever sends a link. The worker does the heavy lifting, and Supabas
 | Data | Supabase Postgres in schema `stash`, pgvector, Storage, Auth (Google), Realtime | Row-level security on every table |
 | Scheduled jobs | Supabase pg_cron + pg_net calling the app's API routes | Daily queue, syntheses, reminders |
 | Notifications | Web Push with VAPID keys, shown as app notifications by the TWA's DelegationService | Playbook step 3.9 |
-| Worker | Python 3.12, yt-dlp, ffmpeg on Fly.io or Railway | Vercel functions can't run ffmpeg and yt-dlp within their limits; the worker polls `jobs` |
+| Worker | Python 3.12 + yt-dlp as one Vercel function (300 s, Fluid compute), woken by pg_net when a job is queued and by a pg_cron sweep every minute | No ffmpeg: one progressive MP4 is stored as it is and sent as a file to the transcription provider. No secret in the worker: it reaches Supabase through the Edge Function `stash-worker-proxy` with a wake-up token Postgres made itself. Free tier, no card (docs/CONTRACT_0007.md) |
 | Transcription | A Whisper-class API behind an interface | English, French, Arabic and Darija |
 | Understanding | Claude API: a fast, low-cost model per save, a stronger one for syntheses and exports | Model IDs in env vars `CLAUDE_FAST_MODEL` and `CLAUDE_SMART_MODEL`, set by me |
 | Embeddings | `gte-small` (384 numbers) run by a Supabase Edge Function, no key (contract 0007) | Stored in pgvector |
@@ -93,8 +93,8 @@ Add a Postgres function `search_saves(query_embedding, text, space_id, filters)`
 A save must feel instant on the phone and be fully processed within about 60 seconds in the background.
 
 1. **Capture (phone, under 1 second):** write the save to IndexedDB with status `queued`, show "Saved", then sync the row to Supabase and insert an `ingest` job. Works offline: Background Sync retries until it lands.
-2. **Fetch (worker):** resolve the URL, download the video with yt-dlp, extract caption, creator, duration and thumbnail. Transcode to 720p H.264 MP4 with faststart, upload to Storage. On failure, retry 3 times with backoff, then mark `failed` and fall back to the embed.
-3. **Transcribe:** extract audio with ffmpeg and send it to the transcription API. Keep timestamped segments.
+2. **Fetch (worker):** resolve the URL, write title, creator, caption and thumbnail first (oEmbed / Open Graph, a few seconds), then download one progressive MP4 with yt-dlp (H.264 up to 720p preferred, no transcoding) and upload it to Storage. A refused or oversized download never fails the save: it plays through the official embed instead.
+3. **Transcribe:** send the MP4 itself to the transcription provider (YouTube: the platform's own captions). Keep timestamped segments.
 4. **Understand:** one Claude call with caption, transcript and my existing Space names. Return strict JSON matching the `insights` schema plus 1–3 recall cards and any places. Validate the JSON; reprocess once if invalid.
 5. **File:** if I picked a Space, keep it. Otherwise use the suggested Space when confidence is 0.75 or higher, else leave it in Inbox.
 6. **Embed:** embed the title, key idea and transcript, store the vector, then compute the 5 most related saves.
