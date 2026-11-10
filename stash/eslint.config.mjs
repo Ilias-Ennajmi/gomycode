@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The worker is Python; its local virtualenv holds vendored JS.
+    "worker/**",
   ]),
 ]);
 

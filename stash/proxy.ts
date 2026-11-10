@@ -9,8 +9,8 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from "@/lib/sup
  * opens the URL gets their own empty space, never the owner's saves.
  */
 
-// Pages that never need an identity.
-const PUBLIC_PREFIXES = ["/design", "/offline"];
+// Pages that never need an identity (cron routes authenticate with the Vault secret instead).
+const PUBLIC_PREFIXES = ["/design", "/offline", "/api/cron"];
 
 function isPublic(pathname: string) {
   return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
