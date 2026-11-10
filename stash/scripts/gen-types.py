@@ -46,7 +46,7 @@ ENUMS = {
  "process_step": ["queued", "fetching", "watching", "reading", "filing", "ready"],
  "video_state": ["none", "stored", "blocked", "too_big", "evicted"],
  "playback": ["video", "embed", "link", "none"],
- "ai_state": ["pending", "done", "no_key", "not_owner", "over_budget", "failed"],
+ "ai_state": ["pending", "done", "no_key", "retry", "not_owner", "over_budget", "failed"],
  "ask_status": ["queued", "running", "ready", "failed"],
  "highlight_source": ["user", "ai"],
 }

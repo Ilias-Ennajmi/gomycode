@@ -18,7 +18,12 @@
 --     bucket under a cap (default 800 MB), oldest archived / not-kept first.
 --   * saves: process_step (live progress), video_state, playback, embed_url,
 --     video_bytes, ai_state. A save is `ready` even with no video and no AI;
---     the sweep re-queues insights once an AI key exists.
+--     the sweep re-queues insights once an AI key exists, or a little later
+--     when the provider was busy or the worker ran out of time (`retry`).
+--   * The sweep also ends what a dead worker left behind: a job that timed out
+--     four times fails, and its save (or ask) fails with it instead of spinning.
+--   * Phones may queue only `grade` and `reprocess` jobs, in their initial state;
+--     new saves, phone jobs and asks are capped per identity.
 --   * New tables: config, rate_limits, asks, highlights, backups, recovery.
 --   * syntheses.tag + a synthesize job when a tag reaches 5+ ready saves.
 --   * auto_collections(): collections from tags / creators / places / intent.
@@ -65,7 +70,10 @@ insert into stash.config (key, value, note) values
   ('tag_synth_min',      '5',     'Ready saves a tag needs (since its last synthesis) to queue a tag synthesis.'),
   ('backup_keep',        '4',     'Weekly backups kept per owner.'),
   ('ask_daily_limit',    '40',    'Questions per identity per 24 hours.'),
-  ('run_budget_seconds', '240',   'The worker stops claiming jobs after this long inside one /run.')
+  ('save_hourly_limit',  '300',   'New saves per identity per hour (owner identities are not limited).'),
+  ('job_hourly_limit',   '120',   'Grade / reprocess jobs a phone may queue per identity per hour.'),
+  ('run_budget_seconds', '240',   'The worker stops claiming jobs after this long inside one /run.'),
+  ('worker_max_seconds', '300',   'The worker function''s maximum duration (maxDuration in worker/vercel.json). Change both together.')
 on conflict (key) do nothing;
 
 -- Internal reader with a default.
@@ -106,7 +114,7 @@ alter table stash.saves add  constraint saves_playback_check
 
 alter table stash.saves drop constraint if exists saves_ai_state_check;
 alter table stash.saves add  constraint saves_ai_state_check
-  check (ai_state in ('pending', 'done', 'no_key', 'not_owner', 'over_budget', 'failed'));
+  check (ai_state in ('pending', 'done', 'no_key', 'retry', 'not_owner', 'over_budget', 'failed'));
 
 -- The app puts embed_url in an iframe: only the three official players, ever.
 alter table stash.saves drop constraint if exists saves_embed_url_check;
@@ -129,10 +137,10 @@ comment on column stash.saves.video_state  is 'none | stored (video_path set) | 
 comment on column stash.saves.playback     is 'What Play shows: video (our MP4) | embed (embed_url iframe) | link (open source_url) | none (screenshot, article).';
 comment on column stash.saves.embed_url    is 'Official player iframe URL built by the worker from source_url (TikTok, Instagram, YouTube).';
 comment on column stash.saves.video_bytes  is 'Size of the stored MP4; evict_videos() sums it.';
-comment on column stash.saves.ai_state     is 'pending | done | no_key (re-queued by the sweep once a key exists) | not_owner | over_budget | failed.';
+comment on column stash.saves.ai_state     is 'pending | done | no_key (re-queued by the sweep once a key exists) | retry (provider busy or out of time: re-queued by the sweep) | not_owner | over_budget | failed.';
 
 create index if not exists saves_video_stored_idx on stash.saves (saved_at) where video_path is not null;
-create index if not exists saves_ai_no_key_idx    on stash.saves (user_id) where ai_state = 'no_key';
+create index if not exists saves_ai_waiting_idx   on stash.saves (user_id) where ai_state in ('no_key', 'retry');
 
 -- Rows from before 0007 (the worker never ran in production; this only matters for dev data).
 update stash.saves set process_step = 'ready' where status in ('ready', 'failed', 'dead_link') and process_step = 'queued';
@@ -189,6 +197,197 @@ begin
   return new;
 end;
 $$;
+
+
+-- -----------------------------------------------------------------------------
+-- rate_limits: fixed-window counters for the Edge Functions and for the hourly
+-- caps on a phone's saves and jobs (service only).
+-- -----------------------------------------------------------------------------
+create table if not exists stash.rate_limits (
+  subject      text not null check (length(subject) between 1 and 100),
+  bucket       text not null check (length(bucket) between 1 and 40),
+  window_start timestamptz not null,
+  count        int not null default 0,
+  primary key (subject, bucket, window_start)
+);
+
+comment on table stash.rate_limits is 'Fixed-window counters used by stash-embed, stash-recovery and the hourly save / job caps. Service only.';
+
+alter table stash.rate_limits enable row level security;  -- no policies
+revoke all on stash.rate_limits from anon, authenticated;
+grant  all on stash.rate_limits to service_role;
+
+create or replace function stash.rate_limit_take(
+  p_subject text, p_bucket text, p_max int, p_window_s int
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_window timestamptz;
+  v_count  int;
+  v_len    int := greatest(1, least(coalesce(p_window_s, 60), 86400));
+begin
+  if coalesce(auth.role(), '') <> 'service_role' and session_user not in ('postgres', 'supabase_admin') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  v_window := pg_catalog.to_timestamp(pg_catalog.floor(extract(epoch from pg_catalog.now()) / v_len) * v_len);
+  insert into stash.rate_limits as r (subject, bucket, window_start, count)
+  values (pg_catalog.left(p_subject, 100), pg_catalog.left(p_bucket, 40), v_window, 1)
+  on conflict (subject, bucket, window_start) do update set count = r.count + 1
+  returning r.count into v_count;
+  if pg_catalog.random() < 0.02 then
+    delete from stash.rate_limits where window_start < pg_catalog.now() - interval '2 days';
+  end if;
+  return v_count <= greatest(1, coalesce(p_max, 1));
+end;
+$$;
+
+comment on function stash.rate_limit_take(text, text, int, int) is
+  'Service only: counts one hit for (subject, bucket) in the current window; false when over p_max.';
+
+
+-- New saves per identity per hour (config save_hourly_limit, default 300), so a
+-- stranger's device cannot flood the queue. Counted in stash.rate_limits (the
+-- server's clock; deleting saves does not give the hour back). Owner identities
+-- are not limited (a data-export import can be thousands of links).
+-- Fires only for statements a phone runs itself (see guard_job_insert below).
+create or replace function stash.hourly_take(p_user_id uuid, p_bucket text)
+returns int
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_count int;
+begin
+  insert into stash.rate_limits as r (subject, bucket, window_start, count)
+  values ('u:' || p_user_id::text, p_bucket, pg_catalog.date_trunc('hour', pg_catalog.now()), 1)
+  on conflict (subject, bucket, window_start) do update set count = r.count + 1
+  returning r.count into v_count;
+  return v_count;
+end;
+$$;
+
+comment on function stash.hourly_take(uuid, text) is
+  'Internal (guards): counts one hit for a user in this clock hour and returns the count. A refused statement rolls its hit back.';
+
+create or replace function stash.guard_save_rate()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null or v_uid = any (stash.owner_ids()) then
+    return new;
+  end if;
+  if stash.hourly_take(v_uid, 'save') > greatest(1, stash.cfg('save_hourly_limit', '300')::int) then
+    raise exception 'save limit reached' using errcode = '54000';
+  end if;
+  return new;
+end;
+$$;
+
+comment on function stash.guard_save_rate() is
+  'BEFORE INSERT on saves, only for statements a phone runs itself: at most save_hourly_limit new saves per hour (owners exempt). SQLSTATE 54000.';
+
+drop trigger if exists guard_save_rate on stash.saves;
+create trigger guard_save_rate
+  before insert on stash.saves
+  for each row
+  when (current_user in ('authenticated', 'anon'))
+  execute function stash.guard_save_rate();
+
+
+-- -----------------------------------------------------------------------------
+-- jobs: what a phone may queue. The app inserts `grade` jobs itself and
+-- `reprocess` through request_reprocess() (which runs as the caller); every
+-- other job is made by a SECURITY DEFINER trigger or function (ingest, export,
+-- ask, synthesize, galaxy, backup, the sweep).
+--
+-- The trigger's WHEN looks at current_user, not auth.role(): inside a definer
+-- function current_user is the function's owner even though the session still
+-- carries the phone's JWT, so those inserts pass untouched, and a statement
+-- the phone runs itself is the only thing guarded. The function itself is a
+-- definer so it can read stash.config.
+--
+-- Phones can no longer update or delete jobs (the app never did); a deleted
+-- save still takes its jobs with it (the cascade runs as the table owner).
+-- -----------------------------------------------------------------------------
+create or replace function stash.guard_job_insert()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null or new.user_id is distinct from v_uid then
+    raise exception 'not yours' using errcode = '42501';
+  end if;
+
+  if new.type = 'reprocess'::stash.job_type then
+    if new.save_id is null then
+      raise exception 'reprocess needs a save' using errcode = '22023';
+    end if;
+    new.space_id := null;
+    new.payload  := '{}'::jsonb;  -- the insights-only mode is the sweep's
+    -- Already waiting or running for this save: nothing to add (Retry tapped twice).
+    if exists (select 1 from stash.jobs j
+                where j.save_id = new.save_id
+                  and j.state in ('queued'::stash.job_state, 'running'::stash.job_state)
+                  and (j.type = 'ingest'::stash.job_type
+                       or (j.type = 'reprocess'::stash.job_type and coalesce(j.payload->>'mode', '') <> 'insights'))) then
+      return null;
+    end if;
+  elsif new.type = 'grade'::stash.job_type then
+    if new.save_id is null
+       or pg_catalog.jsonb_typeof(new.payload) is distinct from 'object'
+       or coalesce(new.payload->>'card_id', '') !~ '^[0-9a-fA-F-]{36}$'
+       or pg_catalog.octet_length(new.payload::text) > 6000 then
+      raise exception 'bad grade job' using errcode = '22023';
+    end if;
+    new.space_id := null;
+    new.payload  := pg_catalog.jsonb_strip_nulls(pg_catalog.jsonb_build_object(
+                      'card_id',    new.payload->'card_id',
+                      'audio_path', new.payload->'audio_path',
+                      'text',       new.payload->'text'));
+  else
+    raise exception 'this job is not queued from a phone' using errcode = '42501';
+  end if;
+
+  if stash.hourly_take(v_uid, 'job') > greatest(1, stash.cfg('job_hourly_limit', '120')::int) then
+    raise exception 'job limit reached' using errcode = '54000';
+  end if;
+
+  new.state      := 'queued'::stash.job_state;
+  new.attempts   := 0;
+  new.error      := null;
+  new.locked_at  := null;
+  new.run_after  := pg_catalog.now();
+  new.created_at := pg_catalog.now();
+  new.updated_at := pg_catalog.now();
+  return new;
+end;
+$$;
+
+comment on function stash.guard_job_insert() is
+  'BEFORE INSERT on jobs, only for statements a phone runs itself: grade and reprocess only, initial state, hourly cap.';
+
+drop trigger if exists guard_job_insert on stash.jobs;
+create trigger guard_job_insert
+  before insert on stash.jobs
+  for each row
+  when (current_user in ('authenticated', 'anon'))
+  execute function stash.guard_job_insert();
+
+revoke update, delete, truncate on stash.jobs from authenticated;
 
 
 -- Deleted save → its files go to media_trash. Videos are in Storage now.
@@ -505,55 +704,6 @@ comment on function stash.pipeline_status() is
 
 
 -- -----------------------------------------------------------------------------
--- rate_limits: fixed-window counters for the Edge Functions (service only).
--- -----------------------------------------------------------------------------
-create table if not exists stash.rate_limits (
-  subject      text not null check (length(subject) between 1 and 100),
-  bucket       text not null check (length(bucket) between 1 and 40),
-  window_start timestamptz not null,
-  count        int not null default 0,
-  primary key (subject, bucket, window_start)
-);
-
-comment on table stash.rate_limits is 'Fixed-window counters used by stash-embed and stash-recovery. Service only.';
-
-alter table stash.rate_limits enable row level security;  -- no policies
-revoke all on stash.rate_limits from anon, authenticated;
-grant  all on stash.rate_limits to service_role;
-
-create or replace function stash.rate_limit_take(
-  p_subject text, p_bucket text, p_max int, p_window_s int
-)
-returns boolean
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  v_window timestamptz;
-  v_count  int;
-  v_len    int := greatest(1, least(coalesce(p_window_s, 60), 86400));
-begin
-  if coalesce(auth.role(), '') <> 'service_role' and session_user not in ('postgres', 'supabase_admin') then
-    raise exception 'not allowed' using errcode = '42501';
-  end if;
-  v_window := pg_catalog.to_timestamp(pg_catalog.floor(extract(epoch from pg_catalog.now()) / v_len) * v_len);
-  insert into stash.rate_limits as r (subject, bucket, window_start, count)
-  values (pg_catalog.left(p_subject, 100), pg_catalog.left(p_bucket, 40), v_window, 1)
-  on conflict (subject, bucket, window_start) do update set count = r.count + 1
-  returning r.count into v_count;
-  if pg_catalog.random() < 0.02 then
-    delete from stash.rate_limits where window_start < pg_catalog.now() - interval '2 days';
-  end if;
-  return v_count <= greatest(1, coalesce(p_max, 1));
-end;
-$$;
-
-comment on function stash.rate_limit_take(text, text, int, int) is
-  'Service only: counts one hit for (subject, bucket) in the current window; false when over p_max.';
-
-
--- -----------------------------------------------------------------------------
 -- Same owner on every reference (0004), now also for asks.cited_save_ids.
 -- -----------------------------------------------------------------------------
 create or replace function stash.guard_same_owner()
@@ -659,9 +809,12 @@ begin
     if new.user_id is distinct from auth.uid() then
       raise exception 'not yours' using errcode = '42501';
     end if;
+    -- Counted on the ask jobs, which the phone cannot delete (deleting asks does not reset the limit).
     select count(*) into v_recent
-      from stash.asks a
-     where a.user_id = new.user_id and a.created_at > pg_catalog.now() - interval '24 hours';
+      from stash.jobs j
+     where j.user_id = new.user_id
+       and j.type::text = 'ask'
+       and j.created_at > pg_catalog.now() - interval '24 hours';
     if v_recent >= stash.cfg('ask_daily_limit', '40')::int then
       raise exception 'ask limit reached' using errcode = '54000';
     end if;
@@ -1074,7 +1227,8 @@ begin
    where s.user_id = p_user_id
      and s.status = 'ready'::stash.save_status
      and exists (select 1 from pg_catalog.unnest(i.tags) x where pg_catalog.lower(pg_catalog.btrim(x)) = v_tag)
-     and coalesce(s.processed_at, s.saved_at) > coalesce(v_since, '-infinity'::timestamptz);
+     -- i.created_at: a save that was ready long ago but got its insights only now counts as new.
+     and greatest(coalesce(s.processed_at, s.saved_at), i.created_at) > coalesce(v_since, '-infinity'::timestamptz);
 
   if v_new >= greatest(2, stash.cfg('tag_synth_min', '5')::int) then
     insert into stash.jobs (user_id, type, payload)
@@ -1116,6 +1270,50 @@ begin
   return new;
 end;
 $$;
+
+
+-- Insights that arrive after the save is already ready (reprocess {"mode":
+-- "insights"} leaves status alone, so the trigger above does not fire).
+create or replace function stash.on_insights_tags()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_tag text;
+begin
+  if tg_op = 'UPDATE' and new.tags is not distinct from old.tags then
+    return new;
+  end if;
+  if not exists (select 1 from stash.saves s
+                  where s.id = new.save_id and s.status = 'ready'::stash.save_status) then
+    return new;  -- still processing: on_save_ready_or_moved looks at the tags when it turns ready
+  end if;
+  for v_tag in
+    select distinct pg_catalog.lower(pg_catalog.btrim(x))
+      from pg_catalog.unnest(new.tags) x
+     limit 12
+  loop
+    perform stash.maybe_synthesize_tag(new.user_id, v_tag);
+  end loop;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_insights_tags on stash.insights;
+create trigger on_insights_tags
+  after insert or update of tags on stash.insights
+  for each row execute function stash.on_insights_tags();
+
+
+-- -----------------------------------------------------------------------------
+-- imports: a pasted or picked list of links is recorded too.
+-- -----------------------------------------------------------------------------
+alter table stash.imports drop constraint if exists imports_source_check;
+alter table stash.imports add  constraint imports_source_check
+  check (source in ('instagram', 'tiktok', 'links'));
+comment on table stash.imports is 'One row per import: an Instagram / TikTok data export, or a list of links.';
 
 
 -- -----------------------------------------------------------------------------
@@ -1251,8 +1449,12 @@ select cron.schedule('stash-evict-videos', '17 * * * *', $$select stash.evict_vi
 
 
 -- -----------------------------------------------------------------------------
--- Sweep (every minute): free stuck jobs (7 min > the worker's 300 s), re-queue
--- insights for saves that were processed before an AI key existed, wake the worker.
+-- Sweep (every minute): free stuck jobs (7 min > the worker's 300 s); after four
+-- timeouts fail the job and what it was working on (the save or the ask), so the
+-- phone shows Retry instead of a spinner; fail saves that are waiting with no job
+-- at all; re-queue insights for saves that were processed before an AI key
+-- existed (`no_key`) or while the provider was busy / time ran out (`retry`);
+-- wake the worker.
 -- -----------------------------------------------------------------------------
 create or replace function stash.sweep()
 returns void
@@ -1272,20 +1474,59 @@ begin
      and locked_at < pg_catalog.now() - interval '7 minutes'
      and attempts < 4;
 
-  update stash.jobs
-     set state = 'failed'::stash.job_state,
-         error = coalesce(error, 'timed out')
-   where state = 'running'::stash.job_state
-     and locked_at < pg_catalog.now() - interval '7 minutes'
-     and attempts >= 4;
+  with dead as (
+    update stash.jobs
+       set state = 'failed'::stash.job_state,
+           error = coalesce(error, 'timed out')
+     where state = 'running'::stash.job_state
+       and locked_at < pg_catalog.now() - interval '7 minutes'
+       and attempts >= 4
+    returning save_id, type, payload
+  ),
+  dead_saves as (
+    -- An insights-only job leaves its save alone: the save is already ready.
+    update stash.saves s
+       set status       = 'failed'::stash.save_status,
+           process_step = 'ready',
+           error        = 'Processing timed out. Tap Retry.'
+      from dead d
+     where d.save_id = s.id
+       and d.type in ('ingest'::stash.job_type, 'reprocess'::stash.job_type)
+       and coalesce(d.payload->>'mode', '') <> 'insights'
+       and s.status in ('queued'::stash.save_status, 'processing'::stash.save_status)
+    returning s.id
+  )
+  update stash.asks a
+     set status = 'failed', error = 'timeout'
+    from dead d
+   where d.type::text = 'ask'
+     and a.id::text = d.payload->>'ask_id'
+     and a.status in ('queued', 'running');
 
-  -- A key appeared: saves that finished without insights get them now
-  -- (a few per minute; payload mode "insights" skips the download).
-  if stash.has_ai_key() and exists (select 1 from stash.saves s where s.ai_state = 'no_key') then
+  -- Safety net: a save still waiting after 30 minutes with no job that could finish it.
+  update stash.saves s
+     set status       = 'failed'::stash.save_status,
+         process_step = 'ready',
+         error        = 'Processing timed out. Tap Retry.'
+   where s.id in (
+     select w.id
+       from stash.saves w
+      where w.status in ('queued'::stash.save_status, 'processing'::stash.save_status)
+        and w.updated_at < pg_catalog.now() - interval '30 minutes'
+        and not exists (select 1 from stash.jobs j
+                         where j.save_id = w.id
+                           and j.state in ('queued'::stash.job_state, 'running'::stash.job_state))
+      limit 50);
+
+  -- Saves that finished without insights get them now: a key appeared (`no_key`,
+  -- one try per 6 hours), or the provider was busy / the worker ran out of time
+  -- (`retry`, 10 minutes apart, at most 8 tries a day). A few per minute;
+  -- payload mode "insights" skips the download.
+  if stash.has_ai_key() and exists (select 1 from stash.saves s where s.ai_state in ('no_key', 'retry')) then
     insert into stash.jobs (save_id, user_id, type, payload)
     select s.id, s.user_id, 'reprocess'::stash.job_type, '{"mode": "insights"}'::jsonb
       from stash.saves s
-     where s.ai_state = 'no_key'
+     where s.ai_state in ('no_key', 'retry')
        and s.status = 'ready'::stash.save_status
        and s.user_id = any (stash.owner_ids())
        and not exists (select 1 from stash.jobs j
@@ -1293,7 +1534,11 @@ begin
                           and j.state in ('queued'::stash.job_state, 'running'::stash.job_state))
        and not exists (select 1 from stash.jobs j
                         where j.save_id = s.id and j.payload->>'mode' = 'insights'
-                          and j.created_at > pg_catalog.now() - interval '6 hours')
+                          and j.created_at > pg_catalog.now()
+                              - case when s.ai_state = 'retry' then interval '10 minutes' else interval '6 hours' end)
+       and (select count(*) from stash.jobs j
+             where j.save_id = s.id and j.payload->>'mode' = 'insights'
+               and j.created_at > pg_catalog.now() - interval '24 hours') < 8
      order by s.saved_at desc
      limit 5;
   end if;
@@ -1356,10 +1601,12 @@ $$;
 --                  (each also refuses any other caller itself)
 --   nobody else:   cfg, vault_text, has_ai_key, maybe_synthesize_tag and the
 --                  trigger functions (guard_ask_columns, on_ask_created,
---                  on_backup_deleted)
+--                  on_backup_deleted, guard_job_insert, guard_save_rate,
+--                  on_insights_tags) and hourly_take
 -- -----------------------------------------------------------------------------
 revoke execute on all functions in schema stash from public, anon, authenticated;
 grant  execute on all functions in schema stash to service_role;
+revoke execute on function stash.hourly_take(uuid, text) from service_role;  -- only the guards call it
 
 grant execute on function stash.search_saves(text, uuid, extensions.vector, int)               to authenticated;
 grant execute on function stash.related_saves(uuid, int)                                       to authenticated;
@@ -1402,5 +1649,7 @@ revoke all on all sequences in schema stash from anon;
 -- Service-only tables stay closed to the phone whatever the default privileges said.
 revoke all on stash.config, stash.rate_limits from authenticated;
 revoke insert, update, delete, truncate on stash.backups, stash.recovery from authenticated;
+-- Phones queue grade / reprocess jobs (guard_job_insert) and read their own; nothing else.
+revoke update, delete, truncate on stash.jobs from authenticated;
 
 notify pgrst, 'reload schema';
