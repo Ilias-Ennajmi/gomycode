@@ -409,6 +409,7 @@ export type Database = {
           geofence: Json | null;
           fired: boolean;
           created_at: string;
+          rule: Json | null;
         };
         Insert: {
           id?: string;
@@ -419,6 +420,7 @@ export type Database = {
           geofence?: Json | null;
           fired?: boolean;
           created_at?: string;
+          rule?: Json | null;
         };
         Update: {
           id?: string;
@@ -429,6 +431,7 @@ export type Database = {
           geofence?: Json | null;
           fired?: boolean;
           created_at?: string;
+          rule?: Json | null;
         };
         Relationships: [];
       };
@@ -708,6 +711,81 @@ export type Database = {
         };
         Relationships: [];
       };
+      galaxy_points: {
+        Row: {
+          save_id: string;
+          user_id: string;
+          x: number;
+          y: number;
+          cluster: number;
+          created_at: string;
+        };
+        Insert: {
+          save_id: string;
+          user_id?: string;
+          x: number;
+          y: number;
+          cluster: number;
+          created_at?: string;
+        };
+        Update: {
+          save_id?: string;
+          user_id?: string;
+          x?: number;
+          y?: number;
+          cluster?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      galaxy_clusters: {
+        Row: {
+          user_id: string;
+          cluster: number;
+          label: string;
+          cx: number;
+          cy: number;
+          size: number;
+          created_at: string;
+        };
+        Insert: {
+          user_id?: string;
+          cluster: number;
+          label: string;
+          cx: number;
+          cy: number;
+          size: number;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          cluster?: number;
+          label?: string;
+          cx?: number;
+          cy?: number;
+          size?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      galaxy_layouts: {
+        Row: {
+          user_id: string;
+          built_at: string;
+          points: number;
+        };
+        Insert: {
+          user_id?: string;
+          built_at?: string;
+          points?: number;
+        };
+        Update: {
+          user_id?: string;
+          built_at?: string;
+          points?: number;
+        };
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
     Functions: {
@@ -726,6 +804,7 @@ export type Database = {
       cron_store_daily: { Args: { p_secret: string; p_user_id: string; p_day: string; p_save_ids: string[]; p_minutes: number }; Returns: boolean };
       nearby_places: { Args: { p_lat: number; p_lng: number; p_limit?: number }; Returns: { id: string; save_id: string; name: string; lat: number; lng: number; address: string | null; distance_m: number }[] };
       get_collection: { Args: { p_slug: string }; Returns: Json };
+      wrapped: { Args: { p_month: string }; Returns: Json };
     };
     Enums: {
       space_kind: "topic" | "project" | "inbox";
@@ -733,7 +812,7 @@ export type Database = {
       save_status: "queued" | "processing" | "ready" | "failed" | "dead_link";
       intent: "learn" | "try" | "visit" | "buy" | "inspire" | "fun";
       reminder_kind: "time" | "place" | "context";
-      job_type: "ingest" | "reprocess" | "synthesize" | "export" | "grade" | "card_gen";
+      job_type: "ingest" | "reprocess" | "synthesize" | "export" | "grade" | "card_gen" | "galaxy";
       job_state: "queued" | "running" | "done" | "failed";
       export_kind: "brief" | "moodboard" | "deck" | "collection";
       theme_pref: "system" | "dark" | "light" | "black";

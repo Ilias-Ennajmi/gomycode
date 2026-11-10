@@ -16,7 +16,7 @@ TABLES = {
  "cards": "id:uuid! save_id:uuid user_id:uuid! prompt:text answer:text ease:num! interval_days:int! repetitions:int! due_at:ts! created_at:ts!",
  "reviews": "id:uuid! card_id:uuid user_id:uuid! answered_at:ts! grade:int? voice_answer_text:text? created_at:ts! feedback:text?",
  "syntheses": "id:uuid! space_id:uuid? user_id:uuid! topic:text? points:json! disagreements:json! suggested_action:text? source_save_ids:uuid[]! created_at:ts!",
- "reminders": "id:uuid! save_id:uuid user_id:uuid! kind:reminder_kind fire_at:ts? geofence:json? fired:bool! created_at:ts!",
+ "reminders": "id:uuid! save_id:uuid user_id:uuid! kind:reminder_kind fire_at:ts? geofence:json? fired:bool! created_at:ts! rule:json?",
  "jobs": "id:uuid! save_id:uuid? space_id:uuid? user_id:uuid! type:job_type state:job_state! attempts:int! error:text? locked_at:ts? run_after:ts! payload:json! created_at:ts! updated_at:ts!",
  "exports": "id:uuid! space_id:uuid user_id:uuid! kind:export_kind options:json! file_path:text? share_slug:text? created_at:ts! status:text! error:text? files:json! updated_at:ts!",
  "usage": "id:uuid! user_id:uuid! save_id:uuid? kind:text input_tokens:int! output_tokens:int! audio_seconds:num! usd:num! created_at:ts!",
@@ -24,6 +24,9 @@ TABLES = {
  "daily_queues": "id:uuid! user_id:uuid! day:date save_ids:uuid[]! minutes:int! built_at:ts! done_ids:uuid[]!",
  "push_subscriptions": "id:uuid! user_id:uuid! endpoint:text p256dh:text auth:text user_agent:text? created_at:ts!",
  "imports": "id:uuid! user_id:uuid! source:text file_name:text? total:int! queued:int! created_at:ts!",
+ "galaxy_points": "save_id:uuid user_id:uuid! x:num y:num cluster:int created_at:ts!",
+ "galaxy_clusters": "user_id:uuid! cluster:int label:text cx:num cy:num size:int created_at:ts!",
+ "galaxy_layouts": "user_id:uuid! built_at:ts! points:int!",
 }
 ENUMS = {
  "space_kind": ["topic", "project", "inbox"],
@@ -31,7 +34,7 @@ ENUMS = {
  "save_status": ["queued", "processing", "ready", "failed", "dead_link"],
  "intent": ["learn", "try", "visit", "buy", "inspire", "fun"],
  "reminder_kind": ["time", "place", "context"],
- "job_type": ["ingest", "reprocess", "synthesize", "export", "grade", "card_gen"],
+ "job_type": ["ingest", "reprocess", "synthesize", "export", "grade", "card_gen", "galaxy"],
  "job_state": ["queued", "running", "done", "failed"],
  "export_kind": ["brief", "moodboard", "deck", "collection"],
  "theme_pref": ["system", "dark", "light", "black"],
@@ -80,6 +83,7 @@ FUNCTIONS = [
   '      cron_store_daily: { Args: { p_secret: string; p_user_id: string; p_day: string; p_save_ids: string[]; p_minutes: number }; Returns: boolean };',
   '      nearby_places: { Args: { p_lat: number; p_lng: number; p_limit?: number }; Returns: { id: string; save_id: string; name: string; lat: number; lng: number; address: string | null; distance_m: number }[] };',
   '      get_collection: { Args: { p_slug: string }; Returns: Json };',
+  '      wrapped: { Args: { p_month: string }; Returns: Json };',
 ]
 out += ["    };", "    Views: { [_ in never]: never };", "    Functions: {", *FUNCTIONS, "    };", "    Enums: {"]
 for e, vals in ENUMS.items():
