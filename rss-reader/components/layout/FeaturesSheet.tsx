@@ -115,6 +115,12 @@ export const FEATURES: Feature[] = [
     go: { event: "downloads" },
   },
   {
+    title: "Automatic downloads",
+    where: "The player → ⋯ → Download new episodes on Wi-Fi",
+    words: "offline podcast wifi storage",
+    go: { event: "downloads" },
+  },
+  {
     title: "Car mode",
     where: "The car in the player",
     words: "driving big buttons",

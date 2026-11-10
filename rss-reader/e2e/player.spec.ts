@@ -125,3 +125,40 @@ test("download an episode, then it plays from the device, seeking included", asy
     .toBeGreaterThan(40);
   await page.evaluate(() => document.querySelector("audio")?.pause());
 });
+
+test("voice boost works on a streamed episode when its show allows it", async ({ page }, info) => {
+  await openApp(page);
+  await page.evaluate(() => localStorage.setItem("audio-voice-boost", "true"));
+  const sheet = await openEpisode(page, IDS.sleep, isPhone(info));
+  expect(await page.evaluate(() => document.querySelector("audio")?.crossOrigin)).toBe("anonymous");
+  await sheet.getByRole("button", { name: "More" }).click();
+  await expect(page.getByText("On for this episode")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => document.querySelector("audio")?.pause());
+});
+
+test("a show that refuses sound effects still plays, as it is", async ({ page }, info) => {
+  await openApp(page);
+  await page.evaluate(() => {
+    localStorage.setItem("audio-voice-boost", "true");
+    localStorage.removeItem("fx-blocked-origins");
+  });
+  await openEpisode(page, IDS.noCors, isPhone(info));
+  await expect(page.getByText(/doesn't allow sound effects/)).toBeVisible({ timeout: 20_000 });
+  // It plays, without CORS and without effects, and the server is remembered.
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const audio = document.querySelector("audio")!;
+        return !audio.paused && audio.currentTime > 0.3 && audio.crossOrigin === null;
+      })
+    )
+    .toBe(true);
+  expect(await page.evaluate(() => localStorage.getItem("fx-blocked-origins"))).toContain(
+    "localhost"
+  );
+  await page.evaluate(() => {
+    document.querySelector("audio")?.pause();
+    localStorage.removeItem("audio-voice-boost");
+  });
+});

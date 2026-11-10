@@ -5,7 +5,7 @@ import type { AiPriority } from "@/lib/ai-budget";
 import { formatClock, parseClock } from "@/lib/youtube-video";
 import { youTubeVideoId } from "@/lib/youtube";
 import { reportProblem } from "@/lib/errlog";
-import { salvageJson } from "@/lib/json-salvage";
+import { salvageJsonInfo } from "@/lib/json-salvage";
 
 // What a video says, from Gemini: a summary, the moments worth jumping to, and a transcript
 // (searchable, highlightable, each part a link to that moment). Gemini's free tier is often
@@ -19,13 +19,17 @@ export interface TimedText {
 
 export const MAX_ATTEMPTS = 4;
 // Past this, only the summary and key moments: a full transcript takes too long to write.
-const TRANSCRIPT_MAX_SECONDS = 45 * 60;
+// A transcript too long for one answer is continued in up to two more (analyzeVideo).
+const TRANSCRIPT_MAX_SECONDS = 75 * 60;
 // Long videos are too many tokens for the free tier's per-minute limit.
 const MAX_SECONDS = 2 * 60 * 60;
 // Audio is 32 tokens a second: about 2 h 15 fits the free tier's per-minute limit.
 const AUDIO_MAX_SECONDS = 135 * 60;
-// Episodes: a transcript up to an hour (talk is dense; longer ones take too long to write).
-const AUDIO_TRANSCRIPT_MAX_SECONDS = 60 * 60;
+// Episodes: a transcript up to 100 minutes (talk is dense; longer ones take too long).
+const AUDIO_TRANSCRIPT_MAX_SECONDS = 100 * 60;
+const MAX_CONTINUATIONS = 2;
+// A continuation needs room to finish: not started with less than this left.
+const CONTINUATION_MIN_MS = 100_000;
 
 function clockOf(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return Math.max(0, Math.round(value));
@@ -69,6 +73,26 @@ type Media =
   | { kind: "video"; videoId: string }
   | { kind: "audio"; url: string; type: string | null };
 
+/** The lines after what's already there: a continuation may repeat the last line or two. */
+export function mergeTranscripts(base: TimedText[], more: TimedText[]) {
+  const last = base.at(-1)?.t ?? -1;
+  const known = new Set(base.slice(-5).map((line) => line.text));
+  return [
+    ...base,
+    ...more.filter((line) => line.t > last || (line.t === last && !known.has(line.text))),
+  ];
+}
+
+function continuationPrompt(noun: string, last: TimedText) {
+  return (
+    `This ${noun}'s transcript is being written in parts. The part so far ends at ` +
+    `${formatClock(last.t)} with: "${last.text}". Answer with JSON only, continuing right ` +
+    `after that sentence, to the end of the ${noun} (or as far as you can): ` +
+    '{"transcript": [{"t": "M:SS", "text": "what is said, word for word"}]} ' +
+    "with one entry per sentence and the second it starts, in the same language."
+  );
+}
+
 export async function analyzeVideo(
   media: Media,
   durationSeconds: number | null,
@@ -93,33 +117,61 @@ export async function analyzeVideo(
       : "") +
     "}";
 
-  const options = { timeoutMs, maxTokens: withTranscript ? 32_000 : 2_000, priority };
-  const raw =
-    media.kind === "audio"
-      ? await generateFromAudio({ url: media.url, type: media.type }, prompt, options)
-      : await generateFromVideo(
-          `https://www.youtube.com/watch?v=${media.videoId}`,
-          prompt,
-          options
-        );
-  let data: { summary?: unknown; keyMoments?: unknown; transcript?: unknown };
-  try {
-    data = JSON.parse(raw);
-  } catch {
-    // Wrapped in a code fence or a sentence, or cut off at the length limit (a long
-    // transcript): keep everything up to the last complete entry.
+  const deadline = Date.now() + timeoutMs;
+  const ask = (text: string) => {
+    const options = {
+      timeoutMs: Math.max(5_000, deadline - Date.now()),
+      maxTokens: withTranscript ? 32_000 : 2_000,
+      priority,
+    };
+    return media.kind === "audio"
+      ? generateFromAudio({ url: media.url, type: media.type }, text, options)
+      : generateFromVideo(`https://www.youtube.com/watch?v=${media.videoId}`, text, options);
+  };
+  type Answer = { summary?: unknown; keyMoments?: unknown; transcript?: unknown };
+  const read = (raw: string) => {
     try {
-      data = salvageJson(raw) as typeof data;
+      return { data: JSON.parse(raw) as Answer, complete: true };
     } catch {
-      throw new AiError("Gemini returned something that isn't JSON");
+      // Wrapped in a code fence or a sentence, or cut off at the length limit (a long
+      // transcript): keep everything up to the last complete entry.
+      try {
+        const { value, complete } = salvageJsonInfo(raw);
+        return { data: value as Answer, complete };
+      } catch {
+        throw new AiError("Gemini returned something that isn't JSON");
+      }
     }
-  }
+  };
+
+  const first = read(await ask(prompt));
+  const data = first.data;
   const summary = typeof data.summary === "string" ? data.summary.trim() : "";
   if (!summary) throw new AiError("Gemini returned no summary");
+  let transcript = withTranscript ? timed(data.transcript, durationSeconds) : [];
+
+  // Cut off before the end: ask for the rest, as long as there's time and it's getting
+  // somewhere. What's already written is kept whatever happens next.
+  let complete = first.complete;
+  for (let n = 0; withTranscript && !complete && n < MAX_CONTINUATIONS; n++) {
+    const last = transcript.at(-1);
+    if (!last || (durationSeconds && last.t >= durationSeconds - 90)) break;
+    if (deadline - Date.now() < CONTINUATION_MIN_MS) break;
+    try {
+      const next = read(await ask(continuationPrompt(noun, last)));
+      const more = timed(next.data.transcript, durationSeconds);
+      const merged = mergeTranscripts(transcript, more);
+      if (merged.length === transcript.length) break;
+      transcript = merged;
+      complete = next.complete;
+    } catch {
+      break;
+    }
+  }
   return {
     summary,
     keyMoments: timed(data.keyMoments, durationSeconds).slice(0, 10),
-    transcript: withTranscript ? timed(data.transcript, durationSeconds) : [],
+    transcript,
   };
 }
 

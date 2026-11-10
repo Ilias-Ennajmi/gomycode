@@ -1,5 +1,6 @@
 "use client";
 
+import { useAutoDownloads } from "@/lib/auto-downloads";
 import * as React from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
@@ -185,6 +186,7 @@ function AppShellInner() {
   useAppEvent("find-episodes", () => setEpisodeSearchOpen(true));
   const [sourceSheetId, setSourceSheetId] = React.useState<string | null>(null);
   useSourceSheetRequest(setSourceSheetId);
+  useAutoDownloads();
   const [carMode, setCarMode] = React.useState(false);
   useAppEvent("car-mode", () => setCarMode(true));
   const closeCarMode = React.useCallback(() => setCarMode(false), []);

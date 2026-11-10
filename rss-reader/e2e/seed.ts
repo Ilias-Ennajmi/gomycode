@@ -11,6 +11,7 @@ export const IDS = {
   sleep: "e2e-episode-sleep",
   sponsor: "e2e-episode-sponsor",
   video: "e2e-video-long",
+  noCors: "e2e-episode-nocors",
 };
 
 function assertLocal(url: string | undefined) {
@@ -147,6 +148,8 @@ export async function seed() {
       seconds: number;
       hoursAgo: number;
       watched?: number;
+      /** Served without CORS headers, like a show that doesn't allow sound effects. */
+      plain?: boolean;
       chapters?: { t: number; title: string }[];
       transcript?: { t: number; text: string }[];
     }) =>
@@ -158,7 +161,7 @@ export async function seed() {
           link: `${FIXTURES}/episode/${data.id}`,
           summary: `Notes for ${data.title}.`,
           publishedAt: ago(data.hoursAgo),
-          audioUrl: `${FIXTURES}/audio/${data.seconds}.wav`,
+          audioUrl: `${FIXTURES}/${data.plain ? "audio-plain" : "audio"}/${data.seconds}.wav`,
           audioType: "audio/wav",
           durationSeconds: data.seconds,
           watchedSeconds: data.watched ?? null,
@@ -167,6 +170,13 @@ export async function seed() {
           imageUrl: `${FIXTURES}/art.png`,
         },
       });
+    await episode({
+      id: IDS.noCors,
+      title: "A show without CORS",
+      seconds: 240,
+      hoursAgo: 40,
+      plain: true,
+    });
     await episode({
       id: IDS.sleep,
       title: "The Science of Sleep",

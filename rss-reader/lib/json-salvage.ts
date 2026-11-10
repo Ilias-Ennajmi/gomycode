@@ -3,6 +3,11 @@
 // brackets still open: a cut-off list of six bullets still gives five.
 
 export function salvageJson(raw: string): unknown {
+  return salvageJsonInfo(raw).value;
+}
+
+/** Like salvageJson, and says whether the answer was whole (false: it was cut off). */
+export function salvageJsonInfo(raw: string): { value: unknown; complete: boolean } {
   const start = raw.search(/[{[]/);
   if (start < 0) throw new SyntaxError("No JSON in the answer");
   const text = raw.slice(start);
@@ -24,7 +29,7 @@ export function salvageJson(raw: string): unknown {
     else if (ch === "{" || ch === "[") stack.push(ch === "{" ? "}" : "]");
     else if (ch === "}" || ch === "]") {
       stack.pop();
-      if (stack.length === 0) return JSON.parse(text.slice(0, i + 1));
+      if (stack.length === 0) return { value: JSON.parse(text.slice(0, i + 1)), complete: true };
       // Just closed a value inside a list: a safe place to stop.
       if (stack[stack.length - 1] === "]") {
         cut = i + 1;
@@ -33,5 +38,5 @@ export function salvageJson(raw: string): unknown {
     }
   }
   if (cut < 0) throw new SyntaxError("The answer was cut before anything usable");
-  return JSON.parse(text.slice(0, cut) + closers);
+  return { value: JSON.parse(text.slice(0, cut) + closers), complete: false };
 }

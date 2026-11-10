@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { chunks, guessLang, htmlToText, narrationParts, voiceFor } from "@/lib/speech";
 import { usePref } from "@/lib/prefs";
+import { narration } from "@/lib/narration";
 import { useT, tr } from "@/lib/i18n";
 
 // Read aloud with the browser's own speech engine: free, offline-capable, and
@@ -15,31 +16,6 @@ import { useT, tr } from "@/lib/i18n";
 // Or with a natural voice (Gemini, /api/narrate): a minute of text at a time, the next one
 // fetched while the current one plays, each kept on the device (Cache API) so replaying
 // costs nothing. Busy or out of quota, it carries on with the device's voice from there.
-
-const NARRATION_CACHE = "narration";
-
-function hash(text: string) {
-  let h = 5381;
-  for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0;
-  return (h >>> 0).toString(36);
-}
-
-/** One passage in the natural voice, from the device's cache or the server. */
-async function narration(text: string, lang: string): Promise<Blob> {
-  const key = `/narration/${lang}/${hash(text)}`;
-  const cache = "caches" in window ? await caches.open(NARRATION_CACHE).catch(() => null) : null;
-  const hit = await cache?.match(key);
-  if (hit) return hit.blob();
-  const res = await fetch("/api/narrate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, lang: lang.slice(0, 2) }),
-  });
-  if (!res.ok) throw new Error(`narrate ${res.status}`);
-  const blob = await res.blob();
-  await cache?.put(key, new Response(blob, { headers: { "Content-Type": "audio/wav" } }));
-  return blob;
-}
 
 const RATES = [1, 1.25, 1.5, 0.85];
 

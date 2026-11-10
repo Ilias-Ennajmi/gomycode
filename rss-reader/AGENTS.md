@@ -126,9 +126,10 @@ Android app they appear as the app's own notifications.
   `<mark data-hl>`. `ArticleContent` memoises its `__html` object: a new object each
   render makes React reset innerHTML and wipes the marks.
 - _Search by meaning_: the "By meaning" chip (only when AI is on) adds `meaning=1`;
-  `searchByMeaning` embeds the query once (cached 10 min per instance), ranks the newest
-  1,500 embedded articles by cosine (≥ 0.55, top 60), then appends word matches; out of
-  quota it falls back to the words.
+  `searchByMeaning` embeds the query once (cached 10 min per instance) and `meaningIds`
+  scores every stored embedding in the database (dot product of unit vectors with
+  `unnest`, ≥ 0.55, top 60; only ids come back), then appends word matches; out of quota
+  it falls back to the words.
 - _Search_: `Article.search` is a `tsvector` kept by the trigger `Article_search_update`
   (migration `v2_library`; `reader_fold()` strips accents). Prisma sees it as
   `Unsupported`, and search runs as raw SQL in `lib/search.ts`, which also matches
@@ -167,7 +168,10 @@ bot" and caption/transcript endpoints refuse, but its pages still load:
   4 tries. An empty transcript array means "done, none" (videos over 45 minutes).
   Transcripts are one line per sentence with its own start (read along stays exact); an
   answer cut off at the token limit is salvaged up to the last complete line
-  (`salvageJson`). The background queue (`videoAiQueue`) goes: saved or started items
+  (`salvageJsonInfo`) and then continued: up to two more calls ("continue after this
+  sentence", `mergeTranscripts`) while 100 s remain. Transcripts are made up to 75 minutes
+  for videos and 100 for episodes; a transcript that still ends early stays as far as it
+  got. The background queue (`videoAiQueue`) goes: saved or started items
   (any age), then the last 30 days of shows and channels you play, then the newest two
   weeks. A spare slot redoes one old paragraph-style transcript (`isCoarseTranscript`,
   median gap ≥ 12 s) of something played or saved, once (`refineQueue`,
@@ -179,7 +183,8 @@ bot" and caption/transcript endpoints refuse, but its pages still load:
   the reader turns into seeks. The transcript is part of the article body, so highlights
   work on it, and the search trigger indexes it (weight D).
 - _DeArrow_ (`lib/dearrow.ts`): community titles from `sponsor.ajay.app/api/branding`,
-  asked after each refresh for videos under 3 days old (every 6 h until one exists);
+  asked after each refresh for videos under 14 days old (every 6 h in the first 3 days,
+  then every 2 days, until one exists: `brandingDue`);
   `title` holds what's shown, `altTitle`/`originalTitle` both kept, and the Settings switch
   (`PUT /api/videos/dearrow`, Setting `dearrow`) swaps every row at once. The reader shows
   the creator's title under a plain one. Thumbnails aren't replaced (DeArrow renders them
@@ -213,14 +218,25 @@ followed podcast stores only its newest 20 episodes.
   `sourceOf(episode)` gives the player that path when downloaded and a worker is in
   charge. Needs CORS on the show's server; a 502 from the worker means it isn't allowed.
   Downloads are listed in localStorage `episode-downloads` and removed once played to the
-  end (on `ended` or the next load). Podcasts → ⋯ → Downloads lists them.
+  end (on `ended` or the next load). Podcasts → ⋯ → Downloads lists them. _Automatic_
+  (`lib/auto-downloads.ts`, `useAutoDownloads` in AppShell): shows ticked in the player's ⋯
+  ("Download new episodes on Wi-Fi", pref `auto-download`) keep their newest 2 unread
+  episodes on the device, up to a storage limit (500 MB–5 GB, in the Downloads sheet). It
+  runs 8 s after opening, on coming back online or into view, at most every 30 minutes,
+  never on cellular, data saver or 2G/3G (`navigator.connection`, where it exists); a show
+  whose server refuses is not retried (`auto-download-failed`). A web app can't run in the
+  background, so nothing happens while Reader is closed.
 - _Car mode_ (`components/audio/CarMode.tsx`, app event `car-mode`): huge controls, Wake
   Lock while open.
 - _Voice boost and silence trimming_ (`lib/audio-fx.ts`): Web Audio (high-pass, presence
   EQ, compressor, make-up gain; a ScriptProcessor meter speeds silences to 3×). Routing an
   element through Web Audio is permanent and silences non-CORS streams, so effects attach
-  only to downloaded episodes, only from a tap (a context made without one is suspended),
-  and `AudioProvider` swaps in a fresh `<audio>` (its `key`) before streaming anything else.
+  only to audio the page may read, only from a tap (a context made without one is
+  suspended). That is a downloaded episode, or a stream asked for with `crossOrigin =
+  "anonymous"` (`assignSource`); a server that refuses CORS makes the `<audio>` error, which
+  `onError` answers by remembering the origin (`fx-blocked-origins`) and playing it plainly.
+  `AudioProvider` swaps in a fresh `<audio>` (its `key`) whenever an attached element would
+  have to play something it can't read.
 - Discover's Podcasts channel searches Apple (`searchApplePodcasts`) and shows Apple's charts
   (`/api/discover/podcasts`, US and French stores by language).
 
@@ -426,7 +442,8 @@ with Gemini text-to-speech: `narrationParts` cuts it into passages under 900 cha
 `/api/narrate` (`narrate()` in `lib/ai.ts`, `GEMINI_TTS_MODEL` or the preview TTS models,
 budget bucket `voice`, `GEMINI_VOICE_DAILY`, default 60), kept in the `narration` cache on
 the device, the next fetched while one plays. Busy or out of quota, it carries on with the
-device's voice from that passage.
+device's voice from that passage. Listen to Today shares the reader's player; Listen to
+Later has the same "AI" switch (`NaturalPlayer` in `lib/narration.ts`).
 
 **Passkeys** (`lib/passkeys.ts`, `/api/auth/passkey/*`, `@simplewebauthn`). Added from
 Settings → App while signed in; the login page offers "Unlock with a passkey" when one
@@ -623,6 +640,9 @@ Built in this order (see `git log -- rss-reader`):
 28. Reliability and security: worker patience and a stuck-screen way out, uptime workflow,
     voice check, passkeys, backup restore, encrypted export tokens, no double exports.
 29. The whole interface in French, the "Everything Reader can do" page, axe checks.
+30. Podcasts, video, AI: automatic downloads, effects on streams that allow it, longer
+    transcripts, DeArrow for older videos, natural voice in Listen to Later, meaning search
+    over every article.
 
 ## Open ideas (not built yet)
 
