@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, ClipboardPaste, Play, Search, Share2, X } from "lucide-react";
+import { ArrowRight, ClipboardPaste, Layers, Play, Search, Share2, X } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Banner } from "@/components/ui/Banner";
 import { Chip } from "@/components/ui/Chip";
@@ -25,6 +25,7 @@ import { useLibrary } from "@/lib/hooks/useLibrary";
 import { createSpace, nextSpaceColor, updateSpace, type SaveItem } from "@/lib/data";
 import { FILTER_LABEL, FILTERS, filterSaves, isFilter, spaceCounts, type Filter } from "@/lib/queue";
 import { formatDuration } from "@/components/ui/Thumbnail";
+import { triageCandidates } from "@/lib/triage";
 
 // Leaflet touches `window` when it loads, so the map is client-only.
 const MapView = dynamic(() => import("@/components/library/MapView"), {
@@ -66,6 +67,8 @@ export function LibraryView() {
     [lib.saves, selectedId, filter, inboxId],
   );
   const byId = useMemo(() => new Map(lib.saves.map((s) => [s.id, s])), [lib.saves]);
+  const [openedAt] = useState(() => new Date());
+  const oldCount = useMemo(() => triageCandidates(lib.saves, openedAt).length, [lib.saves, openedAt]);
 
   // Shortcut "Search" opens with the field focused.
   useEffect(() => {
@@ -198,6 +201,16 @@ export function LibraryView() {
             <Link href={`/s/${selected.id}`} className="mx-4 flex min-h-12 items-center gap-3 rounded-card bg-raised px-4 text-label text-fg">
               <span aria-hidden className={cx("h-2 w-2 rounded-full", SPACE_BG[selected.color])} />
               <span className="flex-1 truncate">Open {selected.name}</span>
+              <ArrowRight size={24} strokeWidth={2} aria-hidden className="text-fg-muted" />
+            </Link>
+          )}
+
+          {oldCount > 0 && !selectedId && lens === "grid" && hits === null && (
+            <Link href="/triage" className="mx-4 flex min-h-12 items-center gap-3 rounded-card border border-line px-4 text-label text-fg">
+              <Layers size={24} strokeWidth={2} aria-hidden className="text-fg-muted" />
+              <span className="flex-1 truncate">
+                {oldCount} old {oldCount === 1 ? "save" : "saves"} to sort · 30 s
+              </span>
               <ArrowRight size={24} strokeWidth={2} aria-hidden className="text-fg-muted" />
             </Link>
           )}
