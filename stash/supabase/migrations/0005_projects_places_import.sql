@@ -63,6 +63,13 @@ as $$
 begin
   if coalesce(auth.role(), '') = 'authenticated' then
     if tg_op = 'INSERT' then
+      -- Only the caller's own Space (RLS shows the phone nothing else, so this
+      -- also refuses an id that belongs to another identity).
+      if new.user_id is distinct from auth.uid()
+         or not exists (select 1 from stash.spaces sp
+                         where sp.id = new.space_id and sp.user_id = auth.uid()) then
+        raise exception 'not your Space' using errcode = '42501';
+      end if;
       new.file_path  := null;
       new.files      := '{}'::jsonb;
       new.share_slug := null;
@@ -168,17 +175,23 @@ begin
      and pg_catalog.pg_get_constraintdef(c.oid) like '%kind%'
    limit 1;
 
-  if v_def is null then
-    v_kinds := array['transcribe', 'understand', 'embed', 'synthesize', 'search'];
-  elsif v_def like '%''export''%' then
-    return;  -- already allowed
-  else
-    select array_agg(m[1]) into v_kinds
-      from regexp_matches(v_def, '''([a-z_]+)''', 'g') as m;
+  -- Every kind known so far, plus whatever the current constraint allows. Postgres
+  -- prints the check either as ARRAY['a'::text, …] or as '{a,b}'::text[], so both
+  -- forms are read (reading only the first collapsed the list to one kind).
+  select pg_catalog.array_agg(distinct k order by k) into v_kinds
+    from (
+      select pg_catalog.unnest(array['transcribe', 'understand', 'embed', 'synthesize', 'search', 'grade', 'export']) as k
+      union
+      select m[1] from pg_catalog.regexp_matches(coalesce(v_def, ''), '''([a-z_]+)''', 'g') as m
+      union
+      select t from pg_catalog.regexp_split_to_table(
+               coalesce(pg_catalog.substring(v_def, '''\{([a-z_,]+)\}'''), ''), ',') as t
+    ) x
+   where k <> '';
+
+  if v_con is not null then
     execute format('alter table stash.usage drop constraint %I', v_con);
   end if;
-
-  v_kinds := array_append(v_kinds, 'export');
   execute format('alter table stash.usage add constraint usage_kind_check check (kind = any (%L::text[]))', v_kinds);
 end
 $$;
@@ -222,6 +235,7 @@ set search_path = ''
 as $$
   select s.id
     from stash.exports e
+    join stash.spaces sp on sp.id = e.space_id and sp.user_id = e.user_id and not sp.archived
     join stash.saves s   on s.space_id = e.space_id and s.user_id = e.user_id
     left join stash.states st on st.save_id = s.id
    where e.kind = 'collection'::stash.export_kind
@@ -253,8 +267,8 @@ as $$
            'description', sp.description,
            'created_at',  e.created_at,
            'saves', coalesce((
+             -- No save ids: the page needs none, and they shouldn't leave the database.
              select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
-                      'id',         s.id,
                       'title',      coalesce(i.title, s.title),
                       'key_idea',   i.key_idea,
                       'takeaways',  coalesce(i.takeaways, '[]'::jsonb),
@@ -271,7 +285,7 @@ as $$
            ), '[]'::jsonb)
          )
     from stash.exports e
-    join stash.spaces sp on sp.id = e.space_id
+    join stash.spaces sp on sp.id = e.space_id and sp.user_id = e.user_id
    where e.kind = 'collection'::stash.export_kind
      and e.share_slug is not null
      and e.share_slug = p_slug
@@ -282,7 +296,8 @@ $$;
 
 comment on function stash.get_collection(text) is
   'Public read-only view of a shared collection: Space name/colour/description and, per save, '
-  'title, key idea, takeaways, creator, platform, link and thumbnail path. Null when the slug is unknown.';
+  'title, key idea, takeaways, creator, platform, link and thumbnail path (no save ids). Null when the slug is unknown '
+  'or the Space is archived.';
 
 
 -- Thumbnails of saves inside a shared collection are readable by anyone who
@@ -297,6 +312,7 @@ as $$
   select exists (
     select 1
       from stash.exports e
+      join stash.spaces sp on sp.id = e.space_id and sp.user_id = e.user_id and not sp.archived
       join stash.saves s on s.space_id = e.space_id and s.user_id = e.user_id
      where e.kind = 'collection'::stash.export_kind
        and e.share_slug is not null
@@ -428,6 +444,7 @@ $$;
 --   anon:          vapid_public_key, cron_* (each checks the Vault secret),
 --                  get_collection, is_shared_thumb (public collection page)
 --   service_role:  everything (the worker; it bypasses RLS anyway)
+--   service_role:  owner_ids (Vault `stash_owner_ids`), plus the above
 --   nobody else:   wake_worker, claim_jobs, sweep, cron_ok, call_app,
 --                  maybe_synthesize, collection_save_ids, guard and trigger
 --                  functions (triggers fire without EXECUTE on their function).
@@ -454,6 +471,9 @@ grant execute on function stash.cron_daily_candidates(text)                     
 grant execute on function stash.cron_store_daily(text, uuid, date, uuid[], int)                to anon;
 grant execute on function stash.get_collection(text)                                           to anon;
 grant execute on function stash.is_shared_thumb(text)                                          to anon;
+
+-- Server-side only (0004): owner ids from Vault. Covered by the service_role grant above.
+grant execute on function stash.owner_ids()                                                    to service_role;
 
 -- anon sees the schema (for those RPCs) but no table or sequence in it.
 grant usage on schema stash to anon;

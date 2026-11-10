@@ -80,6 +80,21 @@ create table if not exists stash.push_subscriptions (
 
 comment on table stash.push_subscriptions is 'Web Push subscriptions (VAPID). Endpoint is unique across users.';
 
+-- The cron route POSTs to every stored endpoint, so only the browsers' real push
+-- services are accepted (no http, no arbitrary hosts). Same list as
+-- lib/pushHosts.ts, which the app checks before saving and before sending.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'push_subscriptions_endpoint_host'
+                  and conrelid = 'stash.push_subscriptions'::regclass) then
+    alter table stash.push_subscriptions add constraint push_subscriptions_endpoint_host check (
+      length(endpoint) <= 1000
+      and endpoint ~ '^https://(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|([a-z0-9-]+\.)+notify\.windows\.com|web\.push\.apple\.com|([a-z0-9-]+\.)+push\.apple\.com)(:443)?/[^[:space:]]*$'
+    );
+  end if;
+end
+$$;
+
 create index if not exists push_subscriptions_user_id_idx on stash.push_subscriptions (user_id);
 
 
@@ -103,6 +118,178 @@ begin
   end loop;
 end
 $$;
+
+
+-- -----------------------------------------------------------------------------
+-- settings.timezone must be a real IANA zone: `now() at time zone <bad>` throws,
+-- and one bad row would break the cron queries for every user.
+-- -----------------------------------------------------------------------------
+create or replace function stash.guard_settings_timezone()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  if new.timezone is null
+     or pg_catalog.length(new.timezone) > 64
+     or not exists (select 1 from pg_catalog.pg_timezone_names z where z.name = new.timezone) then
+    raise exception 'unknown time zone' using errcode = '22023';
+  end if;
+  return new;
+end;
+$$;
+
+comment on function stash.guard_settings_timezone() is
+  'BEFORE INSERT/UPDATE OF timezone on settings: only names listed in pg_timezone_names.';
+
+drop trigger if exists guard_settings_timezone on stash.settings;
+create trigger guard_settings_timezone
+  before insert or update of timezone on stash.settings
+  for each row execute function stash.guard_settings_timezone();
+
+
+-- -----------------------------------------------------------------------------
+-- Same owner on every reference. RLS checks a row's user_id, not the ids it
+-- points at, so without this a device could insert a job, reminder or card
+-- that names another identity's save or Space (the worker would then read it).
+-- One generic BEFORE trigger: each argument is a referencing column; the row
+-- it names must belong to NEW.user_id. `<col>[]` checks every id in an array.
+-- SECURITY DEFINER because the phone's RLS hides other identities' rows (an
+-- invisible row would look like a missing one). Named zz_ so it runs after the
+-- other BEFORE triggers that rewrite NEW.
+-- -----------------------------------------------------------------------------
+create or replace function stash.guard_same_owner()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_new   jsonb := pg_catalog.to_jsonb(new);
+  v_old   jsonb := case when tg_op = 'UPDATE' then pg_catalog.to_jsonb(old) else null end;
+  v_user  uuid  := (v_new->>'user_id')::uuid;
+  v_arg   text;
+  v_col   text;
+  v_array boolean;
+  v_table text;
+  v_id    uuid;
+  v_owner uuid;
+begin
+  foreach v_arg in array tg_argv
+  loop
+    v_array := pg_catalog.right(v_arg, 2) = '[]';
+    v_col   := case when v_array then pg_catalog.left(v_arg, -2) else v_arg end;
+    -- Unchanged reference and unchanged owner: nothing to check.
+    continue when tg_op = 'UPDATE'
+              and (v_old->v_col) is not distinct from (v_new->v_col)
+              and (v_old->'user_id') is not distinct from (v_new->'user_id');
+    v_table := case
+                 when v_col in ('save_id', 'save_ids', 'done_ids', 'source_save_ids') then 'saves'
+                 when v_col in ('space_id', 'suggested_space_id') then 'spaces'
+                 when v_col = 'card_id' then 'cards'
+               end;
+    if v_table is null then
+      raise exception 'guard_same_owner: unknown column %', v_col;
+    end if;
+
+    if v_array then
+      if pg_catalog.jsonb_typeof(v_new->v_col) = 'array' then
+        execute pg_catalog.format(
+          'select t.user_id from stash.%I t where t.id = any ($1) and t.user_id <> $2 limit 1', v_table)
+          into v_owner
+          using (select pg_catalog.array_agg(x::uuid) from pg_catalog.jsonb_array_elements_text(v_new->v_col) x),
+                v_user;
+        if v_owner is not null then
+          raise exception 'reference to another owner''s row' using errcode = '42501';
+        end if;
+      end if;
+    else
+      v_id := (v_new->>v_col)::uuid;
+      continue when v_id is null;
+      v_owner := null;
+      execute pg_catalog.format('select t.user_id from stash.%I t where t.id = $1', v_table)
+        into v_owner using v_id;
+      -- A missing row is the foreign key's job; another owner's row is ours.
+      if v_owner is not null and v_owner is distinct from v_user then
+        raise exception 'reference to another owner''s row' using errcode = '42501';
+      end if;
+    end if;
+  end loop;
+  return new;
+end;
+$$;
+
+comment on function stash.guard_same_owner() is
+  'BEFORE INSERT/UPDATE trigger: every save/space/card the row references belongs to NEW.user_id.';
+
+do $$
+declare
+  r record;
+begin
+  for r in
+    select * from (values
+      ('saves',        array['space_id']),
+      ('insights',     array['save_id', 'suggested_space_id']),
+      ('transcripts',  array['save_id']),
+      ('embeddings',   array['save_id']),
+      ('places',       array['save_id']),
+      ('states',       array['save_id']),
+      ('cards',        array['save_id']),
+      ('reviews',      array['card_id']),
+      ('syntheses',    array['space_id', 'source_save_ids[]']),
+      ('reminders',    array['save_id']),
+      ('jobs',         array['save_id', 'space_id']),
+      ('exports',      array['space_id']),
+      ('usage',        array['save_id']),
+      ('daily_queues', array['save_ids[]', 'done_ids[]'])
+    ) as t(tbl, cols)
+  loop
+    execute pg_catalog.format('drop trigger if exists zz_same_owner on stash.%I', r.tbl);
+    execute pg_catalog.format(
+      'create trigger zz_same_owner before insert or update on stash.%I '
+      'for each row execute function stash.guard_same_owner(%s)',
+      r.tbl, (select pg_catalog.string_agg(pg_catalog.quote_literal(c), ', ') from pg_catalog.unnest(r.cols) c));
+  end loop;
+end
+$$;
+
+
+-- -----------------------------------------------------------------------------
+-- Owner ids for server-side work (cron pushes, daily queues, cleanup), from the
+-- Vault secret `stash_owner_ids`: comma-separated device ids, the same value as
+-- the worker's OWNER_USER_IDS. The owner creates it (Settings shows the device
+-- id); while it is missing or empty the cron functions return nothing.
+-- -----------------------------------------------------------------------------
+create or replace function stash.owner_ids()
+returns uuid[]
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_raw text;
+begin
+  select decrypted_secret into v_raw
+    from vault.decrypted_secrets where name = 'stash_owner_ids' limit 1;
+  if v_raw is null or pg_catalog.btrim(v_raw) = '' then
+    return '{}'::uuid[];
+  end if;
+  return coalesce((
+    select pg_catalog.array_agg(distinct pg_catalog.lower(x)::uuid)
+      from (select pg_catalog.btrim(p) as x
+              from pg_catalog.regexp_split_to_table(v_raw, '[,\s]+') p) s
+     where x ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+  ), '{}'::uuid[]);
+end;
+$$;
+
+comment on function stash.owner_ids() is
+  'Owner device ids from Vault secret stash_owner_ids (comma-separated). Empty when unset.';
+
+revoke execute on function stash.owner_ids() from public, anon, authenticated;
+grant execute on function stash.owner_ids() to service_role;
 
 
 -- -----------------------------------------------------------------------------
@@ -462,10 +649,14 @@ security definer
 set search_path = ''
 as $$
 #variable_conflict use_column
+declare
+  v_owners uuid[];
 begin
   if not stash.cron_ok(p_secret) then
     raise exception 'not allowed' using errcode = '42501';
   end if;
+  -- Only the owner's identities (Vault `stash_owner_ids`); nothing while it is unset.
+  v_owners := stash.owner_ids();
   return query
   select r.id,
          r.user_id,
@@ -476,10 +667,11 @@ begin
          coalesce((select jsonb_agg(jsonb_build_object('endpoint', p.endpoint, 'p256dh', p.p256dh, 'auth', p.auth))
                      from stash.push_subscriptions p where p.user_id = r.user_id), '[]'::jsonb)
     from stash.reminders r
-    join stash.saves s on s.id = r.save_id
+    join stash.saves s on s.id = r.save_id and s.user_id = r.user_id
     left join stash.insights i on i.save_id = r.save_id
     left join stash.settings st on st.user_id = r.user_id
-   where r.kind = 'time'::stash.reminder_kind
+   where r.user_id = any (v_owners)
+     and r.kind = 'time'::stash.reminder_kind
      and not r.fired
      and r.fire_at is not null
      and r.fire_at <= pg_catalog.now()
@@ -490,8 +682,10 @@ $$;
 
 grant execute on function stash.cron_due_reminders(text) to anon;
 
+-- Claims reminders before the route sends them: returns only the ids this call
+-- flipped, so two overlapping runs never push the same reminder twice.
 create or replace function stash.cron_mark_fired(p_secret text, p_ids uuid[])
-returns void
+returns setof uuid
 language plpgsql
 security definer
 set search_path = ''
@@ -500,7 +694,10 @@ begin
   if not stash.cron_ok(p_secret) then
     raise exception 'not allowed' using errcode = '42501';
   end if;
-  update stash.reminders set fired = true where id = any (p_ids);
+  return query
+  update stash.reminders r set fired = true
+   where r.id = any (p_ids) and not r.fired
+  returning r.id;
 end;
 $$;
 
@@ -544,17 +741,31 @@ security definer
 set search_path = ''
 as $$
 #variable_conflict use_column
+declare
+  v_owners uuid[];
 begin
   if not stash.cron_ok(p_secret) then
     raise exception 'not allowed' using errcode = '42501';
   end if;
+  -- Only the owner's identities (Vault `stash_owner_ids`); nothing while it is unset.
+  v_owners := stash.owner_ids();
   return query
-  with due as (
-    select st.user_id,
-           (pg_catalog.now() at time zone coalesce(st.timezone, 'Africa/Casablanca'))::date as day,
-           st.queue_minutes as minutes
+  with zoned as (
+    -- Defensive: a zone Postgres doesn't know would make `at time zone` throw for everyone
+    -- (the settings trigger already refuses them).
+    select st.user_id, st.queue_minutes, st.queue_time,
+           (pg_catalog.now() at time zone z.name) as local_now
       from stash.settings st
-     where (pg_catalog.now() at time zone coalesce(st.timezone, 'Africa/Casablanca'))::time >= st.queue_time
+      join pg_catalog.pg_timezone_names z on z.name = coalesce(st.timezone, 'Africa/Casablanca')
+     where st.user_id = any (v_owners)
+  ),
+  due as (
+    select zd.user_id, zd.local_now::date as day, zd.queue_minutes as minutes
+      from zoned zd
+     -- Built once the queue time has passed, and at the latest in the day's last hour
+     -- (a queue time after the last hourly tick would otherwise never come).
+     where zd.local_now::time >= zd.queue_time
+        or pg_catalog.date_part('hour', zd.local_now) >= 23
   )
   select d.user_id,
          d.day,
@@ -601,17 +812,29 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  v_ids uuid[];
 begin
   if not stash.cron_ok(p_secret) then
     raise exception 'not allowed' using errcode = '42501';
   end if;
+  if not (p_user_id = any (stash.owner_ids())) then
+    return false;
+  end if;
+  v_ids := coalesce(array(select u.id from pg_catalog.unnest(p_save_ids) with ordinality as u(id, n)
+                           where exists (select 1 from stash.saves s where s.id = u.id and s.user_id = p_user_id)
+                           order by u.n), '{}');
+  -- Nothing to show yet but saves still processing: leave the day open, the next
+  -- tick (or opening Today) builds it once they are ready.
+  if pg_catalog.cardinality(v_ids) = 0
+     and exists (select 1 from stash.saves s
+                  where s.user_id = p_user_id
+                    and s.status in ('queued'::stash.save_status, 'processing'::stash.save_status)) then
+    return false;
+  end if;
   -- Only the owner's own saves; never overwrite a queue the app already built.
   insert into stash.daily_queues (user_id, day, save_ids, minutes)
-  select p_user_id, p_day,
-         coalesce(array(select u.id from pg_catalog.unnest(p_save_ids) with ordinality as u(id, n)
-                         where exists (select 1 from stash.saves s where s.id = u.id and s.user_id = p_user_id)
-                         order by u.n), '{}'),
-         greatest(1, least(coalesce(p_minutes, 6), 120))
+  values (p_user_id, p_day, v_ids, greatest(1, least(coalesce(p_minutes, 6), 120)))
   on conflict (user_id, day) do nothing;
   return found;
 end;

@@ -82,6 +82,11 @@ begin
 end
 $$;
 
+-- Same owner on references (0004's generic guard).
+drop trigger if exists zz_same_owner on stash.galaxy_points;
+create trigger zz_same_owner before insert or update on stash.galaxy_points
+  for each row execute function stash.guard_same_owner('save_id');
+
 
 -- -----------------------------------------------------------------------------
 -- Queue a galaxy layout after 5+ new embeddings (debounced: one waiting job per user)
@@ -99,10 +104,12 @@ begin
   if p_user_id is null then
     return;
   end if;
+  -- One queued job is enough. A running one doesn't count: it read the embeddings
+  -- when it started, so newer ones need one queued follow-up (at most one).
   if exists (select 1 from stash.jobs j
               where j.user_id = p_user_id
                 and j.type = 'galaxy'::stash.job_type
-                and j.state in ('queued'::stash.job_state, 'running'::stash.job_state)) then
+                and j.state = 'queued'::stash.job_state) then
     return;
   end if;
 
@@ -121,7 +128,7 @@ end;
 $$;
 
 comment on function stash.maybe_galaxy(uuid) is
-  'Queues a galaxy job when 5+ embeddings arrived since the last layout and none is waiting.';
+  'Queues a galaxy job when 5+ embeddings arrived since the last layout and none is queued (a running one gets one follow-up).';
 
 create or replace function stash.on_embedding_created()
 returns trigger
@@ -168,17 +175,23 @@ begin
      and pg_catalog.pg_get_constraintdef(c.oid) like '%kind%'
    limit 1;
 
-  if v_def is null then
-    v_kinds := array['transcribe', 'understand', 'embed', 'synthesize', 'search', 'grade', 'export'];
-  elsif v_def like '%''galaxy''%' then
-    return;  -- already allowed
-  else
-    select array_agg(m[1]) into v_kinds
-      from regexp_matches(v_def, '''([a-z_]+)''', 'g') as m;
+  -- Every kind known so far, plus whatever the current constraint allows. Postgres
+  -- prints the check either as ARRAY['a'::text, …] or as '{a,b}'::text[], so both
+  -- forms are read (reading only the first collapsed the list to one kind).
+  select pg_catalog.array_agg(distinct k order by k) into v_kinds
+    from (
+      select pg_catalog.unnest(array['transcribe', 'understand', 'embed', 'synthesize', 'search', 'grade', 'export', 'galaxy']) as k
+      union
+      select m[1] from pg_catalog.regexp_matches(coalesce(v_def, ''), '''([a-z_]+)''', 'g') as m
+      union
+      select t from pg_catalog.regexp_split_to_table(
+               coalesce(pg_catalog.substring(v_def, '''\{([a-z_,]+)\}'''), ''), ',') as t
+    ) x
+   where k <> '';
+
+  if v_con is not null then
     execute format('alter table stash.usage drop constraint %I', v_con);
   end if;
-
-  v_kinds := array_append(v_kinds, 'galaxy');
   execute format('alter table stash.usage add constraint usage_kind_check check (kind = any (%L::text[]))', v_kinds);
 end
 $$;
@@ -245,10 +258,14 @@ security definer
 set search_path = ''
 as $$
 #variable_conflict use_column
+declare
+  v_owners uuid[];
 begin
   if not stash.cron_ok(p_secret) then
     raise exception 'not allowed' using errcode = '42501';
   end if;
+  -- Only the owner's identities (Vault `stash_owner_ids`); nothing while it is unset.
+  v_owners := stash.owner_ids();
   return query
   select r.id,
          r.user_id,
@@ -259,10 +276,11 @@ begin
          coalesce((select jsonb_agg(jsonb_build_object('endpoint', p.endpoint, 'p256dh', p.p256dh, 'auth', p.auth))
                      from stash.push_subscriptions p where p.user_id = r.user_id), '[]'::jsonb)
     from stash.reminders r
-    join stash.saves s on s.id = r.save_id
+    join stash.saves s on s.id = r.save_id and s.user_id = r.user_id
     left join stash.insights i on i.save_id = r.save_id
     left join stash.settings st on st.user_id = r.user_id
-   where r.kind in ('time'::stash.reminder_kind, 'context'::stash.reminder_kind)
+   where r.user_id = any (v_owners)
+     and r.kind in ('time'::stash.reminder_kind, 'context'::stash.reminder_kind)
      and not r.fired
      and r.fire_at is not null
      and r.fire_at <= pg_catalog.now()
@@ -291,7 +309,10 @@ declare
 begin
   select coalesce(st.timezone, 'Africa/Casablanca') into v_tz
     from stash.settings st where st.user_id = (select auth.uid());
-  v_tz := coalesce(v_tz, 'Africa/Casablanca');
+  -- A zone Postgres doesn't know would throw below (the settings trigger refuses them too).
+  if v_tz is null or not exists (select 1 from pg_catalog.pg_timezone_names z where z.name = v_tz) then
+    v_tz := 'Africa/Casablanca';
+  end if;
   v_from := (v_month::timestamp) at time zone v_tz;
   v_to   := ((v_month + interval '1 month')::timestamp) at time zone v_tz;
 
@@ -352,6 +373,7 @@ begin
     select u.id
       from auth.users u
      where u.is_anonymous
+       and not (u.id = any (stash.owner_ids()))  -- never the owner's devices
        and u.created_at < pg_catalog.now() - interval '3 days'
        and not exists (select 1 from stash.saves s where s.user_id = u.id)
        and not exists (select 1 from stash.spaces sp where sp.user_id = u.id and sp.kind <> 'inbox'::stash.space_kind)
@@ -385,8 +407,10 @@ select cron.schedule('stash-cleanup-anonymous', '23 3 * * *', $$select stash.cle
 -- Same rule as 0005: revoke everything, then grant each function to the narrowest
 -- role that needs it. New in 0006:
 --   authenticated: wrapped
+--   service_role:  owner_ids (0004; Vault `stash_owner_ids`)
 --   nobody else:   maybe_galaxy, on_embedding_created (trigger),
---                  cleanup_anonymous_users (pg_cron runs it as postgres)
+--                  cleanup_anonymous_users (pg_cron runs it as postgres),
+--                  guard_same_owner, guard_settings_timezone (0004, triggers)
 -- -----------------------------------------------------------------------------
 revoke execute on all functions in schema stash from public, anon, authenticated;
 grant  execute on all functions in schema stash to service_role;
@@ -409,6 +433,10 @@ grant execute on function stash.cron_daily_candidates(text)                     
 grant execute on function stash.cron_store_daily(text, uuid, date, uuid[], int)                to anon;
 grant execute on function stash.get_collection(text)                                           to anon;
 grant execute on function stash.is_shared_thumb(text)                                          to anon;
+
+-- Server-side only (also covered by the service_role grant above, listed to be explicit).
+grant execute on function stash.owner_ids()                                                    to service_role;
+grant execute on function stash.cleanup_anonymous_users(int)                                   to service_role;
 
 -- cleanup_anonymous_users stays with service_role only (granted above) and pg_cron (postgres);
 -- it also refuses any other caller itself.
