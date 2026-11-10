@@ -20,7 +20,9 @@ TABLES = {
  "jobs": "id:uuid! save_id:uuid? space_id:uuid? user_id:uuid! type:job_type state:job_state! attempts:int! error:text? locked_at:ts? run_after:ts! payload:json! created_at:ts! updated_at:ts!",
  "exports": "id:uuid! space_id:uuid user_id:uuid! kind:export_kind options:json! file_path:text? share_slug:text? created_at:ts!",
  "usage": "id:uuid! user_id:uuid! save_id:uuid? kind:text input_tokens:int! output_tokens:int! audio_seconds:num! usd:num! created_at:ts!",
- "settings": "user_id:uuid! theme:theme_pref! accent:text! accent_custom:text? text_scale:num! density:int! reduce_motion:bool! haptics:bool! monthly_budget_usd:num! queue_time:text! queue_minutes:int! quiet_hours:json! created_at:ts! updated_at:ts!",
+ "settings": "user_id:uuid! theme:theme_pref! accent:text! accent_custom:text? text_scale:num! density:int! reduce_motion:bool! haptics:bool! monthly_budget_usd:num! queue_time:text! queue_minutes:int! quiet_hours:json! created_at:ts! updated_at:ts! timezone:text!",
+ "daily_queues": "id:uuid! user_id:uuid! day:date save_ids:uuid[]! minutes:int! built_at:ts! done_ids:uuid[]!",
+ "push_subscriptions": "id:uuid! user_id:uuid! endpoint:text p256dh:text auth:text user_agent:text? created_at:ts!",
 }
 ENUMS = {
  "space_kind": ["topic", "project", "inbox"],
@@ -28,7 +30,7 @@ ENUMS = {
  "save_status": ["queued", "processing", "ready", "failed", "dead_link"],
  "intent": ["learn", "try", "visit", "buy", "inspire", "fun"],
  "reminder_kind": ["time", "place", "context"],
- "job_type": ["ingest", "reprocess", "synthesize", "export"],
+ "job_type": ["ingest", "reprocess", "synthesize", "export", "grade", "card_gen"],
  "job_state": ["queued", "running", "done", "failed"],
  "export_kind": ["brief", "moodboard", "deck", "collection"],
  "theme_pref": ["system", "dark", "light", "black"],
@@ -65,6 +67,16 @@ FUNCTIONS = [
   '      search_saves: { Args: { p_query: string; p_space_id?: string | null; p_embedding?: string | null; p_limit?: number }; Returns: { save_id: string; score: number; snippet: string | null; snippet_start: number | null }[] };',
   '      related_saves: { Args: { p_save_id: string; p_limit?: number }; Returns: { save_id: string; similarity: number }[] };',
   '      request_reprocess: { Args: { p_save_id: string }; Returns: undefined };',
+  '      mark_queue_done: { Args: { p_day: string; p_save_id: string }; Returns: undefined };',
+  '      save_push_subscription: { Args: { p_endpoint: string; p_p256dh: string; p_auth: string; p_user_agent?: string | null }; Returns: undefined };',
+  '      vapid_public_key: { Args: Record<string, never>; Returns: string | null };',
+  '      cron_vapid: { Args: { p_secret: string }; Returns: { public_key: string | null; private_key: string | null; subject: string | null }[] };',
+  '      cron_set_vapid: { Args: { p_secret: string; p_public: string; p_private: string }; Returns: undefined };',
+  '      cron_due_reminders: { Args: { p_secret: string }; Returns: { id: string; user_id: string; save_id: string; title: string; timezone: string; quiet_hours: Json; subscriptions: Json }[] };',
+  '      cron_mark_fired: { Args: { p_secret: string; p_ids: string[] }; Returns: undefined };',
+  '      cron_drop_subscriptions: { Args: { p_secret: string; p_endpoints: string[] }; Returns: undefined };',
+  '      cron_daily_candidates: { Args: { p_secret: string }; Returns: { user_id: string; day: string; minutes: number; saves: Json; subscriptions: Json }[] };',
+  '      cron_store_daily: { Args: { p_secret: string; p_user_id: string; p_day: string; p_save_ids: string[]; p_minutes: number }; Returns: boolean };',
 ]
 out += ["    };", "    Views: { [_ in never]: never };", "    Functions: {", *FUNCTIONS, "    };", "    Enums: {"]
 for e, vals in ENUMS.items():
