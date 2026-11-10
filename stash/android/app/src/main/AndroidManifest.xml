@@ -95,9 +95,18 @@
             </intent-filter>
 
             <!-- Screenshots shared from the gallery: posted to /share/receive (shareTarget in
-                 app/build.gradle) and read by Claude vision on the server. -->
+                 app/build.gradle) and read by the worker's vision step. -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+
+            <!-- Several screenshots selected at once. The TWA launcher turns ACTION_SEND_MULTIPLE
+                 into one share with every image; the service worker keeps up to 10 of them and
+                 opens /share?shared-image=<id>,<id>,… -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="image/*" />
             </intent-filter>
