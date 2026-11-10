@@ -64,17 +64,22 @@ export function LibraryView() {
   const selectedId = space === "inbox" ? inboxId : space;
   const selected = selectedId ? spacesById.get(selectedId) : undefined;
   const visible = useMemo(
-    () => filterSaves(lib.saves, { space: selectedId === inboxId && selectedId ? "inbox" : selectedId, filter, inboxId }),
-    [lib.saves, selectedId, filter, inboxId],
+    // ?space=inbox (the Inbox shortcut) filters at once, before the Spaces have loaded.
+    () => filterSaves(lib.saves, { space: space === "inbox" || (selectedId && selectedId === inboxId) ? "inbox" : selectedId, filter, inboxId }),
+    [lib.saves, space, selectedId, filter, inboxId],
   );
   const byId = useMemo(() => new Map(lib.saves.map((s) => [s.id, s])), [lib.saves]);
   const [openedAt] = useState(() => new Date());
   const oldCount = useMemo(() => triageCandidates(lib.saves, openedAt).length, [lib.saves, openedAt]);
 
-  // Shortcut "Search" opens with the field focused.
+  // Shortcut "Search" (?search=1) opens with the field focused, as soon as the field exists.
+  const wantSearch = useRef(params.get("search") === "1");
   useEffect(() => {
-    if (params.get("search") === "1") searchRef.current?.focus();
-  }, [params]);
+    if (wantSearch.current && searchRef.current) {
+      searchRef.current.focus();
+      wantSearch.current = false;
+    }
+  }, [lib.loading, lib.saves.length]);
 
   // Keep the selection in the URL so back and the Play button keep context.
   useEffect(() => {
