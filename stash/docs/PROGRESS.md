@@ -9,6 +9,26 @@ at 21289f5. Migrations 0004, 0005 and 0006 are **not applied** anywhere (0001–
 **not deployed** with Phases 2–4 (it still runs Phase 1). The review fixes below sit on the local branch
 `stash-review-fixes` (from 21289f5), not pushed.
 
+## Free pipeline rework: contract (2026-11-10, branch `stash-free-contract` from 0be0c7f)
+
+Goal: $0 per month, no card, one manual step for the owner (a Gemini key in Supabase Vault).
+Written, not applied, nothing deployed: `supabase/migrations/0007_free_pipeline.sql`, regenerated
+`lib/supabase/types.ts`, and the contract both builders implement: **`docs/CONTRACT_0007.md`**.
+
+- Worker moves to a Vercel Python function and holds no secret: the database sends a Vault token in
+  the wake-up, the Edge Function `stash-worker-proxy` checks it and relays PostgREST / Storage calls.
+- Embeddings are 384 dims from an Edge Function (no key); videos live in Storage bucket `stash-video`
+  with a retention job; R2 and Voyage go away.
+- A save always ends `ready` (`process_step`, `video_state`, `playback`, `embed_url`, `ai_state`);
+  insights arrive later when a key appears.
+- New tables: `config`, `rate_limits`, `asks`, `highlights`, `backups`, `recovery`; `syntheses.tag`.
+- Tested: 0001→0007 applied in order (and 0004–0007 twice) on a local Postgres 16 with the Supabase
+  stubs; attack script passed (other device cannot read asks / highlights / backups / recovery /
+  videos, call service RPCs or forge the worker token). tsc, eslint and 216 unit tests pass.
+- Not verified here (needs the real project): the HNSW index on `vector(384)`, signed upload URLs,
+  the admin API turning an anonymous user into one with an email, and whether Auth accepts the
+  synthetic `.invalid` email domain. Listed as checks in the contract (section 10).
+
 ## Brand and UI refresh (2026-11-10, branch `stash-rebrand` from 64c30f1)
 
 The owner asked for better branding, UX and UI and picked **Bold and playful**. Web changes ship with a
