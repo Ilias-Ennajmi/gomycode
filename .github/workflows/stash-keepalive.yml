@@ -1,0 +1,52 @@
+# Keeps the Stash Supabase project awake. A free project is paused after a week without activity;
+# this calls one public RPC twice a week. Nothing is written to the database.
+#
+# Setup (once): Settings → Secrets and variables → Actions → Variables (not secrets: both values
+# are public, the app ships them to every browser):
+#   STASH_SUPABASE_URL              https://<project-ref>.supabase.co
+#   STASH_SUPABASE_PUBLISHABLE_KEY  the project's publishable (anon) key
+#
+# Scheduled workflows run only from the default branch, and GitHub switches them off after 60 days
+# without a commit in the repository (it sends an email first; "Enable workflow" turns it back on).
+name: Stash keep-alive
+
+on:
+  schedule:
+    - cron: "23 6 * * 1,4" # Monday and Thursday, 06:23 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: stash-keepalive
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_URL: ${{ vars.STASH_SUPABASE_URL }}
+      SUPABASE_KEY: ${{ vars.STASH_SUPABASE_PUBLISHABLE_KEY }}
+    steps:
+      - name: Call stash.vapid_public_key()
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
+            echo "::warning::STASH_SUPABASE_URL / STASH_SUPABASE_PUBLISHABLE_KEY are not set as repository variables: nothing was pinged."
+            exit 0
+          fi
+          case "$SUPABASE_URL" in https://*) ;; *) echo "::error::STASH_SUPABASE_URL must start with https://"; exit 1 ;; esac
+          for attempt in 1 2 3; do
+            status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 60 \
+              -X POST "${SUPABASE_URL%/}/rest/v1/rpc/vapid_public_key" \
+              -H "apikey: $SUPABASE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_KEY" \
+              -H "Content-Type: application/json" \
+              -H "Content-Profile: stash" \
+              -d '{}' || echo 000)
+            echo "attempt $attempt: HTTP $status"
+            if [ "$status" = "200" ] || [ "$status" = "204" ]; then exit 0; fi
+            sleep 20
+          done
+          echo "::error::The Stash database did not answer (last status $status). If the project was paused, restore it in the Supabase dashboard."
+          exit 1
