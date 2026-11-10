@@ -4,20 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Offline · Stash</title>
-  <!-- Standalone page (no app CSS available offline): colours mirror styles/tokens.css. -->
+  <!-- Standalone page (no app CSS available offline): colours mirror styles/tokens.css, the mark scripts/brand-paths.mjs. -->
   <style>
-    :root { color-scheme: light dark; --bg: #f6f4ef; --fg: #141413; --muted: #5e5b55; }
-    @media (prefers-color-scheme: dark) { :root { --bg: #0e0e10; --fg: #f2f0eb; --muted: #b4b1aa; } }
+    :root { color-scheme: light dark; --bg: #f4f2eb; --fg: #0c0e16; --muted: #555764; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #0c0e16; --fg: #f5f4ef; --muted: #b9bccb; } }
     body { margin: 0; min-height: 100dvh; display: grid; place-items: center; background: var(--bg); color: var(--fg);
            font: 500 15px/1.5 system-ui, sans-serif; text-align: center; padding: 24px; box-sizing: border-box; }
-    h1 { font-size: 22px; margin: 0 0 8px; }
+    svg { width: 72px; height: 72px; margin-bottom: 20px; }
+    h1 { font: 800 26px/1.1 ui-rounded, system-ui, sans-serif; letter-spacing: -0.02em; margin: 0 0 8px; }
     p { margin: 0 0 24px; color: var(--muted); }
-    button { min-height: 48px; padding: 0 24px; border-radius: 14px; border: 0; background: #c8f05a; color: #0e0e10;
-             font: 600 14px system-ui, sans-serif; }
+    button { min-height: 52px; padding: 0 28px; border-radius: 9999px; border: 0; background: #c6ff34; color: #0c0e16;
+             font: 700 15px system-ui, sans-serif; }
   </style>
 </head>
 <body>
   <main>
+    <svg viewBox="0 0 108 108" aria-hidden="true"><rect width="108" height="108" rx="26" fill="#0c0e16"/><g fill="#c6ff34"><path opacity="0.55" d="M45 21H77a6 6 0 0 1 6 6v5a6 6 0 0 1-6 6H45a3 3 0 0 0-3 3V42H25A21 21 0 0 1 45 21z"/><path opacity="0.8" d="M31 46.5H63A20 20 0 0 1 83 66.5H66A3 3 0 0 0 63 63.5H31a6 6 0 0 1-6-6v-5a6 6 0 0 1 6-6z"/><path d="M31 70.5H83V70.5A17 17 0 0 1 66 87.5H31a6 6 0 0 1-6-6v-5a6 6 0 0 1 6-6z"/></g></svg>
     <h1>You're offline</h1>
     <p>Saved items and videos you've watched are still here once the app has loaded them.</p>
     <button onclick="location.reload()">Try again</button>

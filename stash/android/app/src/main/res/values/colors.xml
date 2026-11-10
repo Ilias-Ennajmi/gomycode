@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- System bars follow the site: light background in light mode, near-black in dark mode. -->
-    <color name="barColor">#F6F4EF</color>
-    <color name="barColorDark">#0E0E10</color>
-    <color name="splashBackground">#0E0E10</color>
-    <!-- Lime accent of the mark, used by the shortcut icons. -->
-    <color name="brand">#C8F05A</color>
-    <color name="brandInk">#0E0E10</color>
+    <color name="barColor">#F4F2EB</color>
+    <color name="barColorDark">#0C0E16</color>
+    <color name="splashBackground">#0C0E16</color>
+    <!-- The brand: electric lime on deep ink (the mark, the shortcut icons). -->
+    <color name="brand">#C6FF34</color>
+    <color name="brandInk">#0C0E16</color>
 </resources>

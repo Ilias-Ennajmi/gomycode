@@ -3,8 +3,8 @@ plugins {
 }
 
 // Bump both for every release; the tag is stash-android-v<versionName> (see android/README.md).
-def appVersionCode = 2
-def appVersionName = "1.1.0"
+def appVersionCode = 3
+def appVersionName = "1.2.0"
 
 // The website this app opens. Changing it needs a new release and a matching assetlinks.json.
 def siteHost = "stash-drab-kappa.vercel.app"

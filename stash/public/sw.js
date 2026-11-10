@@ -9,8 +9,8 @@
 //   cache, so nothing cached for the previous identity is served offline to the new one.
 // - Shared images left in the inbox for more than an hour are deleted (on activate and
 //   on each share).
-// Bump VERSION whenever these caching rules change.
-const VERSION = "v5";
+// Bump VERSION whenever these caching rules or the precached files change (v6: new brand icon and offline page).
+const VERSION = "v6";
 const SHARED_AT = "X-Stash-Shared-At"; // header on inbox entries (epoch ms)
 const SHARE_MAX_AGE_MS = 60 * 60 * 1000;
 const SHARE_INBOX = "stash-share-inbox"; // not versioned: a shared image must survive an update
