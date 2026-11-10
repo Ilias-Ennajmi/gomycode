@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // The worker is Python; its local virtualenv holds vendored JS.
     "worker/**",
+    // Edge Functions are Deno, checked with `deno check`.
+    "supabase/functions/**",
   ]),
 ]);
 
