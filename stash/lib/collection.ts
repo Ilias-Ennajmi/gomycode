@@ -11,7 +11,8 @@ export type Collection = {
 };
 
 export type CollectionSave = {
-  id: string;
+  // No save id: the public page never needs one, and get_collection() no longer returns it.
+  key: number;
   title: string | null;
   keyIdea: string | null;
   takeaways: string[];
@@ -46,8 +47,8 @@ export function parseCollection(raw: unknown): Collection | null {
   const color = (SPACE_COLORS as readonly string[]).includes(String(r.color)) ? (r.color as SpaceColor) : "violet";
   const saves = (Array.isArray(r.saves) ? r.saves : [])
     .filter((s): s is Record<string, unknown> => Boolean(s) && typeof s === "object")
-    .map((s) => ({
-      id: String(s.id ?? ""),
+    .map((s, i) => ({
+      key: i,
       title: str(s.title),
       keyIdea: str(s.key_idea),
       takeaways: Array.isArray(s.takeaways) ? s.takeaways.filter((t): t is string => typeof t === "string" && Boolean(t.trim())).slice(0, 3) : [],
@@ -57,6 +58,6 @@ export function parseCollection(raw: unknown): Collection | null {
       thumbPath: str(s.thumb_path),
       applied: s.applied === true,
     }))
-    .filter((s) => s.id);
+    .filter((s) => s.title || s.keyIdea || s.sourceUrl || s.thumbPath);
   return { name, color, kind: r.kind === "project" ? "project" : "topic", description: str(r.description), saves };
 }

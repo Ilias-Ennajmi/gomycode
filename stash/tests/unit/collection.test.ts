@@ -17,7 +17,6 @@ describe("parseCollection", () => {
       description: null,
       saves: [
         {
-          id: "a",
           title: "Hook",
           key_idea: "Show the product first.",
           takeaways: ["one", 2, "", "two", "three", "four"],
@@ -27,13 +26,14 @@ describe("parseCollection", () => {
           thumb_path: "u/a.jpg",
           applied: true,
         },
-        { id: "b", platform: "myspace", source_url: "https://www.instagram.com/reel/x/" },
+        { platform: "myspace", source_url: "https://www.instagram.com/reel/x/" },
         null,
-        { title: "no id" },
+        { platform: "web" },
       ],
     });
     expect(c?.color).toBe("teal");
-    expect(c?.saves.map((s) => s.id)).toEqual(["a", "b"]);
+    expect(c?.saves.map((s) => s.title ?? s.sourceUrl)).toEqual(["Hook", "https://www.instagram.com/reel/x/"]); // nothing-to-show rows dropped
+    expect(c?.saves.every((s) => !("id" in s))).toBe(true);
     expect(c?.saves[0].takeaways).toEqual(["one", "two", "three"]);
     expect(c?.saves[0].sourceUrl).toBeNull();
     expect(c?.saves[1].platform).toBe("web");

@@ -73,7 +73,7 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
             const thumb = s.thumbPath ? thumbs[s.thumbPath] : undefined;
             const who = [s.creator && `@${s.creator.replace(/^@/, "")}`, PLATFORM_LABEL[s.platform]].filter(Boolean).join(" · ");
             return (
-              <li key={s.id} className="relative flex gap-3 overflow-hidden rounded-card border border-line bg-surface p-3">
+              <li key={s.key} className="relative flex gap-3 overflow-hidden rounded-card border border-line bg-surface p-3">
                 <span aria-hidden className={cx("absolute inset-x-0 top-0 h-0.75", SPACE_BG[c.color])} />
                 <div className="relative aspect-9/16 w-24 shrink-0 overflow-hidden rounded-sm bg-raised">
                   {thumb && (
