@@ -112,6 +112,13 @@ def normalize_insights(raw: Any, space_names: dict[str, str]) -> dict[str, Any]:
                 cards.append({"prompt": prompt, "answer": answer})
     cards = cards[:3]
 
+    highlights = []
+    for h in raw.get("highlights") or []:
+        h = _clean_text(h, 400)
+        if len(h) >= 12 and h not in highlights:
+            highlights.append(h)
+    highlights = highlights[:3]
+
     return {
         "title": _clean_text(raw.get("title"), 120) or _trim_words(key_idea, 8),
         "key_idea": key_idea,
@@ -124,6 +131,7 @@ def normalize_insights(raw: Any, space_names: dict[str, str]) -> dict[str, Any]:
         "confidence": confidence,
         "places": places,
         "cards": cards,
+        "highlights": highlights,
     }
 
 
@@ -157,30 +165,31 @@ def normalize_screenshot(raw: Any, space_names: dict[str, str]) -> dict[str, Any
     return insights
 
 
-def claude_cost(input_tokens: int, output_tokens: int, usd_in: float, usd_out: float) -> float:
+def cost(input_tokens: int, output_tokens: int, usd_in: float, usd_out: float) -> float:
+    """USD for one call; prices are per million tokens (stash.config price_* rows, 0 on a free tier)."""
     return round(input_tokens / 1e6 * usd_in + output_tokens / 1e6 * usd_out, 6)
+
+
+claude_cost = cost  # older name
 
 
 def is_owner(user_id: str, owners: frozenset[str]) -> bool:
     return bool(owners) and user_id in owners
 
 
-def scale_filter() -> str:
-    """ffmpeg filter: the short side becomes 720 px (never upscales), even dimensions."""
-    return (
-        "scale='if(gt(iw,ih),-2,min(720,iw))':'if(gt(iw,ih),min(720,ih),-2)'"
-        ":force_divisible_by=2"
-    )
+def embedding_text(insights: dict[str, Any] | None, caption: str | None, transcript: str | None,
+                   title: str | None = None) -> str:
+    """Contract 0007: title + key idea + caption + transcript[:1500] (takeaways and tags ride along).
 
-
-def embedding_text(insights: dict[str, Any], caption: str | None, transcript: str | None) -> str:
-    parts = [insights.get("title") or "", insights.get("key_idea") or ""]
+    Works without insights too, so a save with no AI key is still searchable by meaning."""
+    insights = insights or {}
+    parts = [insights.get("title") or title or "", insights.get("key_idea") or ""]
     parts += insights.get("takeaways") or []
     parts.append(" ".join(insights.get("tags") or []))
     if caption:
-        parts.append(caption[:1500])
+        parts.append(caption[:600])
     if transcript:
-        parts.append(transcript[:6000])
+        parts.append(transcript[:1500])
     return "\n".join(p for p in parts if p)
 
 
@@ -259,3 +268,92 @@ def normalize_synthesis(raw: Any, refs: dict[str, str]) -> dict[str, Any]:
         "disagreements": disagreements[:3],
         "suggested_action": _clean_text(raw.get("suggested_action"), 280) or None,
     }
+
+
+# --- Free pipeline (0007) -------------------------------------------------------
+
+def decide_playback(platform: str, video_state: str, embed_url: str | None) -> str:
+    """Contract 0007 section 7: what Play shows."""
+    if platform == "screenshot":
+        return "none"
+    if video_state == "stored":
+        return "video"
+    if platform == "web":
+        return "link"
+    return "embed" if embed_url else "link"
+
+
+def normalize_transcript(raw: Any) -> dict[str, Any]:
+    """A model's transcription -> {"segments": [{start, end, text}], "language", "visual"}."""
+    if not isinstance(raw, dict) or not isinstance(raw.get("segments"), list):
+        raise InsightError("segments missing")
+    segments = []
+    last = 0.0
+    for s in raw["segments"]:
+        if not isinstance(s, dict):
+            continue
+        text = _clean_text(s.get("text"), 600)
+        if not text:
+            continue
+        try:
+            start = max(0.0, float(s.get("start") or 0))
+            end = max(start, float(s.get("end") or start))
+        except (TypeError, ValueError):
+            start = end = last
+        if start < last - 1:  # timestamps going backwards: the model lost track, keep the order
+            start = last
+            end = max(end, start)
+        last = start
+        segments.append({"start": round(start, 2), "end": round(end, 2), "text": text})
+    return {
+        "segments": segments[:1500],
+        "language": _clean_text(raw.get("language"), 10).lower() or None,
+        "visual": _clean_text(raw.get("visual"), 600) or None,
+    }
+
+
+def normalize_answer(raw: Any, refs: dict[str, str]) -> dict[str, Any]:
+    """An Ask answer -> {"answer", "cited"}. refs maps the labels shown to the model (S1...) to save ids;
+    a cited id that was not in the context is dropped."""
+    if not isinstance(raw, dict):
+        raise InsightError("not an object")
+    answer = raw.get("answer")
+    answer = re.sub(r"[ \t]+", " ", answer).strip()[:2000] if isinstance(answer, str) else ""
+    if not answer:
+        raise InsightError("answer missing")
+    known = set(refs.values())
+    cited: list[str] = []
+    for r in raw.get("cited") or []:
+        r = _clean_text(r, 60)
+        sid = refs.get(r.upper()) or (r if r in known else None)
+        if sid and sid not in cited:
+            cited.append(sid)
+    return {"answer": answer, "cited": cited}
+
+
+def _norm_words(text: str) -> str:
+    return re.sub(r"[^\w]+", " ", (text or "").lower(), flags=re.UNICODE).strip()
+
+
+def place_highlights(quotes: list[str], segments: list[dict[str, Any]], *other_text: str | None) -> list[dict[str, Any]]:
+    """Keeps only quotes that really are in the transcript (or the caption / article), with their time.
+
+    Returns [{"text", "start_s", "end_s"}]; a quote found only in other_text has no times."""
+    norm_segments = [(_norm_words(str(s.get("text", ""))), s) for s in segments or []]
+    joined = " ".join(n for n, _ in norm_segments)
+    others = " ".join(_norm_words(t) for t in other_text if t)
+    out: list[dict[str, Any]] = []
+    for q in quotes or []:
+        n = _norm_words(q)
+        if len(n) < 8:
+            continue
+        hit = None
+        for seg_norm, seg in norm_segments:
+            if seg_norm and (n in seg_norm or (len(seg_norm) >= 12 and seg_norm in n)):
+                hit = seg
+                break
+        if hit is not None:
+            out.append({"text": q, "start_s": hit.get("start"), "end_s": hit.get("end")})
+        elif n in joined or n in others:
+            out.append({"text": q, "start_s": None, "end_s": None})
+    return out[:3]

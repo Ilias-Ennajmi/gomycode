@@ -1,83 +1,139 @@
-"""Settings read from the environment. Nothing secret is ever logged."""
+"""Settings for one run. Nothing here comes from a file or (apart from SUPABASE_URL) from the environment.
+
+The worker holds no secret: `/run` receives the wake-up token, asks stash-worker-proxy for
+`worker_config()` and builds this object from the answer. It lives in memory for that request only.
+Keys never appear in a log line, a repr or an exception message.
+"""
 
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from typing import Any, Mapping
+
+EMBED_MODEL = "gte-small"  # built into Supabase Edge Functions (384 dims); the proxy runs it
 
 
-def _env(name: str, default: str = "") -> str:
-    return os.environ.get(name, default).strip()
-
-
-def _float(name: str, default: float) -> float:
-    try:
-        return float(_env(name) or default)
-    except ValueError:
-        return default
+def supabase_url_from_env() -> str:
+    return os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
 
 
 @dataclass(frozen=True)
 class Config:
-    supabase_url: str = field(default_factory=lambda: _env("SUPABASE_URL").rstrip("/"))
-    service_key: str = field(default_factory=lambda: _env("SUPABASE_SERVICE_ROLE_KEY"))
-    worker_secret: str = field(default_factory=lambda: _env("WORKER_SECRET"))
-    # Comma-separated auth user ids allowed to spend the AI budget. Empty = nobody.
-    owner_user_ids: frozenset[str] = field(
-        default_factory=lambda: frozenset(x.strip() for x in _env("OWNER_USER_IDS").split(",") if x.strip())
-    )
+    supabase_url: str = ""
+    anon_key: str = field(default="", repr=False)
+    # Auth user ids allowed to use AI and video storage. Empty = nobody.
+    owner_user_ids: frozenset[str] = frozenset()
 
-    anthropic_key: str = field(default_factory=lambda: _env("ANTHROPIC_API_KEY"))
-    fast_model: str = field(default_factory=lambda: _env("CLAUDE_FAST_MODEL"))
-    # USD per million tokens for the fast model, used by the cost guard.
-    fast_usd_in: float = field(default_factory=lambda: _float("CLAUDE_FAST_USD_PER_MTOK_IN", 1.0))
-    fast_usd_out: float = field(default_factory=lambda: _float("CLAUDE_FAST_USD_PER_MTOK_OUT", 5.0))
-    # The stronger model for syntheses and exports (creative brief text). Prices feed the cost guard.
-    smart_model: str = field(default_factory=lambda: _env("CLAUDE_SMART_MODEL"))
-    smart_usd_in: float = field(default_factory=lambda: _float("CLAUDE_SMART_USD_PER_MTOK_IN", 3.0))
-    smart_usd_out: float = field(default_factory=lambda: _float("CLAUDE_SMART_USD_PER_MTOK_OUT", 15.0))
-
-    groq_key: str = field(default_factory=lambda: _env("GROQ_API_KEY"))
-    groq_model: str = field(default_factory=lambda: _env("GROQ_TRANSCRIBE_MODEL", "whisper-large-v3-turbo"))
-    groq_usd_per_hour: float = field(default_factory=lambda: _float("GROQ_USD_PER_AUDIO_HOUR", 0.04))
-
-    voyage_key: str = field(default_factory=lambda: _env("VOYAGE_API_KEY"))
-    voyage_model: str = field(default_factory=lambda: _env("VOYAGE_MODEL", "voyage-3.5-lite"))
-    voyage_usd_per_mtok: float = field(default_factory=lambda: _float("VOYAGE_USD_PER_MTOK", 0.02))
-
-    r2_account_id: str = field(default_factory=lambda: _env("R2_ACCOUNT_ID"))
-    r2_access_key: str = field(default_factory=lambda: _env("R2_ACCESS_KEY_ID"))
-    r2_secret_key: str = field(default_factory=lambda: _env("R2_SECRET_ACCESS_KEY"))
-    r2_bucket: str = field(default_factory=lambda: _env("R2_BUCKET"))
-
+    gemini_key: str = field(default="", repr=False)
+    groq_key: str = field(default="", repr=False)
+    anthropic_key: str = field(default="", repr=False)
     # Optional Netscape cookies file (base64) for Instagram when it asks for a login.
-    ig_cookies_b64: str = field(default_factory=lambda: _env("INSTAGRAM_COOKIES_B64"))
+    ig_cookies_b64: str = field(default="", repr=False)
 
-    # Place names → coordinates through OpenStreetMap Nominatim (free, 1 request/second). "off" disables it.
-    geocode: bool = field(default_factory=lambda: _env("GEOCODE", "on").lower() not in ("off", "0", "false", "no"))
+    # Rows of stash.config (key -> value). Model ids and prices live here, never in a file.
+    values: Mapping[str, str] = field(default_factory=dict)
 
-    max_video_seconds: int = field(default_factory=lambda: int(_float("MAX_VIDEO_SECONDS", 600)))
-    # Stop claiming new jobs after this many seconds inside one /run request.
-    run_budget_seconds: int = field(default_factory=lambda: int(_float("RUN_BUDGET_SECONDS", 720)))
+    @classmethod
+    def from_worker_config(cls, payload: Mapping[str, Any], supabase_url: str = "") -> "Config":
+        keys = payload.get("keys") or {}
+        values = {str(k): str(v) for k, v in (payload.get("config") or {}).items() if v is not None}
+        return cls(
+            supabase_url=(supabase_url or str(payload.get("supabase_url") or "")).rstrip("/"),
+            anon_key=str(payload.get("anon_key") or ""),
+            owner_user_ids=frozenset(str(x).lower() for x in (payload.get("owner_ids") or []) if x),
+            gemini_key=str(keys.get("gemini") or "").strip(),
+            groq_key=str(keys.get("groq") or "").strip(),
+            anthropic_key=str(keys.get("anthropic") or "").strip(),
+            ig_cookies_b64=str(payload.get("instagram_cookies_b64") or "").strip(),
+            values=values,
+        )
+
+    # --- raw values -----------------------------------------------------------------
+    def get(self, key: str, default: str = "") -> str:
+        v = self.values.get(key)
+        return v.strip() if isinstance(v, str) and v.strip() else default
+
+    def num(self, key: str, default: float) -> float:
+        try:
+            return float(self.get(key) or default)
+        except ValueError:
+            return default
+
+    # --- providers --------------------------------------------------------------------
+    def _key(self, provider: str) -> str:
+        return {"gemini": self.gemini_key, "claude": self.anthropic_key, "groq": self.groq_key}.get(provider, "")
+
+    def model(self, provider: str, tier: str = "fast") -> str:
+        """Model id for a provider and tier ("fast" | "smart"). Smart falls back to fast when unset."""
+        if provider == "groq":
+            return self.get("groq_transcribe_model")
+        return self.get(f"{provider}_{tier}_model") or self.get(f"{provider}_fast_model")
+
+    def usable(self, provider: str) -> bool:
+        """A provider is usable only when its key and its model id both exist."""
+        return bool(self._key(provider) and self.model(provider, "fast"))
 
     @property
-    def has_r2(self) -> bool:
-        return all([self.r2_account_id, self.r2_access_key, self.r2_secret_key, self.r2_bucket])
+    def ai_provider(self) -> str | None:
+        """gemini | claude | None, from config `ai_provider` and what is usable."""
+        want = self.get("ai_provider", "auto").lower()
+        if want == "none":
+            return None
+        if want in ("gemini", "claude"):
+            return want if self.usable(want) else None
+        return next((p for p in ("gemini", "claude") if self.usable(p)), None)
 
     @property
-    def has_claude(self) -> bool:
-        return bool(self.anthropic_key and self.fast_model)
+    def transcribe_provider(self) -> str | None:
+        """gemini | groq | None, from config `transcribe_provider` and what is usable."""
+        want = self.get("transcribe_provider", "auto").lower()
+        if want == "none":
+            return None
+        if want in ("gemini", "groq"):
+            return want if self.usable(want) else None
+        return next((p for p in ("gemini", "groq") if self.usable(p)), None)
 
     @property
-    def has_smart(self) -> bool:
-        return bool(self.anthropic_key and self.smart_model)
+    def has_ai(self) -> bool:
+        return self.ai_provider is not None
 
-    def missing_required(self) -> list[str]:
-        missing = []
-        if not self.supabase_url:
-            missing.append("SUPABASE_URL")
-        if not self.service_key:
-            missing.append("SUPABASE_SERVICE_ROLE_KEY")
-        if not self.worker_secret:
-            missing.append("WORKER_SECRET")
-        return missing
+    # Older names, still read by the export and Galaxy code.
+    has_claude = has_ai
+    has_smart = has_ai
+
+    def price(self, provider: str, tier: str) -> tuple[float, float]:
+        """USD per million tokens (in, out). No row = 0: a free tier costs nothing."""
+        return (max(0.0, self.num(f"price_{provider}_{tier}_in", 0.0)),
+                max(0.0, self.num(f"price_{provider}_{tier}_out", 0.0)))
+
+    @property
+    def groq_usd_per_hour(self) -> float:
+        return max(0.0, self.num("price_groq_audio_hour", 0.0))
+
+    # --- limits -----------------------------------------------------------------------
+    @property
+    def max_video_seconds(self) -> int:
+        return int(self.num("max_video_seconds", 600))
+
+    @property
+    def video_max_bytes(self) -> int:
+        # The bucket refuses files over 50 MB whatever this says.
+        return int(min(50.0, max(1.0, self.num("video_max_mb", 45))) * 1024 * 1024)
+
+    @property
+    def youtube_download(self) -> bool:
+        return self.get("youtube_download", "off").lower() in ("on", "1", "true", "yes")
+
+    @property
+    def run_budget_seconds(self) -> int:
+        return int(min(280.0, max(5.0, self.num("run_budget_seconds", 240))))
+
+    @property
+    def backup_keep(self) -> int:
+        return int(min(52.0, max(1.0, self.num("backup_keep", 4))))
+
+    @property
+    def geocode(self) -> bool:
+        """Place names -> coordinates through OpenStreetMap Nominatim (free, 1 request/second)."""
+        return self.get("geocode", "on").lower() not in ("off", "0", "false", "no")

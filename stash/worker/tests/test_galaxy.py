@@ -2,24 +2,27 @@
 
 from __future__ import annotations
 
-import numpy as np
+import math
+import random
+
 import pytest
 
-from stash_worker import ai, galaxy, pipeline
+from stash_worker import ai, galaxy, pipeline, providers
 from stash_worker.rules import InsightError
 
+from fakes import FakeProvider
 from test_pipeline import OWNER, FakeSupa, cfg
 
 
 def blobs(seed=1, per=6, dims=32):
     """Three well-separated topics of `per` saves each."""
-    rng = np.random.default_rng(seed)
-    centres = np.eye(dims)[:3] * 5
+    rng = random.Random(seed)
+    centres = [[5.0 if i == t else 0.0 for i in range(dims)] for t in range(3)]
     ids, vecs, truth = [], [], []
     for t, c in enumerate(centres):
         for i in range(per):
             ids.append(f"s{t}-{i}")
-            vecs.append((c + rng.normal(0, 0.3, dims)).tolist())
+            vecs.append([x + rng.gauss(0, 0.3) for x in c])
             truth.append(t)
     return ids, vecs, truth
 
@@ -36,23 +39,23 @@ def test_layout_is_deterministic_and_separates_topics():
     ids, vecs, truth = blobs()
     a = galaxy.layout(ids, vecs)
     b = galaxy.layout(ids, vecs)
-    assert np.array_equal(a.labels, b.labels) and np.allclose(a.xy, b.xy) and np.allclose(a.centers, b.centers)
+    assert a.labels == b.labels and a.xy == b.xy and a.centers == b.centers
     assert len(a.sizes) == 3 and sorted(a.sizes) == [6, 6, 6]
     # Each true topic lands in exactly one cluster.
     for t in range(3):
         assert len({int(a.labels[i]) for i, tt in enumerate(truth) if tt == t}) == 1
-    assert np.abs(a.xy).max() <= 1.0
+    assert max(abs(v) for pt in a.xy for v in pt) <= 1.0
     # Members sit closer to their own centre than to any other.
     for i, c in enumerate(a.labels):
-        d = np.linalg.norm(a.centers - a.xy[i], axis=1)
-        assert d.argmin() == c
+        d = [math.dist(centre, a.xy[i]) for centre in a.centers]
+        assert d.index(min(d)) == c
 
 
 def test_layout_handles_tiny_libraries():
     one = galaxy.layout(["a"], [[1.0, 0.0]])
-    assert one.labels.tolist() == [0] and one.sizes == [1] and np.allclose(one.xy, 0)
+    assert one.labels == [0] and one.sizes == [1] and one.xy == [[0.0, 0.0]]
     empty = galaxy.layout([], [])
-    assert empty.sizes == [] and empty.xy.shape == (0, 2)
+    assert empty.sizes == [] and empty.xy == []
 
 
 def test_parse_vector():
@@ -75,17 +78,25 @@ def test_labels_are_cleaned_and_validated():
         galaxy.normalize_labels({"labels": [{"cluster": 5, "label": "x"}]}, [0])
 
 
+def test_layout_is_plain_python_and_fast_enough():
+    import sys
+    import time
+
+    assert "numpy" not in sys.modules or not hasattr(galaxy, "np")
+    rng = random.Random(4)
+    centres = [[rng.gauss(0, 1) for _ in range(384)] for _ in range(6)]
+    vecs = [[x + rng.gauss(0, 0.3) for x in centres[i % 6]] for i in range(400)]
+    t = time.perf_counter()
+    lay = galaxy.layout([str(i) for i in range(400)], vecs)
+    assert time.perf_counter() - t < 20 and sum(lay.sizes) == 400
+
+
 def test_label_clusters_uses_one_call_and_falls_back(monkeypatch):
-    calls = []
-
-    def fake_call(client, **kw):
-        calls.append(kw)
-        return kw["validate"]({"labels": [{"cluster": 0, "label": "Pricing psychology"}]}), 400, 30
-
-    monkeypatch.setattr(ai, "_client", lambda c: None)
-    monkeypatch.setattr(ai, "call_tool", fake_call)
+    fake = FakeProvider([{"labels": [{"cluster": 0, "label": "Pricing psychology"}]}], tokens=(400, 30))
+    monkeypatch.setattr(providers, "make", lambda name, c: fake)
     members = {0: [{"tags": ["pricing"], "key_idea": "Add a decoy tier."}], 1: [{"tags": ["coffee"]}]}
-    got = galaxy.label_clusters(cfg(), members, allow_ai=True)
+    got = galaxy.label_clusters(cfg(values={"price_claude_fast_in": "1"}), members, allow_ai=True)
+    calls = fake.calls
     assert len(calls) == 1 and "Group 0" in calls[0]["content"] and "Add a decoy tier." in calls[0]["content"]
     assert got.labels == {0: "Pricing psychology", 1: "Coffee"} and got.ai and got.usd > 0
     # No AI (over budget or not set up): no call, tag labels.
@@ -95,16 +106,13 @@ def test_label_clusters_uses_one_call_and_falls_back(monkeypatch):
     assert not calls
 
 
-def test_label_clusters_survives_an_unusable_answer(monkeypatch):
-    def bad(client, **kw):
-        err = InsightError("no label_clusters call")
-        err.tokens = (300, 10)
-        raise err
-
-    monkeypatch.setattr(ai, "_client", lambda c: None)
-    monkeypatch.setattr(ai, "call_tool", bad)
+def test_label_clusters_survives_an_unusable_answer_or_a_provider_outage(monkeypatch):
+    fake = FakeProvider([{"labels": "nope"}, {"labels": []}], tokens=(150, 5))
+    monkeypatch.setattr(providers, "make", lambda name, c: fake)
     got = galaxy.label_clusters(cfg(), {0: [{"tags": ["food"]}]}, allow_ai=True)
     assert got.labels == {0: "Food"} and not got.ai and got.input_tokens == 300
+    fake.answers.append(ai.ProviderError("claude", "messages", 503))
+    assert galaxy.label_clusters(cfg(), {0: [{"tags": ["food"]}]}, allow_ai=True).labels == {0: "Food"}
 
 
 class GalaxySupa(FakeSupa):
@@ -176,4 +184,4 @@ def test_label_prompt_lists_each_group():
 
 def test_layout_seed_matters_only_for_ties():
     ids, vecs, _ = blobs(seed=3)
-    assert np.array_equal(galaxy.layout(ids, vecs, seed=1).labels, galaxy.layout(ids, vecs, seed=99).labels)
+    assert galaxy.layout(ids, vecs, seed=1).labels == galaxy.layout(ids, vecs, seed=99).labels

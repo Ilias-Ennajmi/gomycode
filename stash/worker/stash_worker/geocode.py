@@ -16,7 +16,8 @@ from typing import Any, Callable
 import httpx
 
 from .config import Config
-from .supa import Supa
+
+Supa = Any  # the proxy client, or a fake in tests
 
 log = logging.getLogger("stash.geocode")
 

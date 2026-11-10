@@ -19,8 +19,9 @@ from typing import Any
 
 from .config import Config
 from .render import MIME, Brief, ExportItem, SpaceInfo, build_brief_docx, build_brief_pdf, build_deck_pptx, build_moodboard_pdf
-from .rules import claude_cost, is_owner
-from .supa import Supa
+from .rules import InsightError, is_owner
+
+Supa = Any  # the proxy client (stash_worker.proxy.Proxy), or a fake in tests
 
 log = logging.getLogger("stash.exports")
 
@@ -137,6 +138,7 @@ class BriefResult:
     input_tokens: int = 0
     output_tokens: int = 0
     usd: float = 0.0
+    provider: str = ""
 
 
 def fallback_brief(space: SpaceInfo, items: list[ExportItem]) -> Brief:
@@ -188,10 +190,10 @@ def normalize_brief(raw: Any, space: SpaceInfo) -> Brief:
 
 
 def write_brief(cfg: Config, space: SpaceInfo, items: list[ExportItem], include_quotes: bool) -> BriefResult:
-    """One smart-model call. Falls back to the insights-only brief when the model isn't set."""
-    if not cfg.has_smart or not items:
+    """One smart-model call. Falls back to the insights-only brief when no provider is usable."""
+    if not cfg.has_ai or not items:
         return BriefResult(fallback_brief(space, items))
-    import anthropic  # lazy
+    from . import ai  # lazy
 
     refs = []
     for i, it in enumerate(items, 1):
@@ -204,25 +206,26 @@ def write_brief(cfg: Config, space: SpaceInfo, items: list[ExportItem], include_
         f"Description: {space.description or '(none)'}\n"
         f"Include quotes: {'yes' if include_quotes else 'no'}\n\n" + "\n\n".join(refs)
     )[:40000]
-    client = anthropic.Anthropic(api_key=cfg.anthropic_key, max_retries=2, timeout=90)
-    msg = client.messages.create(
-        model=cfg.smart_model,
-        max_tokens=2000,
-        system=BRIEF_SYSTEM,
-        tools=[BRIEF_TOOL],
-        tool_choice={"type": "tool", "name": "write_brief"},
-        messages=[{"role": "user", "content": content}],
-    )
-    tin, tout = msg.usage.input_tokens, msg.usage.output_tokens
-    usd = claude_cost(tin, tout, cfg.smart_usd_in, cfg.smart_usd_out)
-    block = next((b for b in msg.content if getattr(b, "type", "") == "tool_use"), None)
+
+    def validate(raw: Any) -> Brief:
+        try:
+            return normalize_brief(raw, space)
+        except ValueError as exc:
+            raise InsightError(str(exc)) from None
+
     try:
-        brief = normalize_brief(getattr(block, "input", None), space)
-    except ValueError:
-        brief = fallback_brief(space, items)
+        r = ai.structured(cfg, "smart", system=BRIEF_SYSTEM, tool=BRIEF_TOOL, content=content, max_tokens=2000,
+                          validate=validate)
+        result = BriefResult(r.value, r.input_tokens, r.output_tokens, r.usd, r.provider)
+    except InsightError as exc:  # two unusable answers: the insights-only brief, the tokens still logged
+        t = getattr(exc, "tokens", (0, 0))
+        result = BriefResult(fallback_brief(space, items), t[0], t[1], getattr(exc, "usd", 0.0),
+                             getattr(exc, "provider", ""))
+    except (ai.ProviderError, ai.NoProvider):  # the provider is down: an export never fails for that
+        result = BriefResult(fallback_brief(space, items))
     if not include_quotes:
-        brief.quotes = []
-    return BriefResult(brief, tin, tout, usd)
+        result.brief.quotes = []
+    return result
 
 
 # --- Job -------------------------------------------------------------------------
@@ -279,7 +282,7 @@ def process_export(supa: Supa, cfg: Config, job: dict[str, Any]) -> str:
     if not space_row or str(space_row.get("user_id")) != str(user_id):
         return _fail(supa, job, export["id"], "This Space isn't yours.", "owner_mismatch")
     if not is_owner(user_id, cfg.owner_user_ids):
-        return _fail(supa, job, export["id"], "This device isn't allowed to use the worker yet (add its id to OWNER_USER_IDS).", "not_owner")
+        return _fail(supa, job, export["id"], "This device isn't allowed to use the worker yet (add its id to the owner list).", "not_owner")
 
     kind = export["kind"]
     if kind == "collection":
@@ -291,7 +294,7 @@ def process_export(supa: Supa, cfg: Config, job: dict[str, Any]) -> str:
 
     options = export.get("options") or {}
     include_quotes = _opt(options, "include_quotes")
-    if kind == "brief" and cfg.has_smart and _over_budget(supa, user_id):
+    if kind == "brief" and cfg.has_ai and _over_budget(supa, user_id):
         return _fail(supa, job, export["id"], "Monthly AI budget reached. Raise it in Settings, then try again.", "budget")
 
     supa.update("exports", {"id": f"eq.{export['id']}"}, {"status": "running", "error": None})
@@ -325,6 +328,7 @@ def process_export(supa: Supa, cfg: Config, job: dict[str, Any]) -> str:
             result = write_brief(cfg, space, items, include_quotes)
             if result.usd or result.input_tokens:
                 supa.insert("usage", [{"user_id": user_id, "save_id": None, "kind": "export",
+                                       "provider": result.provider or None,
                                        "input_tokens": result.input_tokens, "output_tokens": result.output_tokens,
                                        "audio_seconds": 0, "usd": result.usd}])
             files["pdf"] = build_brief_pdf(space, result.brief, items, workdir / "brief.pdf")

@@ -1,15 +1,15 @@
-"""Phase 2 jobs: grading recall answers and Space syntheses, plus the Claude tool-call contract."""
+"""Grading recall answers and Space / tag syntheses. (The provider call contract: test_providers.py.)"""
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from types import SimpleNamespace
 
 import pytest
 
-from stash_worker import ai, pipeline
+from stash_worker import ai, pipeline, providers
 from stash_worker.rules import InsightError, normalize_grade, normalize_synthesis, sm2
 
+from fakes import FakeProvider
 from test_pipeline import OWNER, FakeSupa, cfg
 
 
@@ -17,11 +17,7 @@ class LoopSupa(FakeSupa):
     def __init__(self):
         super().__init__()
         self.tables.update({"reviews": [], "syntheses": []})
-        self.files: dict[str, bytes] = {}
         self.removed: list[str] = []
-
-    def download(self, bucket, path):
-        return self.files[f"{bucket}/{path}"]
 
     def remove(self, bucket, paths):
         self.removed += [f"{bucket}/{p}" for p in paths]
@@ -80,7 +76,7 @@ def test_voice_answer_is_transcribed_then_removed(db, monkeypatch):
 
     def fake_transcribe(c, audio, mime="audio/mpeg"):
         seen["mime"] = mime
-        return ai.Transcript([], "the middle looks cheaper", "en", 4.0)
+        return ai.Transcript([], "the middle looks cheaper", "en", 4.0, provider="groq")
 
     monkeypatch.setattr(ai, "transcribe", fake_transcribe)
     job = dict(GRADE_JOB, payload={"card_id": "c1", "audio_path": path})
@@ -151,99 +147,54 @@ def space_db(db):
 SYNTH_JOB = {"id": "y1", "type": "synthesize", "space_id": "mkt", "user_id": OWNER, "attempts": 1}
 
 
+SYNTH_ANSWER = {"topic": "Pricing", "points": ["Anchor high", "Show three tiers"],
+                "disagreements": [{"point": "Free trials hurt", "save_refs": ["S2", "S99"]}],
+                "suggested_action": "Test a decoy tier on the landing page."}
+
+
 def test_synthesis_is_stored_with_real_save_ids(space_db, monkeypatch):
-    c = cfg(smart_model="smart")
-    seen = {}
-
-    def fake_call(client, **kw):
-        seen.update(kw)
-        raw = {"topic": "Pricing", "points": ["Anchor high", "Show three tiers"],
-               "disagreements": [{"point": "Free trials hurt", "save_refs": ["S2", "S99"]}],
-               "suggested_action": "Test a decoy tier on the landing page."}
-        return kw["validate"](raw), 2000, 300
-
-    monkeypatch.setattr(ai, "_client", lambda cfg: object())
-    monkeypatch.setattr(ai, "call_tool", fake_call)
+    c = cfg(values={"claude_smart_model": "smart", "price_claude_smart_in": "3", "price_claude_smart_out": "15"})
+    fake = FakeProvider([SYNTH_ANSWER], tokens=(2000, 300))
+    monkeypatch.setattr(providers, "make", lambda name, cf: fake)
     space_db.tables["jobs"] = [dict(SYNTH_JOB, state="running")]
     assert pipeline.process_job(space_db, c, SYNTH_JOB) == "synthesized"
-    assert seen["model"] == "smart"
+    assert fake.calls[0]["model"] == "smart" and fake.calls[0]["content"].startswith("Space: Marketing")
     syn = space_db.tables["syntheses"][0]
-    assert syn["space_id"] == "mkt" and syn["topic"] == "Pricing"
+    assert syn["space_id"] == "mkt" and syn["tag"] is None and syn["topic"] == "Pricing"
     assert syn["disagreements"] == [{"point": "Free trials hurt", "save_ids": ["s2"]}]
     assert sorted(syn["source_save_ids"]) == ["s1", "s2", "s3", "s4", "s5"]
-    assert space_db.tables["usage"][0]["kind"] == "synthesize"
-    assert space_db.tables["usage"][0]["usd"] == pytest.approx(2000 / 1e6 * 3 + 300 / 1e6 * 15)
+    usage = space_db.tables["usage"][0]
+    assert usage["kind"] == "synthesize" and usage["provider"] == "claude"
+    assert usage["usd"] == pytest.approx(2000 / 1e6 * 3 + 300 / 1e6 * 15)
     assert space_db.tables["jobs"][0]["state"] == "done"
 
 
-def test_synthesis_needs_enough_saves_and_the_smart_model(space_db, monkeypatch):
+def test_tag_synthesis_reads_only_this_users_saves_with_the_tag(space_db, monkeypatch):
+    saves = space_db.tables["saves"]
+    for i, s in enumerate(saves):
+        s["space_id"] = None
+        s["insights"]["tags"] = ["Pricing " if i < 4 else "coffee"]   # stored with stray case / spaces
+    saves.append({"id": "other", "user_id": "u-else", "space_id": None, "status": "ready",
+                  "insights": {"title": "X", "key_idea": "Someone else's", "takeaways": [], "tags": ["pricing"]}})
+    fake = FakeProvider([SYNTH_ANSWER])
+    monkeypatch.setattr(providers, "make", lambda name, cf: fake)
+    job = {"id": "y2", "type": "synthesize", "space_id": None, "user_id": OWNER, "attempts": 1, "payload": {"tag": "PRICING"}}
+    assert pipeline.process_job(space_db, cfg(), job) == "synthesized"
+    syn = space_db.tables["syntheses"][0]
+    assert syn["space_id"] is None and syn["tag"] == "pricing"
+    assert sorted(syn["source_save_ids"]) == ["s1", "s2", "s3", "s4"]
+    assert fake.calls[0]["content"].startswith("Tag: pricing") and "Someone else" not in fake.calls[0]["content"]
+    # a tag job with too few saves, or with no tag and no Space, ends quietly
+    assert pipeline.process_job(space_db, cfg(), dict(job, payload={"tag": "coffee"})) == "too_few"
+    assert pipeline.process_job(space_db, cfg(), dict(job, payload={})) == "gone"
+
+
+def test_synthesis_needs_enough_saves_and_a_provider(space_db, monkeypatch):
     monkeypatch.setattr(ai, "synthesize", lambda *a, **k: pytest.fail("should not call the model"))
-    assert pipeline.process_job(space_db, cfg(), SYNTH_JOB) == "ai_off"
+    assert pipeline.process_job(space_db, cfg(anthropic_key=""), SYNTH_JOB) == "ai_off"
     space_db.tables["saves"] = space_db.tables["saves"][:2]
-    assert pipeline.process_job(space_db, cfg(smart_model="smart"), SYNTH_JOB) == "too_few"
-    assert pipeline.process_job(space_db, cfg(smart_model="smart", owner_user_ids=frozenset({"x"})), SYNTH_JOB) == "not_owner"
-
-
-# --- the Claude call contract --------------------------------------------------------
-
-class FakeClient:
-    """Answers with the queued replies; records the request arguments."""
-
-    def __init__(self, replies):
-        self.replies = list(replies)
-        self.requests: list[dict] = []
-        self.messages = SimpleNamespace(create=self._create)
-
-    def _create(self, **kw):
-        self.requests.append(kw)
-        content = self.replies.pop(0)
-        return SimpleNamespace(content=content, usage=SimpleNamespace(input_tokens=10, output_tokens=5))
-
-
-def tool_use(name, data):
-    return SimpleNamespace(type="tool_use", name=name, input=data)
-
-
-def text(t):
-    return SimpleNamespace(type="text", text=t)
-
-
-def test_tool_choice_is_never_forced(monkeypatch):
-    client = FakeClient([[tool_use("grade_answer", {"verdict": "got", "feedback": "ok"})]])
-    value, t_in, t_out = ai.call_tool(client, model="m", system="s", tool=ai.GRADE_TOOL, content="c",
-                                      max_tokens=10, validate=normalize_grade)
-    assert value["grade"] == 5 and (t_in, t_out) == (10, 5)
-    req = client.requests[0]
-    assert req["tool_choice"] == {"type": "auto"}
-    assert "grade_answer" in req["system"]
-
-
-def test_a_reply_without_the_tool_is_retried_once():
-    client = FakeClient([[text("Sure! The answer is good.")],
-                         [tool_use("grade_answer", {"verdict": "partly", "feedback": "ok"})]])
-    value, t_in, _ = ai.call_tool(client, model="m", system="s", tool=ai.GRADE_TOOL, content="c",
-                                  max_tokens=10, validate=normalize_grade)
-    assert value["grade"] == 3 and t_in == 20
-    assert "unusable" in client.requests[1]["messages"][0]["content"]
-
-
-def test_two_unusable_replies_raise_with_their_tokens():
-    client = FakeClient([[text("no")], [tool_use("grade_answer", {"verdict": "maybe"})]])
-    with pytest.raises(InsightError) as e:
-        ai.call_tool(client, model="m", system="s", tool=ai.GRADE_TOOL, content="c", max_tokens=10,
-                     validate=normalize_grade)
-    assert e.value.tokens == (20, 10)
-
-
-def test_understand_uses_auto_tool_choice(monkeypatch):
-    client = FakeClient([[tool_use("save_insights", {
-        "title": "Decoy", "key_idea": "Use a decoy tier.", "takeaways": ["a", "b", "c"], "actions": [],
-        "intent": "learn", "tags": ["pricing"], "suggested_space": None, "confidence": 0.2, "cards": []})]])
-    monkeypatch.setattr(ai, "_client", lambda c: client)
-    u = ai.understand(cfg(), platform="instagram", creator=None, title=None, caption="c", transcript=None,
-                      space_names={}, user_note=None)
-    assert u.insights["key_idea"] == "Use a decoy tier."
-    assert client.requests[0]["tool_choice"] == {"type": "auto"}
+    assert pipeline.process_job(space_db, cfg(), SYNTH_JOB) == "too_few"
+    assert pipeline.process_job(space_db, cfg(owner_user_ids=frozenset({"x"})), SYNTH_JOB) == "not_owner"
 
 
 # --- rules --------------------------------------------------------------------------

@@ -2,24 +2,19 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import pytest
 
-from stash_worker import ai, geocode, media, pipeline
+from stash_worker import ai, geocode, media, pipeline, providers
 from stash_worker.rules import InsightError, normalize_screenshot, screenshot_path
 
+from fakes import FakeProvider
 from test_pipeline import OWNER, FakeSupa, cfg
 
 CLIENT_ID = "0f8fad5b-d9cb-469f-a165-70867728950e"
 
 
 class ShotSupa(FakeSupa):
-    def __init__(self):
-        super().__init__()
-        self.files: dict[str, bytes] = {}
-
-    def download(self, bucket, path):
+    def download(self, bucket, path, max_bytes=0):
         key = f"{bucket}/{path}"
         if key not in self.files:
             raise RuntimeError("404")
@@ -52,36 +47,28 @@ VISION = {
 }
 
 
-def stub(monkeypatch, calls):
-    def fake_client(c):
-        def create(**kw):
-            calls.append(kw)
-            return SimpleNamespace(usage=SimpleNamespace(input_tokens=1500, output_tokens=300),
-                                   content=[SimpleNamespace(type="tool_use", name="save_insights", input=VISION)])
-        return SimpleNamespace(messages=SimpleNamespace(create=create))
-
-    monkeypatch.setattr(ai, "_client", fake_client)
+def stub(monkeypatch, answers=None):
+    fake = FakeProvider(answers if answers is not None else [VISION], tokens=(1500, 300))
+    monkeypatch.setattr(providers, "make", lambda name, c: fake)
     monkeypatch.setattr(ai, "understand", lambda *a, **k: pytest.fail("a screenshot never takes the video path"))
     monkeypatch.setattr(media, "download", lambda *a, **k: pytest.fail("no yt-dlp for screenshots"))
-    monkeypatch.setattr(media, "page_metadata", lambda *a, **k: pytest.fail("no page fetch for screenshots"))
+    monkeypatch.setattr(media, "metadata", lambda *a, **k: pytest.fail("no page fetch for screenshots"))
     monkeypatch.setattr(geocode, "geocode_save", lambda supa, c, save_id, geocoder=None: 0)
-    monkeypatch.setattr(ai, "embed", lambda c, text, input_type="document": ai.Embedding([0.1] * 1024, 50))
+    return fake
 
 
 def test_screenshot_is_read_filed_and_embedded(db, monkeypatch):
-    calls: list = []
-    stub(monkeypatch, calls)
+    fake = stub(monkeypatch)
     db.tables["jobs"] = [dict(JOB, state="running")]
     assert pipeline.process_job(db, cfg(), JOB) == "ready"
 
-    # One vision call with the image as a base64 block.
-    assert len(calls) == 1
-    blocks = calls[0]["messages"][0]["content"]
-    assert blocks[0]["type"] == "image" and blocks[0]["source"]["media_type"] == "image/jpeg"
-    assert calls[0]["tool_choice"] == {"type": "auto"}
+    # One vision call with the image itself.
+    assert len(fake.calls) == 1
+    assert fake.calls[0]["images"] == [(b"\xff\xd8jpeg", "image/jpeg")] and fake.calls[0]["model"] == "m"
 
     save = db.tables["saves"][0]
-    assert save["status"] == "ready"
+    assert save["status"] == "ready" and save["ai_state"] == "done"
+    assert save["playback"] == "none" and save["embed_url"] is None  # contract §7: a screenshot has nothing to play
     assert save["space_id"] == "food"  # confidence 0.92 ≥ 0.75 → filed into the right Space
     assert save["thumb_path"] == f"{OWNER}/screenshots/{CLIENT_ID}.jpg"
     assert save["creator_handle"] == "@casa.eats"
@@ -89,13 +76,20 @@ def test_screenshot_is_read_filed_and_embedded(db, monkeypatch):
     assert save["title"] == "café review reel"
     assert db.tables["insights"][0]["key_idea"].startswith("Try the msemen")
     assert len(db.tables["places"]) == 1 and len(db.tables["cards"]) == 1 and len(db.tables["embeddings"]) == 1
-    assert [u["kind"] for u in db.tables["usage"]] == ["understand", "embed"]
+    assert [u["kind"] for u in db.tables["usage"]] == ["vision", "embed"]
     assert not db.tables["transcripts"]
 
 
+def test_screenshot_without_a_key_is_still_ready(db, monkeypatch):
+    fake = stub(monkeypatch)
+    assert pipeline.process_job(db, cfg(anthropic_key=""), JOB) == "ready"
+    save = db.tables["saves"][0]
+    assert save["status"] == "ready" and save["ai_state"] == "no_key" and save["playback"] == "none"
+    assert save["thumb_path"] and not fake.calls
+
+
 def test_low_confidence_screenshot_goes_to_inbox(db, monkeypatch):
-    calls: list = []
-    stub(monkeypatch, calls)
+    stub(monkeypatch)
     VISION_LOW = dict(VISION, confidence=0.4)
     monkeypatch.setattr(ai, "read_screenshot", lambda c, **kw: ai.Understanding(
         normalize_screenshot(VISION_LOW, kw["space_names"]), 10, 10, 0.0))
@@ -104,7 +98,7 @@ def test_low_confidence_screenshot_goes_to_inbox(db, monkeypatch):
 
 
 def test_missing_upload_fails_without_retrying(db, monkeypatch):
-    stub(monkeypatch, [])
+    stub(monkeypatch)
     db.files.clear()
     db.tables["jobs"] = [dict(JOB, state="running")]
     assert pipeline.process_job(db, cfg(), JOB) == "failed"
@@ -113,7 +107,7 @@ def test_missing_upload_fails_without_retrying(db, monkeypatch):
 
 
 def test_a_bad_reference_never_reads_another_users_files(db, monkeypatch):
-    stub(monkeypatch, [])
+    stub(monkeypatch)
     db.tables["saves"][0]["source_url"] = "screenshot:../u-other/screenshots/x.jpg"
     assert pipeline.process_job(db, cfg(), JOB) == "failed"
 
@@ -136,18 +130,8 @@ def test_normalize_screenshot_extras():
 
 
 def test_unusable_vision_answer_is_asked_once_more(db, monkeypatch):
-    calls: list = []
-
-    def fake_client(c):
-        def create(**kw):
-            calls.append(kw)
-            content = [] if len(calls) == 1 else [SimpleNamespace(type="tool_use", name="save_insights", input=VISION)]
-            return SimpleNamespace(usage=SimpleNamespace(input_tokens=100, output_tokens=10), content=content)
-        return SimpleNamespace(messages=SimpleNamespace(create=create))
-
-    stub(monkeypatch, [])
-    monkeypatch.setattr(ai, "_client", fake_client)
+    fake = stub(monkeypatch, [{"title": "no key idea"}, VISION])
     assert pipeline.process_job(db, cfg(), JOB) == "ready"
-    assert len(calls) == 2
-    retry_blocks = calls[1]["messages"][0]["content"]
-    assert retry_blocks[0]["type"] == "image" and "unusable" in retry_blocks[-1]["text"]
+    assert len(fake.calls) == 2
+    assert fake.calls[1]["images"] and "unusable" in fake.calls[1]["content"]
+    assert db.tables["usage"][0]["input_tokens"] == 3000  # both attempts are billed

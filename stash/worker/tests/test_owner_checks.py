@@ -18,7 +18,7 @@ def no_ai(monkeypatch):
     def boom(*a, **k):
         raise AssertionError("AI called for a mismatched job")
 
-    for name in ("understand", "grade_answer", "synthesize", "transcribe", "embed", "read_screenshot"):
+    for name in ("understand", "grade_answer", "synthesize", "transcribe", "ask", "read_screenshot", "structured"):
         if hasattr(ai, name):
             monkeypatch.setattr(ai, name, boom)
     monkeypatch.setattr(exports, "write_brief", boom)
@@ -42,7 +42,7 @@ def db():
 
 def run_one(d, job):
     d.tables["jobs"] = [dict(job, state="running")]
-    return pipeline.process_job(d, cfg(smart_model="smart"), job)
+    return pipeline.process_job(d, cfg(), job)
 
 
 def test_ingest_of_someone_elses_save_is_refused(db, monkeypatch):

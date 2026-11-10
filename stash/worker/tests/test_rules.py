@@ -8,7 +8,6 @@ from stash_worker.rules import (
     embedding_text,
     is_owner,
     normalize_insights,
-    scale_filter,
     segments_text,
 )
 
@@ -114,11 +113,6 @@ def test_owner_gate():
 
 def test_cost():
     assert claude_cost(1_000_000, 200_000, 1.0, 5.0) == pytest.approx(2.0)
-
-
-def test_scale_filter_short_side_720():
-    f = scale_filter()
-    assert "720" in f and "force_divisible_by=2" in f
 
 
 def test_embedding_text_includes_parts():

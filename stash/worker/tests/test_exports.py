@@ -168,7 +168,7 @@ def job_for(db, kind, options=None, attempts=1):
 
 def test_brief_job_without_ai_still_writes_pdf_and_docx(edb):
     job = job_for(edb, "brief", {"include_quotes": True})
-    assert pipeline.process_job(edb, cfg(), job) == "export_ready"
+    assert pipeline.process_job(edb, cfg(anthropic_key=""), job) == "export_ready"
     e = edb.tables["exports"][0]
     assert e["status"] == "ready" and e["file_path"] == f"{OWNER}/e-brief.pdf"
     assert set(e["files"]) == {"pdf", "docx"}
@@ -181,14 +181,38 @@ def test_brief_job_uses_smart_model_and_logs_usage(edb, monkeypatch):
 
     def fake_write(c, space, its, include_quotes):
         seen["n"], seen["quotes"] = len(its), include_quotes
-        return exports.BriefResult(BRIEF, 3000, 800, 0.021)
+        return exports.BriefResult(BRIEF, 3000, 800, 0.021, "gemini")
 
     monkeypatch.setattr(exports, "write_brief", fake_write)
     job = job_for(edb, "brief", {"only_applied_kept": True})
     assert pipeline.process_job(edb, cfg(smart_model="smart"), job) == "export_ready"
     assert seen == {"n": 10, "quotes": False}  # only kept saves
     assert [u["kind"] for u in edb.tables["usage"]] == ["export"]
-    assert edb.tables["usage"][0]["usd"] == 0.021
+    assert edb.tables["usage"][0]["usd"] == 0.021 and edb.tables["usage"][0]["provider"] == "gemini"
+
+
+def test_brief_text_comes_from_the_provider_and_survives_its_failures(monkeypatch):
+    from fakes import FakeProvider
+    from stash_worker import ai, providers
+
+    answer = {"title": "Launch brief", "summary": "Short hooks win.", "objective": "Fill the café.",
+              "insights": ["Hooks first"], "ideas": ["Film hands"], "next_steps": ["Shoot"],
+              "quotes": [{"text": "the first second decides", "source": "Ref 1"}]}
+    fake = FakeProvider([answer], tokens=(3000, 800))
+    monkeypatch.setattr(providers, "make", lambda name, c: fake)
+    c = cfg(values={"claude_smart_model": "smart-id", "price_claude_smart_in": "3", "price_claude_smart_out": "15"})
+    r = exports.write_brief(c, SPACE, items(3), include_quotes=False)
+    assert fake.calls[0]["model"] == "smart-id" and "Ref 3" in fake.calls[0]["content"]
+    assert r.brief.summary == "Short hooks win." and r.brief.quotes == [] and r.provider == "claude"
+    assert r.usd == pytest.approx(3000 / 1e6 * 3 + 800 / 1e6 * 15)
+    # Two unusable answers: the insights-only brief, the tokens still counted.
+    fake.answers += [{"title": "x"}, {"title": "y"}]
+    r = exports.write_brief(c, SPACE, items(3), include_quotes=True)
+    assert r.brief.title == SPACE.name and r.input_tokens == 6000 and r.usd > 0
+    # The provider is down: still a brief, nothing spent.
+    fake.answers.append(ai.ProviderError("claude", "messages", 503))
+    r = exports.write_brief(c, SPACE, items(3), include_quotes=True)
+    assert r.brief.title == SPACE.name and r.input_tokens == 0
 
 
 def test_moodboard_and_deck_jobs(edb):

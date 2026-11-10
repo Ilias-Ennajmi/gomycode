@@ -13,14 +13,18 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-# Space colours for documents (mirror of styles/tokens.css, light theme, which prints well on white).
+# Brand colours for documents: a mirror of styles/tokens.css, light theme (it prints well on white).
+# The function bundle has no access to the app's CSS, so the values are repeated here and
+# tests/test_tokens.py fails as soon as the two drift apart. TOKEN_NAMES says which token each one is.
 SPACE_HEX = {
-    "violet": "6B4FD8", "teal": "0F8A78", "amber": "8A5A00", "blue": "2F5FD0", "rose": "C0365F",
-    "green": "3C7D2B", "cyan": "0B7A90", "sand": "7A6440", "inbox": "5E5B55",
+    "violet": "6B4FD8", "teal": "0B7A6A", "amber": "8A5A00", "blue": "2F5FD0", "rose": "C0365F",
+    "green": "3A7A2A", "cyan": "0A7389", "sand": "76603C", "inbox": "555764",
 }
-INK = "141413"
-MUTED = "5E5B55"
-PAPER = "F6F4EF"
+INK = "0C0E16"     # --text-primary
+MUTED = "555764"   # --text-secondary
+PAPER = "F4F2EB"   # --background
+TOKEN_NAMES = {"INK": "--text-primary", "MUTED": "--text-secondary", "PAPER": "--background",
+               **{f"SPACE_HEX.{name}": f"--space-{name}" for name in SPACE_HEX}}
 
 
 def space_hex(color: str | None) -> str:
@@ -64,20 +68,31 @@ class SpaceInfo:
 
 
 # --- Fonts ----------------------------------------------------------------------
-# DejaVu covers French accents and Arabic letters; the image installs fonts-dejavu-core.
+# DejaVu (when the machine has it) covers French accents and Arabic letters. The function has no
+# system fonts, so the next choice is Bitstream Vera, which ships inside reportlab (accents, no Arabic).
 _DEJAVU = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/usr/share/fonts/TTF/DejaVuSans.ttf",
 ]
 
 
+def _vera() -> str | None:
+    try:
+        import reportlab
+
+        path = os.path.join(os.path.dirname(reportlab.__file__), "fonts", "Vera.ttf")
+        return path if os.path.exists(path) else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _pdf_fonts() -> tuple[str, str]:
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
 
-    regular = next((p for p in _DEJAVU if os.path.exists(p)), None)
+    regular = next((p for p in _DEJAVU if os.path.exists(p)), None) or _vera()
     if regular:
-        bold = regular.replace("DejaVuSans.ttf", "DejaVuSans-Bold.ttf")
+        bold = regular.replace("DejaVuSans.ttf", "DejaVuSans-Bold.ttf").replace("Vera.ttf", "VeraBd.ttf")
         try:
             if "StashSans" not in pdfmetrics.getRegisteredFontNames():
                 pdfmetrics.registerFont(TTFont("StashSans", regular))
