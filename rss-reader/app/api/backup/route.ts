@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { reportProblem } from "@/lib/errlog";
+import { BadRequest, badRequest, readJson } from "@/lib/http";
+import { RestoreError, restoreBackup } from "@/lib/restore";
+
+export const maxDuration = 60;
 
 export const dynamic = "force-dynamic";
 
@@ -37,9 +42,10 @@ export async function GET() {
     prisma.setting.findMany({ where: { key: { in: SETTING_KEYS } } }),
   ]);
   const categoryName = new Map(categories.map((c) => [c.id, c.name]));
+  const feedUrl = new Map(feeds.map((f) => [f.id, f.url]));
   const backup = {
     app: "reader",
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     categories: categories.map((c) => ({ name: c.name, color: c.color, icon: c.icon })),
     sources: feeds.map((f) => ({
@@ -58,12 +64,25 @@ export async function GET() {
       fullPage: f.fullPage,
       followedAt: f.createdAt,
     })),
-    rules: rules.map((r) => ({ action: r.action, match: r.match, value: r.value })),
+    rules: rules.map((r) => ({
+      action: r.action,
+      match: r.match,
+      value: r.value,
+      // A rule about a source: its address, which survives where ids don't.
+      feedUrl: r.match === "feed" ? (feedUrl.get(r.value) ?? null) : undefined,
+    })),
     highlights: highlights.map((h) => ({
       text: h.text,
       note: h.note,
       color: h.color,
       tags: h.tags,
+      // Where the passage sits in the article, and for snips, the moment of the episode.
+      prefix: h.prefix,
+      suffix: h.suffix,
+      kind: h.kind,
+      title: h.title,
+      startSeconds: h.startSeconds,
+      endSeconds: h.endSeconds,
       createdAt: h.createdAt,
       article: { title: h.article.title, link: h.article.link, source: h.article.feed.title },
     })),
@@ -93,4 +112,19 @@ export async function GET() {
       "Cache-Control": "no-store",
     },
   });
+}
+
+/** Restores a backup file: adds what's missing, changes nothing that's there. */
+export async function POST(request: Request) {
+  try {
+    const result = await restoreBackup(await readJson<unknown>(request));
+    return NextResponse.json({ restored: result });
+  } catch (error) {
+    if (error instanceof BadRequest) return badRequest(error);
+    if (error instanceof RestoreError) {
+      return NextResponse.json({ error: error.message }, { status: 422 });
+    }
+    await reportProblem("POST /api/backup", error);
+    return NextResponse.json({ error: "Couldn't restore that backup" }, { status: 500 });
+  }
 }

@@ -29,7 +29,8 @@ async function signingKey(): Promise<CryptoKey> {
   );
 }
 
-async function sign(value: string): Promise<string> {
+/** A signature only this server can make (for short-lived values kept in cookies). */
+export async function sign(value: string): Promise<string> {
   return base64url(await crypto.subtle.sign("HMAC", await signingKey(), encoder.encode(value)));
 }
 
@@ -61,4 +62,15 @@ export async function verifyPassword(candidate: string): Promise<boolean> {
   const expected = process.env.APP_PASSWORD;
   if (!expected) return false;
   return safeEqual(candidate, expected);
+}
+
+/** How the session cookie is set, wherever a sign-in succeeds. */
+export function sessionCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: SESSION_MAX_AGE_SECONDS,
+  };
 }

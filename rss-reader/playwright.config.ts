@@ -16,6 +16,8 @@ process.env.DATABASE_URL = DATABASE_URL;
 process.env.DIRECT_URL = DATABASE_URL;
 process.env.FIXTURES_URL = `http://localhost:${FIXTURE_PORT}`;
 process.env.E2E_PASSWORD ??= "e2e-password";
+// Lets tests stall or cut the offline worker's own requests (e2e/offline.spec.ts).
+process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = "1";
 
 export default defineConfig({
   testDir: "e2e",

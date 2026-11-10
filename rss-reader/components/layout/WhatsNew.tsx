@@ -6,10 +6,22 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 // Bump the version when there's something new to say; the sheet shows once per version.
-export const WHATS_NEW_VERSION = "2026.11.09c";
+export const WHATS_NEW_VERSION = "2026.11.10";
 const SEEN_KEY = "whats-new-seen";
 
 export const WHATS_NEW: { title: string; text: string }[] = [
+  {
+    title: "No more frozen start",
+    text: "On a weak connection the app used to sit on its logo until the network gave up. It now shows your saved copy after a few seconds and refreshes behind it. If it ever fails to open, a screen offers to try again or reset the saved copy.",
+  },
+  {
+    title: "Unlock with your fingerprint",
+    text: "Settings → App → Add a passkey: after that, the sign-in page opens with your fingerprint, face or PIN. The password still works.",
+  },
+  {
+    title: "Restore a backup",
+    text: "Settings → Your data → Restore a backup puts back the sources, highlights, saved articles and rules from a backup file. It only adds what's missing.",
+  },
   {
     title: "A natural voice for Listen",
     text: "In the reader, Listen and tap \"AI\" in the bar at the bottom: the article is read by a natural AI voice instead of the phone's robot one, a minute at a time. What it has read stays on your device, so listening again is instant. When the AI is busy it carries on with the phone's voice.",

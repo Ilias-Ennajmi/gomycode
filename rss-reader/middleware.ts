@@ -5,6 +5,7 @@ import { SESSION_COOKIE, isAuthConfigured, safeEqual, verifySessionToken } from 
 const PUBLIC_PATHS = [
   "/login",
   "/api/auth/login",
+  "/api/auth/passkey/login",
   "/api/refresh/tick",
   "/api/videos/tick",
   "/api/health",

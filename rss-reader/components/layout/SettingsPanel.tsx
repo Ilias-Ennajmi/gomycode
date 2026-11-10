@@ -4,6 +4,7 @@ import type { DiscoverKind } from "@/lib/discover/catalog";
 import * as React from "react";
 import {
   Archive,
+  ArchiveRestore,
   BarChart3,
   BookOpen,
   ChevronDown,
@@ -39,13 +40,14 @@ import { GOALS, useReadingGoal } from "@/lib/hooks/useReadingGoal";
 import { TAB_TYPES, usePersonal, type Personal } from "@/lib/hooks/usePersonal";
 import { useComfort } from "@/lib/hooks/useComfort";
 import { useSkipSponsors } from "@/lib/hooks/useSponsors";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { toast } from "sonner";
 import { StarterPacks } from "@/components/onboarding/StarterPacks";
 import { useCategories } from "@/lib/hooks/useFeeds";
 import { usePref } from "@/lib/prefs";
 import { androidAppVersion, RELEASES_PAGE } from "@/lib/native";
 import { NotificationSettings } from "@/components/layout/NotificationSettings";
+import { PasskeySettings } from "@/components/layout/PasskeySettings";
 import { useFeeds } from "@/lib/hooks/useFeeds";
 import { needingAttention } from "@/lib/feed-health";
 import { START_VIEWS, START_VIEW_KEY, useReaderState } from "@/lib/hooks/useReaderState";
@@ -101,6 +103,38 @@ export function SettingsPanel({
   const { categories } = useCategories();
   const { comfort, update: updateComfort } = useComfort();
   const [skipSponsors, setSkipSponsors] = useSkipSponsors();
+  const restoreInput = React.useRef<HTMLInputElement>(null);
+  const { mutate: mutateAll } = useSWRConfig();
+  const restore = async (file: File) => {
+    const working = toast.loading(t("Restoring…"));
+    try {
+      const res = await fetch("/api/backup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: await file.text(),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || t("Couldn't restore that backup"));
+      const r = body.restored as Record<string, number>;
+      const parts = [
+        [r.sources, t("sources")],
+        [r.highlights, t("highlights")],
+        [r.saved, t("saved articles")],
+        [r.categories, t("categories")],
+        [r.rules, t("rules")],
+      ]
+        .filter(([n]) => Number(n) > 0)
+        .map(([n, label]) => `${n} ${label}`);
+      toast.success(
+        parts.length ? `${t("Restored")}: ${parts.join(", ")}` : t("Everything was already here"),
+        { id: working }
+      );
+      // Everything on screen may have changed.
+      void mutateAll(() => true);
+    } catch (error) {
+      toast.error((error as Error).message, { id: working });
+    }
+  };
   const deArrow = useSWR<{ on: boolean }>("/api/videos/dearrow");
   const setDeArrow = async (on: boolean) => {
     deArrow.mutate({ on }, { revalidate: false });
@@ -392,6 +426,24 @@ export function SettingsPanel({
             hint={t("Sources, highlights, saved articles and settings, as one file")}
             onClick={() => window.open("/api/backup", "_blank")}
           />
+          <Row
+            icon={ArchiveRestore}
+            label={t("Restore a backup")}
+            hint={t("Adds what's missing from a backup file; nothing is deleted")}
+            onClick={() => restoreInput.current?.click()}
+          />
+          <input
+            ref={restoreInput}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            aria-label={t("Backup file")}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) void restore(file);
+            }}
+          />
         </Section>
 
         <Section title={t("Notifications")}>
@@ -400,6 +452,7 @@ export function SettingsPanel({
 
         <Section title={t("App")}>
           <AppRow />
+          <PasskeySettings />
           <Row
             icon={Cpu}
             label={t("Under the hood")}
@@ -684,7 +737,12 @@ function Row({
   );
 }
 
-const USAGE_LABELS = { embed: "Analysis", text: "Summaries", video: "Video & audio" } as const;
+const USAGE_LABELS: Record<string, string> = {
+  embed: "Analysis",
+  text: "Summaries",
+  video: "Video & audio",
+  voice: "Natural voice",
+};
 
 /** Today's share of the free daily quota, so "summaries later" has a visible reason. */
 function AiUsage({ usage, paused }: { usage: NonNullable<AiStatus["usage"]>; paused: string[] }) {

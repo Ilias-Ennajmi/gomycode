@@ -1,0 +1,34 @@
+# Watches the Reader app from outside: every half hour it asks the app's public health check
+# (rss-reader/app/api/health: the database answers and the hourly refresh ran in the last
+# 3 hours). When the check fails three times a few minutes apart, this run fails and GitHub
+# emails the repository owner. Nothing here needs a secret.
+name: Reader uptime
+
+on:
+  schedule:
+    - cron: "11,41 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: reader-uptime
+  cancel-in-progress: true
+
+jobs:
+  health:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Ask the health check
+        run: |
+          url="https://rss-reader-jet.vercel.app/api/health"
+          for attempt in 1 2 3; do
+            body=$(curl -sS --max-time 30 -w '\n%{http_code}' "$url" || true)
+            code=$(printf '%s' "$body" | tail -n 1)
+            echo "Attempt $attempt: $code $(printf '%s' "$body" | head -n 1)"
+            if [ "$code" = "200" ]; then exit 0; fi
+            [ "$attempt" -lt 3 ] && sleep 120
+          done
+          echo "::error::Reader's health check is failing: $url"
+          exit 1

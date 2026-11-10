@@ -170,6 +170,8 @@ model Highlight {
   suffix         String    @default("")
   /// Lowercase labels, e.g. "seo", "quotes".
   tags           String[]  @default([])
+  /// Where it has been sent ("readwise", "notion"), so an export never sends it twice.
+  exportedTo     String[]  @default([])
   // Daily review (lib/review.ts): when it's due again, the gap that led there, and whether
   // it was left out of reviews for good.
   reviewDueAt    DateTime?
