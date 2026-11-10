@@ -5,6 +5,21 @@ download (yt-dlp) → 720p MP4 (ffmpeg) → video to Cloudflare R2, thumbnail to
 transcript (Groq) → key idea, takeaways, tags, places, recall cards (Claude) → filed into a Space →
 embedding for search (Voyage).
 
+Phase 2 adds two more job types:
+
+- **`grade`** — a recall answer from Learn (`payload: {card_id, audio_path | text}`). A spoken answer is
+  downloaded from `stash-voice/<user>/answers/…`, transcribed (Groq), graded against the card's answer and
+  the save's key idea with `CLAUDE_FAST_MODEL` (Got it / Partly / Missed + one line of feedback), written
+  to `reviews`, and the card moves on with SM-2 (unless the owner already graded it by hand). The audio
+  file is deleted afterwards; the transcript stays in the review.
+- **`synthesize`** — queued by the database when a Space gains 5 ready saves since its last synthesis.
+  Reads the Space's saves (key idea, takeaways), asks `CLAUDE_SMART_MODEL` for points of agreement,
+  disagreements (with the saves behind them) and one suggested action, and stores a `syntheses` row.
+
+Every job type goes through the same owner gate (`OWNER_USER_IDS`) and monthly cost guard. Claude is
+called with `tool_choice: auto` and an instruction to answer through the tool; an answer without the tool
+call counts as invalid and is asked for once more.
+
 It runs on Google Cloud Run and sleeps when idle. Supabase wakes it: a new job calls `POST /run`
 through `pg_net`, and a `pg_cron` sweep calls it every minute for anything left behind.
 
@@ -17,6 +32,7 @@ Each step degrades gracefully, so the app keeps working while keys are missing:
 | `GROQ_API_KEY` | No transcript; the AI reads the caption only |
 | `VOYAGE_API_KEY` | Search by words only, no "related saves" |
 | `OWNER_USER_IDS` | Nothing is processed (strangers can't spend your budget) |
+| `CLAUDE_SMART_MODEL` | No syntheses (the jobs fail with `ai_off`; nothing else changes) |
 
 ## Environment
 
@@ -29,6 +45,8 @@ Each step degrades gracefully, so the app keeps working while keys are missing:
 | `ANTHROPIC_API_KEY` | console.anthropic.com |
 | `CLAUDE_FAST_MODEL` | The model id you choose for per-save processing |
 | `CLAUDE_FAST_USD_PER_MTOK_IN` / `_OUT` | That model's price per million tokens (cost guard; default 1 / 5) |
+| `CLAUDE_SMART_MODEL` | The model id you choose for syntheses |
+| `CLAUDE_SMART_USD_PER_MTOK_IN` / `_OUT` | Its price per million tokens (cost guard; default 3 / 15) |
 | `GROQ_API_KEY` | console.groq.com (free tier) |
 | `VOYAGE_API_KEY` | dash.voyageai.com (free tokens) |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | Cloudflare → R2 (below) |
@@ -68,6 +86,6 @@ Rebuild every few weeks (`gcloud run deploy …` again) so yt-dlp keeps up with 
 ```bash
 cd stash/worker
 pip install -r requirements.txt pytest
-python -m pytest            # rules, ffmpeg steps and the job flow (no network)
+python -m pytest            # rules, ffmpeg steps, the job flow, grading and syntheses (no network)
 python -m stash_worker      # process the queue once, using the env vars above
 ```

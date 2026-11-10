@@ -1,5 +1,13 @@
 # Changelog
 
+## Phase 2 · The loop (2026-11-10)
+- Today: "Your 5 for today" built at your chosen time and length (2, 6, 10 or 30 min), streak and weekly progress, For you (pattern spotted, reminders that fired, an old save worth another look), Inbox quick sort, pull to rebuild
+- Play: today, Space, search and single-item queues; keep, archive (Undo), applied; finish screen with streak and Start recall
+- Learn: recall cards from kept saves, answered out loud, typed or self-graded; SM-2 scheduling, 10 a day; syntheses with agreements and the saves that disagree
+- Reminders: notifications for Tonight / This weekend / Pick a date, respecting quiet hours; Settings → Reminders
+- Worker: grades recall answers, writes Space syntheses; Claude calls no longer force a tool choice
+- Database: daily queues, push subscriptions, kept saves schedule their cards, syntheses queued automatically, cron jobs with secrets kept in Supabase Vault
+
 ## Phase 1 · Save, process, watch (2026-10-08)
 - Instant save from the share sheet, offline-safe, with optional Space, voice note and reminder
 - Processing worker: download, 720p video, thumbnail, transcript, key idea + takeaways + to-dos + tags + places + recall cards, auto-filing, embeddings, cost guard
