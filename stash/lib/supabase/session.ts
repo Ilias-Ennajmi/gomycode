@@ -35,10 +35,13 @@ export function isPublicPath(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
-const BOT_RE = /bot|crawl|spider|slurp|preview|lighthouse|headless|facebookexternalhit|embedly|whatsapp|telegram/i;
+// Crawlers and link-preview renderers that execute JavaScript announce themselves in the
+// user agent. Automated browsers (headless Chrome, webdriver) are NOT treated as bots:
+// scripts/e2e-smoke.mjs drives the real app with Playwright and needs an identity.
+const BOT_RE = /bot\b|bot\/|crawl|spider|slurp|lighthouse|facebookexternalhit|embedly|whatsapp|telegram|preview/i;
 
-export function isBotAgent(ua: string | null | undefined, webdriver = false): boolean {
-  return webdriver || BOT_RE.test(ua ?? "");
+export function isBotAgent(ua: string | null | undefined): boolean {
+  return BOT_RE.test(ua ?? "");
 }
 
 /**

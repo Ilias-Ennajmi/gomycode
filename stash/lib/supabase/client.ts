@@ -17,7 +17,7 @@ const createdListeners = new Set<() => void>();
  */
 export const ensureSession = createSessionGate<Session>(() => getBrowserClient()?.auth ?? null, {
   isPublicPage: () => typeof window !== "undefined" && isPublicPath(window.location.pathname),
-  isBot: () => typeof navigator !== "undefined" && isBotAgent(navigator.userAgent, navigator.webdriver),
+  isBot: () => typeof navigator !== "undefined" && isBotAgent(navigator.userAgent),
   isOnline: () => typeof navigator === "undefined" || navigator.onLine,
   onCreated: () => createdListeners.forEach((l) => l()),
 });

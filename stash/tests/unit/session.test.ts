@@ -93,6 +93,9 @@ describe("helpers", () => {
     expect(isBotAgent("Mozilla/5.0 (compatible; Googlebot/2.1)")).toBe(true);
     expect(isBotAgent("WhatsApp/2.23")).toBe(true);
     expect(isBotAgent("Mozilla/5.0 (Linux; Android 14) Chrome/130 Mobile Safari/537.36")).toBe(false);
-    expect(isBotAgent("Mozilla/5.0", true)).toBe(true);
+    // Playwright (scripts/e2e-smoke.mjs) is a real browser, not a crawler.
+    expect(isBotAgent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 HeadlessChrome/130.0 Safari/537.36")).toBe(false);
+    expect(isBotAgent("Mozilla/5.0 (compatible; bingbot/2.0)")).toBe(true);
+    expect(isBotAgent("Slackbot-LinkExpanding 1.0")).toBe(true);
   });
 });
