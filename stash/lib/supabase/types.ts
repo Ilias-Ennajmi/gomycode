@@ -798,7 +798,7 @@ export type Database = {
       cron_vapid: { Args: { p_secret: string }; Returns: { public_key: string | null; private_key: string | null; subject: string | null }[] };
       cron_set_vapid: { Args: { p_secret: string; p_public: string; p_private: string }; Returns: undefined };
       cron_due_reminders: { Args: { p_secret: string }; Returns: { id: string; user_id: string; save_id: string; title: string; timezone: string; quiet_hours: Json; subscriptions: Json }[] };
-      cron_mark_fired: { Args: { p_secret: string; p_ids: string[] }; Returns: undefined };
+      cron_mark_fired: { Args: { p_secret: string; p_ids: string[] }; Returns: string[] };
       cron_drop_subscriptions: { Args: { p_secret: string; p_endpoints: string[] }; Returns: undefined };
       cron_daily_candidates: { Args: { p_secret: string }; Returns: { user_id: string; day: string; minutes: number; saves: Json; subscriptions: Json }[] };
       cron_store_daily: { Args: { p_secret: string; p_user_id: string; p_day: string; p_save_ids: string[]; p_minutes: number }; Returns: boolean };

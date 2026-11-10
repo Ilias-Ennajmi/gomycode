@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import type { Database } from "@/lib/supabase/types";
 import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from "@/lib/supabase/env";
+import { isAllowedPushEndpoint } from "@/lib/pushHosts";
 
 /*
  * Cron routes. Supabase pg_cron calls them with `Authorization: Bearer
@@ -61,35 +62,74 @@ export async function ensureVapid(sb: CronClient, secret: string): Promise<Vapid
 export type PushTarget = { endpoint: string; p256dh: string; auth: string };
 export type PushMessage = { title: string; body: string; url: string; tag?: string };
 
+/** Subscriptions from SQL → targets, keeping only https endpoints on the known push services. */
 export function parseTargets(v: unknown): PushTarget[] {
   if (!Array.isArray(v)) return [];
   return v.flatMap((x) => {
     const t = x as Partial<PushTarget> | null;
-    return t && typeof t.endpoint === "string" && typeof t.p256dh === "string" && typeof t.auth === "string"
+    return t && isAllowedPushEndpoint(t.endpoint) && typeof t.p256dh === "string" && typeof t.auth === "string"
       ? [{ endpoint: t.endpoint, p256dh: t.p256dh, auth: t.auth }]
       : [];
   });
 }
 
-/** Sends to every device; returns how many went out and which endpoints are gone for good. */
-export async function sendToAll(targets: PushTarget[], msg: PushMessage, vapid: Vapid): Promise<{ sent: number; gone: string[] }> {
+/** Per push request, and the default overall budget of one route run (maxDuration is 60 s). */
+export const PUSH_TIMEOUT_MS = 8_000;
+export const PUSH_DEADLINE_MS = 40_000;
+
+export type PushJob = { target: PushTarget; msg: PushMessage };
+export type PushResult = { sent: number; gone: string[]; timedOut: number };
+export type PushSender = (job: PushJob, timeoutMs: number) => Promise<void>;
+
+const webPushSender =
+  (vapid: Vapid): PushSender =>
+  async (job, timeoutMs) => {
+    await webpush.sendNotification(
+      { endpoint: job.target.endpoint, keys: { p256dh: job.target.p256dh, auth: job.target.auth } },
+      JSON.stringify(job.msg),
+      { vapidDetails: vapid, TTL: 6 * 3600, urgency: "normal", timeout: timeoutMs },
+    );
+  };
+
+/**
+ * Sends every push in parallel. Each one gets at most `timeoutMs`, and nothing runs past
+ * `deadline` (epoch ms), so a slow push service can't hold the route until it is killed.
+ * Gone endpoints (404/410) are returned so the caller can drop them.
+ */
+export async function sendPushes(
+  jobs: PushJob[],
+  vapid: Vapid | null,
+  opts: { deadline?: number; timeoutMs?: number; now?: () => number; send?: PushSender } = {},
+): Promise<PushResult> {
+  const now = opts.now ?? Date.now;
+  const deadline = opts.deadline ?? now() + PUSH_DEADLINE_MS;
+  const send = opts.send ?? (vapid ? webPushSender(vapid) : null);
   let sent = 0;
+  let timedOut = 0;
   const gone: string[] = [];
+  if (!send) return { sent, gone, timedOut };
   await Promise.all(
-    targets.map(async (t) => {
+    jobs.map(async (job) => {
+      const budget = Math.min(opts.timeoutMs ?? PUSH_TIMEOUT_MS, deadline - now());
+      if (budget <= 0) {
+        timedOut++;
+        return;
+      }
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const late = new Promise<"late">((resolve) => {
+        timer = setTimeout(() => resolve("late"), budget);
+      });
       try {
-        await webpush.sendNotification({ endpoint: t.endpoint, keys: { p256dh: t.p256dh, auth: t.auth } }, JSON.stringify(msg), {
-          vapidDetails: vapid,
-          TTL: 6 * 3600,
-          urgency: "normal",
-          timeout: 10_000,
-        });
-        sent++;
+        const r = await Promise.race([send(job, budget).then(() => "ok" as const), late]);
+        if (r === "late") timedOut++;
+        else sent++;
       } catch (e) {
         const status = (e as { statusCode?: number }).statusCode;
-        if (status === 404 || status === 410) gone.push(t.endpoint);
+        if (status === 404 || status === 410) gone.push(job.target.endpoint);
+      } finally {
+        clearTimeout(timer);
       }
     }),
   );
-  return { sent, gone };
+  return { sent, gone, timedOut };
 }

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getServerClient } from "@/lib/supabase/server";
+import { isAllowedPushEndpoint } from "@/lib/pushHosts";
 
 type Body = { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown } };
 
@@ -24,7 +25,8 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "bad request" }, { status: 400 });
   }
-  if (!ok(body.endpoint, 1000) || !body.endpoint.startsWith("https://") || !ok(body.keys?.p256dh, 200) || !ok(body.keys?.auth, 100)) {
+  // Only the browsers' push services (lib/pushHosts.ts, same list as the database check).
+  if (!isAllowedPushEndpoint(body.endpoint) || !ok(body.keys?.p256dh, 200) || !ok(body.keys?.auth, 100)) {
     return NextResponse.json({ error: "bad subscription" }, { status: 400 });
   }
   const { error } = await s.supabase.rpc("save_push_subscription", {
