@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useT } from "@/lib/i18n";
 
 const SHORTCUTS: Array<[string, string]> = [
   ["⌘K / Ctrl+K", "Command palette"],
@@ -30,17 +31,18 @@ interface KeyboardShortcutsDialogProps {
 }
 
 export function KeyboardShortcutsDialog({ open, onOpenChange }: KeyboardShortcutsDialogProps) {
+  const { t } = useT();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Keyboard shortcuts</DialogTitle>
-          <DialogDescription>Move fast without leaving the keyboard.</DialogDescription>
+          <DialogTitle>{t("Keyboard shortcuts")}</DialogTitle>
+          <DialogDescription>{t("Move fast without leaving the keyboard.")}</DialogDescription>
         </DialogHeader>
         <dl className="space-y-1.5">
           {SHORTCUTS.map(([key, label]) => (
             <div key={key} className="flex items-center justify-between text-sm">
-              <dt className="text-muted-foreground">{label}</dt>
+              <dt className="text-muted-foreground">{t(label)}</dt>
               <dd>
                 <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-xs">{key}</kbd>
               </dd>

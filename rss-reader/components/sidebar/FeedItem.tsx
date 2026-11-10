@@ -34,6 +34,7 @@ import { useFilters } from "@/lib/hooks/useFilters";
 import type { CategorySummary } from "@/lib/types";
 import { toast } from "sonner";
 import { FAILING_ERRORS } from "@/lib/feed-health";
+import { useT, tr } from "@/lib/i18n";
 
 interface FeedItemProps {
   id: string;
@@ -60,6 +61,7 @@ export function FeedItem({
   onClick,
   onChanged,
 }: FeedItemProps) {
+  const { t } = useT();
   const { rules, addRule, removeRule } = useFilters();
   const email = useFeeds().feeds.find((feed) => feed.id === id)?.email ?? null;
 
@@ -74,7 +76,7 @@ export function FeedItem({
         toast.success(`Muted ${title} — it won't appear in All or Today`);
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not update feed");
+      toast.error(error instanceof Error ? error.message : tr("Could not update feed"));
     }
   }
 
@@ -98,7 +100,7 @@ export function FeedItem({
       await updateFeed(id, { title: trimmed });
       onChanged();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not rename feed");
+      toast.error(error instanceof Error ? error.message : tr("Could not rename feed"));
       setDraftTitle(title);
     }
   }
@@ -108,7 +110,7 @@ export function FeedItem({
       await updateFeed(id, { categoryId });
       onChanged();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not move feed");
+      toast.error(error instanceof Error ? error.message : tr("Could not move feed"));
     }
   }
 
@@ -117,7 +119,7 @@ export function FeedItem({
       await markAllRead({ feedId: id });
       onChanged();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not mark feed read");
+      toast.error(error instanceof Error ? error.message : tr("Could not mark feed read"));
     }
   }
 
@@ -127,7 +129,7 @@ export function FeedItem({
       toast.success(`Removed ${title}`);
       onChanged();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not delete feed");
+      toast.error(error instanceof Error ? error.message : tr("Could not delete feed"));
     }
   }
 
@@ -169,12 +171,15 @@ export function FeedItem({
               <span className="flex-1 truncate text-left">{title}</span>
             )}
             {muted && (
-              <EyeOff className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Muted" />
+              <EyeOff
+                className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                aria-label={t("Muted")}
+              />
             )}
             {errorCount >= FAILING_ERRORS && (
               <AlertTriangle
                 className="h-3.5 w-3.5 shrink-0 text-amber-500"
-                aria-label="Feed is failing"
+                aria-label={t("Feed is failing")}
               />
             )}
             {!!unreadCount && (
@@ -190,15 +195,15 @@ export function FeedItem({
         <ContextMenuPortal>
           <ContextMenuContent className="w-52">
             <ContextMenuItem onSelect={() => setRenaming(true)}>
-              <Pencil className="mr-2 h-3.5 w-3.5" /> Rename
+              <Pencil className="mr-2 h-3.5 w-3.5" /> {t("Rename")}
             </ContextMenuItem>
             <ContextMenuSub>
               <ContextMenuSubTrigger>
-                <FolderInput className="mr-2 h-3.5 w-3.5" /> Move to category
+                <FolderInput className="mr-2 h-3.5 w-3.5" /> {t("Move to category")}
               </ContextMenuSubTrigger>
               <ContextMenuSubContent>
                 <ContextMenuItem onSelect={() => handleMoveToCategory(null)}>
-                  Uncategorized
+                  {t("Uncategorized")}
                 </ContextMenuItem>
                 {categories.map((category) => (
                   <ContextMenuItem
@@ -215,16 +220,16 @@ export function FeedItem({
               </ContextMenuSubContent>
             </ContextMenuSub>
             <ContextMenuItem onSelect={handleMarkAllRead}>
-              <CheckCheck className="mr-2 h-3.5 w-3.5" /> Mark all read
+              <CheckCheck className="mr-2 h-3.5 w-3.5" /> {t("Mark all read")}
             </ContextMenuItem>
             <ContextMenuItem onSelect={handleToggleMute}>
               {muted ? (
                 <>
-                  <Eye className="mr-2 h-3.5 w-3.5" /> Unmute feed
+                  <Eye className="mr-2 h-3.5 w-3.5" /> {t("Unmute feed")}
                 </>
               ) : (
                 <>
-                  <EyeOff className="mr-2 h-3.5 w-3.5" /> Mute feed
+                  <EyeOff className="mr-2 h-3.5 w-3.5" /> {t("Mute feed")}
                 </>
               )}
             </ContextMenuItem>
@@ -232,10 +237,10 @@ export function FeedItem({
               <>
                 <ContextMenuSeparator />
                 <ContextMenuItem onSelect={() => copySignupAddress(email)}>
-                  <AtSign className="mr-2 h-3.5 w-3.5" /> Copy sign-up address
+                  <AtSign className="mr-2 h-3.5 w-3.5" /> {t("Copy sign-up address")}
                 </ContextMenuItem>
                 <ContextMenuItem onSelect={() => openUnsubscribe(id)}>
-                  <MailX className="mr-2 h-3.5 w-3.5" /> Unsubscribe…
+                  <MailX className="mr-2 h-3.5 w-3.5" /> {t("Unsubscribe…")}
                 </ContextMenuItem>
               </>
             )}
@@ -244,7 +249,7 @@ export function FeedItem({
               onSelect={() => setConfirmDelete(true)}
               className="text-destructive focus:text-destructive"
             >
-              <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
+              <Trash2 className="mr-2 h-3.5 w-3.5" /> {t("Delete")}
             </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenuPortal>
@@ -253,7 +258,7 @@ export function FeedItem({
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
         title={`Delete ${title}?`}
-        description="This will remove the feed and all of its articles. This can't be undone."
+        description={t("This will remove the feed and all of its articles. This can't be undone.")}
         confirmLabel="Delete"
         onConfirm={handleDelete}
       />

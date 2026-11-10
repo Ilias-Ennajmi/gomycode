@@ -44,6 +44,7 @@ import { requestAppEvent } from "@/lib/app-events";
 import { siteTopic, topicResult } from "@/lib/discover/topics";
 import { KIND_META, SourceRow } from "@/components/discover/SourceRow";
 import { SourcePreview } from "@/components/discover/SourcePreview";
+import { useT, tr } from "@/lib/i18n";
 
 interface DiscoverDialogProps {
   open: boolean;
@@ -99,6 +100,7 @@ type Added = { feedId: string; categoryId: string | null };
 
 /** Find sources by channel, interest, search or AI description, and follow them in one tap. */
 export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: DiscoverDialogProps) {
+  const { t } = useT();
   const { feeds } = useFeeds();
   const { categories: userCategories } = useCategories();
   const { langs, toggle } = useDiscoverLangs();
@@ -174,9 +176,9 @@ export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: Disc
       setLastFollowed((prev) =>
         prev && entriesToUndo.some((e) => e.feedId === prev.id) ? null : prev
       );
-      toast(entriesToUndo.length === 1 ? "Unfollowed" : `Unfollowed ${entriesToUndo.length}`);
+      toast(entriesToUndo.length === 1 ? tr("Unfollowed") : `Unfollowed ${entriesToUndo.length}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not undo");
+      toast.error(error instanceof Error ? error.message : tr("Could not undo"));
     }
   }
 
@@ -192,7 +194,9 @@ export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: Disc
     const site = siteTopic(item.siteUrl || item.url);
     const offerNews = result?.code === "no-feed" && item.provider !== "topic" && site;
     toast.error(`${item.name}: ${result?.error ?? "couldn't be followed"}`, {
-      description: offerNews ? "You can still follow its stories through news search." : undefined,
+      description: offerNews
+        ? tr("You can still follow its stories through news search.")
+        : undefined,
       action: offerNews
         ? {
             label: "Follow via news",
@@ -243,17 +247,17 @@ export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: Disc
         const { item, result } = fresh[0];
         setLastFollowed({ id: result.feedId!, title: result.title ?? item.name });
         toast.success(`Following ${result.title ?? item.name}`, {
-          action: { label: "Undo", onClick: () => undo(undoable) },
+          action: { label: tr("Undo"), onClick: () => undo(undoable) },
         });
       } else if (fresh.length > 1) {
         toast.success(`Following ${fresh.length} sources`, {
-          action: { label: "Undo", onClick: () => undo(undoable) },
+          action: { label: tr("Undo"), onClick: () => undo(undoable) },
         });
       }
       reportFailures(failed);
     } catch (error) {
       updateSet(setFollowed, keys, false);
-      toast.error(error instanceof Error ? error.message : "Could not follow");
+      toast.error(error instanceof Error ? error.message : tr("Could not follow"));
     } finally {
       updateSet(setPending, keys, false);
     }
@@ -266,9 +270,9 @@ export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: Disc
       await moveFeed(entry.feedId, categoryId);
       setAdded((prev) => new Map(prev).set(key, { ...entry, categoryId }));
       const name = userCategories.find((c) => c.id === categoryId)?.name;
-      toast.success(name ? `Moved to ${name}` : "Removed from its category");
+      toast.success(name ? `Moved to ${name}` : tr("Removed from its category"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not move this source");
+      toast.error(error instanceof Error ? error.message : tr("Could not move this source"));
     }
   }
 
@@ -322,11 +326,11 @@ export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: Disc
             <div className="flex items-center gap-2 pt-3 sm:pt-0">
               <Compass className="h-5 w-5 text-primary" />
               <DialogPrimitive.Title className="text-lg font-semibold tracking-tight">
-                {firstRun ? "Pick your first sources" : TITLES[kind]}
+                {firstRun ? t("Pick your first sources") : TITLES[kind]}
               </DialogPrimitive.Title>
               <DialogPrimitive.Close
                 className="-mr-2 ml-auto rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-                aria-label="Close"
+                aria-label={t("Close")}
               >
                 <X className="h-5 w-5" />
               </DialogPrimitive.Close>
@@ -334,7 +338,7 @@ export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: Disc
 
             <div
               role="tablist"
-              aria-label="Channel"
+              aria-label={t("Channel")}
               className="mt-3 grid grid-cols-5 gap-1 rounded-xl bg-muted/60 p-1"
             >
               {CHANNELS.map((channel) => {
@@ -360,7 +364,7 @@ export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: Disc
                         active && channel.id === "youtube" && "text-red-600"
                       )}
                     />
-                    <span className="truncate">{channel.label}</span>
+                    <span className="truncate">{t(channel.label)}</span>
                   </button>
                 );
               })}
@@ -373,7 +377,7 @@ export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: Disc
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={PLACEHOLDERS[kind]}
                 className="h-11 w-full rounded-xl border bg-muted/40 pl-10 pr-10 text-[15px] outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
-                aria-label="Search sources"
+                aria-label={t("Search sources")}
                 autoComplete="off"
                 enterKeyHint="search"
               />
@@ -382,7 +386,7 @@ export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: Disc
                   type="button"
                   onClick={() => setQuery("")}
                   className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted-foreground hover:bg-accent"
-                  aria-label="Clear search"
+                  aria-label={t("Clear search")}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -390,7 +394,7 @@ export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: Disc
             </div>
 
             <div className="mt-3 flex items-center gap-2 text-xs">
-              <span className="text-muted-foreground">Languages</span>
+              <span className="text-muted-foreground">{t("Languages")}</span>
               {(Object.keys(LANGUAGE_LABELS) as Language[]).map((lang) => {
                 const active = langs.includes(lang);
                 return (
@@ -416,7 +420,7 @@ export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: Disc
           <div className="flex min-h-0 flex-1">
             {!searching && (
               <nav
-                aria-label="Interests"
+                aria-label={t("Interests")}
                 className="hidden w-52 shrink-0 overflow-y-auto border-r p-2 scrollbar-thin sm:block"
               >
                 {sections.map((s) => {
@@ -438,7 +442,10 @@ export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: Disc
                       {s.id === FOR_YOU && <Sparkles className="h-3.5 w-3.5 text-primary" />}
                       <span className="min-w-0 flex-1 truncate">{s.name}</span>
                       {s.id === FOR_YOU && lastFollowed && !active && (
-                        <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-label="New" />
+                        <span
+                          className="h-1.5 w-1.5 rounded-full bg-primary"
+                          aria-label={t("New")}
+                        />
                       )}
                       {count ? (
                         <span className="text-[11px] tabular-nums text-muted-foreground/70">
@@ -488,9 +495,9 @@ export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: Disc
                 >
                   <AtSign className="h-5 w-5 shrink-0 text-primary" />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium">Only sent by email?</span>
+                    <span className="block text-sm font-medium">{t("Only sent by email?")}</span>
                     <span className="block text-xs text-muted-foreground">
-                      Get an address to sign up with; issues land in Newsletters → Email.
+                      {t("Get an address to sign up with; issues land in Newsletters → Email.")}
                     </span>
                   </span>
                 </button>
@@ -530,10 +537,10 @@ export function DiscoverDialog({ open, onOpenChange, initialKind = "all" }: Disc
               <p className="text-xs text-muted-foreground">
                 {followed.size > 0
                   ? `${followed.size} new source${followed.size === 1 ? "" : "s"} followed`
-                  : "Follow a few sources to fill your feed."}
+                  : t("Follow a few sources to fill your feed.")}
               </p>
               <Button size="sm" className="rounded-full" onClick={() => onOpenChange(false)}>
-                {followed.size > 0 ? "Done" : "Skip for now"}
+                {followed.size > 0 ? t("Done") : t("Skip for now")}
               </Button>
             </footer>
           ) : null}
@@ -590,9 +597,10 @@ function ResultList({ results, rowProps }: { results: DiscoverResult[]; rowProps
 }
 
 function LoadingRows({ label }: { label: string }) {
+  const { t } = useT();
   return (
     <div role="status" aria-live="polite">
-      <p className="pt-3 text-sm text-muted-foreground">{label}</p>
+      <p className="pt-3 text-sm text-muted-foreground">{t(label)}</p>
       <ul className="divide-y divide-border/60">
         {[0, 1, 2].map((row) => (
           <li key={row} className="flex items-center gap-3 py-3">
@@ -660,6 +668,7 @@ function SearchResults({
   kind: DiscoverKind;
   rowProps: RowProps;
 }) {
+  const { t } = useT();
   const { results, unavailable, topic, noFeed, isLoading, isPending } = useDiscoverSearch(
     query,
     langs,
@@ -672,10 +681,14 @@ function SearchResults({
 
   if (noFeed && topic) {
     return (
-      <Section title="No feed on this site" icon={<Newspaper className="h-4 w-4 text-primary" />}>
+      <Section
+        title={t("No feed on this site")}
+        icon={<Newspaper className="h-4 w-4 text-primary" />}
+      >
         <p className="pt-2 text-sm text-muted-foreground">
-          This site doesn&rsquo;t publish a feed we can read. You can still follow its latest
-          stories through news search:
+          {t(
+            "This site doesn’t publish a feed we can read. You can still follow its latest stories through news search:"
+          )}
         </p>
         <ResultList results={[topic]} rowProps={rowProps} />
       </Section>
@@ -691,14 +704,15 @@ function SearchResults({
       ) : (
         !busy && (
           <p className="pt-8 text-center text-sm text-muted-foreground">
-            No {kind === "all" ? "sources" : KIND_NOUNS[kind]} found for &ldquo;
-            {query.trim()}&rdquo;. Try a broader word, or paste the address.
+            {t("No")} {kind === "all" ? t("sources") : KIND_NOUNS[kind]} {t("found for “")}
+            {query.trim()}
+            {t("”. Try a broader word, or paste the address.")}
           </p>
         )
       )}
       {topic && (
         <Section
-          title="Or follow the topic"
+          title={t("Or follow the topic")}
           icon={<Newspaper className="h-4 w-4 text-muted-foreground" />}
         >
           <ResultList results={[topic]} rowProps={rowProps} />
@@ -706,8 +720,8 @@ function SearchResults({
       )}
       {unavailable.length > 0 && (
         <p className="pt-4 text-xs text-muted-foreground">
-          {unavailable.join(" and ")} search is unavailable right now, so some results may be
-          missing.
+          {unavailable.join(" and ")}{" "}
+          {t("search is unavailable right now, so some results may be missing.")}
         </p>
       )}
     </div>
@@ -758,6 +772,7 @@ function ForYou({
 
 /** Apple's charts, per language picked: something to start from before searching. */
 function TopPodcasts({ langs, rowProps }: { langs: Language[]; rowProps: RowProps }) {
+  const { t } = useT();
   const { data, isLoading } = useSWR<{ results: DiscoverResult[] }>(
     `/api/discover/podcasts?langs=${langs.join(",")}`,
     { revalidateOnFocus: false }
@@ -765,9 +780,9 @@ function TopPodcasts({ langs, rowProps }: { langs: Language[]; rowProps: RowProp
   const results = data?.results ?? [];
   if (!isLoading && results.length === 0) return null;
   return (
-    <Section title="Top podcasts" icon={<TrendingUp className="h-4 w-4 text-primary" />}>
+    <Section title={t("Top podcasts")} icon={<TrendingUp className="h-4 w-4 text-primary" />}>
       {isLoading ? (
-        <LoadingRows label="Loading the charts…" />
+        <LoadingRows label={t("Loading the charts…")} />
       ) : (
         <ResultList results={results} rowProps={rowProps} />
       )}
@@ -788,18 +803,23 @@ function BecauseYouFollowed({
   rowProps: RowProps;
   isFollowing: (r: DiscoverResult) => boolean;
 }) {
+  const { t } = useT();
   const { results, isLoading } = useSuggestions(feed.id, langs, kind);
   const visible = results.filter((r) => !isFollowing(r) || rowProps(r).added);
 
   return (
     <Section
-      title={<>Because you followed {feed.title}</>}
+      title={
+        <>
+          {t("Because you followed")} {feed.title}
+        </>
+      }
       icon={<Sparkles className="h-4 w-4 text-primary" />}
     >
       {isLoading ? (
-        <LoadingRows label="Finding similar sources…" />
+        <LoadingRows label={t("Finding similar sources…")} />
       ) : visible.length === 0 ? (
-        <p className="py-3 text-sm text-muted-foreground">No similar sources found yet.</p>
+        <p className="py-3 text-sm text-muted-foreground">{t("No similar sources found yet.")}</p>
       ) : (
         <ResultList results={visible} rowProps={rowProps} />
       )}
@@ -820,15 +840,16 @@ function SuggestedForYou({
   rowProps: RowProps;
   isFollowing: (r: DiscoverResult) => boolean;
 }) {
+  const { t } = useT();
   const { results, isLoading } = useSuggestions(null, langs, kind, enabled);
   if (!enabled) return null;
   const visible = results.filter((r) => !isFollowing(r) || rowProps(r).added).slice(0, 8);
   if (!isLoading && visible.length === 0) return null;
 
   return (
-    <Section title="Suggested for you" icon={<Sparkles className="h-4 w-4 text-primary" />}>
+    <Section title={t("Suggested for you")} icon={<Sparkles className="h-4 w-4 text-primary" />}>
       {isLoading ? (
-        <LoadingRows label="Looking at what you follow…" />
+        <LoadingRows label={t("Looking at what you follow…")} />
       ) : (
         <ResultList results={visible} rowProps={rowProps} />
       )}
@@ -853,6 +874,7 @@ function DescribeInterests({
   langs: Language[];
   rowProps: RowProps;
 }) {
+  const { t } = useT();
   const ai = useAiStatus();
   const [text, setText] = React.useState("");
   const [loading, setLoading] = React.useState(false);
@@ -870,21 +892,24 @@ function DescribeInterests({
     try {
       setResults(await describeInterests(text.trim(), langs, kind));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not get suggestions");
+      toast.error(error instanceof Error ? error.message : tr("Could not get suggestions"));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <Section title="Describe what you like" icon={<Sparkles className="h-4 w-4 text-primary" />}>
+    <Section
+      title={t("Describe what you like")}
+      icon={<Sparkles className="h-4 w-4 text-primary" />}
+    >
       <form onSubmit={submit} className="mt-2 flex gap-2">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={DESCRIBE_PLACEHOLDERS[kind]}
           className="h-10 min-w-0 flex-1 rounded-xl border bg-muted/40 px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
-          aria-label="Describe what you like"
+          aria-label={t("Describe what you like")}
         />
         <Button
           type="submit"
@@ -896,13 +921,13 @@ function DescribeInterests({
           ) : (
             <Sparkles className="h-4 w-4" />
           )}
-          Suggest
+          {t("Suggest")}
         </Button>
       </form>
-      {loading && <LoadingRows label="Asking the AI and checking each source…" />}
+      {loading && <LoadingRows label={t("Asking the AI and checking each source…")} />}
       {!loading && results && results.length === 0 && (
         <p className="py-3 text-sm text-muted-foreground">
-          No working sources found for that. Try describing it differently.
+          {t("No working sources found for that. Try describing it differently.")}
         </p>
       )}
       {!loading && results && results.length > 0 && (
@@ -920,6 +945,7 @@ function FollowTopic({
   langs: Language[];
   onFollow: (items: DiscoverResult[]) => void;
 }) {
+  const { t } = useT();
   const [text, setText] = React.useState("");
 
   function submit(event: React.FormEvent) {
@@ -931,17 +957,22 @@ function FollowTopic({
   }
 
   return (
-    <Section title="Follow a topic" icon={<Newspaper className="h-4 w-4 text-muted-foreground" />}>
+    <Section
+      title={t("Follow a topic")}
+      icon={<Newspaper className="h-4 w-4 text-muted-foreground" />}
+    >
       <p className="pt-1 text-[13px] text-muted-foreground">
-        Get the latest news on anything, from every outlet: a company, a team, a person, a place.
+        {t(
+          "Get the latest news on anything, from every outlet: a company, a team, a person, a place."
+        )}
       </p>
       <form onSubmit={submit} className="mt-2 flex gap-2">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="e.g. Moroccan startups, Real Madrid, OpenAI…"
+          placeholder={t("e.g. Moroccan startups, Real Madrid, OpenAI…")}
           className="h-10 min-w-0 flex-1 rounded-xl border bg-muted/40 px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
-          aria-label="Topic to follow"
+          aria-label={t("Topic to follow")}
         />
         <Button
           type="submit"
@@ -949,7 +980,7 @@ function FollowTopic({
           className="h-10 rounded-xl"
           disabled={text.trim().length < 2}
         >
-          Follow
+          {t("Follow")}
         </Button>
       </form>
     </Section>
@@ -979,6 +1010,7 @@ function CategoryView({
   onFollowAll: (items: DiscoverResult[]) => void;
   busy: boolean;
 }) {
+  const { t } = useT();
   const remaining = picks.filter((e) => !isFollowing(e));
   const [showLive, setShowLive] = React.useState(false);
   const explore = useExplore(categoryId, kind, langs, showLive || (!loading && picks.length < 4));
@@ -1008,40 +1040,43 @@ function CategoryView({
               disabled={busy}
               onClick={() => onFollowAll(remaining)}
             >
-              Follow all {remaining.length}
+              {t("Follow all")} {remaining.length}
             </Button>
           )
         }
       >
         {loading && picks.length === 0 ? (
-          <LoadingRows label="Loading picks…" />
+          <LoadingRows label={t("Loading picks…")} />
         ) : picks.length === 0 ? (
           <p className="pt-2 text-sm text-muted-foreground">
-            No hand-picked {kind === "all" ? "sources" : KIND_NOUNS[kind]} here yet. Here&rsquo;s
-            what&rsquo;s popular instead.
+            {t("No hand-picked")} {kind === "all" ? t("sources") : KIND_NOUNS[kind]}{" "}
+            {t("here yet. Here’s what’s popular instead.")}
           </p>
         ) : (
           <GroupedResults results={picks} kind={kind} rowProps={rowProps} />
         )}
       </Section>
 
-      <Section title="More like this" icon={<Compass className="h-4 w-4 text-muted-foreground" />}>
+      <Section
+        title={t("More like this")}
+        icon={<Compass className="h-4 w-4 text-muted-foreground" />}
+      >
         {!liveStarted ? (
           <Button
             variant="outline"
             className="mt-3 w-full rounded-xl"
             onClick={() => setShowLive(true)}
           >
-            Explore more {kind === "all" ? "sources" : KIND_NOUNS[kind]} in {name}
+            {t("Explore more")} {kind === "all" ? t("sources") : KIND_NOUNS[kind]} {t("in")} {name}
           </Button>
         ) : (
           <>
             {live.length > 0 && <ResultList results={live} rowProps={rowProps} />}
             {explore.isLoading ? (
-              <LoadingRows label="Finding more…" />
+              <LoadingRows label={t("Finding more…")} />
             ) : live.length === 0 && !explore.hasMore ? (
               <p className="py-3 text-sm text-muted-foreground">
-                Nothing more right now. Try a search above.
+                {t("Nothing more right now. Try a search above.")}
               </p>
             ) : null}
             {explore.hasMore && !explore.isLoading && (
@@ -1050,7 +1085,7 @@ function CategoryView({
                 className="mt-2 w-full rounded-xl"
                 onClick={() => explore.loadMore()}
               >
-                Show more
+                {t("Show more")}
               </Button>
             )}
           </>

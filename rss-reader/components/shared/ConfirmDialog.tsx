@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -30,6 +31,7 @@ export function ConfirmDialog({
   destructive = true,
   onConfirm,
 }: ConfirmDialogProps) {
+  const { t } = useT();
   const [loading, setLoading] = React.useState(false);
 
   async function handleConfirm() {
@@ -51,14 +53,14 @@ export function ConfirmDialog({
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button
             variant={destructive ? "destructive" : "default"}
             onClick={handleConfirm}
             disabled={loading}
           >
-            {loading ? "Please wait…" : confirmLabel}
+            {loading ? t("Please wait…") : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

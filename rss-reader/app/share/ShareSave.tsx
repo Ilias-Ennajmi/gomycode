@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/shared/Logo";
 import { haptic } from "@/lib/native";
 import { cacheLaterForOffline } from "@/components/layout/OfflineSupport";
+import { useT } from "@/lib/i18n";
 
 type State =
   | { status: "saving" }
@@ -14,6 +15,7 @@ type State =
   | { status: "error"; message: string };
 
 export function ShareSave({ link, title }: { link: string | null; title?: string }) {
+  const { t } = useT();
   const [state, setState] = React.useState<State>(
     link
       ? { status: "saving" }
@@ -55,25 +57,25 @@ export function ShareSave({ link, title }: { link: string | null; title?: string
       {state.status === "saving" && (
         <>
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Saving to Later…</p>
+          <p className="text-sm text-muted-foreground">{t("Saving to Later…")}</p>
         </>
       )}
       {state.status === "saved" && (
         <>
           <div className="flex items-center gap-2 text-lg font-semibold">
             <Check className="h-5 w-5 text-emerald-500" />
-            {state.existed ? "Already in Later" : "Saved to Later"}
+            {state.existed ? t("Already in Later") : t("Saved to Later")}
           </div>
           <p className="line-clamp-3 text-sm text-muted-foreground">{state.title}</p>
           <div className="flex w-full gap-2">
             <Button asChild variant="outline" className="h-11 flex-1">
               <Link href="/reader?view=later" replace>
-                Open Later
+                {t("Open Later")}
               </Link>
             </Button>
             <Button asChild className="h-11 flex-1">
               <Link href={`/reader?view=later&article=${state.articleId}`} replace>
-                Read now
+                {t("Read now")}
               </Link>
             </Button>
           </div>
@@ -83,12 +85,12 @@ export function ShareSave({ link, title }: { link: string | null; title?: string
         <>
           <div className="flex items-center gap-2 text-lg font-semibold">
             <TriangleAlert className="h-5 w-5 text-amber-500" />
-            Couldn’t save
+            {t("Couldn’t save")}
           </div>
           <p className="text-sm text-muted-foreground">{state.message}</p>
           <Button asChild variant="outline" className="h-11 w-full">
             <Link href="/reader" replace>
-              Open Reader
+              {t("Open Reader")}
             </Link>
           </Button>
         </>

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { HIGHLIGHT_SWATCH } from "@/components/highlights/ReaderHighlights";
 import { requestHighlightJump } from "@/lib/highlight-dom";
 import type { HighlightSummary } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 /** Today: three older highlights to read again, so what you kept comes back to you. */
 export function ResurfacedHighlights({
@@ -17,6 +18,7 @@ export function ResurfacedHighlights({
   /** Renders the section heading (Today has its own style). */
   title: (children: React.ReactNode) => React.ReactNode;
 }) {
+  const { t } = useT();
   const { data } = useSWR<{ highlights: HighlightSummary[] }>("/api/highlights/resurface", {
     revalidateOnFocus: false,
   });
@@ -27,7 +29,7 @@ export function ResurfacedHighlights({
     <section>
       {title(
         <>
-          <Highlighter className="h-5 w-5 text-primary" /> From your highlights
+          <Highlighter className="h-5 w-5 text-primary" /> {t("From your highlights")}
         </>
       )}
       <ul className="mt-3 space-y-4">

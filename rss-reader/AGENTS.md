@@ -310,9 +310,12 @@ twice a day while it doesn't; the System sheet shows the result. _System sheet_ 
 Under the hood, `GET /api/system`): build, database size and counts, last tick summary
 (`last-tick` Setting), offline state, the error log. _Backup_: `GET /api/backup` downloads
 sources, categories, rules, highlights, saved articles and preferences as JSON. _French_:
-`lib/i18n.tsx` (`useT`, `LocaleProvider`, localStorage `locale`) covers the chrome (tabs,
-sidebar, settings, list menus, common actions, reading sessions, triage, the player's
-controls and cards, snooze); strings not in the table fall back to English. `tr()` is the
+`lib/i18n.tsx` (`useT`, `LocaleProvider`, localStorage `locale`) covers the whole interface
+(about 900 strings; article text and What's new stay as written); strings not in the table
+fall back to English. New visible text goes through `t("…")` in components (labels kept in
+lists are translated where they're drawn: `t(item.label)`), and gets a French entry.
+Search operators (`from:`, `tag:`…) are never translated. `e2e/french.spec.ts` opens the
+main screens in French and fails on everyday English words. `tr()` is the
 same lookup outside components (toasts, helpers). `tests/i18n.test.ts` fails when a
 `t("…")`/`tr("…")` literal has no French entry; labels passed through props
 (`MediaCard` titles, `ActionButton`/`RoundButton` labels) are translated where they're
@@ -447,6 +450,11 @@ property, quotes and notes as blocks; later highlights appended, page ids in the
 the browser. New highlights are sent after each hourly refresh (`runHighlightExports` in
 maintenance). `READWISE_API_URL` / `NOTION_API_URL` point the calls elsewhere (the e2e
 fixtures stand in for both and record what they get at `/_received`).
+
+**Everything Reader can do** (`components/layout/FeaturesSheet.tsx`, Settings → Help): the
+searchable list of features, each with where it lives and, where there's somewhere to go,
+an Open button (a view or an app event). Add an entry when a feature ships.
+`e2e/a11y.spec.ts` runs axe (serious and critical only) over the newer screens.
 
 **Shorts and Listen to Later.** `ShortsPlayer` reuses one YouTube IFrame player
 (`loadVideoById`) with swipe/keys/wheel; `ListenLater` reads the Later queue with the browser
@@ -614,6 +622,7 @@ Built in this order (see `git log -- rss-reader`):
     a chosen hour, highlights to Readwise and Notion.
 28. Reliability and security: worker patience and a stuck-screen way out, uptime workflow,
     voice check, passkeys, backup restore, encrypted export tokens, no double exports.
+29. The whole interface in French, the "Everything Reader can do" page, axe checks.
 
 ## Open ideas (not built yet)
 

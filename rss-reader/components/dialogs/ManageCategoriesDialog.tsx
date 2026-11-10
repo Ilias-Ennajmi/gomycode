@@ -21,15 +21,9 @@ import {
 } from "@/lib/hooks/useFeeds";
 import { cn } from "@/lib/utils";
 import type { CategorySummary } from "@/lib/types";
+import { useT, tr } from "@/lib/i18n";
 
-const PRESET_COLORS = [
-  "#6366f1",
-  "#ec4899",
-  "#f59e0b",
-  "#10b981",
-  "#3b82f6",
-  "#ef4444",
-];
+const PRESET_COLORS = ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#3b82f6", "#ef4444"];
 
 interface ManageCategoriesDialogProps {
   open: boolean;
@@ -37,6 +31,7 @@ interface ManageCategoriesDialogProps {
 }
 
 export function ManageCategoriesDialog({ open, onOpenChange }: ManageCategoriesDialogProps) {
+  const { t } = useT();
   const { categories, mutate } = useCategories();
   const [newName, setNewName] = React.useState("");
   const [creating, setCreating] = React.useState(false);
@@ -56,7 +51,7 @@ export function ManageCategoriesDialog({ open, onOpenChange }: ManageCategoriesD
       setNewName("");
       mutate();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not create category");
+      toast.error(error instanceof Error ? error.message : tr("Could not create category"));
     } finally {
       setCreating(false);
     }
@@ -68,7 +63,7 @@ export function ManageCategoriesDialog({ open, onOpenChange }: ManageCategoriesD
       await updateCategory(category.id, { name: name.trim() });
       mutate();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not rename category");
+      toast.error(error instanceof Error ? error.message : tr("Could not rename category"));
     }
   }
 
@@ -77,7 +72,7 @@ export function ManageCategoriesDialog({ open, onOpenChange }: ManageCategoriesD
       await updateCategory(category.id, { color });
       mutate();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not update color");
+      toast.error(error instanceof Error ? error.message : tr("Could not update color"));
     }
   }
 
@@ -87,7 +82,7 @@ export function ManageCategoriesDialog({ open, onOpenChange }: ManageCategoriesD
       toast.success(`Deleted ${category.name}`);
       mutate();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not delete category");
+      toast.error(error instanceof Error ? error.message : tr("Could not delete category"));
     }
   }
 
@@ -115,7 +110,7 @@ export function ManageCategoriesDialog({ open, onOpenChange }: ManageCategoriesD
       );
       mutate();
     } catch {
-      toast.error("Could not save new order");
+      toast.error(tr("Could not save new order"));
     }
   }
 
@@ -124,9 +119,9 @@ export function ManageCategoriesDialog({ open, onOpenChange }: ManageCategoriesD
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Manage Categories</DialogTitle>
+            <DialogTitle>{t("Manage Categories")}</DialogTitle>
             <DialogDescription>
-              Rename, recolor, reorder, or delete your categories.
+              {t("Rename, recolor, reorder, or delete your categories.")}
             </DialogDescription>
           </DialogHeader>
 
@@ -161,14 +156,14 @@ export function ManageCategoriesDialog({ open, onOpenChange }: ManageCategoriesD
             ))}
             {localOrder.length === 0 && (
               <p className="py-2 text-center text-sm text-muted-foreground">
-                No categories yet.
+                {t("No categories yet.")}
               </p>
             )}
           </div>
 
           <div className="flex items-center gap-2 border-t pt-3">
             <Input
-              placeholder="New category name"
+              placeholder={t("New category name")}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleCreate()}
@@ -184,7 +179,7 @@ export function ManageCategoriesDialog({ open, onOpenChange }: ManageCategoriesD
         open={!!deleteTarget}
         onOpenChange={(o) => !o && setDeleteTarget(null)}
         title={`Delete ${deleteTarget?.name}?`}
-        description="Feeds in this category will become uncategorized."
+        description={t("Feeds in this category will become uncategorized.")}
         confirmLabel="Delete"
         onConfirm={() => {
           if (deleteTarget) return handleDelete(deleteTarget);
@@ -194,13 +189,7 @@ export function ManageCategoriesDialog({ open, onOpenChange }: ManageCategoriesD
   );
 }
 
-function InlineRename({
-  value,
-  onCommit,
-}: {
-  value: string;
-  onCommit: (value: string) => void;
-}) {
+function InlineRename({ value, onCommit }: { value: string; onCommit: (value: string) => void }) {
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState(value);
 
@@ -242,13 +231,8 @@ function InlineRename({
   );
 }
 
-function ColorPicker({
-  color,
-  onChange,
-}: {
-  color: string;
-  onChange: (color: string) => void;
-}) {
+function ColorPicker({ color, onChange }: { color: string; onChange: (color: string) => void }) {
+  const { t } = useT();
   const [open, setOpen] = React.useState(false);
 
   return (
@@ -258,7 +242,7 @@ function ColorPicker({
         onClick={() => setOpen((v) => !v)}
         className="h-5 w-5 rounded-full ring-2 ring-offset-2 ring-offset-background"
         style={{ backgroundColor: color, boxShadow: `0 0 0 2px ${color}33` }}
-        aria-label="Choose color"
+        aria-label={t("Choose color")}
       />
       {open && (
         <div className="absolute left-0 top-7 z-20 flex gap-1.5 rounded-md border bg-popover p-2 shadow-md">

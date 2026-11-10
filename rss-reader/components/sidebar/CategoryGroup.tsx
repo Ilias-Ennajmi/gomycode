@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { FeedItem } from "@/components/sidebar/FeedItem";
 import type { CategorySummary } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 interface CategoryGroupProps {
   category: CategorySummary;
@@ -24,6 +25,7 @@ export function CategoryGroup({
   onSelectFeed,
   onChanged,
 }: CategoryGroupProps) {
+  const { t } = useT();
   const [expanded, setExpanded] = React.useState(true);
 
   return (
@@ -38,7 +40,7 @@ export function CategoryGroup({
           type="button"
           onClick={() => setExpanded((v) => !v)}
           className="rounded p-0.5 text-muted-foreground hover:text-foreground"
-          aria-label={expanded ? "Collapse category" : "Expand category"}
+          aria-label={expanded ? t("Collapse category") : t("Expand category")}
         >
           <ChevronRight
             className={cn("h-3.5 w-3.5 transition-transform duration-150", expanded && "rotate-90")}
@@ -67,7 +69,7 @@ export function CategoryGroup({
       {expanded && (
         <div className="mt-0.5 space-y-0.5 overflow-hidden">
           {category.feeds.length === 0 ? (
-            <p className="py-1 pl-8 text-xs text-muted-foreground">No feeds yet</p>
+            <p className="py-1 pl-8 text-xs text-muted-foreground">{t("No feeds yet")}</p>
           ) : (
             category.feeds.map((feed) => (
               <FeedItem

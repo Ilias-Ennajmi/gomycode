@@ -5,6 +5,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
 import { useBackToClose } from "@/lib/hooks/useHistorySync";
 import { keepOpenOnToast } from "@/components/ui/sonner";
+import { useT } from "@/lib/i18n";
 
 /**
  * A bottom sheet, the way phones show menus: slides up from the bottom, a handle on top,
@@ -23,6 +24,7 @@ export function Sheet({
   children: React.ReactNode;
   className?: string;
 }) {
+  const { t } = useT();
   useBackToClose(open, () => onOpenChange(false));
   const [dy, setDy] = React.useState(0);
   const drag = React.useRef<number | null>(null);
@@ -63,7 +65,7 @@ export function Sheet({
               {title}
             </DialogPrimitive.Title>
           ) : (
-            <DialogPrimitive.Title className="sr-only">Menu</DialogPrimitive.Title>
+            <DialogPrimitive.Title className="sr-only">{t("Menu")}</DialogPrimitive.Title>
           )}
           <div
             data-scroll
@@ -103,6 +105,7 @@ export function ActionSheet({
   header?: React.ReactNode;
   sections: { title?: React.ReactNode; actions: SheetAction[] }[];
 }) {
+  const { t } = useT();
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title={title}>
       {header}
@@ -133,9 +136,13 @@ export function ActionSheet({
                   {action.icon}
                 </span>
               )}
-              <span className="min-w-0 flex-1">{action.label}</span>
+              <span className="min-w-0 flex-1">
+                {typeof action.label === "string" ? t(action.label) : action.label}
+              </span>
               {action.hint && (
-                <span className="shrink-0 text-xs text-muted-foreground">{action.hint}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {typeof action.hint === "string" ? t(action.hint) : action.hint}
+                </span>
               )}
             </button>
           ))}

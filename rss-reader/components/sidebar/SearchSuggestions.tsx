@@ -4,6 +4,7 @@ import * as React from "react";
 import useSWR from "swr";
 import { Clock, Hash, Rss, Search, Sparkles } from "lucide-react";
 import { useFeeds } from "@/lib/hooks/useFeeds";
+import { useT } from "@/lib/i18n";
 
 const RECENTS_KEY = "search-recents";
 const MAX_RECENTS = 8;
@@ -58,6 +59,7 @@ export function SearchSuggestions({
   draft: string;
   onPick: (query: string, run: boolean) => void;
 }) {
+  const { t } = useT();
   const { feeds } = useFeeds();
   const { data: tagData } = useSWR<{ tags: { tag: string; count: number }[] }>(
     "/api/highlights/tags",
@@ -111,7 +113,7 @@ export function SearchSuggestions({
     return (
       <Hints>
         <span className="flex items-center gap-1.5">
-          <Sparkles className="h-3 w-3" /> Try <code>from:verge</code>, <code>tag:ai</code>,{" "}
+          <Sparkles className="h-3 w-3" /> {t("Try")} <code>from:verge</code>, <code>tag:ai</code>,{" "}
           <code>is:unread</code>, <code>is:saved</code>, <code>in:youtube</code>
         </span>
       </Hints>
@@ -122,14 +124,14 @@ export function SearchSuggestions({
   return (
     <div
       role="listbox"
-      aria-label="Search suggestions"
+      aria-label={t("Search suggestions")}
       className="absolute inset-x-0 top-full z-30 mt-1 overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-xl animate-fade-in"
       // Keep the input focused while picking.
       onMouseDown={(event) => event.preventDefault()}
     >
       {!trimmed && (
         <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Recent
+          {t("Recent")}
         </p>
       )}
       <ul>
@@ -143,9 +145,9 @@ export function SearchSuggestions({
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
             >
               <span className="text-muted-foreground">{s.icon}</span>
-              <span className="min-w-0 flex-1 truncate">{s.label}</span>
+              <span className="min-w-0 flex-1 truncate">{t(s.label)}</span>
               {s.hint && (
-                <span className="shrink-0 text-[11px] text-muted-foreground">{s.hint}</span>
+                <span className="shrink-0 text-[11px] text-muted-foreground">{t(s.hint)}</span>
               )}
               {!trimmed && <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
             </button>
@@ -155,7 +157,7 @@ export function SearchSuggestions({
       {!trimmed && (
         <Hints>
           <span>
-            Narrow with <code>from:</code>, <code>tag:</code>, <code>is:unread</code>,{" "}
+            {t("Narrow with")} <code>from:</code>, <code>tag:</code>, <code>is:unread</code>,{" "}
             <code>in:news</code>
           </span>
         </Hints>

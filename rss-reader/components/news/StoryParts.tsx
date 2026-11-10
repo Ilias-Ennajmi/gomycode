@@ -4,6 +4,7 @@ import * as React from "react";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import type { NewsStory } from "@/lib/hooks/useNews";
+import { useT } from "@/lib/i18n";
 
 /** A story picture, or a tinted cover when there is none or the site refuses to serve it. */
 export function StoryImage({
@@ -78,12 +79,15 @@ export function StoryMeta({
   className?: string;
   compact?: boolean;
 }) {
+  const { t } = useT();
   const more = story.sources.length - 1;
   if (compact && more > 0) {
     return (
       <p className={cn("flex items-center gap-1.5 text-xs text-muted-foreground", className)}>
         <SourceStack story={story} max={3} size={14} ringClass="ring-card" />
-        <span className="font-medium text-primary">{story.sources.length} outlets</span>
+        <span className="font-medium text-primary">
+          {story.sources.length} {t("outlets")}
+        </span>
         <span aria-hidden>·</span>
         <time dateTime={story.publishedAt}>{formatRelativeTime(story.publishedAt)}</time>
       </p>
@@ -101,7 +105,7 @@ export function StoryMeta({
         <>
           <span aria-hidden>·</span>
           <span className="shrink-0 font-medium text-primary">
-            +{more} {more === 1 ? "outlet" : "outlets"}
+            +{more} {more === 1 ? t("outlet") : t("outlets")}
           </span>
         </>
       )}

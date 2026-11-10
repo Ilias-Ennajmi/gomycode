@@ -5,6 +5,7 @@ import { ListTree } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
+import { useT } from "@/lib/i18n";
 
 export interface Heading {
   id: string;
@@ -42,6 +43,7 @@ export function TableOfContents({
   scrollRef: React.RefObject<HTMLElement | null>;
   className?: string;
 }) {
+  const { t } = useT();
   const [open, setOpen] = React.useState(false);
   const [current, setCurrent] = React.useState<string | null>(null);
   if (headings.length < 3) return null;
@@ -81,12 +83,12 @@ export function TableOfContents({
         size="icon"
         className={className}
         onClick={openList}
-        aria-label="Contents"
-        title="Contents"
+        aria-label={t("Contents")}
+        title={t("Contents")}
       >
         <ListTree className="h-5 w-5" />
       </Button>
-      <Sheet open={open} onOpenChange={setOpen} title="Contents">
+      <Sheet open={open} onOpenChange={setOpen} title={t("Contents")}>
         <ol className="space-y-0.5 px-1">
           {headings.map((heading) => (
             <li key={heading.id}>

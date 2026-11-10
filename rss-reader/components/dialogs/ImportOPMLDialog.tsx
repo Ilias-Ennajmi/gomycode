@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useCategories, useFeeds } from "@/lib/hooks/useFeeds";
+import { useT, tr } from "@/lib/i18n";
 
 interface ImportOpmlDialogProps {
   open: boolean;
@@ -21,6 +22,7 @@ interface ImportOpmlDialogProps {
 }
 
 export function ImportOpmlDialog({ open, onOpenChange }: ImportOpmlDialogProps) {
+  const { t } = useT();
   const [file, setFile] = React.useState<File | null>(null);
   const [dragging, setDragging] = React.useState(false);
   const [importing, setImporting] = React.useState(false);
@@ -38,7 +40,7 @@ export function ImportOpmlDialog({ open, onOpenChange }: ImportOpmlDialogProps) 
     if (picked && (picked.name.endsWith(".opml") || picked.name.endsWith(".xml"))) {
       setFile(picked);
     } else if (picked) {
-      toast.error("Please choose a .opml file");
+      toast.error(tr("Please choose a .opml file"));
     }
   }
 
@@ -60,7 +62,7 @@ export function ImportOpmlDialog({ open, onOpenChange }: ImportOpmlDialogProps) 
       mutateCategories();
       onOpenChange(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not import OPML file");
+      toast.error(error instanceof Error ? error.message : tr("Could not import OPML file"));
     } finally {
       setImporting(false);
     }
@@ -70,9 +72,9 @@ export function ImportOpmlDialog({ open, onOpenChange }: ImportOpmlDialogProps) 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Import OPML</DialogTitle>
+          <DialogTitle>{t("Import OPML")}</DialogTitle>
           <DialogDescription>
-            Bulk-add feeds from an OPML export of another RSS reader.
+            {t("Bulk-add feeds from an OPML export of another RSS reader.")}
           </DialogDescription>
         </DialogHeader>
 
@@ -98,8 +100,8 @@ export function ImportOpmlDialog({ open, onOpenChange }: ImportOpmlDialogProps) 
             <p className="text-sm font-medium">{file.name}</p>
           ) : (
             <>
-              <p className="text-sm font-medium">Drop your .opml file here</p>
-              <p className="text-xs text-muted-foreground">or click to browse</p>
+              <p className="text-sm font-medium">{t("Drop your .opml file here")}</p>
+              <p className="text-xs text-muted-foreground">{t("or click to browse")}</p>
             </>
           )}
           <input
@@ -113,15 +115,15 @@ export function ImportOpmlDialog({ open, onOpenChange }: ImportOpmlDialogProps) 
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button onClick={handleImport} disabled={!file || importing}>
             {importing ? (
               <>
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Importing…
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> {t("Importing…")}
               </>
             ) : (
-              "Import"
+              t("Import")
             )}
           </Button>
         </DialogFooter>

@@ -22,6 +22,7 @@ import { useHomeBlocks } from "@/lib/hooks/useHomeBlocks";
 import { useUnusedSources } from "@/components/sources/SourcesManager";
 import { clock } from "@/lib/hooks/useVideo";
 import type { ArticleSummary } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 /** Today → Customise: show or hide each block, move it up or down. */
 export function HomeCustomise({
@@ -33,13 +34,14 @@ export function HomeCustomise({
   onOpenChange: (open: boolean) => void;
   layout: ReturnType<typeof useHomeBlocks>;
 }) {
+  const { t } = useT();
   return (
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
       title={
         <span className="flex items-center gap-2">
-          <SlidersHorizontal className="h-4 w-4 text-primary" /> Customise Today
+          <SlidersHorizontal className="h-4 w-4 text-primary" /> {t("Customise Today")}
         </span>
       }
     >
@@ -65,7 +67,7 @@ export function HomeCustomise({
                 !block.on && "text-muted-foreground line-through"
               )}
             >
-              {block.label}
+              {t(block.label)}
             </span>
             <button
               type="button"
@@ -91,7 +93,7 @@ export function HomeCustomise({
       {layout.customised && (
         <div className="px-3 pt-4">
           <Button variant="outline" className="w-full" onClick={layout.reset}>
-            Back to the default layout
+            {t("Back to the default layout")}
           </Button>
         </div>
       )}
@@ -107,13 +109,14 @@ export function ContinueBlock({
   title: (children: React.ReactNode) => React.ReactNode;
   onOpen: (articleId: string) => void;
 }) {
+  const { t } = useT();
   const { data } = useSWR<{ continue: ArticleSummary[] }>("/api/home", {
     revalidateOnFocus: false,
   });
   const items = data?.continue ?? [];
   if (items.length === 0) return null;
   return (
-    <section aria-label="Continue where you left off">
+    <section aria-label={t("Continue where you left off")}>
       {title("Continue where you left off")}
       <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {items.map((article) => {
@@ -184,6 +187,7 @@ export function ContinueBlock({
 
 /** Sources with nothing read in two months, one tap from the sources manager. */
 export function TidyBlock() {
+  const { t } = useT();
   const ids = useUnusedSources();
   if (ids.length === 0) return null;
   return (
@@ -196,12 +200,13 @@ export function TidyBlock() {
         <Moon className="h-5 w-5" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">Tidy up your sources</span>
+        <span className="block text-sm font-semibold">{t("Tidy up your sources")}</span>
         <span className="block text-xs text-muted-foreground">
-          {ids.length} source{ids.length === 1 ? "" : "s"} you haven&apos;t read from in two months
+          {ids.length} {t("source")}
+          {ids.length === 1 ? "" : "s"} {t("you haven't read from in two months")}
         </span>
       </span>
-      <span className="rounded-full border px-3 py-1.5 text-xs font-semibold">Review</span>
+      <span className="rounded-full border px-3 py-1.5 text-xs font-semibold">{t("Review")}</span>
     </button>
   );
 }

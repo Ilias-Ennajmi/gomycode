@@ -83,7 +83,7 @@ import { PullIndicator, usePullToRefresh } from "@/lib/hooks/usePullToRefresh";
 import { showChrome, syncChromeScroll, useHideOnScroll } from "@/lib/hooks/useChrome";
 import { useLastVisit } from "@/lib/hooks/useLastVisit";
 import { useFilters } from "@/lib/hooks/useFilters";
-import { useT } from "@/lib/i18n";
+import { useT, tr } from "@/lib/i18n";
 import { haptic } from "@/lib/native";
 import { withViewTransition } from "@/lib/motion";
 import { ChromeCollapse } from "@/components/layout/ChromeCollapse";
@@ -227,7 +227,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
       mutate();
       toast.success(refreshToastMessage(result));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not refresh feeds");
+      toast.error(error instanceof Error ? error.message : tr("Could not refresh feeds"));
     } finally {
       setRefreshing(false);
     }
@@ -242,9 +242,9 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
         source: listParams.source,
       });
       await mutate();
-      toast.success("Marked all as read");
+      toast.success(tr("Marked all as read"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not mark articles read");
+      toast.error(error instanceof Error ? error.message : tr("Could not mark articles read"));
     } finally {
       setMarkingAllRead(false);
     }
@@ -254,9 +254,9 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
     try {
       await addRule({ action: "hide", match: "feed", value: article.feedId });
       toast.success(`Muted ${article.feed.title}`, {
-        description: "It stays followed but leaves your lists. Unmute it in Sources.",
+        description: tr("It stays followed but leaves your lists. Unmute it in Sources."),
         action: {
-          label: "Undo",
+          label: tr("Undo"),
           onClick: async () => {
             const res = await fetch("/api/filters");
             const { rules } = (await res.json()) as {
@@ -270,7 +270,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
         },
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not mute this source");
+      toast.error(error instanceof Error ? error.message : tr("Could not mute this source"));
     }
   }
 
@@ -280,7 +280,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
       await toggleArticleSaved(article.id, !article.isSaved);
       mutate();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not update article");
+      toast.error(error instanceof Error ? error.message : tr("Could not update article"));
     }
   }
 
@@ -289,14 +289,14 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
     try {
       await toggleArticleRead(article.id, !article.isRead);
       mutate();
-      toast(article.isRead ? "Marked unread" : "Marked read", {
+      toast(article.isRead ? tr("Marked unread") : tr("Marked read"), {
         action: {
-          label: "Undo",
+          label: tr("Undo"),
           onClick: () => toggleArticleRead(article.id, article.isRead).then(() => mutate()),
         },
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not update article");
+      toast.error(error instanceof Error ? error.message : tr("Could not update article"));
     }
   }
 
@@ -304,9 +304,9 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
     try {
       await toggleArticleArchived(article.id, archived);
       globalMutate((key) => typeof key === "string" && key.startsWith("/api/articles"));
-      toast.success(archived ? "Archived" : "Moved back to Later");
+      toast.success(archived ? tr("Archived") : tr("Moved back to Later"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not update article");
+      toast.error(error instanceof Error ? error.message : tr("Could not update article"));
     }
   }
 
@@ -428,7 +428,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
           className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 animate-rise-in items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-lg"
         >
           <ArrowUp className="h-3.5 w-3.5" />
-          {freshCount} new
+          {freshCount} {t("new")}
         </button>
       )}
       <ChromeCollapse>
@@ -447,7 +447,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
               size="icon"
               className="h-8 w-8 shrink-0"
               onClick={() => setView({ type: "news", label: "News" })}
-              aria-label="Back to the front page"
+              aria-label={t("Back to the front page")}
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -460,7 +460,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
                 !(fromSourcesList || view.type === "alerts") && "hidden"
               )}
               onClick={() => setMobilePane("sidebar")}
-              aria-label="Back"
+              aria-label={t("Back")}
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -472,10 +472,12 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
             <p className="truncate text-xs text-muted-foreground">
               {searching ? (
                 isLoading ? (
-                  "Searching…"
+                  t("Searching…")
                 ) : (
                   <>
-                    {total} result{total === 1 ? "" : "s"} for &ldquo;{search.trim()}&rdquo;
+                    {total} {t("result")}
+                    {total === 1 ? "" : "s"} {t("for “")}
+                    {search.trim()}&rdquo;
                   </>
                 )
               ) : isLater ? (
@@ -484,9 +486,9 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
                 ) : laterTab === "snoozed" ? (
                   `${total} coming back later`
                 ) : laterTab === "highlights" ? (
-                  "Passages and notes from your reading"
+                  t("Passages and notes from your reading")
                 ) : laterTab === "collections" ? (
-                  "Your saved articles, in named sets"
+                  t("Your saved articles, in named sets")
                 ) : (
                   `${total} to read${minutes ? ` · ${formatMinutes(minutes)}` : ""}`
                 )
@@ -494,14 +496,16 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
                 learnedFrom ? (
                   `Learned from ${learnedFrom} articles · `
                 ) : (
-                  "Ranked for you · "
+                  t("Ranked for you · ")
                 )
               ) : (
                 ""
               )}
               {!isLater &&
                 !searching &&
-                (lastFetched ? `Updated ${formatRelativeTime(lastFetched)}` : "Not refreshed yet")}
+                (lastFetched
+                  ? `Updated ${formatRelativeTime(lastFetched)}`
+                  : t("Not refreshed yet"))}
             </p>
           </div>
           {searching && (
@@ -511,7 +515,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
               className="h-8 shrink-0 gap-1.5 text-xs"
               onClick={() => setSearch("")}
             >
-              <X className="h-3.5 w-3.5" /> Clear
+              <X className="h-3.5 w-3.5" /> {t("Clear")}
             </Button>
           )}
         </div>
@@ -539,7 +543,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
                   className="h-7 px-2 text-xs"
                   onClick={() => copySignupAddress(emailFeed.email!)}
                 >
-                  Copy
+                  {t("Copy")}
                 </Button>
                 <Button
                   variant="ghost"
@@ -547,7 +551,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
                   className="h-7 px-2 text-xs"
                   onClick={() => openUnsubscribe(emailFeed.id)}
                 >
-                  Unsubscribe
+                  {t("Unsubscribe")}
                 </Button>
               </div>
             )}
@@ -679,7 +683,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
                       role="separator"
                     >
                       <span className="h-px flex-1 bg-primary/30" />
-                      {index} new since your last visit
+                      {index} {t("new since your last visit")}
                       <span className="h-px flex-1 bg-primary/30" />
                     </div>
                   )}
@@ -719,7 +723,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
 
             {!hasMore && total > 0 && (
               <p className="py-4 text-center text-xs text-muted-foreground">
-                You&rsquo;re all caught up — {total} article
+                {t("You’re all caught up —")} {total} {t("article")}
                 {total === 1 ? "" : "s"}
               </p>
             )}
@@ -747,7 +751,7 @@ export function ArticleList({ onAddFeed, onSaveLink }: ArticleListProps) {
           onClick={() => setTriagePaused(false)}
           className="fixed bottom-24 left-1/2 z-30 hidden -translate-x-1/2 items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background shadow-xl md:flex"
         >
-          <Layers className="h-4 w-4" /> Back to triage
+          <Layers className="h-4 w-4" /> {t("Back to triage")}
         </button>
       )}
       {listening && isLater && (
@@ -787,17 +791,18 @@ function SearchFilters({
   meaning: boolean;
   onMeaning: (on: boolean) => void;
 }) {
+  const { t } = useT();
   const ai = useAiStatus();
   return (
     <div className="flex items-center gap-2 border-b px-3 py-2">
       <div
         role="toolbar"
-        aria-label="Search in"
+        aria-label={t("Search in")}
         className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto scrollbar-none"
       >
         {ai?.enabled && (
           <Chip active={meaning} quiet onClick={() => onMeaning(!meaning)} className="gap-1">
-            <Sparkles className="h-3.5 w-3.5" /> By meaning
+            <Sparkles className="h-3.5 w-3.5" /> {t("By meaning")}
           </Chip>
         )}
         {SCOPES.map((option) => (
@@ -809,19 +814,19 @@ function SearchFilters({
               onScope(option.id);
             }}
           >
-            {option.label}
+            {t(option.label)}
           </Chip>
         ))}
       </div>
       <Select value={since} onValueChange={(v) => onSince(v as SearchSince)}>
-        <SelectTrigger className="h-7 w-[104px] shrink-0 text-xs" aria-label="When">
+        <SelectTrigger className="h-7 w-[104px] shrink-0 text-xs" aria-label={t("When")}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="any">Any time</SelectItem>
-          <SelectItem value="day">Past day</SelectItem>
-          <SelectItem value="week">Past week</SelectItem>
-          <SelectItem value="month">Past month</SelectItem>
+          <SelectItem value="any">{t("Any time")}</SelectItem>
+          <SelectItem value="day">{t("Past day")}</SelectItem>
+          <SelectItem value="week">{t("Past week")}</SelectItem>
+          <SelectItem value="month">{t("Past month")}</SelectItem>
         </SelectContent>
       </Select>
     </div>
@@ -861,11 +866,15 @@ function EmptyState({
   onShowLatest: () => void;
   onRefresh: () => void;
 }) {
+  const { t } = useT();
   if (search) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center text-muted-foreground">
         <SearchX className="h-8 w-8" />
-        <p className="text-sm">No results for &ldquo;{search}&rdquo;</p>
+        <p className="text-sm">
+          {t("No results for “")}
+          {search}&rdquo;
+        </p>
       </div>
     );
   }
@@ -984,9 +993,9 @@ function EmptyState({
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center text-muted-foreground">
         <Inbox className="h-8 w-8" />
-        <p className="text-sm">No articles yet. Try refreshing.</p>
+        <p className="text-sm">{t("No articles yet. Try refreshing.")}</p>
         <Button size="sm" variant="outline" onClick={onRefresh}>
-          Refresh now
+          {t("Refresh now")}
         </Button>
       </div>
     );
@@ -995,9 +1004,9 @@ function EmptyState({
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center text-muted-foreground">
       <Inbox className="h-10 w-10" />
-      <p className="text-sm">No articles here yet.</p>
+      <p className="text-sm">{t("No articles here yet.")}</p>
       <Button size="sm" onClick={() => onAddFeed()}>
-        Discover sources
+        {t("Discover sources")}
       </Button>
     </div>
   );

@@ -10,6 +10,7 @@ import { formatRelativeTime } from "@/lib/utils";
 import { outboxSize } from "@/lib/outbox";
 import { cacheLaterForOffline } from "@/components/layout/OfflineSupport";
 import type { LoggedError } from "@/lib/errlog";
+import { useT, tr } from "@/lib/i18n";
 
 interface SystemInfo {
   build: {
@@ -75,6 +76,7 @@ export function SystemSheet({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useT();
   const { data, mutate, isLoading } = useSWR<SystemInfo>(open ? "/api/system" : null, {
     revalidateOnFocus: false,
   });
@@ -98,9 +100,9 @@ export function SystemSheet({
         if (name.startsWith("reader-data-") || name.startsWith("reader-images-"))
           await caches.delete(name);
       }
-      toast.success("Offline copies cleared");
+      toast.success(tr("Offline copies cleared"));
     } catch {
-      toast.error("Could not clear them");
+      toast.error(tr("Could not clear them"));
     }
   }
 
@@ -154,21 +156,21 @@ export function SystemSheet({
       onOpenChange={onOpenChange}
       title={
         <span className="flex items-center gap-2">
-          <Cpu className="h-4 w-4 text-primary" /> Under the hood
+          <Cpu className="h-4 w-4 text-primary" /> {t("Under the hood")}
         </span>
       }
     >
       <div className="px-3" data-scroll>
         {isLoading || !data ? (
           <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Looking…
+            <Loader2 className="h-4 w-4 animate-spin" /> {t("Looking…")}
           </p>
         ) : (
           <>
             <dl className="divide-y text-sm">
               {rows.map(([label, value]) => (
                 <div key={label} className="flex gap-3 py-2">
-                  <dt className="w-32 shrink-0 text-muted-foreground">{label}</dt>
+                  <dt className="w-32 shrink-0 text-muted-foreground">{t(label)}</dt>
                   <dd className="min-w-0 flex-1 break-words">{value}</dd>
                 </div>
               ))}
@@ -179,18 +181,19 @@ export function SystemSheet({
                 size="sm"
                 onClick={() => {
                   cacheLaterForOffline();
-                  toast("Saving Later for offline…");
+                  toast(tr("Saving Later for offline…"));
                 }}
               >
-                Save Later offline now
+                {t("Save Later offline now")}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => void clearOffline()}>
-                Clear offline copies
+                {t("Clear offline copies")}
               </Button>
             </div>
             <div className="mt-5 flex items-center justify-between">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Errors ({data.errors.length})
+                {t("Errors (")}
+                {data.errors.length})
               </h3>
               {data.errors.length > 0 && (
                 <Button
@@ -200,12 +203,12 @@ export function SystemSheet({
                   onClick={() => void clearErrors()}
                   disabled={clearing}
                 >
-                  <Trash2 className="h-3.5 w-3.5" /> Clear
+                  <Trash2 className="h-3.5 w-3.5" /> {t("Clear")}
                 </Button>
               )}
             </div>
             {data.errors.length === 0 ? (
-              <p className="mt-2 text-sm text-muted-foreground">Nothing logged. Good.</p>
+              <p className="mt-2 text-sm text-muted-foreground">{t("Nothing logged. Good.")}</p>
             ) : (
               <ul className="mt-2 space-y-2">
                 {data.errors.slice(0, 20).map((e, i) => (
@@ -217,7 +220,9 @@ export function SystemSheet({
                     <p className="mt-0.5 break-words">{e.message}</p>
                     {e.detail && (
                       <details className="mt-1">
-                        <summary className="cursor-pointer text-muted-foreground">Details</summary>
+                        <summary className="cursor-pointer text-muted-foreground">
+                          {t("Details")}
+                        </summary>
                         <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all text-[10.5px] text-muted-foreground">
                           {e.detail}
                         </pre>

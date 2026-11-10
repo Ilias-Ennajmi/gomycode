@@ -10,7 +10,7 @@ import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { durationLabel } from "@/lib/hooks/useVideo";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import { useFeeds } from "@/lib/hooks/useFeeds";
-import { useT } from "@/lib/i18n";
+import { useT, tr } from "@/lib/i18n";
 import { useAudio } from "@/components/audio/AudioProvider";
 import type { AppleEpisode } from "@/lib/podcast";
 import { SourcePreview } from "@/components/discover/SourcePreview";
@@ -72,7 +72,7 @@ export function EpisodeSearch({
       await mutateFeeds();
       toast.success(`Following ${episode.show}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't follow this show");
+      toast.error(error instanceof Error ? error.message : tr("Couldn't follow this show"));
     } finally {
       setFollowing(null);
     }

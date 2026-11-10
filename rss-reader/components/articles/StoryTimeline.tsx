@@ -5,6 +5,7 @@ import { History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import type { ArticleSummary } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 interface Day {
   day: string;
@@ -31,6 +32,7 @@ export function StoryTimeline({
   articleId: string;
   onOpen: (article: ArticleSummary) => void;
 }) {
+  const { t } = useT();
   const { data } = useSWR<{ days: Day[] }>(`/api/articles/${articleId}/timeline`, {
     revalidateOnFocus: false,
   });
@@ -38,9 +40,9 @@ export function StoryTimeline({
   const count = days.reduce((n, d) => n + d.articles.length, 0);
   if (days.length < 2 || count < 3) return null;
   return (
-    <section aria-label="Story timeline" className="mt-10">
+    <section aria-label={t("Story timeline")} className="mt-10">
       <h2 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        <History className="h-3.5 w-3.5 text-primary" /> How this story unfolded
+        <History className="h-3.5 w-3.5 text-primary" /> {t("How this story unfolded")}
       </h2>
       <ol className="relative ml-2 border-l pl-5">
         {days.map((day) => (

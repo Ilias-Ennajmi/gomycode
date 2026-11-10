@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CATALOG, CATALOG_CATEGORIES, type CatalogEntry } from "@/lib/discover/catalog";
 import { useFeeds } from "@/lib/hooks/useFeeds";
-import { useT } from "@/lib/i18n";
+import { useT, tr } from "@/lib/i18n";
 import { haptic } from "@/lib/native";
 import { SourcePreview } from "@/components/discover/SourcePreview";
 
@@ -90,7 +90,7 @@ export function StarterPacks({
       haptic("success");
       toast.success(`Following ${entry.name}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't follow");
+      toast.error(error instanceof Error ? error.message : tr("Couldn't follow"));
     } finally {
       setPreviewPending(false);
     }
@@ -115,11 +115,11 @@ export function StarterPacks({
         description:
           body.failed && body.failed.length > 0
             ? `${body.failed.length} couldn't be reached; try them later from Discover.`
-            : "Their latest stories are on their way.",
+            : tr("Their latest stories are on their way."),
       });
       onOpenChange(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't follow those");
+      toast.error(error instanceof Error ? error.message : tr("Couldn't follow those"));
     } finally {
       setBusy(false);
     }
@@ -150,7 +150,7 @@ export function StarterPacks({
                   lang === id ? "bg-background shadow-sm" : "text-muted-foreground"
                 )}
               >
-                {id === "en" ? "English" : "Français"}
+                {id === "en" ? t("English") : t("Français")}
               </button>
             ))}
           </div>
@@ -193,7 +193,7 @@ export function StarterPacks({
                         .join(" · ")}
                     </span>
                     <span className="mt-auto pt-1 text-[11px] text-muted-foreground">
-                      {pack.entries.length} sources
+                      {pack.entries.length} {t("sources")}
                       {already > 0 ? ` · ${already} followed` : ""}
                     </span>
                     {on && (

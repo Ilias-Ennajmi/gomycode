@@ -14,6 +14,7 @@ import { haptic } from "@/lib/native";
 import { reducedMotion } from "@/lib/motion";
 import { markSeen, storiesUrl, type StorySource } from "@/lib/stories";
 import type { ArticleSummary } from "@/lib/types";
+import { useT, tr } from "@/lib/i18n";
 
 const STORY_MS = 7000;
 const HOLD_MS = 180;
@@ -33,6 +34,7 @@ export function StoriesPlayer({
   start: number;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const [sourceIndex, setSourceIndex] = React.useState(start);
   const [index, setIndex] = React.useState(0);
   const [progress, setProgress] = React.useState(0);
@@ -154,10 +156,10 @@ export function StoriesPlayer({
     haptic(next ? "success" : "light");
     try {
       await toggleArticleSaved(story.id, next);
-      toast.success(next ? "Saved for later" : "Removed from Later");
+      toast.success(next ? tr("Saved for later") : tr("Removed from Later"));
     } catch {
       setSaved((s) => ({ ...s, [story.id]: !next }));
-      toast.error("Could not save");
+      toast.error(tr("Could not save"));
     }
   }
 
@@ -244,7 +246,7 @@ export function StoriesPlayer({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close stories"
+            aria-label={t("Close stories")}
             className="flex h-10 w-10 items-center justify-center rounded-full text-white/90 hover:bg-white/10"
           >
             <X className="h-5 w-5" />
@@ -278,7 +280,7 @@ export function StoriesPlayer({
               )}
             </div>
           ) : (
-            <p className="text-center text-sm text-white/70">Nothing new here.</p>
+            <p className="text-center text-sm text-white/70">{t("Nothing new here.")}</p>
           )}
 
           <div className="mt-5 flex items-center gap-2">
@@ -288,13 +290,13 @@ export function StoriesPlayer({
               disabled={!story}
               className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-white text-sm font-semibold text-black disabled:opacity-40"
             >
-              <BookOpen className="h-4 w-4" /> Read
+              <BookOpen className="h-4 w-4" /> {t("Read")}
             </button>
             <button
               type="button"
               onClick={() => void save()}
               disabled={!story}
-              aria-label={isSaved ? "Remove from Later" : "Read later"}
+              aria-label={isSaved ? t("Remove from Later") : t("Read later")}
               aria-pressed={isSaved}
               className={cn(
                 "flex h-12 w-12 items-center justify-center rounded-full border border-white/30 text-white",
@@ -307,7 +309,7 @@ export function StoriesPlayer({
               type="button"
               onClick={() => story && void shareLink(story.title, story.link)}
               disabled={!story}
-              aria-label="Share"
+              aria-label={t("Share")}
               className="flex h-12 w-12 items-center justify-center rounded-full border border-white/30 text-white"
             >
               <Share className="h-5 w-5" />

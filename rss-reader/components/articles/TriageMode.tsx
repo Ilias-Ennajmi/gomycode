@@ -126,7 +126,7 @@ export function TriageMode({
             <button
               type="button"
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t("Close")}
               className="mt-2 flex h-11 w-11 items-center justify-center rounded-full hover:bg-accent"
             >
               <X className="h-5 w-5" />
@@ -221,16 +221,16 @@ export function TriageMode({
           {article && (
             <div className="flex items-center justify-center gap-4 px-4 pb-safe pt-1">
               <div className="flex items-center justify-center gap-4 pb-5">
-                <RoundButton label="Undo" onClick={undo} disabled={history.length === 0} small>
+                <RoundButton label={t("Undo")} onClick={undo} disabled={history.length === 0} small>
                   <Undo2 className="h-5 w-5" />
                 </RoundButton>
-                <RoundButton label="Skip, mark read" onClick={() => choose("skip")}>
+                <RoundButton label={t("Skip, mark read")} onClick={() => choose("skip")}>
                   <Check className="h-6 w-6" />
                 </RoundButton>
-                <RoundButton label="Keep for Later" onClick={() => choose("keep")} primary>
+                <RoundButton label={t("Keep for Later")} onClick={() => choose("keep")} primary>
                   <Bookmark className="h-6 w-6" />
                 </RoundButton>
-                <RoundButton label="Open" onClick={() => open(article)} small>
+                <RoundButton label={t("Open")} onClick={() => open(article)} small>
                   <BookOpen className="h-5 w-5" />
                 </RoundButton>
               </div>

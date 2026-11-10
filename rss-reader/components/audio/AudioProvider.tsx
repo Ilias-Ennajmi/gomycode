@@ -14,6 +14,7 @@ import type { ArticleSummary, VideoExtras } from "@/lib/types";
 import { isDownloaded, removeDownload, sourceOf } from "@/lib/downloads";
 import { attachFx, type AudioFx } from "@/lib/audio-fx";
 import { usePref } from "@/lib/prefs";
+import { tr } from "@/lib/i18n";
 
 // One audio player for the whole app, like a podcast app: an episode keeps playing while
 // you read something else, the bar at the bottom controls it, and the phone's lock screen
@@ -302,7 +303,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           // The browser wants a tap first (autoplay rules): the play button is right there.
           // A seek or a pause right after Play interrupts the request (AbortError): not a failure.
           if (error.name !== "NotAllowedError" && error.name !== "AbortError") {
-            toast.error("Couldn't play this episode");
+            toast.error(tr("Couldn't play this episode"));
           }
         });
       }
@@ -348,7 +349,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       }
       ensureFx();
       audio.play().catch((error: Error) => {
-        if (error.name !== "AbortError") toast.error("Couldn't play this episode");
+        if (error.name !== "AbortError") toast.error(tr("Couldn't play this episode"));
       });
     } else {
       audio.pause();
@@ -427,7 +428,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     (item: Episode, where: "next" | "last") => {
       const without = queueRef.current.filter((e) => e.id !== item.id);
       saveQueue(where === "next" ? [item, ...without] : [...without, item]);
-      toast(where === "next" ? "Playing next" : "Added to the queue", {
+      toast(where === "next" ? tr("Playing next") : tr("Added to the queue"), {
         description: item.title,
       });
     },
@@ -459,10 +460,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       if (navigator.share) await navigator.share({ title: current.title, text, url });
       else {
         await navigator.clipboard.writeText(url);
-        toast.success("Link copied", { description: "Opens the episode at this moment." });
+        toast.success(tr("Link copied"), { description: tr("Opens the episode at this moment.") });
       }
     } catch (error) {
-      if ((error as Error).name !== "AbortError") toast.error("Couldn't share");
+      if ((error as Error).name !== "AbortError") toast.error(tr("Couldn't share"));
     }
   }, [time]);
 
@@ -471,7 +472,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const current = episodeRef.current;
     if (!current || snipping.current) return;
     if (current.id.startsWith("ext:")) {
-      toast("Follow the show to snip its episodes");
+      toast(tr("Follow the show to snip its episodes"));
       return;
     }
     snipping.current = true;
@@ -481,14 +482,14 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const id = toast.loading(`Snipping ${clockLabel(at)}…`);
     try {
       const { highlight, transcript } = await createSnip(current.id, at);
-      toast.success(highlight.title ?? "Snipped", {
+      toast.success(highlight.title ?? tr("Snipped"), {
         id,
         description: transcript
-          ? (highlight.note ?? "Saved to Highlights")
-          : "Saved the moment; the words come once the transcript is ready.",
+          ? (highlight.note ?? tr("Saved to Highlights"))
+          : tr("Saved the moment; the words come once the transcript is ready."),
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't snip that", { id });
+      toast.error(error instanceof Error ? error.message : tr("Couldn't snip that"), { id });
     } finally {
       snipping.current = false;
     }
@@ -531,7 +532,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       if (!next) return;
       load(next, resumePoint(extras.upNext!), true);
       toast(`Playing next: ${next.title}`, {
-        action: { label: "Stop", onClick: () => audioRef.current?.pause() },
+        action: { label: tr("Stop"), onClick: () => audioRef.current?.pause() },
       });
     } catch {
       // No next episode: stay on the finished one.
@@ -565,7 +566,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       () => {
         audioRef.current?.pause();
         setSleepState(null);
-        toast("Sleep timer: paused");
+        toast(tr("Sleep timer: paused"));
       },
       Math.max(0, wait)
     );
@@ -795,8 +796,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           }
           setPlaying(false);
           setBuffering(false);
-          toast.error("This episode didn't load", {
-            description: "The podcast's server may be down. Try again in a moment.",
+          toast.error(tr("This episode didn't load"), {
+            description: tr("The podcast's server may be down. Try again in a moment."),
           });
         }}
       />

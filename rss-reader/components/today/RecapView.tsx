@@ -19,6 +19,7 @@ import { HIGHLIGHT_SWATCH } from "@/components/highlights/ReaderHighlights";
 import { requestHighlightJump } from "@/lib/highlight-dom";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import type { HighlightSummary } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 interface Recap {
   period: "week" | "month";
@@ -68,6 +69,7 @@ function formatMinutes(minutes: number) {
 
 /** The recap: your week (or month) in news and reading. */
 export function RecapView() {
+  const { t } = useT();
   const [period, setPeriod] = React.useState<"week" | "month">(() =>
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("period") === "month"
@@ -91,15 +93,15 @@ export function RecapView() {
       <div className="mx-auto max-w-3xl px-4 pb-24 pt-5 md:px-8 md:pt-8">
         <header>
           <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-            <CalendarRange className="h-4 w-4" /> {month ? "Month in review" : "Weekly recap"}
+            <CalendarRange className="h-4 w-4" /> {month ? t("Month in review") : t("Weekly recap")}
           </p>
           <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
             <h1 className="font-serif text-4xl font-semibold leading-tight tracking-tight md:text-5xl">
-              {month ? "Your month" : "Your week"}
+              {month ? t("Your month") : t("Your week")}
             </h1>
             <div
               role="radiogroup"
-              aria-label="Period"
+              aria-label={t("Period")}
               className="flex rounded-full bg-muted p-0.5 text-xs font-medium"
             >
               {(
@@ -119,7 +121,7 @@ export function RecapView() {
                     period === id ? "bg-background shadow-sm" : "text-muted-foreground"
                   )}
                 >
-                  {label}
+                  {t(label)}
                 </button>
               ))}
             </div>
@@ -128,8 +130,8 @@ export function RecapView() {
             {recap && recap.period === period
               ? formatRange(recap.from, recap.to)
               : month
-                ? "The last thirty days"
-                : "The last seven days"}
+                ? t("The last thirty days")
+                : t("The last seven days")}
           </p>
         </header>
 
@@ -140,23 +142,23 @@ export function RecapView() {
             {recap.summary && (
               <section className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card p-5 md:p-6">
                 <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary">
-                  <Sparkles className="h-4 w-4" /> In short
+                  <Sparkles className="h-4 w-4" /> {t("In short")}
                 </h2>
                 <p className="mt-2 font-serif text-xl leading-relaxed">{recap.summary}</p>
               </section>
             )}
 
-            <section aria-label="Your reading">
+            <section aria-label={t("Your reading")}>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <Stat
                   icon={<BookOpen className="h-4 w-4" />}
                   value={recap.stats.read}
-                  label="articles read"
+                  label={t("articles read")}
                 />
                 <Stat
                   icon={<Clock className="h-4 w-4" />}
                   value={formatMinutes(recap.stats.minutes)}
-                  label="of reading"
+                  label={t("of reading")}
                 />
                 <Stat
                   icon={<Highlighter className="h-4 w-4" />}
@@ -171,19 +173,20 @@ export function RecapView() {
                 <Stat
                   icon={<TrendingUp className="h-4 w-4" />}
                   value={`${recap.stats.activeDays}/${length}`}
-                  label="days you read"
+                  label={t("days you read")}
                 />
               </div>
               <DayBars days={recap.days} month={month} />
               <p className="mt-3 text-sm text-muted-foreground">
-                {recap.stats.saved} saved for later · {recap.stats.finished} finished from Later
+                {recap.stats.saved} {t("saved for later ·")} {recap.stats.finished}{" "}
+                {t("finished from Later")}
               </p>
             </section>
 
             {recap.stories.length > 0 && (
               <section>
                 <SectionTitle icon={<Newspaper className="h-5 w-5 text-primary" />}>
-                  {month ? "The stories of the month" : "The stories of the week"}
+                  {month ? t("The stories of the month") : t("The stories of the week")}
                 </SectionTitle>
                 <ol className="divide-y">
                   {recap.stories.map((story) => (
@@ -232,7 +235,7 @@ export function RecapView() {
             {recap.highlights.length > 0 && (
               <section>
                 <SectionTitle icon={<Highlighter className="h-5 w-5 text-primary" />}>
-                  What you kept
+                  {t("What you kept")}
                 </SectionTitle>
                 <ul className="mt-4 space-y-5">
                   {recap.highlights.map((h) => (
@@ -273,14 +276,14 @@ export function RecapView() {
 
             {recap.topSources.length > 0 && (
               <section>
-                <SectionTitle>Where you read the most</SectionTitle>
+                <SectionTitle>{t("Where you read the most")}</SectionTitle>
                 <ul className="mt-3 space-y-2.5">
                   {recap.topSources.map((source) => (
                     <li key={source.id} className="flex items-center gap-2.5 text-[15px]">
                       <FeedFavicon title={source.title} faviconUrl={source.faviconUrl} size={20} />
                       <span className="min-w-0 flex-1 truncate">{source.title}</span>
                       <span className="text-sm tabular-nums text-muted-foreground">
-                        {source.read} read
+                        {source.read} {t("read")}
                       </span>
                     </li>
                   ))}
@@ -290,15 +293,15 @@ export function RecapView() {
 
             {recap.stats.read === 0 && recap.stories.length === 0 && (
               <p className="py-10 text-center text-sm text-muted-foreground">
-                {month ? "A quiet month." : "A quiet week."} Read a few articles and your recap
-                fills up here.
+                {month ? t("A quiet month.") : t("A quiet week.")}{" "}
+                {t("Read a few articles and your recap fills up here.")}
               </p>
             )}
 
             <footer className="border-t pt-8 text-center text-sm text-muted-foreground">
               {month
-                ? "The month in review is always the last thirty days."
-                : "A new recap every Sunday evening."}
+                ? t("The month in review is always the last thirty days.")
+                : t("A new recap every Sunday evening.")}
             </footer>
           </div>
         )}
@@ -316,22 +319,24 @@ function Stat({
   value: React.ReactNode;
   label: string;
 }) {
+  const { t } = useT();
   return (
     <div className="rounded-2xl border bg-card/60 p-4">
       <span className="text-primary">{icon}</span>
       <p className="mt-2 font-serif text-3xl font-semibold leading-none tabular-nums">{value}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{t(label)}</p>
     </div>
   );
 }
 
 /** Small bars: articles read per day (thirty thin ones for a month, labelled weekly). */
 function DayBars({ days, month }: { days: { date: string; read: number }[]; month?: boolean }) {
+  const { t } = useT();
   const max = Math.max(1, ...days.map((d) => d.read));
   return (
     <div
       className={cn("mt-5 flex h-24 items-end", month ? "gap-[3px]" : "gap-2")}
-      aria-label="Articles read per day"
+      aria-label={t("Articles read per day")}
     >
       {days.map((d, i) => (
         <div key={d.date} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">

@@ -6,6 +6,7 @@ import { cn, formatRelativeTime } from "@/lib/utils";
 import { deskName } from "@/lib/news/desks";
 import { SourceStack, StoryImage } from "@/components/news/StoryParts";
 import type { NewsStory } from "@/lib/hooks/useNews";
+import { useT } from "@/lib/i18n";
 
 const AUTO_ADVANCE_MS = 7000;
 
@@ -17,6 +18,7 @@ export function HeroSlider({
   stories: NewsStory[];
   onOpen: (story: NewsStory) => void;
 }) {
+  const { t } = useT();
   const trackRef = React.useRef<HTMLDivElement>(null);
   const [index, setIndex] = React.useState(0);
   const [paused, setPaused] = React.useState(false);
@@ -42,7 +44,7 @@ export function HeroSlider({
   return (
     <section
       aria-roledescription="carousel"
-      aria-label="Top stories"
+      aria-label={t("Top stories")}
       className="relative min-w-0"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -122,7 +124,7 @@ export function HeroSlider({
           <button
             type="button"
             onClick={() => goTo((index - 1 + stories.length) % stories.length)}
-            aria-label="Previous story"
+            aria-label={t("Previous story")}
             className="absolute left-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur transition-colors hover:bg-black/55 md:flex"
           >
             <ChevronLeft className="h-5 w-5" />
@@ -130,7 +132,7 @@ export function HeroSlider({
           <button
             type="button"
             onClick={() => goTo((index + 1) % stories.length)}
-            aria-label="Next story"
+            aria-label={t("Next story")}
             className="absolute right-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur transition-colors hover:bg-black/55 md:flex"
           >
             <ChevronRight className="h-5 w-5" />

@@ -49,6 +49,7 @@ import { isTopicFeedUrl } from "@/lib/discover/topics";
 import { QUIET_DAYS, healthOf, needingAttention } from "@/lib/feed-health";
 import type { DiscoverKind } from "@/lib/discover/catalog";
 import type { CategorySummary, FeedSummary } from "@/lib/types";
+import { useT, tr } from "@/lib/i18n";
 
 interface SourcesManagerProps {
   open: boolean;
@@ -93,6 +94,7 @@ export function SourcesManager({
   channel: requestedChannel,
   onChannelShown,
 }: SourcesManagerProps) {
+  const { t } = useT();
   const { feeds, mutate: mutateFeeds } = useFeeds();
   const { categories, mutate: mutateCategories } = useCategories();
   const { setView } = useReaderState();
@@ -195,7 +197,7 @@ export function SourcesManager({
             <div className="flex items-center gap-2 pt-3 sm:pt-0">
               <Library className="h-5 w-5 text-primary" />
               <DialogPrimitive.Title className="text-lg font-semibold tracking-tight">
-                Your sources
+                {t("Your sources")}
               </DialogPrimitive.Title>
               <span className="text-sm text-muted-foreground">{feeds.length}</span>
               <Button
@@ -206,11 +208,11 @@ export function SourcesManager({
                   onAddFeed(addKind);
                 }}
               >
-                <Plus className="h-3.5 w-3.5" /> Add
+                <Plus className="h-3.5 w-3.5" /> {t("Add")}
               </Button>
               <DialogPrimitive.Close
                 className="-mr-2 rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-                aria-label="Close"
+                aria-label={t("Close")}
               >
                 <X className="h-5 w-5" />
               </DialogPrimitive.Close>
@@ -221,9 +223,9 @@ export function SourcesManager({
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search your sources"
+                placeholder={t("Search your sources")}
                 className="h-10 w-full rounded-xl border bg-muted/40 pl-10 pr-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
-                aria-label="Search your sources"
+                aria-label={t("Search your sources")}
               />
             </div>
 
@@ -252,7 +254,7 @@ export function SourcesManager({
                     )}
                   >
                     <Icon className="h-3.5 w-3.5" />
-                    {label}
+                    {t(label)}
                     <span className="tabular-nums opacity-70">{counts[id]}</span>
                   </button>
                 );
@@ -263,20 +265,21 @@ export function SourcesManager({
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-safe sm:px-6">
             {channel === "unused" && groups.length > 0 && (
               <p className="mt-4 rounded-xl border border-dashed px-3 py-2 text-xs text-muted-foreground">
-                Nothing read, saved or highlighted from these in two months. Unfollow the ones you
-                won&apos;t miss; the rest stay as they are.
+                {t(
+                  "Nothing read, saved or highlighted from these in two months. Unfollow the ones you won't miss; the rest stay as they are."
+                )}
               </p>
             )}
             {groups.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-16 text-center text-sm text-muted-foreground">
                 <p>
                   {feeds.length === 0
-                    ? "You don't follow anything yet."
+                    ? t("You don't follow anything yet.")
                     : channel === "attention"
-                      ? "Every source is healthy."
+                      ? t("Every source is healthy.")
                       : channel === "unused"
-                        ? "You've read from every source lately."
-                        : "No sources match."}
+                        ? t("You've read from every source lately.")
+                        : t("No sources match.")}
                 </p>
                 {feeds.length === 0 && (
                   <Button
@@ -286,7 +289,7 @@ export function SourcesManager({
                       onAddFeed(addKind);
                     }}
                   >
-                    Discover sources
+                    {t("Discover sources")}
                   </Button>
                 )}
               </div>
@@ -344,6 +347,7 @@ function SourceItem({
   onOpen: () => void;
   onChanged: () => void;
 }) {
+  const { t } = useT();
   const { rules, addRule, removeRule } = useFilters();
   const [renaming, setRenaming] = React.useState(false);
   const [draft, setDraft] = React.useState(feed.title);
@@ -364,7 +368,7 @@ function SourceItem({
       onChanged();
     } catch (error) {
       setDraft(feed.title);
-      toast.error(error instanceof Error ? error.message : "Could not rename");
+      toast.error(error instanceof Error ? error.message : tr("Could not rename"));
     }
   }
 
@@ -373,9 +377,9 @@ function SourceItem({
       await updateFeed(feed.id, { categoryId });
       onChanged();
       const name = categories.find((c) => c.id === categoryId)?.name;
-      toast.success(name ? `Moved to ${name}` : "Removed from its category");
+      toast.success(name ? `Moved to ${name}` : tr("Removed from its category"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not move");
+      toast.error(error instanceof Error ? error.message : tr("Could not move"));
     }
   }
 
@@ -393,7 +397,7 @@ function SourceItem({
       }
       onChanged();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not update");
+      toast.error(error instanceof Error ? error.message : tr("Could not update"));
     }
   }
 
@@ -410,7 +414,7 @@ function SourceItem({
         toast.success(`You'll get a notification for each new item from ${feed.title}`);
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not update");
+      toast.error(error instanceof Error ? error.message : tr("Could not update"));
     }
   }
 
@@ -457,7 +461,7 @@ function SourceItem({
               }
             }}
             className="h-7 w-full rounded-md border bg-background px-2 text-sm outline-none focus-visible:border-primary"
-            aria-label="Source name"
+            aria-label={t("Source name")}
           />
         ) : (
           <button
@@ -471,20 +475,25 @@ function SourceItem({
         <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11.5px] text-muted-foreground">
           {health === "failing" && (
             <span className="inline-flex items-center gap-1 rounded bg-destructive/10 px-1.5 py-px font-medium text-destructive">
-              <AlertTriangle className="h-3 w-3" /> Not loading
+              <AlertTriangle className="h-3 w-3" /> {t("Not loading")}
             </span>
           )}
           {health === "quiet" && (
             <span className="rounded bg-amber-500/10 px-1.5 py-px font-medium text-amber-600 dark:text-amber-400">
-              Quiet for {QUIET_DAYS}+ days
+              {t("Quiet for")} {QUIET_DAYS}
+              {t("+ days")}
             </span>
           )}
-          {feed.muted && <span className="rounded bg-muted px-1.5 py-px font-medium">Muted</span>}
-          <span>{lastPost ? `Last post ${lastPost}` : "No posts yet"}</span>
+          {feed.muted && (
+            <span className="rounded bg-muted px-1.5 py-px font-medium">{t("Muted")}</span>
+          )}
+          <span>{lastPost ? `Last post ${lastPost}` : t("No posts yet")}</span>
           {feed.unreadCount > 0 && (
             <>
               <span aria-hidden>·</span>
-              <span>{feed.unreadCount} unread</span>
+              <span>
+                {feed.unreadCount} {t("unread")}
+              </span>
             </>
           )}
           {feed.language && (
@@ -505,11 +514,11 @@ function SourceItem({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuItem onSelect={() => setRenaming(true)} className="gap-2">
-            <Pencil className="h-4 w-4" /> Rename
+            <Pencil className="h-4 w-4" /> {t("Rename")}
           </DropdownMenuItem>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="gap-2">
-              <FolderInput className="h-4 w-4" /> Move to
+              <FolderInput className="h-4 w-4" /> {t("Move to")}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="max-h-72 overflow-y-auto">
               {categories.map((category) => (
@@ -530,24 +539,24 @@ function SourceItem({
               ))}
               {categories.length > 0 && <DropdownMenuSeparator />}
               <DropdownMenuItem onSelect={() => move(null)} disabled={!feed.categoryId}>
-                No category
+                {t("No category")}
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
           <DropdownMenuItem onSelect={toggleMute} className="gap-2">
             {feed.muted ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-            {feed.muted ? "Unmute" : "Mute"}
+            {feed.muted ? t("Unmute") : t("Mute")}
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={toggleAlert} className="gap-2">
             {alertRule ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
-            {alertRule ? "Stop alerts" : "Alert me about new items"}
+            {alertRule ? t("Stop alerts") : t("Alert me about new items")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onSelect={() => setConfirmDelete(true)}
             className="gap-2 text-destructive focus:text-destructive"
           >
-            <Trash2 className="h-4 w-4" /> Unfollow
+            <Trash2 className="h-4 w-4" /> {t("Unfollow")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -556,7 +565,9 @@ function SourceItem({
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
         title={`Unfollow ${feed.title}?`}
-        description="This removes the source and all of its articles, including any saved to Later. It can't be undone."
+        description={t(
+          "This removes the source and all of its articles, including any saved to Later. It can't be undone."
+        )}
         confirmLabel="Unfollow"
         onConfirm={unfollow}
       />

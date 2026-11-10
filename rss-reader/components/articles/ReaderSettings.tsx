@@ -11,6 +11,7 @@ import {
   type ReaderSpacing,
   type ReaderWidth,
 } from "@/lib/hooks/useReaderPrefs";
+import { useT } from "@/lib/i18n";
 
 function Segmented<T extends string | number>({
   label,
@@ -23,9 +24,10 @@ function Segmented<T extends string | number>({
   options: { value: T; label: React.ReactNode }[];
   onChange: (value: T) => void;
 }) {
+  const { t } = useT();
   return (
     <div className="space-y-1.5">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="text-xs font-medium text-muted-foreground">{t(label)}</p>
       <div className="grid grid-flow-col gap-1 rounded-lg bg-muted p-1">
         {options.map((option) => (
           <button
@@ -40,7 +42,7 @@ function Segmented<T extends string | number>({
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            {option.label}
+            {typeof option.label === "string" ? t(option.label) : option.label}
           </button>
         ))}
       </div>
@@ -50,6 +52,7 @@ function Segmented<T extends string | number>({
 
 /** The "Aa" menu: font, text size, line width and line spacing for the reader. */
 export function ReaderSettings({ className }: { className?: string }) {
+  const { t } = useT();
   const { prefs, update } = useReaderPrefs();
 
   return (
@@ -59,14 +62,14 @@ export function ReaderSettings({ className }: { className?: string }) {
           variant="ghost"
           size="icon"
           className={cn("h-10 w-10", className)}
-          aria-label="Reading settings"
+          aria-label={t("Reading settings")}
         >
           <Type className="h-5 w-5" />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 space-y-4">
         <Segmented<ReaderFont>
-          label="Font"
+          label={t("Font")}
           value={prefs.font}
           onChange={(font) => update({ font })}
           options={(["sans", "serif", "mono", "dyslexic"] as const).map((font) => ({
@@ -74,18 +77,18 @@ export function ReaderSettings({ className }: { className?: string }) {
             label: (
               <span style={{ fontFamily: READER_FONTS[font] }}>
                 {font === "sans"
-                  ? "Sans"
+                  ? t("Sans")
                   : font === "serif"
-                    ? "Serif"
+                    ? t("Serif")
                     : font === "mono"
-                      ? "Mono"
-                      : "Easy"}
+                      ? t("Mono")
+                      : t("Easy")}
               </span>
             ),
           }))}
         />
         <Segmented<number>
-          label="Text size"
+          label={t("Text size")}
           value={prefs.size}
           onChange={(size) => update({ size: size as 0 | 1 | 2 | 3 })}
           options={[0, 1, 2, 3].map((size) => ({
@@ -94,7 +97,7 @@ export function ReaderSettings({ className }: { className?: string }) {
           }))}
         />
         <Segmented<ReaderWidth>
-          label="Line width"
+          label={t("Line width")}
           value={prefs.width}
           onChange={(width) => update({ width })}
           options={[
@@ -104,7 +107,7 @@ export function ReaderSettings({ className }: { className?: string }) {
           ]}
         />
         <Segmented<ReaderSpacing>
-          label="Line spacing"
+          label={t("Line spacing")}
           value={prefs.spacing}
           onChange={(spacing) => update({ spacing })}
           options={[
@@ -123,9 +126,9 @@ export function ReaderSettings({ className }: { className?: string }) {
           )}
         >
           <span className="flex items-center gap-2">
-            <Focus className="h-4 w-4" /> Focus mode
+            <Focus className="h-4 w-4" /> {t("Focus mode")}
           </span>
-          <span className="text-xs text-muted-foreground">{prefs.focus ? "On" : "Off"}</span>
+          <span className="text-xs text-muted-foreground">{prefs.focus ? t("On") : t("Off")}</span>
         </button>
       </PopoverContent>
     </Popover>

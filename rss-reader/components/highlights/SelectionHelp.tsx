@@ -5,6 +5,7 @@ import { BookA, Languages, Lightbulb, Loader2 } from "lucide-react";
 import { Sheet } from "@/components/ui/sheet";
 import { TRANSLATE_LANGUAGES } from "@/components/articles/TranslateMenu";
 import type { SelectionAction } from "@/lib/smart";
+import { useT } from "@/lib/i18n";
 
 export const SELECTION_ACTIONS: { id: SelectionAction; label: string; icon: React.ReactNode }[] = [
   { id: "explain", label: "Explain", icon: <Lightbulb className="h-4 w-4" /> },
@@ -26,6 +27,7 @@ export function SelectionHelp({
   request: SelectionRequest | null;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const [result, setResult] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [to, setTo] = React.useState(() => {
@@ -64,7 +66,7 @@ export function SelectionHelp({
       onOpenChange={(open) => !open && onClose()}
       title={
         <span className="flex items-center gap-2">
-          <span className="text-primary">{action?.icon}</span> {action?.label}
+          <span className="text-primary">{action?.icon}</span> {action ? t(action.label) : null}
         </span>
       }
     >
@@ -95,7 +97,7 @@ export function SelectionHelp({
                     : "rounded-full border px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent"
                 }
               >
-                {language.label}
+                {t(language.label)}
               </button>
             ))}
           </div>
@@ -106,7 +108,7 @@ export function SelectionHelp({
           </p>
         ) : result === null ? (
           <p className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Thinking…
+            <Loader2 className="h-4 w-4 animate-spin" /> {t("Thinking…")}
           </p>
         ) : (
           <p className="whitespace-pre-wrap text-sm leading-relaxed">{result}</p>

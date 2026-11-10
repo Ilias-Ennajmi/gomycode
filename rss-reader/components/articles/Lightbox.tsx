@@ -3,6 +3,7 @@
 import * as React from "react";
 import { X } from "lucide-react";
 import { useBackToClose } from "@/lib/hooks/useHistorySync";
+import { useT } from "@/lib/i18n";
 
 /**
  * A picture full screen: pinch (or double-tap) to zoom, drag to look around, swipe down
@@ -17,6 +18,7 @@ export function Lightbox({
   alt?: string;
   onClose: () => void;
 }) {
+  const { t } = useT();
   useBackToClose(true, onClose);
   const [scale, setScale] = React.useState(1);
   const [offset, setOffset] = React.useState({ x: 0, y: 0 });
@@ -43,7 +45,7 @@ export function Lightbox({
   return (
     <div
       role="dialog"
-      aria-label={alt || "Picture"}
+      aria-label={alt || t("Picture")}
       className="fixed inset-0 z-[60] flex animate-fade-in items-center justify-center bg-black/95 touch-none"
       onPointerDown={(event) => {
         pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -107,7 +109,7 @@ export function Lightbox({
       <button
         type="button"
         onClick={onClose}
-        aria-label="Close"
+        aria-label={t("Close")}
         className="absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur hover:bg-white/20"
         style={{ top: "calc(env(safe-area-inset-top) + 12px)" }}
       >

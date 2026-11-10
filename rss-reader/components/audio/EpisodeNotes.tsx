@@ -9,6 +9,7 @@ import { shareQuoteImage } from "@/lib/quote-card";
 import { deleteHighlight } from "@/lib/hooks/useHighlights";
 import { useAudio } from "@/components/audio/AudioProvider";
 import type { ArticleSummary, HighlightSummary, TimedText } from "@/lib/types";
+import { useT, tr } from "@/lib/i18n";
 
 /**
  * The notes under an episode, the way Snipd lays an episode out: your snips (each one a
@@ -26,6 +27,7 @@ export function EpisodeNotes({
   transcript: TimedText[];
   onSeek: (seconds: number) => void;
 }) {
+  const { t } = useT();
   const audio = useAudio();
   const playingThis = audio.episode?.id === article.id;
   const [query, setQuery] = React.useState("");
@@ -38,11 +40,11 @@ export function EpisodeNotes({
   if (snips.length === 0 && transcript.length === 0) return null;
 
   return (
-    <section className="mt-8 space-y-6" aria-label="Episode notes">
+    <section className="mt-8 space-y-6" aria-label={t("Episode notes")}>
       {snips.length > 0 && (
         <div>
           <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
-            <Scissors className="h-4 w-4 text-primary" /> Your snips
+            <Scissors className="h-4 w-4 text-primary" /> {t("Your snips")}
             <span className="text-muted-foreground">{snips.length}</span>
           </h2>
           <ul className="space-y-2">
@@ -54,28 +56,29 @@ export function EpisodeNotes({
       )}
       {playingThis && snips.length === 0 && (
         <p className="rounded-xl border border-dashed px-4 py-3 text-sm text-muted-foreground">
-          Hear something worth keeping? Tap the scissors in the player (or press
-          &ldquo;previous&rdquo; twice on your earbuds) to snip the last half-minute.
+          {t(
+            "Hear something worth keeping? Tap the scissors in the player (or press “previous” twice on your earbuds) to snip the last half-minute."
+          )}
         </p>
       )}
       {transcript.length > 0 && (
         <div>
           <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
-            <Search className="h-4 w-4" /> Search the transcript
+            <Search className="h-4 w-4" /> {t("Search the transcript")}
           </h2>
           <div className="relative">
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="A word or a name said in the episode…"
-              aria-label="Search the transcript"
+              placeholder={t("A word or a name said in the episode…")}
+              aria-label={t("Search the transcript")}
               className="h-10 w-full rounded-xl border bg-background px-3 pr-9 text-sm outline-none focus:ring-2 focus:ring-primary/40"
             />
             {query && (
               <button
                 type="button"
                 onClick={() => setQuery("")}
-                aria-label="Clear"
+                aria-label={t("Clear")}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 <X className="h-4 w-4" />
@@ -86,7 +89,7 @@ export function EpisodeNotes({
             <ul className="mt-2 divide-y rounded-xl border">
               {hits.length === 0 && (
                 <li className="px-3 py-3 text-sm text-muted-foreground">
-                  Not said in this episode.
+                  {t("Not said in this episode.")}
                 </li>
               )}
               {hits.map((line, i) => (
@@ -135,6 +138,7 @@ export function SnipCard({
   article: ArticleSummary;
   onSeek: (seconds: number) => void;
 }) {
+  const { t } = useT();
   const start = snip.startSeconds ?? 0;
   const [gone, setGone] = React.useState(false);
   if (gone) return null;
@@ -161,15 +165,15 @@ export function SnipCard({
         <div className="flex shrink-0 flex-col">
           <button
             type="button"
-            aria-label="Share as a picture"
-            title="Share as a picture"
+            aria-label={t("Share as a picture")}
+            title={t("Share as a picture")}
             onClick={() =>
               shareQuoteImage({
                 text: snip.text,
                 color: snip.color,
                 source: `${article.title} · ${article.feed.title}`,
                 moment: `${clockLabel(start)}${snip.endSeconds ? ` – ${clockLabel(snip.endSeconds)}` : ""}`,
-              }).catch(() => toast.error("Could not make the picture"))
+              }).catch(() => toast.error(tr("Could not make the picture")))
             }
             className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
           >
@@ -177,12 +181,12 @@ export function SnipCard({
           </button>
           <button
             type="button"
-            aria-label="Remove snip"
-            title="Remove snip"
+            aria-label={t("Remove snip")}
+            title={t("Remove snip")}
             onClick={() =>
               deleteHighlight(snip.id)
                 .then(() => setGone(true))
-                .catch(() => toast.error("Could not remove the snip"))
+                .catch(() => toast.error(tr("Could not remove the snip")))
             }
             className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
           >

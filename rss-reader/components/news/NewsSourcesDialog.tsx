@@ -23,6 +23,7 @@ import { NEWS_SOURCES, type NewsSource } from "@/lib/news/catalog";
 import { DESKS, type DeskId } from "@/lib/news/desks";
 import { isTopicFeedUrl, siteTopic, topicQuery, topicResult } from "@/lib/discover/topics";
 import type { FeedSummary } from "@/lib/types";
+import { useT, tr } from "@/lib/i18n";
 
 interface NewsSourcesDialogProps {
   open: boolean;
@@ -58,6 +59,7 @@ function asResult(source: NewsSource): DiscoverResult {
 
 /** Pick the outlets behind the News tab, section by section, and hide sections. */
 export function NewsSourcesDialog({ open, onOpenChange, setup = false }: NewsSourcesDialogProps) {
+  const { t } = useT();
   const { feeds } = useFeeds();
   const { page } = useFrontPage();
   const follow = useFollow();
@@ -107,7 +109,7 @@ export function NewsSourcesDialog({ open, onOpenChange, setup = false }: NewsSou
       if (!outcome?.ok) throw new Error(outcome?.error ?? "Couldn't add this source");
       toast.success(`${outcome.title ?? result.name} added to News`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't add this source");
+      toast.error(error instanceof Error ? error.message : tr("Couldn't add this source"));
     } finally {
       setBusyFor(key, false);
     }
@@ -121,7 +123,7 @@ export function NewsSourcesDialog({ open, onOpenChange, setup = false }: NewsSou
         action: result ? { label: "Undo", onClick: () => add(result, feed.id) } : undefined,
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't remove this source");
+      toast.error(error instanceof Error ? error.message : tr("Couldn't remove this source"));
     } finally {
       setBusyFor(feed.id, false);
     }
@@ -132,7 +134,7 @@ export function NewsSourcesDialog({ open, onOpenChange, setup = false }: NewsSou
     try {
       await savePrefs({ hidden: next });
     } catch {
-      toast.error("Could not save");
+      toast.error(tr("Could not save"));
     }
   }
 
@@ -149,7 +151,7 @@ export function NewsSourcesDialog({ open, onOpenChange, setup = false }: NewsSou
       toast.success(`Your front page has ${results.length - failed.length} sources`);
       onOpenChange(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Something went wrong");
+      toast.error(error instanceof Error ? error.message : tr("Something went wrong"));
     } finally {
       setBuilding(false);
     }
@@ -172,19 +174,21 @@ export function NewsSourcesDialog({ open, onOpenChange, setup = false }: NewsSou
             <div className="flex items-center gap-2 pt-3 sm:pt-0">
               <Newspaper className="h-5 w-5 text-primary" />
               <DialogPrimitive.Title className="font-serif text-xl font-semibold tracking-tight">
-                {setup ? "Build your front page" : "News sources"}
+                {setup ? t("Build your front page") : t("News sources")}
               </DialogPrimitive.Title>
               <DialogPrimitive.Close
                 className="-mr-2 ml-auto rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-                aria-label="Close"
+                aria-label={t("Close")}
               >
                 <X className="h-5 w-5" />
               </DialogPrimitive.Close>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               {setup
-                ? "We picked a few outlets per section. Check or uncheck any, you can change them later."
-                : "Add or remove outlets, and choose which sections appear."}
+                ? t(
+                    "We picked a few outlets per section. Check or uncheck any, you can change them later."
+                  )
+                : t("Add or remove outlets, and choose which sections appear.")}
             </p>
             {!setup && (
               <div className="-mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4 scrollbar-none sm:-mx-6 sm:px-6">
@@ -264,7 +268,7 @@ export function NewsSourcesDialog({ open, onOpenChange, setup = false }: NewsSou
                       <SourceLine
                         key={feed.id}
                         name={feed.title}
-                        description="Added by you"
+                        description={t("Added by you")}
                         lang={feed.language}
                         icon={feed.faviconUrl}
                         control={
@@ -288,14 +292,16 @@ export function NewsSourcesDialog({ open, onOpenChange, setup = false }: NewsSou
 
           {setup && (
             <footer className="flex shrink-0 items-center justify-between gap-3 border-t px-4 py-3 pb-safe sm:px-6">
-              <p className="text-xs text-muted-foreground">{checked.size} sources selected</p>
+              <p className="text-xs text-muted-foreground">
+                {checked.size} {t("sources selected")}
+              </p>
               <Button
                 className="gap-1.5 rounded-full"
                 onClick={buildFrontPage}
                 disabled={building || checked.size === 0}
               >
                 {building && <Loader2 className="h-4 w-4 animate-spin" />}
-                {building ? "Fetching the news…" : "Build my front page"}
+                {building ? t("Fetching the news…") : t("Build my front page")}
               </Button>
             </footer>
           )}
@@ -355,6 +361,7 @@ function ToggleButton({
   onRemove: () => void;
   name: string;
 }) {
+  const { t } = useT();
   return (
     <button
       type="button"
@@ -374,12 +381,12 @@ function ToggleButton({
         <>
           <Check className="h-3.5 w-3.5 group-hover:hidden" />
           <X className="hidden h-3.5 w-3.5 group-hover:block" />
-          <span className="group-hover:hidden">Added</span>
-          <span className="hidden group-hover:inline">Remove</span>
+          <span className="group-hover:hidden">{t("Added")}</span>
+          <span className="hidden group-hover:inline">{t("Remove")}</span>
         </>
       ) : (
         <>
-          <Plus className="h-3.5 w-3.5" /> Add
+          <Plus className="h-3.5 w-3.5" /> {t("Add")}
         </>
       )}
     </button>
@@ -397,12 +404,13 @@ function Checkbox({
   onChange: (on: boolean) => void;
   label: string;
 }) {
+  const { t } = useT();
   return (
     <button
       type="button"
       role="checkbox"
       aria-checked={checked}
-      aria-label={label}
+      aria-label={t(label)}
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
@@ -420,6 +428,7 @@ function Checkbox({
 
 /** Any site, feed or topic, filed under a section. */
 function AddOwn({ onAdd }: { onAdd: (result: DiscoverResult, key: string) => Promise<void> }) {
+  const { t } = useT();
   const [text, setText] = React.useState("");
   const [desk, setDesk] = React.useState<DeskId>("morocco");
   const [adding, setAdding] = React.useState(false);
@@ -444,21 +453,22 @@ function AddOwn({ onAdd }: { onAdd: (result: DiscoverResult, key: string) => Pro
 
   return (
     <section className="mt-6 rounded-xl border bg-muted/30 p-4">
-      <h3 className="text-sm font-semibold">Add your own</h3>
+      <h3 className="text-sm font-semibold">{t("Add your own")}</h3>
       <p className="text-xs text-muted-foreground">
-        Paste a news site or feed, or type a topic (e.g. &ldquo;Raja Casablanca&rdquo;,
-        &ldquo;OCP&rdquo;, &ldquo;énergie Maroc&rdquo;).
+        {t(
+          "Paste a news site or feed, or type a topic (e.g. “Raja Casablanca”, “OCP”, “énergie Maroc”)."
+        )}
       </p>
       <form onSubmit={submit} className="mt-3 flex flex-wrap gap-2">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Site, feed or topic"
-          aria-label="Site, feed or topic"
+          placeholder={t("Site, feed or topic")}
+          aria-label={t("Site, feed or topic")}
           className="h-10 min-w-0 flex-[2_1_200px] rounded-lg border bg-background px-3 text-sm outline-none focus-visible:border-primary"
         />
         <Select value={desk} onValueChange={(v) => setDesk(v as DeskId)}>
-          <SelectTrigger className="h-10 flex-[1_1_120px]" aria-label="Section">
+          <SelectTrigger className="h-10 flex-[1_1_120px]" aria-label={t("Section")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -470,7 +480,7 @@ function AddOwn({ onAdd }: { onAdd: (result: DiscoverResult, key: string) => Pro
           </SelectContent>
         </Select>
         <Button type="submit" className="h-10" disabled={adding || text.trim().length < 2}>
-          {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
+          {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : t("Add")}
         </Button>
       </form>
     </section>

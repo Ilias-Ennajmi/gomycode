@@ -6,6 +6,7 @@ import { BellRing, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { loadPushStatus, turnOnPush, type PushStatus } from "@/lib/push-client";
+import { useT, tr } from "@/lib/i18n";
 
 type Support = "checking" | "unsupported" | "ready";
 
@@ -14,6 +15,7 @@ type Support = "checking" | "unsupported" | "ready";
  * own). The two kinds apply to every device.
  */
 export function NotificationSettings() {
+  const { t } = useT();
   const [support, setSupport] = React.useState<Support>("checking");
   const [status, setStatus] = React.useState<PushStatus | null>(null);
   const [busy, setBusy] = React.useState(false);
@@ -38,9 +40,9 @@ export function NotificationSettings() {
     try {
       await turnOnPush(status.publicKey);
       setStatus({ ...status, subscribed: true });
-      toast.success("Notifications are on");
+      toast.success(tr("Notifications are on"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not turn on notifications");
+      toast.error(error instanceof Error ? error.message : tr("Could not turn on notifications"));
     } finally {
       setBusy(false);
     }
@@ -78,7 +80,7 @@ export function NotificationSettings() {
       body: JSON.stringify({ [key]: value }),
     });
     if (!res.ok) {
-      toast.error("Could not save that setting");
+      toast.error(tr("Could not save that setting"));
       load();
     }
   }
@@ -86,24 +88,24 @@ export function NotificationSettings() {
   async function sendTest() {
     const res = await fetch("/api/push/test", { method: "POST" });
     const body = await res.json().catch(() => ({}));
-    if (!res.ok) toast.error(body.error || "Could not send a test");
-    else toast.success("Test sent. It should arrive in a few seconds.");
+    if (!res.ok) toast.error(body.error || tr("Could not send a test"));
+    else toast.success(tr("Test sent. It should arrive in a few seconds."));
   }
 
   if (support === "checking") {
-    return <p className="px-3 py-2.5 text-sm text-muted-foreground">Checking…</p>;
+    return <p className="px-3 py-2.5 text-sm text-muted-foreground">{t("Checking…")}</p>;
   }
   if (support === "unsupported") {
     return (
       <p className="px-3 py-2.5 text-sm text-muted-foreground">
-        Notifications aren’t available here. Use the Android app or an up-to-date browser.
+        {t("Notifications aren’t available here. Use the Android app or an up-to-date browser.")}
       </p>
     );
   }
   if (!status?.configured) {
     return (
       <p className="px-3 py-2.5 text-sm text-muted-foreground">
-        Notifications aren’t set up on the server yet.
+        {t("Notifications aren’t set up on the server yet.")}
       </p>
     );
   }
@@ -112,7 +114,7 @@ export function NotificationSettings() {
     <div className="divide-y">
       <label className="flex items-center gap-3 px-3 py-2.5">
         <BellRing className="h-5 w-5 text-muted-foreground" />
-        <span className="flex-1 text-sm font-medium">Notifications on this device</span>
+        <span className="flex-1 text-sm font-medium">{t("Notifications on this device")}</span>
         {busy && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
         <Switch
           checked={status.subscribed}
@@ -124,9 +126,9 @@ export function NotificationSettings() {
         <>
           <label className="flex items-center gap-3 px-3 py-2.5">
             <span className="flex-1">
-              <span className="block text-sm">Morning digest</span>
+              <span className="block text-sm">{t("Morning digest")}</span>
               <span className="block text-xs text-muted-foreground">
-                The day’s top stories and what’s waiting for you
+                {t("The day’s top stories and what’s waiting for you")}
               </span>
             </span>
             <Switch
@@ -136,11 +138,11 @@ export function NotificationSettings() {
           </label>
           {status.prefs.briefing && (
             <label className="flex items-center gap-3 px-3 pb-2.5 pl-6">
-              <span className="flex-1 text-xs text-muted-foreground">At</span>
+              <span className="flex-1 text-xs text-muted-foreground">{t("At")}</span>
               <select
                 value={status.prefs.digestHour ?? 7}
                 onChange={(event) => setPref("digestHour", Number(event.target.value))}
-                aria-label="Morning digest time"
+                aria-label={t("Morning digest time")}
                 className="h-8 rounded-md border bg-background px-2 text-sm"
               >
                 {[5, 6, 7, 8, 9, 10, 11].map((hour) => (
@@ -153,9 +155,9 @@ export function NotificationSettings() {
           )}
           <label className="flex items-center gap-3 px-3 py-2.5">
             <span className="flex-1">
-              <span className="block text-sm">Breaking news</span>
+              <span className="block text-sm">{t("Breaking news")}</span>
               <span className="block text-xs text-muted-foreground">
-                When many outlets suddenly cover the same story
+                {t("When many outlets suddenly cover the same story")}
               </span>
             </span>
             <Switch
@@ -165,9 +167,9 @@ export function NotificationSettings() {
           </label>
           <label className="flex items-center gap-3 px-3 py-2.5">
             <span className="flex-1">
-              <span className="block text-sm">Weekly recap</span>
+              <span className="block text-sm">{t("Weekly recap")}</span>
               <span className="block text-xs text-muted-foreground">
-                Sunday evening, your week in reading; the 1st, your month
+                {t("Sunday evening, your week in reading; the 1st, your month")}
               </span>
             </span>
             <Switch
@@ -177,9 +179,9 @@ export function NotificationSettings() {
           </label>
           <label className="flex items-center gap-3 px-3 py-2.5">
             <span className="flex-1">
-              <span className="block text-sm">Problems</span>
+              <span className="block text-sm">{t("Problems")}</span>
               <span className="block text-xs text-muted-foreground">
-                If something in the app breaks, once a day per kind of problem
+                {t("If something in the app breaks, once a day per kind of problem")}
               </span>
             </span>
             <Switch
@@ -188,11 +190,11 @@ export function NotificationSettings() {
             />
           </label>
           <p className="px-3 py-2 text-xs text-muted-foreground">
-            Snoozed articles always notify you when they come back.
+            {t("Snoozed articles always notify you when they come back.")}
           </p>
           <div className="px-3 py-2">
             <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={sendTest}>
-              Send a test notification
+              {t("Send a test notification")}
             </Button>
           </div>
         </>

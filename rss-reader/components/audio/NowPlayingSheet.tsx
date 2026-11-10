@@ -73,7 +73,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useT } from "@/lib/i18n";
+import { useT, tr } from "@/lib/i18n";
 import { DownloadButton } from "@/components/audio/Downloads";
 import { requestAppEvent } from "@/lib/app-events";
 
@@ -86,6 +86,7 @@ import { requestAppEvent } from "@/lib/app-events";
  * Swipe down from the top, or tap the chevron, to shrink it back to the bar.
  */
 export function NowPlayingSheet() {
+  const { t } = useT();
   const audio = useAudio();
   const { episode, viewing, expanded, setExpanded } = audio;
   const shown = viewing ?? episode;
@@ -181,7 +182,7 @@ export function NowPlayingSheet() {
       style={dy ? { transform: `translateY(${dy}px)`, transition: "none" } : undefined}
       role="dialog"
       aria-modal={open}
-      aria-label={isCurrent ? "Now playing" : shown.title}
+      aria-label={isCurrent ? t("Now playing") : shown.title}
       inert={open ? undefined : true}
     >
       {/* The artwork, blown up and blurred, as the room's light. */}
@@ -230,7 +231,7 @@ export function NowPlayingSheet() {
             <button
               type="button"
               onClick={close}
-              aria-label="Minimize the player"
+              aria-label={t("Minimize the player")}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-accent/60"
             >
               <ChevronDown className="h-6 w-6" />
@@ -262,7 +263,7 @@ export function NowPlayingSheet() {
             ) : (
               <p className="min-w-0 flex-1 text-center leading-tight">
                 <span className="block text-[11px] text-muted-foreground">
-                  {isCurrent ? "Playing from podcast" : "Podcast episode"}
+                  {isCurrent ? t("Playing from podcast") : t("Podcast episode")}
                 </span>
                 <span className="block truncate text-sm font-semibold">{shown.feedTitle}</span>
               </p>
@@ -272,7 +273,7 @@ export function NowPlayingSheet() {
         </header>
 
         <div className="mx-auto max-w-xl px-5 pb-safe">
-          <section aria-label="Player" className="flex flex-col items-center pt-3">
+          <section aria-label={t("Player")} className="flex flex-col items-center pt-3">
             <Artwork episode={shown} current={isCurrent} />
             <div className="mt-6 flex w-full items-start gap-3">
               <div className="min-w-0 flex-1">
@@ -307,7 +308,7 @@ export function NowPlayingSheet() {
             <div className="mt-4 flex w-full items-center justify-between text-muted-foreground">
               <div className="flex items-center gap-1">
                 {!external && (
-                  <ActionButton label="Episode page" onClick={openEpisodePage}>
+                  <ActionButton label={t("Episode page")} onClick={openEpisodePage}>
                     <FileText className="h-5 w-5" />
                   </ActionButton>
                 )}
@@ -316,13 +317,13 @@ export function NowPlayingSheet() {
               </div>
               <div className="flex items-center gap-1">
                 {isCurrent && (
-                  <ActionButton label="Car mode" onClick={() => requestAppEvent("car-mode")}>
+                  <ActionButton label={t("Car mode")} onClick={() => requestAppEvent("car-mode")}>
                     <Car className="h-5 w-5" />
                   </ActionButton>
                 )}
                 {isCurrent && <SnipButton />}
                 <ActionButton
-                  label="Share"
+                  label={t("Share")}
                   onClick={() =>
                     isCurrent
                       ? void audio.shareMoment()
@@ -332,7 +333,7 @@ export function NowPlayingSheet() {
                   <Share className="h-5 w-5" />
                 </ActionButton>
                 <ActionButton
-                  label="Up next"
+                  label={t("Up next")}
                   onClick={() =>
                     scroller.current
                       ?.querySelector('[data-card="up-next"]')
@@ -348,8 +349,9 @@ export function NowPlayingSheet() {
           <div className="mt-6 space-y-3 pb-10">
             {extras?.ai === "pending" && (
               <p className="rounded-2xl bg-card/85 px-4 py-3 text-sm text-muted-foreground ring-1 ring-border/60">
-                The transcript, chapters and key moments are on their way: Gemini is listening to
-                the episode.
+                {t(
+                  "The transcript, chapters and key moments are on their way: Gemini is listening to the episode."
+                )}
               </p>
             )}
             <ReadAlongCard
@@ -360,7 +362,7 @@ export function NowPlayingSheet() {
             />
             <TimeListCard
               id="chapters"
-              title="Chapters"
+              title={t("Chapters")}
               icon={ListVideo}
               items={chapters.map((c) => ({ t: c.t, label: c.title }))}
               store={store}
@@ -369,7 +371,7 @@ export function NowPlayingSheet() {
             />
             <TimeListCard
               id="key-moments"
-              title="Key moments"
+              title={t("Key moments")}
               icon={Sparkles}
               items={(extras?.keyMoments ?? []).map((m) => ({ t: m.t, label: m.text }))}
               store={store}
@@ -387,7 +389,7 @@ export function NowPlayingSheet() {
             {!external && (
               <AboutCard
                 id="about-episode"
-                title="About the episode"
+                title={t("About the episode")}
                 meta={
                   <>
                     <p className="font-semibold leading-snug">{shown.title}</p>
@@ -409,7 +411,7 @@ export function NowPlayingSheet() {
                 setMobilePane("list");
               }}
             />
-            <MediaCard id="up-next" title="Up next" icon={ListMusic}>
+            <MediaCard id="up-next" title={t("Up next")} icon={ListMusic}>
               {audio.queue.length > 0 ? (
                 <QueueList />
               ) : extras?.upNext ? (
@@ -430,7 +432,7 @@ export function NowPlayingSheet() {
             {!external && (
               <MediaRow
                 id="related"
-                title="You might also like"
+                title={t("You might also like")}
                 url={`/api/articles/${shown.id}/similar`}
                 excludeId={shown.id}
                 onOpen={openArticle}
@@ -468,10 +470,11 @@ function ActionButton({
 }
 
 function CollectButton({ articleId }: { articleId: string }) {
+  const { t } = useT();
   const [open, setOpen] = React.useState(false);
   return (
     <>
-      <ActionButton label="Add to collection" onClick={() => setOpen(true)}>
+      <ActionButton label={t("Add to collection")} onClick={() => setOpen(true)}>
         <FolderPlus className="h-5 w-5" />
       </ActionButton>
       {open && <CollectionPicker articleId={articleId} open onOpenChange={setOpen} />}
@@ -481,6 +484,7 @@ function CollectButton({ articleId }: { articleId: string }) {
 
 /** Before it plays: where it stopped as a line, and one big button to start. */
 function IdleControls({ episode, savedAt }: { episode: Episode; savedAt: number }) {
+  const { t } = useT();
   const audio = useAudio();
   const length = episode.durationSeconds ?? 0;
   const percent = length ? Math.min(100, (savedAt / length) * 100) : 0;
@@ -499,7 +503,7 @@ function IdleControls({ episode, savedAt }: { episode: Episode; savedAt: number 
           onClick={() => audio.enqueue(episode, "last")}
           className="flex h-11 items-center gap-1.5 rounded-full px-4 text-sm font-medium text-muted-foreground ring-1 ring-border hover:bg-accent"
         >
-          <ListEnd className="h-4 w-4" /> Queue
+          <ListEnd className="h-4 w-4" /> {t("Queue")}
         </button>
         <button
           type="button"
@@ -507,7 +511,7 @@ function IdleControls({ episode, savedAt }: { episode: Episode; savedAt: number 
           className="flex h-14 items-center gap-2 rounded-full bg-foreground px-7 text-base font-semibold text-background transition-transform active:scale-95"
         >
           <Play className="h-5 w-5 fill-current" />
-          {savedAt > 0 ? `Resume at ${clock(savedAt)}` : "Play"}
+          {savedAt > 0 ? `Resume at ${clock(savedAt)}` : t("Play")}
         </button>
       </div>
     </div>
@@ -516,6 +520,7 @@ function IdleControls({ episode, savedAt }: { episode: Episode; savedAt: number 
 
 /** "Skip ahead": to the next chapter, when there is one. */
 function NextChapterButton({ chapters }: { chapters: { t: number; title: string }[] }) {
+  const { t } = useT();
   const { seek } = useAudio();
   const current = usePlayerTime();
   const next = chapters.find((c) => c.t > current + 1);
@@ -530,13 +535,14 @@ function NextChapterButton({ chapters }: { chapters: { t: number; title: string 
       title={`Next: ${next.title}`}
       className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-foreground/10 px-3 text-xs font-semibold hover:bg-foreground/15"
     >
-      <SkipForward className="h-3.5 w-3.5 fill-current" /> Skip ahead
+      <SkipForward className="h-3.5 w-3.5 fill-current" /> {t("Skip ahead")}
     </button>
   );
 }
 
 /** About the show: its picture, name, description, and the way to its page. */
 function ShowCard({ episode, onOpenShow }: { episode: Episode; onOpenShow: () => void }) {
+  const { t } = useT();
   const { feeds, mutate } = useFeeds();
   const { setView } = useReaderState();
   const feed = feeds.find((f) => f.id === episode.feedId);
@@ -557,14 +563,14 @@ function ShowCard({ episode, onOpenShow }: { episode: Episode; onOpenShow: () =>
       await mutate();
       toast.success(`Following ${episode.feedTitle}`);
     } catch {
-      toast.error("Couldn't follow this show");
+      toast.error(tr("Couldn't follow this show"));
     } finally {
       setFollowing(false);
     }
   }
   const description = feed?.description?.replace(/<[^>]+>/g, " ").trim();
   return (
-    <MediaCard id="about-show" title="About the podcast">
+    <MediaCard id="about-show" title={t("About the podcast")}>
       <div className="flex items-center gap-3">
         <Art
           src={feed?.coverUrl ?? episode.imageUrl ?? feed?.faviconUrl}
@@ -581,7 +587,7 @@ function ShowCard({ episode, onOpenShow }: { episode: Episode; onOpenShow: () =>
             }}
             className="h-8 shrink-0 rounded-full px-3 text-xs font-semibold ring-1 ring-border hover:bg-accent"
           >
-            Following
+            {t("Following")}
           </button>
         ) : external && episode.feedUrl ? (
           <button
@@ -590,7 +596,7 @@ function ShowCard({ episode, onOpenShow }: { episode: Episode; onOpenShow: () =>
             onClick={() => void follow()}
             className="h-8 shrink-0 rounded-full bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-60"
           >
-            {followedUrl ? "Following" : following ? "…" : "Follow"}
+            {followedUrl ? t("Following") : following ? "…" : t("Follow")}
           </button>
         ) : null}
       </div>
@@ -605,7 +611,7 @@ function ShowCard({ episode, onOpenShow }: { episode: Episode; onOpenShow: () =>
           onClick={() => setMore((v) => !v)}
           className="mt-1 text-sm font-semibold hover:underline"
         >
-          {more ? "see less" : "… see more"}
+          {more ? t("see less") : t("… see more")}
         </button>
       )}
     </MediaCard>
@@ -684,6 +690,7 @@ function Artwork({ episode, current }: { episode: Episode; current: boolean }) {
 
 /** The scrubber with chapter marks along it and the loaded stretch shown lighter. */
 function ChapterScrubber({ chapters }: { chapters: { t: number; title: string }[] }) {
+  const { t } = useT();
   const { duration, buffered, seek, sponsors } = useAudio();
   const current = usePlayerTime();
   const [dragging, setDragging] = React.useState<number | null>(null);
@@ -725,7 +732,7 @@ function ChapterScrubber({ chapters }: { chapters: { t: number; title: string }[
             if (dragging !== null) seek(dragging);
             setDragging(null);
           }}
-          aria-label="Position"
+          aria-label={t("Position")}
           aria-valuetext={`${clock(shown)} of ${clock(duration)}`}
           className="audio-scrubber relative w-full"
           style={{ "--progress": `${pct(shown)}%` } as React.CSSProperties}
@@ -760,6 +767,7 @@ function chapterAt(chapters: { t: number; title: string }[], seconds: number) {
 
 /** Up next, reorderable by dragging the handle; a row's × removes it. */
 function QueueList() {
+  const { t } = useT();
   const { queue, dequeue, moveInQueue, clearQueue, play } = useAudio();
   const [dragIndex, setDragIndex] = React.useState<number | null>(null);
   const [overIndex, setOverIndex] = React.useState<number | null>(null);
@@ -796,7 +804,7 @@ function QueueList() {
           >
             <span
               className="flex h-10 w-8 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground"
-              aria-label="Drag to reorder"
+              aria-label={t("Drag to reorder")}
               onPointerDown={(event) => {
                 event.currentTarget.setPointerCapture(event.pointerId);
                 setDragIndex(i);
@@ -859,7 +867,7 @@ function QueueList() {
         onClick={clearQueue}
         className="mt-3 w-full rounded-full py-2 text-xs font-medium text-muted-foreground hover:bg-accent/60"
       >
-        Clear the queue
+        {t("Clear the queue")}
       </button>
     </div>
   );
@@ -890,7 +898,7 @@ function PlayerMenu({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label="More"
+          aria-label={t("More")}
           className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-accent/60"
         >
           <MoreHorizontal className="h-5 w-5" />
@@ -909,7 +917,7 @@ function PlayerMenu({
         )}
         {!catalogue && (
           <DropdownMenuItem onSelect={onEpisodePage} className="gap-2">
-            <Text className="h-4 w-4" /> Episode page
+            <Text className="h-4 w-4" /> {t("Episode page")}
           </DropdownMenuItem>
         )}
         <DropdownMenuCheckboxItem checked={skipSponsors} onCheckedChange={setSkipSponsors}>
@@ -933,19 +941,21 @@ function PlayerMenu({
           {t("Trim silences")}
         </DropdownMenuCheckboxItem>
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-xs">A snip keeps the last</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs">{t("A snip keeps the last")}</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={String(snipWindow)}
           onValueChange={(value) => setSnipWindow(Number(value) === 60 ? 60 : 30)}
         >
           {SNIP_WINDOWS.map((seconds) => (
             <DropdownMenuRadioItem key={seconds} value={String(seconds)}>
-              {seconds} seconds
+              {seconds} {t("seconds")}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-xs">Speed for {episode.feedTitle}</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs">
+          {t("Speed for")} {episode.feedTitle}
+        </DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={prefs.rate === undefined ? "default" : String(prefs.rate)}
           onValueChange={(value) =>
@@ -955,7 +965,7 @@ function PlayerMenu({
             })
           }
         >
-          <DropdownMenuRadioItem value="default">Same as everywhere</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="default">{t("Same as everywhere")}</DropdownMenuRadioItem>
           {AUDIO_RATES.map((rate) => (
             <DropdownMenuRadioItem key={rate} value={String(rate)}>
               {rate}×
@@ -963,7 +973,9 @@ function PlayerMenu({
           ))}
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-xs">Skip the start of each episode</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs">
+          {t("Skip the start of each episode")}
+        </DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={String(prefs.skipIntro ?? 0)}
           onValueChange={(value) =>
@@ -972,7 +984,7 @@ function PlayerMenu({
         >
           {[0, 15, 30, 45, 60, 90].map((seconds) => (
             <DropdownMenuRadioItem key={seconds} value={String(seconds)}>
-              {seconds === 0 ? "Don't skip" : `${seconds} seconds`}
+              {seconds === 0 ? t("Don't skip") : `${seconds} seconds`}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>

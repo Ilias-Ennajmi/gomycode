@@ -12,6 +12,7 @@ import {
   useReaderPrefs,
 } from "@/lib/hooks/useReaderPrefs";
 import "highlight.js/styles/github-dark.css";
+import { useT } from "@/lib/i18n";
 
 interface ArticleContentProps {
   content?: string | null;
@@ -56,6 +57,7 @@ export function ArticleContent({
   bodyRef,
   onRendered,
 }: ArticleContentProps) {
+  const { t } = useT();
   const renderedRef = React.useRef(onRendered);
   renderedRef.current = onRendered;
   const containerRef = React.useRef<HTMLDivElement | null>(null);
@@ -136,7 +138,7 @@ export function ArticleContent({
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"
         >
-          {isVideo ? "Watch on YouTube" : "Read full article"}{" "}
+          {isVideo ? t("Watch on YouTube") : t("Read full article")}{" "}
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
       </div>

@@ -3,6 +3,7 @@
 import { Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ArticleSummary } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 /**
  * YouTube Shorts as tall cards, two across. Their thumbnails are wide pictures with the
@@ -17,6 +18,7 @@ export function ShortsGrid({
   selectedId: string | null;
   onSelect: (article: ArticleSummary) => void;
 }) {
+  const { t } = useT();
   return (
     <ul className="grid grid-cols-2 gap-2.5 p-3 sm:grid-cols-3 md:grid-cols-2">
       {articles.map((article) => (
@@ -43,13 +45,13 @@ export function ShortsGrid({
             )}
             <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
             <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur">
-              <Smartphone className="h-3 w-3" /> Short
+              <Smartphone className="h-3 w-3" /> {t("Short")}
             </span>
             {!article.isRead && (
               <span
                 className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-black/30"
                 role="img"
-                aria-label="Unread"
+                aria-label={t("Unread")}
               />
             )}
             <span className="absolute inset-x-0 bottom-0 p-2.5">

@@ -67,7 +67,7 @@ export function ForYouGreeting() {
                 title={t("Got 5 minutes?")}
                 className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
               >
-                <Timer className="h-3.5 w-3.5" /> 5 min
+                <Timer className="h-3.5 w-3.5" /> {t("5 min")}
               </button>
             )}
           </div>
@@ -90,7 +90,7 @@ export function ForYouGreeting() {
                   onClick={() => setView(link.view)}
                   className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
                 >
-                  {link.label}
+                  {t(link.label)}
                 </button>
               </React.Fragment>
             ))}

@@ -5,6 +5,7 @@ import { cn, formatRelativeTime, getFaviconFallbackColor } from "@/lib/utils";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { durationLabel } from "@/lib/hooks/useVideo";
 import type { ArticleSummary } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 /**
  * A shelf of square tiles: artwork (or the source's colour and initial), the title under
@@ -20,6 +21,7 @@ export function TileGrid({
   selectedId: string | null;
   onSelect: (article: ArticleSummary) => void;
 }) {
+  const { t } = useT();
   return (
     <ul className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-3 md:grid-cols-2 xl:grid-cols-3">
       {articles.map((article, index) => {
@@ -84,7 +86,7 @@ export function TileGrid({
                   <span
                     className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-black/30"
                     role="img"
-                    aria-label="Unread"
+                    aria-label={t("Unread")}
                   />
                 )}
                 {article.durationSeconds ? (

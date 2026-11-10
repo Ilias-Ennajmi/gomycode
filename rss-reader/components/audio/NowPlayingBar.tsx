@@ -12,6 +12,7 @@ import {
   usePlayerTime,
 } from "@/components/audio/PlayerControls";
 import { useVideoExtras } from "@/lib/hooks/useVideo";
+import { useT } from "@/lib/i18n";
 
 /** Three little bars dancing on the artwork while something plays. */
 function Equalizer() {
@@ -60,6 +61,7 @@ function CurrentChapter({ episodeId, fallback }: { episodeId: string; fallback: 
  * which has the full player.
  */
 export function NowPlayingBar() {
+  const { t } = useT();
   const { episode, playing, close, setExpanded } = useAudio();
   const { selectedArticleId, mobilePane } = useReaderState();
   const swipe = React.useRef<number | null>(null);
@@ -80,7 +82,7 @@ export function NowPlayingBar() {
         openHere && "md:hidden"
       )}
       role="region"
-      aria-label="Now playing"
+      aria-label={t("Now playing")}
     >
       <span
         aria-hidden
@@ -123,7 +125,7 @@ export function NowPlayingBar() {
               {episode.title}
             </span>
             <span className="block truncate text-xs text-muted-foreground">
-              {playing ? "Playing · " : "Paused · "}
+              {playing ? t("Playing · ") : t("Paused · ")}
               <CurrentChapter episodeId={episode.id} fallback={episode.feedTitle} />
             </span>
           </span>
@@ -136,7 +138,7 @@ export function NowPlayingBar() {
           <button
             type="button"
             onClick={close}
-            aria-label="Close the player"
+            aria-label={t("Close the player")}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent"
           >
             <X className="h-4 w-4" />

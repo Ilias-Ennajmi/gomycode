@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useReadingGoal } from "@/lib/hooks/useReadingGoal";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import { haptic } from "@/lib/native";
+import { useT } from "@/lib/i18n";
 
 /**
  * Today's reading as a ring that fills toward the daily goal, with the streak under it.
@@ -13,6 +14,7 @@ import { haptic } from "@/lib/native";
  * goal is reached in a session.
  */
 export function GoalRing({ size = 56, className }: { size?: number; className?: string }) {
+  const { t } = useT();
   const { goal, minutes, progress, done, streak, loaded } = useReadingGoal();
   const { setView } = useReaderState();
   const [celebrate, setCelebrate] = React.useState(false);
@@ -37,7 +39,7 @@ export function GoalRing({ size = 56, className }: { size?: number; className?: 
       onClick={() => setView({ type: "stats", label: "Your reading" })}
       className={cn("group flex shrink-0 flex-col items-center gap-0.5", className)}
       aria-label={`${minutes} of ${goal} minutes read today${streak > 1 ? `, ${streak}-day streak` : ""}`}
-      title="Your reading"
+      title={t("Your reading")}
     >
       <span
         className={cn("relative block", celebrate && "animate-pop")}

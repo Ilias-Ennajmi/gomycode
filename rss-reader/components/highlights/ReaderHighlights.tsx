@@ -26,6 +26,7 @@ import {
 } from "@/components/highlights/SelectionHelp";
 import type { SelectionAction } from "@/lib/smart";
 import type { ArticleSummary, HighlightColor, HighlightSummary } from "@/lib/types";
+import { useT, tr } from "@/lib/i18n";
 
 export const HIGHLIGHT_SWATCH: Record<HighlightColor, string> = {
   yellow: "bg-[#fde68a]",
@@ -41,7 +42,7 @@ function isTouch() {
 
 async function copyText(text: string) {
   await navigator.clipboard.writeText(text);
-  toast.success("Copied");
+  toast.success(tr("Copied"));
 }
 
 /** "“passage” — Title" plus the link, through the share sheet when there is one. */
@@ -56,7 +57,7 @@ export async function shareQuote(text: string, article: Pick<ArticleSummary, "ti
     }
   }
   await navigator.clipboard.writeText(`${quote}\n${article.link}`);
-  toast.success("Quote copied");
+  toast.success(tr("Quote copied"));
 }
 
 interface ReaderHighlightsProps {
@@ -168,7 +169,7 @@ export function ReaderHighlights({
         });
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save the highlight");
+      toast.error(error instanceof Error ? error.message : tr("Could not save the highlight"));
     } finally {
       busy.current = false;
     }
@@ -215,7 +216,7 @@ export function ReaderHighlights({
               color: "yellow",
               title: article.title,
               source: article.feed.title,
-            }).catch(() => toast.error("Could not make the picture"))
+            }).catch(() => toast.error(tr("Could not make the picture")))
           }
         />
       )}
@@ -265,11 +266,12 @@ function SelectionToolbar({
   onShare: () => void;
   onPicture: () => void;
 }) {
+  const { t } = useT();
   const touch = isTouch();
   return (
     <div
       role="toolbar"
-      aria-label="Highlight the selection"
+      aria-label={t("Highlight the selection")}
       // Keep the selection: pressing a button would otherwise clear it before the click.
       onMouseDown={(event) => event.preventDefault()}
       style={floatingStyle(rect, ai ? 84 : 44, 300)}
@@ -287,7 +289,7 @@ function SelectionToolbar({
               onClick={() => onAi(action.id)}
               className="flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
             >
-              {action.icon} {action.label}
+              {action.icon} {t(action.label)}
             </button>
           ))}
         </div>
@@ -309,16 +311,16 @@ function SelectionToolbar({
           ))}
         </span>
         <span className="mx-0.5 h-6 w-px bg-border" aria-hidden />
-        <ToolbarButton label="Add a note" onClick={onNote}>
+        <ToolbarButton label={t("Add a note")} onClick={onNote}>
           <MessageSquarePlus className="h-4 w-4" />
         </ToolbarButton>
-        <ToolbarButton label="Copy" onClick={onCopy}>
+        <ToolbarButton label={t("Copy")} onClick={onCopy}>
           <Copy className="h-4 w-4" />
         </ToolbarButton>
-        <ToolbarButton label="Share" onClick={onShare}>
+        <ToolbarButton label={t("Share")} onClick={onShare}>
           <Share2 className="h-4 w-4" />
         </ToolbarButton>
-        <ToolbarButton label="Share as a picture" onClick={onPicture}>
+        <ToolbarButton label={t("Share as a picture")} onClick={onPicture}>
           <ImageIcon className="h-4 w-4" />
         </ToolbarButton>
       </div>
@@ -335,13 +337,14 @@ function ToolbarButton({
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  const { t } = useT();
   return (
     <button
       type="button"
       onClick={onClick}
       className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
-      aria-label={label}
-      title={label}
+      aria-label={t(label)}
+      title={t(label)}
     >
       {children}
     </button>
@@ -362,6 +365,7 @@ export function HighlightPanel({
   focusNote: boolean;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const [note, setNote] = React.useState(highlight.note ?? "");
   const [editing, setEditing] = React.useState(focusNote || Boolean(highlight.note));
   const noteRef = React.useRef<HTMLTextAreaElement>(null);
@@ -376,9 +380,9 @@ export function HighlightPanel({
     if (next === (highlight.note ?? "")) return;
     try {
       await updateHighlight(highlight.id, { note: next || null });
-      toast.success(next ? "Note saved" : "Note removed");
+      toast.success(next ? tr("Note saved") : tr("Note removed"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save the note");
+      toast.error(error instanceof Error ? error.message : tr("Could not save the note"));
     }
   }
 
@@ -391,9 +395,9 @@ export function HighlightPanel({
     try {
       await deleteHighlight(highlight.id);
       onClose();
-      toast.success("Highlight removed");
+      toast.success(tr("Highlight removed"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not remove the highlight");
+      toast.error(error instanceof Error ? error.message : tr("Could not remove the highlight"));
     }
   }
 
@@ -403,7 +407,7 @@ export function HighlightPanel({
       <div className="fixed inset-0 z-40" onClick={close} aria-hidden />
       <div
         role="dialog"
-        aria-label="Highlight"
+        aria-label={t("Highlight")}
         style={floatingStyle(rect, editing ? 230 : 110, 340)}
         onKeyDown={(event) => {
           if (event.key === "Escape") close();
@@ -429,16 +433,16 @@ export function HighlightPanel({
             />
           ))}
           <span className="ml-auto flex items-center">
-            <ToolbarButton label="Copy" onClick={() => copyText(highlight.text)}>
+            <ToolbarButton label={t("Copy")} onClick={() => copyText(highlight.text)}>
               <Copy className="h-4 w-4" />
             </ToolbarButton>
-            <ToolbarButton label="Share" onClick={() => shareQuote(highlight.text, article)}>
+            <ToolbarButton label={t("Share")} onClick={() => shareQuote(highlight.text, article)}>
               <Share2 className="h-4 w-4" />
             </ToolbarButton>
-            <ToolbarButton label="Remove highlight" onClick={remove}>
+            <ToolbarButton label={t("Remove highlight")} onClick={remove}>
               <Trash2 className="h-4 w-4" />
             </ToolbarButton>
-            <ToolbarButton label="Close" onClick={close}>
+            <ToolbarButton label={t("Close")} onClick={close}>
               <X className="h-4 w-4" />
             </ToolbarButton>
           </span>
@@ -453,7 +457,7 @@ export function HighlightPanel({
               if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) close();
             }}
             rows={4}
-            placeholder="Write a note…"
+            placeholder={t("Write a note…")}
             className="mt-2.5 w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
         ) : (
@@ -465,7 +469,7 @@ export function HighlightPanel({
             }}
             className="mt-2 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
           >
-            <StickyNote className="h-4 w-4" /> Add a note
+            <StickyNote className="h-4 w-4" /> {t("Add a note")}
           </button>
         )}
       </div>

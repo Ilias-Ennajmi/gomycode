@@ -19,7 +19,8 @@ test("every translated string has a French version", () => {
   const missing = new Set<string>();
   for (const file of ["app", "components", "lib"].flatMap(sourceFiles)) {
     const text = readFileSync(file, "utf8");
-    for (const match of text.matchAll(/\b(?:t|tr)\("((?:[^"\\]|\\.)*)"\)/g)) {
+    // Prettier breaks long calls over lines: t(\n "…"\n).
+    for (const match of text.matchAll(/\b(?:t|tr)\(\s*"((?:[^"\\]|\\.)*)"\s*\)/g)) {
       const key = JSON.parse(`"${match[1]}"`) as string;
       if (!(key in FR)) missing.add(key);
     }

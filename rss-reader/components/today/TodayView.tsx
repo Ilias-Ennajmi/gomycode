@@ -33,6 +33,7 @@ import { ReviewPrompt } from "@/components/review/ReviewView";
 import { ContinueBlock, HomeCustomise, TidyBlock } from "@/components/today/HomeBlocks";
 import { ListenBar, ListenButton, useSpeech } from "@/components/articles/ListenButton";
 import type { Briefing } from "@/lib/digest";
+import { useT, tr } from "@/lib/i18n";
 
 /** The briefing as something to read aloud: the big picture, then each top story. */
 function briefingSpeech(briefing: Briefing) {
@@ -64,6 +65,7 @@ function time(iso: string) {
  * the briefing too.
  */
 export function TodayView() {
+  const { t } = useT();
   const { bind: bindPull, pull, refreshing: pulling } = usePullToRefresh();
   const { briefing, isLoading, mutate } = useBriefing(true);
   const { setSelectedArticleId, setMobilePane, selectedArticleId, setView } = useReaderState();
@@ -101,10 +103,10 @@ export function TodayView() {
         setExtra([]);
         setExhausted(false);
         await mutate({ enabled: true, briefing: body.briefing }, { revalidate: false });
-        toast.success("Briefing updated");
+        toast.success(tr("Briefing updated"));
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not refresh");
+      toast.error(error instanceof Error ? error.message : tr("Could not refresh"));
     } finally {
       setRefreshing(false);
     }
@@ -127,7 +129,7 @@ export function TodayView() {
       // "More" adds below; "Shuffle" swaps in a different handful.
       setExtra((prev) => (mode === "next" ? [...prev, ...stories] : stories));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not load more stories");
+      toast.error(error instanceof Error ? error.message : tr("Could not load more stories"));
     } finally {
       setLoadingMore(null);
     }
@@ -148,7 +150,7 @@ export function TodayView() {
         return briefing?.bigPicture ? (
           <section className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card p-5 md:p-6">
             <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary">
-              <Sparkles className="h-4 w-4" /> The big picture
+              <Sparkles className="h-4 w-4" /> {t("The big picture")}
             </h2>
             <p className="mt-2 font-serif text-xl leading-snug md:text-[22px]">
               {briefing.bigPicture}
@@ -164,8 +166,9 @@ export function TodayView() {
             <section className="flex flex-col items-center gap-3 rounded-2xl border border-dashed px-5 py-10 text-center text-muted-foreground">
               <Sunrise className="h-8 w-8" />
               <p className="max-w-sm text-sm">
-                No briefing yet. It&rsquo;s written each morning from your new articles when AI is
-                on; follow a few more sources or come back after the next refresh.
+                {t(
+                  "No briefing yet. It’s written each morning from your new articles when AI is on; follow a few more sources or come back after the next refresh."
+                )}
               </p>
             </section>
           );
@@ -177,7 +180,7 @@ export function TodayView() {
           return (
             <section>
               {hasCover && <CoverStory story={cover} onOpen={open} />}
-              <SectionTitle>{hasCover ? "More top stories" : "Top stories"}</SectionTitle>
+              <SectionTitle>{hasCover ? t("More top stories") : t("Top stories")}</SectionTitle>
               <ol className="mt-2 divide-y">
                 {(hasCover ? rest : briefing.top).map((story, i) => (
                   <StoryEntry
@@ -195,7 +198,7 @@ export function TodayView() {
       case "numbers":
         return briefing && briefing.numbers.length > 0 ? (
           <section>
-            <SectionTitle>By the numbers</SectionTitle>
+            <SectionTitle>{t("By the numbers")}</SectionTitle>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {briefing.numbers.map((n) => (
                 <button
@@ -207,7 +210,7 @@ export function TodayView() {
                   <p className="font-serif text-3xl font-semibold tabular-nums text-primary">
                     {n.value}
                   </p>
-                  <p className="mt-1 text-sm text-muted-foreground">{n.label}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{t(n.label)}</p>
                 </button>
               ))}
             </div>
@@ -216,7 +219,7 @@ export function TodayView() {
       case "interests":
         return briefing && briefing.interests.length > 0 ? (
           <section>
-            <SectionTitle>In your interests</SectionTitle>
+            <SectionTitle>{t("In your interests")}</SectionTitle>
             <div className="mt-3 grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
               {briefing.interests.map((interest) => (
                 <div key={interest.name}>
@@ -235,7 +238,7 @@ export function TodayView() {
         return briefing && briefing.watch.length > 0 ? (
           <section>
             <SectionTitle icon={<Play className="h-4 w-4 text-red-600" />}>
-              Worth watching
+              {t("Worth watching")}
             </SectionTitle>
             <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {briefing.watch.map((v) => (
@@ -266,7 +269,7 @@ export function TodayView() {
             {briefing.newsletters.length > 0 && (
               <section className={cn(!briefing.longRead && "sm:col-span-2")}>
                 <SectionTitle icon={<Mail className="h-4 w-4 text-muted-foreground" />}>
-                  Newsletters to read
+                  {t("Newsletters to read")}
                 </SectionTitle>
                 <ul className="mt-1 divide-y">
                   {briefing.newsletters.map((p) => (
@@ -278,7 +281,7 @@ export function TodayView() {
             {briefing.longRead && (
               <section>
                 <SectionTitle icon={<BookOpen className="h-4 w-4 text-muted-foreground" />}>
-                  One long read
+                  {t("One long read")}
                 </SectionTitle>
                 <button
                   type="button"
@@ -316,7 +319,7 @@ export function TodayView() {
       case "more":
         return briefing ? (
           <section>
-            <SectionTitle>More stories</SectionTitle>
+            <SectionTitle>{t("More stories")}</SectionTitle>
             {extra.length > 0 && (
               <ol className="mt-2 divide-y">
                 {extra.map((story) => (
@@ -331,7 +334,7 @@ export function TodayView() {
             )}
             {exhausted ? (
               <p className="mt-3 text-sm text-muted-foreground">
-                That&rsquo;s every story from the last day.
+                {t("That’s every story from the last day.")}
               </p>
             ) : (
               <div className="mt-4 flex flex-wrap gap-2">
@@ -342,7 +345,7 @@ export function TodayView() {
                   disabled={loadingMore !== null}
                 >
                   {loadingMore === "next" && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {extra.length > 0 ? "Even more" : "Show more stories"}
+                  {extra.length > 0 ? t("Even more") : t("Show more stories")}
                 </Button>
                 <Button
                   variant="ghost"
@@ -355,7 +358,7 @@ export function TodayView() {
                   ) : (
                     <Shuffle className="h-4 w-4" />
                   )}
-                  Shuffle
+                  {t("Shuffle")}
                 </Button>
               </div>
             )}
@@ -370,9 +373,9 @@ export function TodayView() {
           >
             <CalendarRange className="h-6 w-6 shrink-0 text-primary" />
             <span className="min-w-0 flex-1">
-              <span className="block font-semibold">Your week</span>
+              <span className="block font-semibold">{t("Your week")}</span>
               <span className="block text-sm text-muted-foreground">
-                The stories of the last seven days and what you read
+                {t("The stories of the last seven days and what you read")}
               </span>
             </span>
             <ChevronRight className="h-5 w-5 text-muted-foreground" />
@@ -390,7 +393,7 @@ export function TodayView() {
           <header className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-                <Sunrise className="h-4 w-4" /> Today
+                <Sunrise className="h-4 w-4" /> {t("Today")}
               </p>
               <h1 className="mt-1 font-serif text-4xl font-semibold leading-tight tracking-tight md:text-5xl">
                 {greeting()}
@@ -400,7 +403,8 @@ export function TodayView() {
                 {briefing && (
                   <>
                     {" "}
-                    · from {briefing.scanned} new articles · updated {time(briefing.generatedAt)}
+                    {t("· from")} {briefing.scanned} {t("new articles · updated")}{" "}
+                    {time(briefing.generatedAt)}
                   </>
                 )}
               </p>
@@ -421,8 +425,8 @@ export function TodayView() {
                 className="h-9 w-9 rounded-full"
                 onClick={refresh}
                 disabled={refreshing || !briefing}
-                aria-label="Rewrite the briefing"
-                title="Rewrite the briefing"
+                aria-label={t("Rewrite the briefing")}
+                title={t("Rewrite the briefing")}
               >
                 <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
               </Button>
@@ -431,8 +435,8 @@ export function TodayView() {
                 size="icon"
                 className="h-9 w-9 rounded-full"
                 onClick={() => setCustomising(true)}
-                aria-label="Customise Today"
-                title="Customise Today"
+                aria-label={t("Customise Today")}
+                title={t("Customise Today")}
               >
                 <SlidersHorizontal className="h-4 w-4" />
               </Button>
@@ -449,8 +453,8 @@ export function TodayView() {
 
             <footer className="flex flex-col items-center gap-2 border-t pt-8 text-center text-muted-foreground">
               <CheckCircle2 className="h-8 w-8 text-primary" />
-              <p className="font-serif text-xl text-foreground">You&rsquo;re all caught up</p>
-              <p className="text-sm">A new briefing is written each morning.</p>
+              <p className="font-serif text-xl text-foreground">{t("You’re all caught up")}</p>
+              <p className="text-sm">{t("A new briefing is written each morning.")}</p>
             </footer>
           </div>
         </div>
@@ -529,6 +533,7 @@ function StoryEntry({
   active: boolean;
   onOpen: (articleId: string) => void;
 }) {
+  const { t } = useT();
   return (
     <li>
       <button
@@ -571,7 +576,7 @@ function StoryEntry({
           )}
           {story.why && (
             <p className="mt-2 text-[14.5px] leading-snug">
-              <span className="font-semibold">Why it matters: </span>
+              <span className="font-semibold">{t("Why it matters:")} </span>
               <span className="text-foreground/85">{story.why}</span>
             </p>
           )}
@@ -623,8 +628,9 @@ function PickLine({ pick, onOpen }: { pick: BriefPick; onOpen: (articleId: strin
 }
 
 function BriefingSkeleton() {
+  const { t } = useT();
   return (
-    <div className="space-y-8" aria-label="Writing your briefing">
+    <div className="space-y-8" aria-label={t("Writing your briefing")}>
       <Skeleton className="h-28 w-full rounded-2xl" />
       {[0, 1, 2].map((i) => (
         <div key={i} className="space-y-2">

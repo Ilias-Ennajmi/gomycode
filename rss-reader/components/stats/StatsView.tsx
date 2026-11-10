@@ -9,6 +9,7 @@ import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import { Ticker } from "@/components/ui/ticker";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import type { ReadingStats } from "@/lib/stats";
+import { useT } from "@/lib/i18n";
 
 const TYPE_LABELS: Record<string, string> = {
   rss: "Sites",
@@ -37,6 +38,7 @@ function dayLabel(day: string, style: "short" | "long" = "short") {
 
 /** Your reading, in numbers: the last 30 days by day and hour, your top sources, a streak. */
 export function StatsView() {
+  const { t } = useT();
   const { data, isLoading } = useSWR<ReadingStats>("/api/stats", { revalidateOnFocus: false });
   const { setView } = useReaderState();
 
@@ -46,15 +48,16 @@ export function StatsView() {
         <header className="flex items-center gap-3">
           <BarChart3 className="h-6 w-6 text-primary" />
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-semibold tracking-tight">Your reading</h1>
-            <p className="text-sm text-muted-foreground">The last 30 days, in numbers.</p>
+            <h1 className="text-xl font-semibold tracking-tight">{t("Your reading")}</h1>
+            <p className="text-sm text-muted-foreground">{t("The last 30 days, in numbers.")}</p>
           </div>
           {data && data.streak > 0 && (
             <span
               className="inline-flex items-center gap-1 rounded-full bg-orange-500/15 px-2.5 py-1 text-xs font-semibold text-orange-600 dark:text-orange-400"
-              title="Days in a row with something read"
+              title={t("Days in a row with something read")}
             >
-              <Flame className="h-3.5 w-3.5" /> {data.streak} day{data.streak === 1 ? "" : "s"}
+              <Flame className="h-3.5 w-3.5" /> {data.streak} {t("day")}
+              {data.streak === 1 ? "" : "s"}
             </span>
           )}
         </header>
@@ -68,27 +71,31 @@ export function StatsView() {
         ) : (
           <>
             <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Stat icon={<BookOpen className="h-4 w-4" />} label="Read" value={data.totals.read} />
+              <Stat
+                icon={<BookOpen className="h-4 w-4" />}
+                label={t("Read")}
+                value={data.totals.read}
+              />
               <Stat
                 icon={<Clock className="h-4 w-4" />}
-                label="Time"
+                label={t("Time")}
                 text={hours(data.totals.minutes)}
               />
               <Stat
                 icon={<Highlighter className="h-4 w-4" />}
-                label="Highlights"
+                label={t("Highlights")}
                 value={data.totals.highlights}
               />
               <Stat
                 icon={<Bookmark className="h-4 w-4" />}
-                label="Saved · finished"
+                label={t("Saved · finished")}
                 text={`${data.totals.saved} · ${data.totals.finished}`}
               />
             </div>
 
-            <section className="mt-8" aria-label="Articles read per day">
+            <section className="mt-8" aria-label={t("Articles read per day")}>
               <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                By day
+                {t("By day")}
               </h2>
               <Bars
                 values={data.days.map((d) => d.read)}
@@ -100,19 +107,20 @@ export function StatsView() {
               />
               <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
                 <span>{dayLabel(data.days[0].day)}</span>
-                <span>Today</span>
+                <span>{t("Today")}</span>
               </div>
               {data.bestDay && data.bestDay.read > 0 && (
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Best day: {dayLabel(data.bestDay.day, "long")}, {data.bestDay.read} article
+                  {t("Best day:")} {dayLabel(data.bestDay.day, "long")}, {data.bestDay.read}{" "}
+                  {t("article")}
                   {data.bestDay.read === 1 ? "" : "s"}.
                 </p>
               )}
             </section>
 
-            <section className="mt-8" aria-label="When you read">
+            <section className="mt-8" aria-label={t("When you read")}>
               <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                When you read
+                {t("When you read")}
               </h2>
               <Bars
                 values={data.hours}
@@ -121,16 +129,16 @@ export function StatsView() {
                 className="mt-3 h-20"
               />
               <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
-                <span>Midnight</span>
-                <span>Noon</span>
-                <span>Midnight</span>
+                <span>{t("Midnight")}</span>
+                <span>{t("Noon")}</span>
+                <span>{t("Midnight")}</span>
               </div>
             </section>
 
             {data.sources.length > 0 && (
-              <section className="mt-8" aria-label="Top sources">
+              <section className="mt-8" aria-label={t("Top sources")}>
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Where you read
+                  {t("Where you read")}
                 </h2>
                 <ol className="mt-3 space-y-2">
                   {data.sources.map((source) => {
@@ -172,9 +180,9 @@ export function StatsView() {
             )}
 
             {data.types.length > 0 && (
-              <section className="mt-8" aria-label="By kind">
+              <section className="mt-8" aria-label={t("By kind")}>
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  By kind
+                  {t("By kind")}
                 </h2>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {data.types.map((t) => (
@@ -188,7 +196,8 @@ export function StatsView() {
             )}
 
             <p className="mt-10 text-center text-xs text-muted-foreground">
-              All time: {data.totals.allTimeRead} read · {data.totals.allTimeHighlights} highlights
+              {t("All time:")} {data.totals.allTimeRead} {t("read ·")}{" "}
+              {data.totals.allTimeHighlights} {t("highlights")}
             </p>
           </>
         )}
@@ -208,10 +217,11 @@ function Stat({
   value?: number;
   text?: string;
 }) {
+  const { t } = useT();
   return (
     <div className="rounded-2xl border bg-card/60 p-4">
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <span className="text-primary">{icon}</span> {label}
+        <span className="text-primary">{icon}</span> {t(label)}
       </p>
       <p className="mt-1 font-serif text-2xl font-semibold tabular-nums">
         {value !== undefined ? <Ticker value={value} /> : text}

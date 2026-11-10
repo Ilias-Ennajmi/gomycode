@@ -23,6 +23,7 @@ import { deleteFeed, updateFeed, useCategories } from "@/lib/hooks/useFeeds";
 import { useFilters } from "@/lib/hooks/useFilters";
 import { useReaderState, type ViewState } from "@/lib/hooks/useReaderState";
 import type { FeedSummary } from "@/lib/types";
+import { useT, tr } from "@/lib/i18n";
 
 const TYPE_LABEL: Record<string, string> = {
   rss: "Site",
@@ -44,6 +45,7 @@ const HOME_VIEW: Record<string, ViewState> = {
  * (For You, full page, mute, alerts), open the site, unfollow.
  */
 export function SourceHeader({ feed, total }: { feed: FeedSummary; total: number }) {
+  const { t } = useT();
   const { setView } = useReaderState();
   const { categories } = useCategories();
   const { mutate } = useSWRConfig();
@@ -59,7 +61,7 @@ export function SourceHeader({ feed, total }: { feed: FeedSummary; total: number
       toast.success(`Unfollowed ${feed.title}`);
       setView(HOME_VIEW[feed.type] ?? { type: "all", label: "All articles" });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not unfollow");
+      toast.error(error instanceof Error ? error.message : tr("Could not unfollow"));
     }
   }
 
@@ -73,7 +75,7 @@ export function SourceHeader({ feed, total }: { feed: FeedSummary; total: number
       />
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
-          <span>{TYPE_LABEL[feed.type] ?? "Source"}</span>
+          <span>{TYPE_LABEL[feed.type] ?? t("Source")}</span>
           <span aria-hidden>·</span>
           <span>
             {total} {noun}
@@ -82,13 +84,17 @@ export function SourceHeader({ feed, total }: { feed: FeedSummary; total: number
           {feed.unreadCount > 0 && (
             <>
               <span aria-hidden>·</span>
-              <span>{feed.unreadCount} unread</span>
+              <span>
+                {feed.unreadCount} {t("unread")}
+              </span>
             </>
           )}
           {feed.lastPublished && (
             <>
               <span aria-hidden>·</span>
-              <span>last {formatRelativeTime(new Date(feed.lastPublished))}</span>
+              <span>
+                {t("last")} {formatRelativeTime(new Date(feed.lastPublished))}
+              </span>
             </>
           )}
           {category && (
@@ -114,7 +120,7 @@ export function SourceHeader({ feed, total }: { feed: FeedSummary; total: number
             <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2.5 text-xs" asChild>
               <a href={feed.siteUrl} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-3.5 w-3.5" />
-                {feed.type === "youtube" ? "YouTube" : "Site"}
+                {feed.type === "youtube" ? "YouTube" : t("Site")}
               </a>
             </Button>
           )}
@@ -124,7 +130,7 @@ export function SourceHeader({ feed, total }: { feed: FeedSummary; total: number
             className="h-7 gap-1.5 px-2.5 text-xs text-muted-foreground"
             onClick={() => setSettings(true)}
           >
-            <Settings2 className="h-3.5 w-3.5" /> Settings
+            <Settings2 className="h-3.5 w-3.5" /> {t("Settings")}
           </Button>
           <Button
             variant="ghost"
@@ -132,7 +138,7 @@ export function SourceHeader({ feed, total }: { feed: FeedSummary; total: number
             className="h-7 gap-1.5 px-2.5 text-xs text-muted-foreground"
             onClick={() => setConfirming(true)}
           >
-            <UserMinus className="h-3.5 w-3.5" /> Unfollow
+            <UserMinus className="h-3.5 w-3.5" /> {t("Unfollow")}
           </Button>
         </div>
       </div>
@@ -141,7 +147,9 @@ export function SourceHeader({ feed, total }: { feed: FeedSummary; total: number
         open={confirming}
         onOpenChange={setConfirming}
         title={`Unfollow ${feed.title}?`}
-        description="This removes the source and its articles, except the ones saved to Later or highlighted. It can't be undone."
+        description={t(
+          "This removes the source and its articles, except the ones saved to Later or highlighted. It can't be undone."
+        )}
         confirmLabel="Unfollow"
         onConfirm={unfollow}
       />
@@ -159,6 +167,7 @@ export function SourceSettingsSheet({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useT();
   const { mutate } = useSWRConfig();
   const { rules, addRule, removeRule } = useFilters();
   const [busy, setBusy] = React.useState<string | null>(null);
@@ -177,7 +186,7 @@ export function SourceSettingsSheet({
       await updateFeed(feed.id, { [field]: value });
       await refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save");
+      toast.error(error instanceof Error ? error.message : tr("Could not save"));
     } finally {
       setBusy(null);
     }
@@ -191,7 +200,7 @@ export function SourceSettingsSheet({
       else await addRule({ action: kind, match: "feed", value: feed.id });
       await refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save");
+      toast.error(error instanceof Error ? error.message : tr("Could not save"));
     } finally {
       setBusy(null);
     }
@@ -256,8 +265,8 @@ export function SourceSettingsSheet({
                 {row.icon}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium">{row.label}</span>
-                <span className="block text-xs text-muted-foreground">{row.hint}</span>
+                <span className="block text-sm font-medium">{t(row.label)}</span>
+                <span className="block text-xs text-muted-foreground">{t(row.hint)}</span>
               </span>
               <span
                 aria-hidden
@@ -278,7 +287,7 @@ export function SourceSettingsSheet({
         ))}
       </ul>
       <p className="px-3 pt-3 text-xs text-muted-foreground">
-        Rename and move it from Settings → Your sources.
+        {t("Rename and move it from Settings → Your sources.")}
       </p>
     </Sheet>
   );

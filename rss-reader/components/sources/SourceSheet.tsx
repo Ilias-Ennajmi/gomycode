@@ -9,6 +9,7 @@ import { useFilters } from "@/lib/hooks/useFilters";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import { SourcePreview } from "@/components/discover/SourcePreview";
 import type { DiscoverResult } from "@/lib/hooks/useDiscover";
+import { useT, tr } from "@/lib/i18n";
 
 const KIND = {
   rss: "rss",
@@ -24,6 +25,7 @@ const KIND = {
  * its list, mute or unmute it, unfollow.
  */
 export function SourceSheet({ feedId, onClose }: { feedId: string; onClose: () => void }) {
+  const { t } = useT();
   const { feeds, mutate } = useFeeds();
   const { rules, addRule, removeRule } = useFilters();
   const { setView } = useReaderState();
@@ -56,11 +58,11 @@ export function SourceSheet({ feedId, onClose }: { feedId: string; onClose: () =
       } else {
         await addRule({ action: "hide", match: "feed", value: feed!.id });
         toast.success(`Muted ${feed!.title}`, {
-          description: "Still followed, just out of your lists.",
+          description: tr("Still followed, just out of your lists."),
         });
       }
     } catch {
-      toast.error("That didn't work");
+      toast.error(tr("That didn't work"));
     } finally {
       setBusy(null);
     }
@@ -78,7 +80,7 @@ export function SourceSheet({ feedId, onClose }: { feedId: string; onClose: () =
       toast.success(`Unfollowed ${feed!.title}`);
       onClose();
     } catch {
-      toast.error("Couldn't unfollow");
+      toast.error(tr("Couldn't unfollow"));
       setBusy(null);
     }
   }
@@ -103,7 +105,7 @@ export function SourceSheet({ feedId, onClose }: { feedId: string; onClose: () =
               onClose();
             }}
           >
-            <List className="h-4 w-4" /> Open
+            <List className="h-4 w-4" /> {t("Open")}
           </button>
           <button
             type="button"
@@ -118,7 +120,7 @@ export function SourceSheet({ feedId, onClose }: { feedId: string; onClose: () =
             ) : (
               <BellOff className="h-4 w-4" />
             )}
-            {muteRule ? "Unmute" : "Mute"}
+            {muteRule ? t("Unmute") : t("Mute")}
           </button>
           <button
             type="button"
@@ -135,7 +137,7 @@ export function SourceSheet({ feedId, onClose }: { feedId: string; onClose: () =
             ) : (
               <Trash2 className="h-4 w-4" />
             )}
-            {confirmUnfollow ? "Sure?" : "Unfollow"}
+            {confirmUnfollow ? t("Sure?") : t("Unfollow")}
           </button>
         </div>
       }

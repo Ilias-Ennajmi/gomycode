@@ -48,6 +48,7 @@ import { usePref } from "@/lib/prefs";
 import { androidAppVersion, RELEASES_PAGE } from "@/lib/native";
 import { NotificationSettings } from "@/components/layout/NotificationSettings";
 import { PasskeySettings } from "@/components/layout/PasskeySettings";
+import { FeaturesSheet } from "@/components/layout/FeaturesSheet";
 import { useFeeds } from "@/lib/hooks/useFeeds";
 import { needingAttention } from "@/lib/feed-health";
 import { START_VIEWS, START_VIEW_KEY, useReaderState } from "@/lib/hooks/useReaderState";
@@ -85,6 +86,7 @@ export function SettingsPanel({
   onShowShortcuts,
 }: SettingsPanelProps) {
   const [whatsNew, setWhatsNew] = React.useState(false);
+  const [features, setFeatures] = React.useState(false);
   const [system, setSystem] = React.useState(false);
   const { t, locale, setLocale } = useT();
   const { theme, setTheme } = useTheme();
@@ -171,7 +173,7 @@ export function SettingsPanel({
             <p className="text-sm font-medium">{t("Language")}</p>
             <div
               role="radiogroup"
-              aria-label="Language"
+              aria-label={t("Language")}
               className="mt-2 grid grid-cols-2 gap-1 rounded-lg bg-muted p-1"
             >
               {(["en", "fr"] as Locale[]).map((id) => (
@@ -188,7 +190,7 @@ export function SettingsPanel({
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {id === "en" ? "English" : "Français"}
+                  {id === "en" ? t("English") : t("Français")}
                 </button>
               ))}
             </div>
@@ -197,7 +199,7 @@ export function SettingsPanel({
             <p className="text-sm font-medium">{t("Start on")}</p>
             <div
               role="radiogroup"
-              aria-label="Start on"
+              aria-label={t("Start on")}
               className="mt-2 grid grid-cols-4 gap-1 rounded-lg bg-muted p-1"
             >
               {START_VIEWS.map((id) => (
@@ -222,11 +224,13 @@ export function SettingsPanel({
           <div className="px-4 py-3">
             <p className="flex items-baseline justify-between text-sm font-medium">
               {t("Daily goal")}
-              <span className="text-xs font-normal text-muted-foreground">{minutes} min today</span>
+              <span className="text-xs font-normal text-muted-foreground">
+                {minutes} {t("min today")}
+              </span>
             </p>
             <div
               role="radiogroup"
-              aria-label="Daily goal"
+              aria-label={t("Daily goal")}
               className="mt-2 grid grid-cols-5 gap-1 rounded-lg bg-muted p-1"
             >
               {GOALS.map((value) => (
@@ -390,7 +394,7 @@ export function SettingsPanel({
             <p className="text-sm font-medium">{t("Accent colour")}</p>
             <div
               role="radiogroup"
-              aria-label="Accent colour"
+              aria-label={t("Accent colour")}
               className="mt-2 flex flex-wrap gap-2.5"
             >
               {ACCENTS.map((option) => (
@@ -399,8 +403,8 @@ export function SettingsPanel({
                   type="button"
                   role="radio"
                   aria-checked={accent === option.id}
-                  aria-label={option.label}
-                  title={option.label}
+                  aria-label={t(option.label)}
+                  title={t(option.label)}
                   onClick={() => setAccent(option.id)}
                   className={cn(
                     "h-8 w-8 rounded-full ring-offset-2 ring-offset-card transition-transform",
@@ -463,6 +467,13 @@ export function SettingsPanel({
         </Section>
 
         <Section title={t("Help")}>
+          <Row
+            icon={Compass}
+            label={t("Everything Reader can do")}
+            hint={t("Every feature and where to find it")}
+            onClick={() => setFeatures(true)}
+          />
+          {features && <FeaturesSheet open onOpenChange={setFeatures} />}
           <Row icon={Keyboard} label={t("Keyboard shortcuts")} onClick={onShowShortcuts} />
           <Row icon={Sparkles} label={t("What's new")} onClick={() => setWhatsNew(true)} />
           {packsOpen && <StarterPacks open onOpenChange={setPacksOpen} />}
@@ -489,6 +500,7 @@ function Switch({
   on: boolean;
   onChange: (on: boolean) => void;
 }) {
+  const { t } = useT();
   return (
     <button
       type="button"
@@ -498,8 +510,8 @@ function Switch({
       className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-accent/60"
     >
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium">{label}</span>
-        {hint && <span className="block text-xs text-muted-foreground">{hint}</span>}
+        <span className="block text-sm font-medium">{t(label)}</span>
+        {hint && <span className="block text-xs text-muted-foreground">{t(hint)}</span>}
       </span>
       <span
         aria-hidden
@@ -639,7 +651,7 @@ function TabEditor({
       </ol>
       {unpinned.length > 0 && (
         <select
-          aria-label="Pin a category as a tab"
+          aria-label={t("Pin a category as a tab")}
           value=""
           onChange={(event) => {
             if (event.target.value)
@@ -660,16 +672,17 @@ function TabEditor({
 }
 
 function AppRow() {
+  const { t } = useT();
   const [version, setVersion] = React.useState<string | null>(null);
   React.useEffect(() => setVersion(androidAppVersion()), []);
   return (
     <Row
       icon={Smartphone}
-      label={version ? `Reader for Android ${version}` : "Get the Android app"}
+      label={version ? `Reader for Android ${version}` : t("Get the Android app")}
       hint={
         version
-          ? "Updates arrive through the website; new app versions are on GitHub"
-          : "Install Reader as an app, with sharing and shortcuts"
+          ? t("Updates arrive through the website; new app versions are on GitHub")
+          : t("Install Reader as an app, with sharing and shortcuts")
       }
       onClick={() => window.open(RELEASES_PAGE, "_blank")}
     />
@@ -709,6 +722,7 @@ function Row({
   destructive?: boolean;
   onClick: () => void;
 }) {
+  const { t } = useT();
   return (
     <button
       type="button"
@@ -720,7 +734,7 @@ function Row({
     >
       <Icon className={cn("h-5 w-5 shrink-0", !destructive && "text-muted-foreground")} />
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium">{label}</span>
+        <span className="block text-sm font-medium">{t(label)}</span>
         {hint && (
           <span
             className={cn(
@@ -728,7 +742,7 @@ function Row({
               warn ? "font-medium text-amber-600 dark:text-amber-400" : "text-muted-foreground"
             )}
           >
-            {hint}
+            {t(hint)}
           </span>
         )}
       </span>
@@ -746,6 +760,7 @@ const USAGE_LABELS: Record<string, string> = {
 
 /** Today's share of the free daily quota, so "summaries later" has a visible reason. */
 function AiUsage({ usage, paused }: { usage: NonNullable<AiStatus["usage"]>; paused: string[] }) {
+  const { t } = useT();
   return (
     <div className="mt-2.5 space-y-1.5">
       {usage.map(({ bucket, used, limit }) => {
@@ -769,16 +784,17 @@ function AiUsage({ usage, paused }: { usage: NonNullable<AiStatus["usage"]>; pau
         );
       })}
       <p className="text-[11px] text-muted-foreground">
-        Today&apos;s free quota (resets around 8–9 am Morocco time).{" "}
+        {t("Today's free quota (resets around 8–9 am Morocco time).")}{" "}
         {paused.length > 0
-          ? "Google asked for a pause; things you open still get priority once it lifts."
-          : "Background work stops at 75%, keeping the rest for what you open."}
+          ? t("Google asked for a pause; things you open still get priority once it lifts.")
+          : t("Background work stops at 75%, keeping the rest for what you open.")}
       </p>
     </div>
   );
 }
 
 function AiStatusRow() {
+  const { t } = useT();
   const status = useAiStatus();
   if (!status) return <div className="h-[68px]" />;
 
@@ -793,20 +809,22 @@ function AiStatusRow() {
       <div className="min-w-0 flex-1 text-sm">
         {status.enabled ? (
           <>
-            <p className="font-medium">On · Google Gemini (free tier)</p>
+            <p className="font-medium">{t("On · Google Gemini (free tier)")}</p>
             <p className="text-xs text-muted-foreground">
-              Learned from {status.learnedFrom} article{status.learnedFrom === 1 ? "" : "s"} you
-              read or saved · {status.analyzed} analyzed · {status.topics}{" "}
-              {status.topics === 1 ? "story" : "stories"} grouped
+              {t("Learned from")} {status.learnedFrom} {t("article")}
+              {status.learnedFrom === 1 ? "" : "s"} {t("you read or saved ·")} {status.analyzed}{" "}
+              {t("analyzed ·")} {status.topics} {status.topics === 1 ? t("story") : t("stories")}{" "}
+              {t("grouped")}
             </p>
             {status.usage && <AiUsage usage={status.usage} paused={status.paused ?? []} />}
           </>
         ) : (
           <>
-            <p className="font-medium">Off</p>
+            <p className="font-medium">{t("Off")}</p>
             <p className="text-xs text-muted-foreground">
-              Add a free GEMINI_API_KEY in Vercel to turn on summaries, story grouping, and the
-              daily briefing. For You still learns from the sources you read.
+              {t(
+                "Add a free GEMINI_API_KEY in Vercel to turn on summaries, story grouping, and the daily briefing. For You still learns from the sources you read."
+              )}
             </p>
           </>
         )}

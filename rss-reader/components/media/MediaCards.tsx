@@ -197,6 +197,7 @@ export function ReadAlongCard({
   onSeek: (seconds: number) => void;
   duration?: number | null;
 }) {
+  const { t } = useT();
   const [full, setFull] = React.useState(false);
   const phrases = React.useMemo(() => toPhrases(transcript, duration), [transcript, duration]);
   if (phrases.length === 0) return null;
@@ -204,10 +205,10 @@ export function ReadAlongCard({
     <>
       <MediaCard
         id="read-along"
-        title="Read along"
+        title={t("Read along")}
         tone="accent"
         action={
-          <CardAction accent onClick={() => setFull(true)} label="Open the full transcript">
+          <CardAction accent onClick={() => setFull(true)} label={t("Open the full transcript")}>
             <Maximize2 className="h-4 w-4" />
           </CardAction>
         }
@@ -380,7 +381,7 @@ export function TimeListCard({
                     )}
                   >
                     {on && "▶ "}
-                    {item.label}
+                    {t(item.label)}
                   </span>
                   <span className="mt-0.5 block text-xs text-muted-foreground">
                     {clock(item.t)}
@@ -412,6 +413,7 @@ export function AboutCard({
   onSeek?: (seconds: number) => void;
   footer?: React.ReactNode;
 }) {
+  const { t } = useT();
   const [clean, setClean] = React.useState<string | null>(null);
   const [more, setMore] = React.useState(false);
   const [overflows, setOverflows] = React.useState(false);
@@ -460,7 +462,7 @@ export function AboutCard({
               onClick={() => setMore((v) => !v)}
               className="mt-1 text-sm font-semibold text-foreground hover:underline"
             >
-              {more ? "see less" : "… see more"}
+              {more ? t("see less") : t("… see more")}
             </button>
           )}
         </div>
@@ -546,6 +548,7 @@ export function MediaRow({
 
 /** Hacker News and Reddit threads about it, when there are any. */
 export function DiscussionCard({ articleId }: { articleId: string }) {
+  const { t } = useT();
   const { data } = useSWR<{ threads: DiscussionThread[] }>(
     `/api/articles/${articleId}/discussion`,
     { revalidateOnFocus: false, dedupingInterval: 10 * 60 * 1000 }
@@ -553,7 +556,7 @@ export function DiscussionCard({ articleId }: { articleId: string }) {
   const threads = data?.threads ?? [];
   if (threads.length === 0) return null;
   return (
-    <MediaCard id="discussion" title="Discussion" icon={MessagesSquare}>
+    <MediaCard id="discussion" title={t("Discussion")} icon={MessagesSquare}>
       <ul className="-mx-1.5 divide-y">
         {threads.map((thread) => (
           <li key={thread.id}>
@@ -577,7 +580,8 @@ export function DiscussionCard({ articleId }: { articleId: string }) {
                   {thread.title}
                 </span>
                 <span className="block truncate text-xs text-muted-foreground">
-                  {thread.site === "hn" ? "Hacker News" : thread.where} · {thread.comments} comments
+                  {thread.site === "hn" ? "Hacker News" : thread.where} · {thread.comments}{" "}
+                  {t("comments")}
                 </span>
               </span>
               <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground" />

@@ -9,6 +9,7 @@ import { toggleArticleRead } from "@/lib/hooks/useArticles";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import { FeedFavicon } from "@/components/shared/FeedFavicon";
 import type { ArticleSummary } from "@/lib/types";
+import { useT, tr } from "@/lib/i18n";
 
 const RATES = [1, 1.25, 1.5, 0.85];
 
@@ -26,6 +27,7 @@ export function ListenLater({
   startIndex?: number;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const { setSelectedArticleId, setMobilePane } = useReaderState();
   const playable = React.useMemo(
     () => articles.filter((a) => !a.isVideo && !a.audioUrl),
@@ -68,7 +70,9 @@ export function ListenLater({
         if (index + 1 < playable.length) next();
         else {
           setStatus("idle");
-          toast("That's everything in Later", { description: "Nothing left to read aloud." });
+          toast(tr("That's everything in Later"), {
+            description: tr("Nothing left to read aloud."),
+          });
         }
         return;
       }
@@ -169,14 +173,14 @@ export function ListenLater({
   if (!speechSupported()) {
     return (
       <Shell onClose={onClose}>
-        <p className="text-sm text-muted-foreground">This browser can&rsquo;t read aloud.</p>
+        <p className="text-sm text-muted-foreground">{t("This browser can’t read aloud.")}</p>
       </Shell>
     );
   }
   if (!current) {
     return (
       <Shell onClose={onClose}>
-        <p className="text-sm text-muted-foreground">Nothing in Later to read aloud.</p>
+        <p className="text-sm text-muted-foreground">{t("Nothing in Later to read aloud.")}</p>
       </Shell>
     );
   }
@@ -210,9 +214,9 @@ export function ListenLater({
               size={12}
             />
             <span className="truncate">
-              {index + 1} of {playable.length}
+              {index + 1} {t("of")} {playable.length}
               {status === "loading"
-                ? " · Fetching…"
+                ? t(" · Fetching…")
                 : sentence.of
                   ? ` · ${Math.round((sentence.at / sentence.of) * 100)}%`
                   : ""}
@@ -224,12 +228,12 @@ export function ListenLater({
         type="button"
         onClick={cycleRate}
         className="h-9 rounded-full px-2 text-xs font-semibold tabular-nums hover:bg-accent"
-        aria-label="Change speed"
+        aria-label={t("Change speed")}
       >
         {rate}×
       </button>
       <Control
-        label="Previous article"
+        label={t("Previous article")}
         onClick={() => setIndex((i) => Math.max(0, i - 1))}
         disabled={index === 0}
       >
@@ -239,12 +243,12 @@ export function ListenLater({
         type="button"
         onClick={() => (playing ? pause() : resume())}
         disabled={status === "loading"}
-        aria-label={playing ? "Pause" : "Play"}
+        aria-label={playing ? t("Pause") : t("Play")}
         className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-background disabled:opacity-50"
       >
         {playing ? <Pause className="h-4 w-4" /> : <Play className="ml-0.5 h-4 w-4" />}
       </button>
-      <Control label="Next article" onClick={next} disabled={index + 1 >= playable.length}>
+      <Control label={t("Next article")} onClick={next} disabled={index + 1 >= playable.length}>
         <SkipForward className="h-4 w-4" />
       </Control>
     </Shell>
@@ -252,15 +256,16 @@ export function ListenLater({
 }
 
 function Shell({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  const { t } = useT();
   return (
     <div
       role="region"
-      aria-label="Listen to Later"
+      aria-label={t("Listen to Later")}
       className="relative shrink-0 border-t bg-background/95 pb-safe backdrop-blur"
     >
       <div className="mx-auto flex h-16 max-w-5xl items-center gap-1.5 px-3">
         {children}
-        <Control label="Stop listening" onClick={onClose}>
+        <Control label={t("Stop listening")} onClick={onClose}>
           <X className="h-4 w-4" />
         </Control>
       </div>
@@ -279,12 +284,13 @@ function Control({
   disabled?: boolean;
   children: React.ReactNode;
 }) {
+  const { t } = useT();
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      aria-label={label}
+      aria-label={t(label)}
       className={cn(
         "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
       )}
