@@ -28,6 +28,7 @@
     "@tiptap/y-tiptap": "^3.3.0",
     "fflate": "^0.8.3",
     "fractional-indexing": "^4.0.0",
+    "hash-wasm": "^4.13.0",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.72.0",
     "nanoid": "^6.0.2",

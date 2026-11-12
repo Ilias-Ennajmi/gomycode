@@ -26,6 +26,10 @@ the owner's go-ahead. Do the steps in order; each one says how to check that it 
 
 Migrations only move forward. To undo one, restore from a Supabase backup.
 
+Apply every file in `supabase/migrations/` in filename order, once each. Phase 3 adds `0003_atelier_phase3.sql` (rounds, share links,
+reviewer data, push subscriptions): apply it before creating the first share link. Visitors never get a database role; every
+visitor action runs in a server route with the service role.
+
 ## 2. The owner account
 
 1. Dashboard, Authentication, Users, "Add user": the owner's email and a strong password (a password manager one). Tick "Auto
@@ -78,6 +82,7 @@ Migrations only move forward. To undo one, restore from a Supabase backup.
    | `R2_BUCKET` | `atelier-assets` | |
    | `R2_PUBLIC_HOST` | the public host from step 3 | server side |
    | `NEXT_PUBLIC_R2_PUBLIC_HOST` | the same host | the browser reads this one (it is inlined at build time, so redeploy after changing it) |
+   | `SHARE_COOKIE_SECRET` | 48 random bytes, base64: `openssl rand -base64 48` | **server only**. Signs the cookie a client gets on a share link (Phase 3). Without it share links cannot be opened. Rotate by putting the new value first and the old one after a comma (`NEW,OLD`) for 12 hours, then remove `OLD`; clients on a dropped secret just open the link again |
 
 3. **Never set `ATELIER_LOCAL_ONLY` in Vercel.** It switches off sign-in and sync. The app refuses to start it when
    `VERCEL_ENV=production`, but a Preview deployment would honour it, and a Preview URL is reachable by anyone who has the link.
