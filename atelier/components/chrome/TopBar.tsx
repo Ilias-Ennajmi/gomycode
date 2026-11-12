@@ -67,7 +67,7 @@ export function TopBar({ title, onTitleChange, breadcrumb = [], status, localOnl
 
       <div className="pointer-events-auto flex shrink-0 items-center gap-1 rounded-lg border border-line bg-panel p-1 shadow-2">
         <PresentButton />
-        <PhaseButton label="Share" icon={Share2} primary />
+        <ShareButton />
         <ExportButton />
       </div>
     </header>
@@ -156,6 +156,20 @@ function PhaseButton({ label, icon: Icon, primary = false }: { label: string; ic
       <span id={noteId} className="sr-only">
         {PHASE_NOTE}
       </span>
+    </Tip>
+  );
+}
+
+/** Opens the Share dialog (also Mod+Shift+S). Disabled where the editor does not know its board (a bare top bar). */
+function ShareButton() {
+  const editor = useOptionalEditor();
+  if (!editor?.canShare) return <PhaseButton label="Share" icon={Share2} primary />;
+  return (
+    <Tip label="Share" shortcut="Mod+Shift+S" side="bottom">
+      <button type="button" onClick={() => editor.run("share.open")} className={`${chromeTextButton} bg-brand text-(length:--text-sm) font-medium text-on-brand`}>
+        <Share2 aria-hidden="true" size={16} strokeWidth={1.75} />
+        <span>Share</span>
+      </button>
     </Tip>
   );
 }

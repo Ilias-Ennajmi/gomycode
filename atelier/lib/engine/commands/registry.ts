@@ -43,6 +43,8 @@ export type CommandUI = {
   startPresent(opts: { index: number }): void;
   exitPresent(): void;
   isPresenting(): boolean;
+  /** Open the Share dialog (links, new link, QR). Absent when the editor does not know which board it shows. */
+  openShare(): void;
 };
 
 /** Clipboard operations behind the copy/cut/paste commands (wired by useClipboard). */

@@ -46,6 +46,16 @@ export class MemoryShareStore implements ShareStore {
     list.push(new Uint8Array(update));
     this.live.set(boardId, list);
   }
+  /** Replaces the board's live state (local-only mode: the dialog hands over the whole current state each time). */
+  replaceLiveState(boardId: string, update: Uint8Array): void {
+    this.live.set(boardId, [new Uint8Array(update)]);
+  }
+  /** Makes sure the board exists (local-only mode has no boards table); the title is only set when it is new or given. */
+  ensureBoard(b: { id: string; ownerId: string; title?: string }): void {
+    const known = this.boards.get(b.id);
+    if (!known) this.seedBoard(b);
+    else if (b.title !== undefined) known.title = b.title;
+  }
   seedAsset(a: { id: string; kind?: "image" | "video" | "gif" | "file"; width?: number | null; height?: number | null; variants?: unknown; source_url?: string | null; credit?: string | null; licence?: string | null }): void {
     this.assets.set(a.id, {
       id: a.id,
