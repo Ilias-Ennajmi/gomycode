@@ -1,6 +1,6 @@
 "use client";
 
-import { Layers, Map as MapIcon, Redo2, Search, SlidersHorizontal, Undo2 } from "lucide-react";
+import { Layers, Map as MapIcon, Palette, Redo2, Search, SlidersHorizontal, Undo2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useEditor } from "@/components/editor/EditorContext";
 import { useIsDesktop } from "@/components/panels/doc-hooks";
@@ -80,6 +80,7 @@ export function ZoomControls({ minimapOpen, onToggleMinimap }: { minimapOpen: bo
       <IconButton label="Layers" icon={Layers} pressed={panels.openId === "layers"} onClick={() => panels.toggle("layers")} />
       <IconButton label="Inspector" icon={SlidersHorizontal} pressed={panels.openId === "inspector"} onClick={() => panels.toggle("inspector")} />
       <IconButton label="Find and replace" icon={Search} shortcut="Mod+F" pressed={panels.openId === "find"} onClick={() => panels.toggle("find")} />
+      <IconButton label="Palette" icon={Palette} pressed={panels.openId === "palette"} onClick={() => panels.toggle("palette")} />
     </RovingToolbar>
   );
 }

@@ -28,6 +28,7 @@ import { insertPaste, parseClipboard } from "../clipboard/parse";
 import type { BoardDoc } from "../doc/board-doc";
 import type { ToolId } from "../input/tool-machine";
 import { MEDIA_COMMANDS } from "./media-commands";
+import { PALETTE_COMMANDS } from "./palette-commands";
 import { registry, type Command, type CommandCtx } from "./registry";
 
 // ---- helpers (shared with the clipboard wiring) ------------------------------------------------------------------------
@@ -473,6 +474,9 @@ export const BUILTIN_COMMANDS: Command[] = [
   // layout tools on a selection (grid, masonry, justified, pack, normalise, tidy)
   ...LAYOUT_COMMANDS,
   ...MEDIA_COMMANDS,
+
+  // colour: the live board palette, colour cards, highlight, copy and format
+  ...PALETTE_COMMANDS,
 
   // link cards and embeds (paste as text, open, retry, insert by URL)
   ...LINK_COMMANDS,

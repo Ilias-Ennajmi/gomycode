@@ -77,12 +77,23 @@ export function deltaE(a: Oklab, b: Oklab): number {
   return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 }
 
-/** CSS value of a colour: `#2f4a6d`, `rgb(47 74 109)` or `oklch(0.40 0.06 255)`. An invalid colour is returned unchanged. */
+/** CSS value of a colour: `#2f4a6d`, `rgb(47 74 109)`, `hsl(214 40% 31%)` or `oklch(0.40 0.06 255)`. An invalid colour is returned unchanged. */
 export function formatColor(hex: string, fmt: ColorFormat): string {
   const rgb = hexToRgb(hex);
   if (!rgb) return hex;
   if (fmt === "hex") return rgbToHex(...rgb);
   if (fmt === "rgb") return `rgb(${rgb[0]} ${rgb[1]} ${rgb[2]})`;
+  if (fmt === "hsl") {
+    const [r, g, b] = rgb.map((v) => v / 255);
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const d = max - min;
+    const l = (max + min) / 2;
+    const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+    let h = 0;
+    if (d !== 0) h = max === r ? ((g - b) / d + (g < b ? 6 : 0)) * 60 : max === g ? ((b - r) / d + 2) * 60 : ((r - g) / d + 4) * 60;
+    return `hsl(${Math.round(h) % 360} ${Math.round(s * 100)}% ${Math.round(l * 100)}%)`;
+  }
   const [L, a, b] = rgbToOklab(...rgb);
   const C = Math.hypot(a, b);
   let h = (Math.atan2(b, a) * 180) / Math.PI;

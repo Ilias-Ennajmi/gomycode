@@ -24,7 +24,8 @@ describe("ObjectLayer with the v2 object types", () => {
     for (const t of types) {
       expect(container.querySelector(`[data-object-id="o-${t}"][data-object-type="${t}"]`), t).not.toBeNull();
     }
-    // Types whose view is not built yet show the grey placeholder.
-    expect(container.querySelector('[data-object-type="swatch"] [data-placeholder]')).not.toBeNull();
+    // Swatch and palette have real views now (no grey placeholder inside them).
+    expect(container.querySelector('[data-object-type="swatch"] [data-placeholder], [data-object-type="palette"] [data-placeholder]')).toBeNull();
+    expect(container.querySelector('[data-object-type="swatch"] button')).not.toBeNull();
   });
 });

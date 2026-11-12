@@ -15,6 +15,7 @@ import { SpatialIndex } from "@/lib/engine/spatial/spatial-index";
 import { CanvasView, type CanvasHandle } from "@/components/canvas/CanvasView";
 import { toast } from "@/components/chrome/Toast";
 import { EditorChrome } from "@/components/chrome/EditorChrome";
+import { ColorServices } from "@/components/editor/ColorServices";
 import { EditorProvider } from "@/components/editor/EditorContext";
 import { EditorOverlays } from "@/components/editor/EditorOverlays";
 import { SETTINGS_KEY, loadSettings, saveSettings, type NavSettings } from "@/lib/settings";
@@ -248,6 +249,7 @@ export function BoardClient({ boardId, localOnly }: { boardId: string; localOnly
             slot={slot}
           />
           <EditorOverlays />
+          <ColorServices />
         </EditorProvider>
       ) : null}
     </main>

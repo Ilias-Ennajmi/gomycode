@@ -1,12 +1,13 @@
 "use client";
 
-import { Layers, Search, SlidersHorizontal, X, type LucideIcon } from "lucide-react";
+import { Layers, Palette, Search, SlidersHorizontal, X, type LucideIcon } from "lucide-react";
 import { useEffect, useId, useRef, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { PANEL_MAX_WIDTH, PANEL_MIN_WIDTH, useEditor } from "@/components/editor/EditorContext";
 import { useIsDesktop } from "./doc-hooks";
 import { FindReplace } from "./FindReplace";
 import { InspectorPanel } from "./InspectorPanel";
 import { LayersPanel } from "./LayersPanel";
+import { PalettePanel } from "./PalettePanel";
 
 export type PanelDef = { id: string; title: string; icon: LucideIcon; render(): ReactNode };
 
@@ -14,6 +15,7 @@ export const DEFAULT_PANELS: PanelDef[] = [
   { id: "layers", title: "Layers", icon: Layers, render: () => <LayersPanel /> },
   { id: "inspector", title: "Inspector", icon: SlidersHorizontal, render: () => <InspectorPanel /> },
   { id: "find", title: "Find and replace", icon: Search, render: () => <FindReplace /> },
+  { id: "palette", title: "Palette", icon: Palette, render: () => <PalettePanel /> },
 ];
 
 const KEY_STEP = 16;

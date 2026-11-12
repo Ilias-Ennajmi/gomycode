@@ -43,6 +43,7 @@ import { LayoutBarControl } from "./LayoutBarControl";
 import { SpecimenBarControl } from "./SpecimenBarControl";
 import { VideoBarControls } from "./VideoBarControls";
 import { LinkBarControls } from "./LinkBarControls";
+import { PaletteBarControls, SwatchBarControls } from "./ColorBarControls";
 import { placeFloating } from "./place";
 import { Tip } from "./Tip";
 import { STICKY_COLORS } from "@/lib/engine/model/defaults";
@@ -248,6 +249,8 @@ function BarView({ objs }: { objs: CanvasObject[] }) {
       {!allLocked && single?.type === "typeSpecimen" ? <SpecimenBarControl obj={single} side={side} /> : null}
       {only === "video" ? <VideoBarControls objs={objs as VideoObj[]} locked={allLocked} side={side} /> : null}
       {single && (single.type === "link" || single.type === "embed") ? <LinkBarControls obj={single} side={side} /> : null}
+      {single?.type === "swatch" ? <SwatchBarControls obj={single} side={side} /> : null}
+      {single?.type === "palette" ? <PaletteBarControls obj={single} side={side} /> : null}
       {!allLocked && textish ? <FormatControls bar={bar} single={single!} editing={editingText} /> : null}
       {!allLocked && only && only !== "group" ? <Sep /> : null}
 

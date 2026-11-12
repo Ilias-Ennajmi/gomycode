@@ -18,8 +18,10 @@ import { isPreviewPending } from "@/lib/engine/links/link-cards";
 import { EmbedView } from "./objects/EmbedView";
 import { FrameView } from "./objects/FrameView";
 import { LinkView } from "./objects/LinkView";
+import { PaletteView } from "./objects/PaletteView";
 import { ShapeView } from "./objects/ShapeView";
 import { StickyView } from "./objects/StickyView";
+import { SwatchView } from "./objects/SwatchView";
 import { StrokeView } from "./objects/StrokeView";
 import { TextView } from "./objects/TextView";
 import { TypeSpecimenView } from "./objects/TypeSpecimenView";
@@ -93,8 +95,8 @@ export const OBJECT_VIEWS: { [K in ObjectType]: ViewOf<K> } = {
   video: ({ obj, assets }) => <VideoView obj={obj} assets={assets} />,
   link: ({ obj, assets, doc }) => <LinkView obj={obj} assets={assets} pending={isPreviewPending(doc, obj.id)} />,
   embed: ({ obj }) => <EmbedView obj={obj} />,
-  swatch: PlaceholderView,
-  palette: PlaceholderView,
+  swatch: ({ obj }) => <SwatchView obj={obj} />,
+  palette: ({ obj }) => <PaletteView obj={obj} />,
   typeSpecimen: ({ obj }) => <TypeSpecimenView obj={obj} />,
 };
 

@@ -192,7 +192,7 @@ export interface EmbedObj extends Base {
   title: string;
 }
 
-export type ColorFormat = "hex" | "rgb" | "oklch";
+export type ColorFormat = "hex" | "rgb" | "hsl" | "oklch";
 
 export interface SwatchObj extends Base {
   type: "swatch";

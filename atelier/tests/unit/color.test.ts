@@ -95,6 +95,14 @@ describe("formatColor", () => {
     expect(formatColor("#2F4A6D", "rgb")).toBe("rgb(47 74 109)");
     expect(formatColor("#2F4A6D", "oklch")).toBe("oklch(0.40 0.07 255)");
   });
+  it("formats hsl (CSS space-separated syntax)", () => {
+    expect(formatColor("#2F4A6D", "hsl")).toBe("hsl(214 40% 31%)");
+    expect(formatColor("#ff0000", "hsl")).toBe("hsl(0 100% 50%)");
+    expect(formatColor("#ffffff", "hsl")).toBe("hsl(0 0% 100%)");
+    expect(formatColor("#000000", "hsl")).toBe("hsl(0 0% 0%)");
+    expect(formatColor("#808080", "hsl")).toBe("hsl(0 0% 50%)");
+    expect(formatColor("#00ff00", "hsl")).toBe("hsl(120 100% 50%)");
+  });
   it("greys have chroma 0 and hue 0", () => {
     expect(formatColor("#ffffff", "oklch")).toBe("oklch(1.00 0.00 0)");
     expect(formatColor("#000", "oklch")).toBe("oklch(0.00 0.00 0)");

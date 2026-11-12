@@ -211,7 +211,7 @@ const schemas = {
     type: z.literal("swatch"),
     hex: hexColor,
     name: capped(100).catch(""),
-    format: z.enum(["hex", "rgb", "oklch"]).catch("hex"),
+    format: z.enum(["hex", "rgb", "hsl", "oklch"]).catch("hex"),
   }),
   palette: z.object({
     ...baseShape,
