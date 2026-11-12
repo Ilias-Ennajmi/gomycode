@@ -920,5 +920,11 @@ export function buildScene(src: SceneSource, target: ExportTarget, o: SceneOptio
   return { width, height, origin, background, nodes, assetIds: b.assetList(), fonts: b.fontList(), warnings: b.warnings };
 }
 
+/** The board's frames in presentation order (their `order` key, then id), not z-order. */
+export function framesInOrder(src: Pick<SceneSource, "all">): FrameObj[] {
+  const frames = src.all().filter((o): o is FrameObj => o.type === "frame");
+  return frames.sort((a, b) => (a.order !== b.order ? (a.order < b.order ? -1 : 1) : a.id < b.id ? -1 : 1));
+}
+
 // re-exported for writers that only need a rect test
 export { intersects };

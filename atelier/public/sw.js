@@ -173,6 +173,17 @@ async function cacheFirst(request, cacheName, max) {
   }
 }
 
+/**
+ * A worker's script URL carries its configuration in the fragment (Turbopack's bootstrap file is shared by every worker and
+ * told apart by `#params=...`). A response handed back from the cache still has the URL it was stored under, and the browser
+ * takes a worker's location from the response: the second worker would then start with the first one's parameters and run
+ * the wrong code. A copy has no URL, so the browser keeps the one the page asked for.
+ */
+function forWorker(request, response) {
+  if (request.destination !== "worker" && request.destination !== "sharedworker") return response;
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers: response.headers });
+}
+
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
@@ -184,7 +195,7 @@ self.addEventListener("fetch", (event) => {
     if (request.mode === "navigate") {
       event.respondWith(navigate(event, request, url));
     } else if (url.pathname.startsWith("/_next/static/")) {
-      event.respondWith(staleWhileRevalidate(event, request));
+      event.respondWith(staleWhileRevalidate(event, request).then((response) => forWorker(request, response)));
     } else if (url.pathname.startsWith("/brand/") || url.pathname === "/manifest.webmanifest" || url.pathname === "/offline.html") {
       event.respondWith(cacheFirst(request, SHELL, MAX_STATIC));
     }

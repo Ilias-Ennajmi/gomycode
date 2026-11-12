@@ -25,6 +25,9 @@ import { retryLinkPreview } from "@/lib/engine/links/link-cards";
 import { createLinkCardDeps } from "@/lib/engine/links/preview-client";
 import { linkRetry } from "@/lib/engine/links/retry-store";
 import { UrlPromptDialog } from "@/components/chrome/UrlPromptDialog";
+import { ExportDialog } from "@/components/export/ExportDialog";
+import { getAssetResolver } from "@/lib/assets/resolver";
+import type { ExportPreset } from "@/lib/engine/export/export-commands";
 import type { CanvasObject, Point } from "@/lib/engine/model/types";
 
 /** Ids of right-hand panels. The built-in ones are "layers", "inspector" and "find"; later phases add more. */
@@ -231,6 +234,7 @@ export function EditorProvider({
     [uploader],
   );
   const [urlPrompt, setUrlPrompt] = useState<"link" | "embed" | null>(null);
+  const [exportOpen, setExportOpen] = useState<{ preset?: ExportPreset } | null>(null);
   // Cards on the canvas offer "Retry preview" through this.
   useEffect(() => {
     if (!linkDeps) return;
@@ -311,6 +315,7 @@ export function EditorProvider({
         replaceImage: uploader?.addAssetOnly ? replaceImage : undefined,
         toggleSnap: onToggleSnap,
         promptUrl: (kind) => setUrlPrompt(kind),
+        openExport: (preset) => setExportOpen({ preset }),
         linkDeps: () => linkDeps,
       },
     };
@@ -353,6 +358,7 @@ export function EditorProvider({
           }}
         />
       ) : null}
+      {exportOpen ? <ExportDialog doc={handle.doc} selectionIds={handle.selection.ids} assets={getAssetResolver()} toast={toast} preset={exportOpen.preset} onClose={() => setExportOpen(null)} /> : null}
     </Ctx.Provider>
   );
 }

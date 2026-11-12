@@ -49,9 +49,18 @@ describe("TopBar", () => {
     expect(field).toHaveValue("Spring campaign");
   });
 
-  it("Present, Share and Export are disabled and say why", () => {
+  it("Export is enabled and runs the export command; a bare top bar keeps it disabled", () => {
+    const ed = makeEditor();
+    ed.render(<TopBar {...base} />);
+    const b = screen.getByRole("button", { name: "Export" });
+    expect(b).toBeEnabled();
+    fireEvent.click(b);
+    expect(screen.getByRole("dialog", { name: "Export" })).toBeInTheDocument();
+  });
+
+  it("Present and Share are disabled and say why", () => {
     makeEditor().render(<TopBar {...base} />);
-    for (const name of ["Present", "Share", "Export"]) {
+    for (const name of ["Present", "Share"]) {
       const b = screen.getByRole("button", { name });
       expect(b).toBeDisabled();
       expect(b).toHaveAccessibleDescription("Coming in Phase 3");

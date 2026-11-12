@@ -48,3 +48,24 @@ export function downloadBlob(name: string, data: Uint8Array | string, mime: stri
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 }
+
+/**
+ * Save a Blob as `name` without copying it: same anchor and object URL as `downloadBlob`, for results that already are a
+ * Blob (an export from the worker). The name is sanitised. Throws RangeError for a Blob over MAX_DOWNLOAD_BYTES.
+ */
+export function downloadFile(name: string, blob: Blob): void {
+  if (blob.size > MAX_DOWNLOAD_BYTES) throw new RangeError("That file is too large to download");
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  try {
+    a.href = url;
+    a.download = sanitizeFileName(name, "download");
+    a.rel = "noopener";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+  } finally {
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+}

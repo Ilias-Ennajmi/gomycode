@@ -61,6 +61,22 @@ export class AssetResolverImpl implements AssetResolver {
     return null;
   }
 
+  /**
+   * Every file this device can reach for an asset, by variant name: a local blob URL while one exists, else the public R2
+   * URL. Export workers read pictures from these (a worker cannot ask the resolver itself).
+   */
+  urlsFor(assetId: string): Partial<Record<AssetVariant, string>> {
+    const out: Partial<Record<AssetVariant, string>> = {};
+    if (!isAssetId(assetId)) return out;
+    const known = this.meta.get(assetId)?.variants ?? LEGACY;
+    const local = this.local.get(assetId);
+    for (const v of [...known, "original"] as AssetVariant[]) {
+      const url = local?.[v] ?? (this.host ? `https://${this.host}/${assetKey(assetId, v)}` : undefined);
+      if (url) out[v] = url;
+    }
+    return out;
+  }
+
   available(assetId: string): { variants: VariantName[]; width: number; height: number } | null {
     if (!isAssetId(assetId)) return null;
     const m = this.meta.get(assetId);

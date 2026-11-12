@@ -27,6 +27,7 @@ import { serializeSelection } from "../clipboard/serialize";
 import { insertPaste, parseClipboard } from "../clipboard/parse";
 import type { BoardDoc } from "../doc/board-doc";
 import type { ToolId } from "../input/tool-machine";
+import { EXPORT_COMMANDS } from "../export/export-commands";
 import { MEDIA_COMMANDS } from "./media-commands";
 import { PALETTE_COMMANDS } from "./palette-commands";
 import { PROVENANCE_COMMANDS } from "./provenance-commands";
@@ -484,6 +485,8 @@ export const BUILTIN_COMMANDS: Command[] = [
 
   // link cards and embeds (paste as text, open, retry, insert by URL)
   ...LINK_COMMANDS,
+
+  ...EXPORT_COMMANDS,
 ];
 
 /** Add the built-in commands to a registry (done for the app-wide one on import). */
