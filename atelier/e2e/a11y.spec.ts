@@ -123,7 +123,7 @@ test.describe("keyboard", () => {
   test("the toolbar is one tab stop with arrow-key roving, Enter to choose, Escape to close options", async ({ page }) => {
     await openBoard(page);
     const tools = page.getByRole("toolbar", { name: "Tools" });
-    const names = ["Select", "Hand", "Sticky note", "Text", "Shapes", "Arrow or line", "Pen", "Frame", "Image"];
+    const names = ["Select", "Hand", "Sticky note", "Text", "Shapes", "Arrow or line", "Pen", "Frame", "Image", "More objects"];
 
     // Exactly one button is in the tab order.
     await expect(tools.locator('button[tabindex="0"]')).toHaveCount(1);
@@ -136,11 +136,11 @@ test.describe("keyboard", () => {
     await page.keyboard.press("ArrowRight"); // wraps
     await expect(tools.getByRole("button", { name: "Select" })).toBeFocused();
     await page.keyboard.press("ArrowLeft");
-    await expect(tools.getByRole("button", { name: "Image" })).toBeFocused();
+    await expect(tools.getByRole("button", { name: "More objects" })).toBeFocused();
     await page.keyboard.press("Home");
     await expect(tools.getByRole("button", { name: "Select" })).toBeFocused();
     await page.keyboard.press("End");
-    await expect(tools.getByRole("button", { name: "Image" })).toBeFocused();
+    await expect(tools.getByRole("button", { name: "More objects" })).toBeFocused();
 
     // Enter chooses the tool and the toolbar says so.
     await tools.getByRole("button", { name: "Hand" }).focus();

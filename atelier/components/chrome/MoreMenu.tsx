@@ -54,7 +54,7 @@ export function MoreMenu() {
         </button>
       </Tip>
       <Popover open={open} onClose={() => setOpen(false)} anchor={anchor} placement="top" role="menu" label="More objects" instant={instant} className="p-1">
-        <MenuList entries={entries()} onRun={() => setOpen(false)} />
+        {open ? <MenuList entries={entries()} onRun={() => setOpen(false)} /> : null}
       </Popover>
     </>
   );
