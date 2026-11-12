@@ -6,6 +6,8 @@
 //    Set-Cookie header, is never stored. Login pages, /settings and /api/* are never touched.
 //  * /_next/static/*: stale-while-revalidate (files are content-hashed).
 //  * Images from other origins (R2): cache-first in `atelier-images`, capped at 500 entries.
+//  * Google Fonts (type specimen cards): the stylesheet from fonts.googleapis.com and the files from fonts.gstatic.com
+//    are stale-while-revalidate in `atelier-fonts`, capped at 60 entries, so a family that was used once works offline.
 //  * Updates wait. A new worker only takes over when the page asks (message SKIP_WAITING), which
 //    the page does when no board is open, so nobody's board is swapped out from under them. The
 //    worker never reloads or navigates a page.
@@ -17,11 +19,14 @@ const SHELL = `atelier-shell-${VERSION}`;
 const PAGES = `atelier-pages-${VERSION}`;
 const STATIC = `atelier-static-${VERSION}`;
 const IMAGES = "atelier-images";
-const KEEP = [SHELL, PAGES, STATIC, IMAGES];
+const FONTS = "atelier-fonts";
+const KEEP = [SHELL, PAGES, STATIC, IMAGES, FONTS];
 
 const MAX_IMAGES = 500;
 const MAX_STATIC = 300;
 const MAX_PAGES = 30;
+const MAX_FONTS = 60;
+const FONT_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com"];
 
 // The start page is kept in the page cache (see install) so a first offline start works.
 const PRECACHE = [
@@ -132,14 +137,14 @@ async function navigate(event, request, url) {
   }
 }
 
-async function staleWhileRevalidate(event, request) {
-  const cache = await caches.open(STATIC);
+async function staleWhileRevalidate(event, request, cacheName = STATIC, max = MAX_STATIC) {
+  const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
   const refresh = fetch(request)
     .then(async (response) => {
       if (response.ok && response.status === 200) {
         await cache.put(request, response.clone());
-        await trim(STATIC, MAX_STATIC);
+        await trim(cacheName, max);
       }
       return response;
     })
@@ -183,6 +188,12 @@ self.addEventListener("fetch", (event) => {
     } else if (url.pathname.startsWith("/brand/") || url.pathname === "/manifest.webmanifest" || url.pathname === "/offline.html") {
       event.respondWith(cacheFirst(request, SHELL, MAX_STATIC));
     }
+    return;
+  }
+
+  // Web fonts for type specimens (the only third-party hosts the page loads code or styles from).
+  if (FONT_HOSTS.includes(url.hostname)) {
+    event.respondWith(staleWhileRevalidate(event, request, FONTS, MAX_FONTS));
     return;
   }
 

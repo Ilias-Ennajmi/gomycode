@@ -367,6 +367,60 @@ describe("images from R2", () => {
   });
 });
 
+describe("Google Fonts for type specimens", () => {
+  const CSS = "https://fonts.googleapis.com/css2?family=Lora:wght@400&display=swap";
+  const FILE = "https://fonts.gstatic.com/s/lora/v1/abc.woff2";
+  const css = (id: string) => res({ id, type: "cors", headers: { "content-type": "text/css" } });
+
+  it("serves a cached stylesheet at once and refreshes it in the background (stale-while-revalidate)", async () => {
+    const first = css("v1");
+    const sw = boot(async () => first);
+    expect(await sw.dispatch(req(CSS, { destination: "style" }))).toBe(first);
+    const cache = sw.caches.all.get("atelier-fonts")!;
+    expect([...cache.store.keys()]).toEqual([CSS]);
+    const fresh = css("v2");
+    sw.fetch.mockImplementation(async () => fresh);
+    expect(await sw.dispatch(req(CSS, { destination: "style" }))).toBe(first); // the stale copy answers
+    expect(sw.fetch).toHaveBeenCalledTimes(2); // ...and the network was asked for the next time
+    expect(await cache.match(CSS)).toBe(fresh);
+  });
+
+  it("caches the font files from fonts.gstatic.com so a used family works offline", async () => {
+    const file = res({ id: "f", type: "cors", headers: { "content-type": "font/woff2" } });
+    const sw = boot(async () => file);
+    await sw.dispatch(req(FILE, { destination: "font" }));
+    sw.fetch.mockImplementation(offline);
+    expect(await sw.dispatch(req(FILE, { destination: "font" }))).toBe(file);
+  });
+
+  it("does not store failures, and offline without a copy is a network error", async () => {
+    const bad = res({ status: 400, type: "cors" });
+    const sw = boot(async () => bad);
+    expect(await sw.dispatch(req(CSS, { destination: "style" }))).toBe(bad);
+    expect(sw.caches.all.get("atelier-fonts")?.store.size ?? 0).toBe(0);
+    const off = boot(offline);
+    expect(((await off.dispatch(req(CSS, { destination: "style" }))) as Response).type).toBe("error");
+  });
+
+  it("caps the font cache at 60 entries, dropping the oldest", async () => {
+    const sw = boot(async (r) => css(typeof r === "string" ? r : r.url));
+    for (let i = 0; i < 63; i++) await sw.dispatch(req(`https://fonts.googleapis.com/css2?family=F${i}`, { destination: "style" }));
+    const keys = [...sw.caches.all.get("atelier-fonts")!.store.keys()];
+    expect(keys).toHaveLength(60);
+    expect(keys).not.toContain("https://fonts.googleapis.com/css2?family=F0");
+    expect(keys).toContain("https://fonts.googleapis.com/css2?family=F62");
+  });
+
+  it("other third-party hosts are still left to the network, and activate keeps the font cache", async () => {
+    const sw = boot(online());
+    expect(await sw.dispatch(req("https://evil.example/css2?family=Lora", { destination: "style" }))).toBe("network");
+    await sw.caches.open("atelier-fonts");
+    await sw.lifecycle("install");
+    await sw.lifecycle("activate");
+    expect(await sw.caches.keys()).toContain("atelier-fonts");
+  });
+});
+
 describe("versioning", () => {
   it("names every cache but the image cache with a version", () => {
     expect(code).toMatch(/const VERSION = "v\d+"/);

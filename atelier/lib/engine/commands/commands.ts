@@ -21,6 +21,7 @@ import { serializeSelection } from "../clipboard/serialize";
 import { insertPaste, parseClipboard } from "../clipboard/parse";
 import type { BoardDoc } from "../doc/board-doc";
 import type { ToolId } from "../input/tool-machine";
+import { MEDIA_COMMANDS } from "./media-commands";
 import { registry, type Command, type CommandCtx } from "./registry";
 
 // ---- helpers (shared with the clipboard wiring) ------------------------------------------------------------------------
@@ -486,6 +487,7 @@ export const BUILTIN_COMMANDS: Command[] = [
   // tools
   ...TOOLS.map(({ id, tool, label, shortcut }): Command => ({ id, label, group: "insert", shortcut, run: (c) => c.setTool(tool) })),
   { id: "tool.image", label: "Add image", group: "insert", shortcut: "I", when: (c) => !!c.ui?.pickImages, run: (c) => c.ui?.pickImages?.() },
+  ...MEDIA_COMMANDS,
 ];
 
 /** Add the built-in commands to a registry (done for the app-wide one on import). */

@@ -38,6 +38,7 @@ import { arrangeEntries, contextMenuEntries } from "./menu-model";
 import { refitText } from "./text-fit";
 import { Field, FramePresetList, HeadChoice, RouteChoice, SHAPE_KINDS, ShapeKindChoice, StickyColorPicker, StickySizeChoice, StrokeStyleChoice, StrokeWidthChoice } from "./pickers";
 import { Popover } from "./Popover";
+import { SpecimenBarControl } from "./SpecimenBarControl";
 import { placeFloating } from "./place";
 import { Tip } from "./Tip";
 import { STICKY_COLORS } from "@/lib/engine/model/defaults";
@@ -239,6 +240,7 @@ function BarView({ objs }: { objs: CanvasObject[] }) {
       {!allLocked && only === "arrow" ? <ArrowControls bar={bar} /> : null}
       {!allLocked && only === "frame" ? <FrameControls bar={bar} /> : null}
       {!allLocked && only === "stroke" ? <StrokeControls bar={bar} /> : null}
+      {!allLocked && single?.type === "typeSpecimen" ? <SpecimenBarControl obj={single} side={side} /> : null}
       {!allLocked && textish ? <FormatControls bar={bar} single={single!} editing={editingText} /> : null}
       {!allLocked && only && only !== "image" && only !== "group" ? <Sep /> : null}
 

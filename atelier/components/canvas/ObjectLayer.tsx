@@ -16,6 +16,7 @@ import { ShapeView } from "./objects/ShapeView";
 import { StickyView } from "./objects/StickyView";
 import { StrokeView } from "./objects/StrokeView";
 import { TextView } from "./objects/TextView";
+import { TypeSpecimenView } from "./objects/TypeSpecimenView";
 
 let renderProbe: ((id: string) => void) | null = null;
 /** Test hook: called with the id each time an object node renders. */
@@ -86,7 +87,7 @@ export const OBJECT_VIEWS: { [K in ObjectType]: ViewOf<K> } = {
   embed: PlaceholderView,
   swatch: PlaceholderView,
   palette: PlaceholderView,
-  typeSpecimen: PlaceholderView,
+  typeSpecimen: ({ obj }) => <TypeSpecimenView obj={obj} />,
 };
 
 const ObjectNode = memo(
