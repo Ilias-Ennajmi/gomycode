@@ -10,6 +10,8 @@ const HANDLERS: Partial<Record<JobKind, Handler>> = {
   raster: async (p, c) => (await import("./jobs")).runRasterJob(p as never, c),
   svg: async (p, c) => (await import("./jobs")).runSvgJob(p as never, c),
   pdf: async (p, c) => (await import("./jobs")).runPdfJob(p as never, c),
+  backup: async (p, c) => (await import("./jobs")).runBackupJob(p as never, c),
+  jsoncanvas: async (p, c) => (await import("./jobs")).runJsonCanvasJob(p as never, c),
 };
 
 const controllers = new Map<string, AbortController>();

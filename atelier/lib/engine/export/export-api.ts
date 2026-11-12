@@ -2,13 +2,16 @@
 // fonts are loaded), work out the output size, then hand the scene and a plain-data asset table to the export worker.
 // Used by the Export dialog, and by anything else that exports (round previews, the visitor download).
 import { sanitizeFileName } from "@/lib/download";
+import type { BoardDoc } from "@/lib/engine/doc/board-doc";
+import * as Y from "yjs";
+import { planBackup, type AssetInfo } from "./backup";
 import { buildAssetTable, type AssetSource } from "./images";
 import { canvasFont, EXPORT_FONT_FILES, loadExportFonts } from "./fonts";
 import type { ExportManager } from "./manager";
 import { ExportCancelled, type ExportSummary } from "./protocol";
 import { planPdf, type PdfExtras, type PdfOptions } from "./pdf-plan";
 import { clampScale, type RasterOptions } from "./raster";
-import { buildScene, type ExportTarget, type Scene, type SceneOptions, type SceneSource } from "./scene";
+import { boardDocSource, buildScene, type ExportTarget, type Scene, type SceneOptions, type SceneSource } from "./scene";
 import type { TextMeasurer } from "./text-layout";
 
 export interface ExportHandle<R = ExportResult> {
@@ -209,5 +212,40 @@ export function exportPdf(src: SceneSource, o: PdfExportOptions, deps: ExportDep
     adopt(job);
     const out = await job.promise;
     return { blob: out.blob, summary: out.summary, filename: exportFileName(src, { kind: "board" }, "pdf"), pageCount: plan.pages.length };
+  });
+}
+
+export interface BackupDeps extends ExportDeps {
+  /** What is known about each asset (the asset metadata store). */
+  meta: { get(id: string): AssetInfo | undefined };
+}
+
+/** A `.atelier` backup of the board: its state and the original of every picture and video it uses. */
+export function exportBackup(doc: BoardDoc, deps: BackupDeps): ExportHandle {
+  return managed(async (signal, adopt) => {
+    deps.onProgress?.(0, "Preparing");
+    const plan = planBackup(doc, deps.meta);
+    if (signal.aborted) throw new ExportCancelled();
+    const assets = buildAssetTable(plan.assets.map((a) => a.id), deps.assets);
+    const job = deps.manager.run("backup", { plan, assets }, (r, l) => deps.onProgress?.(r, l));
+    adopt(job);
+    const out = await job.promise;
+    return { blob: out.blob, summary: out.summary, filename: exportFileName(boardDocSource(doc), { kind: "board" }, "atelier") };
+  });
+}
+
+/** A JSON Canvas export (jsoncanvas.org): a `.canvas` file, or a ZIP with its pictures. */
+export function exportJsonCanvas(doc: BoardDoc, deps: ExportDeps): ExportHandle {
+  return managed(async (signal, adopt) => {
+    deps.onProgress?.(0, "Preparing");
+    const src = boardDocSource(doc);
+    const ids = new Set<string>();
+    for (const o of doc.all()) if (o.type === "image" || o.type === "video") ids.add(o.assetId);
+    if (signal.aborted) throw new ExportCancelled();
+    const assets = buildAssetTable([...ids], deps.assets);
+    const job = deps.manager.run("jsoncanvas", { state: Y.encodeStateAsUpdate(doc.ydoc), assets, title: doc.meta.title }, (r, l) => deps.onProgress?.(r, l));
+    adopt(job);
+    const out = await job.promise;
+    return { blob: out.blob, summary: out.summary, filename: exportFileName(src, { kind: "board" }, out.summary.extension ?? "canvas") };
   });
 }

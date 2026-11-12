@@ -7,7 +7,9 @@ import { downloadFile, sanitizeFileName } from "@/lib/download";
 import type { BoardDoc } from "@/lib/engine/doc/board-doc";
 import type { ExportFormat, ExportPreset, ExportScope } from "@/lib/engine/export/export-commands";
 import {
+  exportBackup,
   exportImage,
+  exportJsonCanvas,
   exportPdf,
   exportSvg,
   framesInOrder,
@@ -50,6 +52,8 @@ const IMAGE_FORMATS: { id: ExportFormat; label: string }[] = [
   { id: "webp", label: "WebP" },
   { id: "svg", label: "SVG" },
   { id: "pdf", label: "PDF" },
+  { id: "backup", label: "Backup" },
+  { id: "jsonCanvas", label: "JSON Canvas" },
 ];
 
 const SIZES = [1, 2, 4] as const;
@@ -126,7 +130,11 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
 
   const isSvg = format === "svg";
   const isPdf = format === "pdf";
-  const canBeTransparent = format !== "jpeg" && !isPdf;
+  const isBackup = format === "backup";
+  const isCanvas = format === "jsonCanvas";
+  /** Formats that always take the whole board and have no picture options. */
+  const wholeBoard = isBackup || isCanvas;
+  const canBeTransparent = format !== "jpeg" && !isPdf && !wholeBoard;
   const pdfFrameIds = useMemo((): string[] | null => {
     if (effectiveScope === "frame") return frameId ? [frameId] : [];
     if (effectiveScope === "selection") {
@@ -149,7 +157,7 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
   }, [src, target, credits, size, customWidth, isSvg, isPdf, frames.length]);
 
   const running = run.state === "running";
-  const extension = format === "jpeg" ? "jpg" : format;
+  const extension = format === "jpeg" ? "jpg" : isBackup ? "atelier" : isCanvas ? "canvas" : format;
   const pageCount = isPdf ? (pdfFrameIds ?? frames.map((f) => f.id)).length + (cover ? 1 : 0) + (palettePage ? 1 : 0) : 0;
 
   async function start() {
@@ -160,7 +168,11 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
     };
     const deps = { manager: manager ?? getExportManager(), assets, onProgress };
     const common = { transparent: transparent && canBeTransparent, credits };
-    const h = isPdf
+    const h = isBackup
+      ? exportBackup(doc, { ...deps, meta: getAssetMetaStore() })
+      : isCanvas
+        ? exportJsonCanvas(doc, deps)
+        : isPdf
       ? exportPdf(
           src,
           {
@@ -180,7 +192,8 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
     handle.current = h;
     try {
       const result = await h.promise;
-      const filename = name.trim() ? `${sanitizeFileName(name, "export")}.${extension}` : result.filename;
+      const resultExt = result.filename.split(".").pop() ?? extension;
+      const filename = name.trim() ? `${sanitizeFileName(name, "export")}.${resultExt}` : result.filename;
       downloadFile(filename, result.blob);
       if (!alive.current) return;
       setRun({ state: "done", result: { ...result, filename } });
@@ -248,7 +261,7 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
         </h2>
 
         <fieldset disabled={running} className="m-0 min-w-0 border-0 p-0">
-          <p id={`${uid}-scope-l`} className={labelClass}>
+          {wholeBoard ? null : <><p id={`${uid}-scope-l`} className={labelClass}>
             What to export
           </p>
           <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-labelledby={`${uid}-scope-l`}>
@@ -262,7 +275,8 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
               Board
             </Radio>
           </div>
-          {effectiveScope === "frame" ? (
+          </>}
+          {wholeBoard ? null : effectiveScope === "frame" ? (
             <div className="mt-3">
               <label htmlFor={`${uid}-frame`} className={labelClass}>
                 Frame
@@ -280,7 +294,7 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
           <p id={`${uid}-format-l`} className={`${labelClass} mt-5`}>
             Format
           </p>
-          <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-labelledby={`${uid}-format-l`}>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6" role="radiogroup" aria-labelledby={`${uid}-format-l`}>
             {IMAGE_FORMATS.map((f) => (
               <Radio<ExportFormat> key={f.id} name={`${uid}-format`} value={f.id} current={format} onChange={setFormat}>
                 {f.label}
@@ -288,7 +302,13 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
             ))}
           </div>
 
-          {isPdf ? (
+          {wholeBoard ? (
+            <p className={`${helpClass} mt-4`} data-whole-board="">
+              {isBackup
+                ? "A backup holds the whole board and the original file of every picture and video. Open it from the home screen with Import backup: it always becomes a new board and never replaces one."
+                : "JSON Canvas is an open format other tools read. Text, notes, links, frames and arrows are kept; pen strokes and rotation are not. With pictures it is a zip: unpack it into your notes folder."}
+            </p>
+          ) : isPdf ? (
             <div className="mt-5 flex flex-col gap-1" data-pdf-options="">
               <p id={`${uid}-pq-l`} className={labelClass}>
                 Picture quality
@@ -404,7 +424,9 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
         </fieldset>
 
         <p id={outId} className="mt-4 text-(length:--text-sm) text-fg-muted" data-export-size="">
-          {preview?.empty
+          {wholeBoard
+            ? ""
+            : preview?.empty
             ? isPdf
               ? "A deck needs at least one frame: each frame becomes a page."
               : "There is nothing to export here yet."
@@ -454,7 +476,7 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
           >
             {run.state === "done" ? "Close" : "Cancel"}
           </button>
-          <button type="submit" className={buttonPrimary} disabled={running || preview?.empty === true} data-autofocus="">
+          <button type="submit" className={buttonPrimary} disabled={running || (!wholeBoard && preview?.empty === true)} data-autofocus="">
             {running ? "Exporting…" : "Export"}
           </button>
         </div>

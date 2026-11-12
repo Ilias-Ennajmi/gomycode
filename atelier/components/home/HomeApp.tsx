@@ -12,6 +12,7 @@ import { useInboxCount } from "@/components/inbox/useInboxCount";
 import type { BoardSummary, Folder } from "@/lib/sync/board-list-cache";
 import { BoardCard } from "./BoardCard";
 import { ConfirmFolderDelete, MoveDialog, NameDialog } from "./BoardDialogs";
+import { ImportBackup } from "./ImportBackup";
 import { FolderTree } from "./FolderTree";
 import { ToastHost, useToast } from "./HomeToast";
 import { NewBoardDialog, type NewBoardInput } from "./NewBoardDialog";
@@ -154,6 +155,7 @@ export function HomeApp({ localOnly }: { localOnly: boolean }) {
             <Link href="/settings" aria-label="Settings" className={`${secondaryPill} px-0 min-w-11 justify-center`}>
               <Settings size={18} aria-hidden="true" />
             </Link>
+            <ImportBackup actions={actions} localOnly={localOnly} disabled={readOnly} notify={show} onOpen={(id) => router.push(`/b/${id}`)} />
             <button type="button" className={buttonPrimary} disabled={readOnly} onClick={() => setDialog({ kind: "new-board" })}>
               <Plus size={18} aria-hidden="true" />
               New board

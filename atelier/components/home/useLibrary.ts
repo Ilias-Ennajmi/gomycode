@@ -245,6 +245,24 @@ export function useLibrary({ localOnly, notify }: { localOnly: boolean; notify: 
     return "ok";
   }
 
+  /** A board record for a restored backup (the server's id, or a fresh one in local-only mode); its content follows. */
+  async function createImportedBoard(title: string): Promise<string | null> {
+    if (localOnly) return uuid();
+    const res = await call("POST", "/api/boards", { title });
+    if (!res?.ok) return null;
+    try {
+      return ((await res.json()) as { id: string }).id;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Put a restored backup's state into the board made for it and show the board in the list. */
+  async function attachImportedBoard(id: string, title: string, state: Uint8Array): Promise<void> {
+    const { firstFrameName } = await writeLocalBoardCopy(id, state, title);
+    addBoard(newSummary(id, title, null, firstFrameName));
+  }
+
   // ---- folders ---------------------------------------------------------------------------------------
 
   async function createFolder(name: string, parentId: string | null): Promise<void> {
@@ -305,6 +323,6 @@ export function useLibrary({ localOnly, notify }: { localOnly: boolean; notify: 
     loaded,
     offline,
     readOnly,
-    actions: { createBoard, renameBoard, moveBoard, setStarred, trashBoard, restoreBoard, duplicateBoard, createFolder, renameFolder, deleteFolder },
+    actions: { createBoard, renameBoard, moveBoard, setStarred, trashBoard, restoreBoard, duplicateBoard, createImportedBoard, attachImportedBoard, createFolder, renameFolder, deleteFolder },
   };
 }

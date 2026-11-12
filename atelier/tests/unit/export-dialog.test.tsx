@@ -172,6 +172,29 @@ describe("ExportDialog", () => {
     expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
   });
 
+  it("saves a backup and a JSON Canvas export of the whole board, without scope or size options", async () => {
+    const m = fakeManager();
+    mount(board(), m);
+    fireEvent.click(screen.getByRole("radio", { name: "Backup" }));
+    expect(screen.queryByRole("radio", { name: "Frame" })).toBeNull();
+    expect(screen.queryByRole("radio", { name: "2×" })).toBeNull();
+    expect(screen.getByText(/never replaces one/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await waitFor(() => expect(m.calls).toHaveLength(1));
+    expect(m.calls[0].kind).toBe("backup");
+    await act(async () => m.done());
+    expect(await screen.findByText(/Saved Spring\.atelier/)).toBeInTheDocument();
+  });
+
+  it("sends a jsoncanvas job", async () => {
+    const m = fakeManager();
+    mount(board(), m);
+    fireEvent.click(screen.getByRole("radio", { name: "JSON Canvas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await waitFor(() => expect(m.calls).toHaveLength(1));
+    expect(m.calls[0].kind).toBe("jsoncanvas");
+  });
+
   it("is a labelled modal dialog", () => {
     const m = fakeManager();
     mount(board(), m);

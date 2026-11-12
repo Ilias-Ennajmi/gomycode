@@ -189,6 +189,26 @@ export function createImageSource(table: AssetTable, o: ProviderOptions = {}): E
   };
 }
 
+/** Fetches the original file of an asset for backups and ZIPs: its bytes as a Blob and the extension its type implies. */
+export function createOriginalFetcher(table: AssetTable, fetchFn: typeof fetch = (...a) => globalThis.fetch(...a)): (assetId: string) => Promise<{ blob: Blob; ext: string } | null> {
+  return async (assetId) => {
+    const url = table[assetId]?.urls.original;
+    if (!url) return null;
+    try {
+      const res = await fetchFn(url, { mode: "cors", credentials: "omit" });
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      const head = new Uint8Array(await blob.slice(0, 16).arrayBuffer());
+      const sniffed = sniff(head);
+      const type = (blob.type || sniffed || "").toLowerCase();
+      const ext = type.includes("png") ? "png" : type.includes("jpeg") || type.includes("jpg") ? "jpg" : type.includes("webp") ? "webp" : type.includes("gif") ? "gif" : type.includes("mp4") ? "mp4" : type.includes("webm") ? "webm" : "bin";
+      return { blob: blob.type === type ? blob : new Blob([blob], { type }), ext };
+    } catch {
+      return null;
+    }
+  };
+}
+
 const CHUNK = 0x8000;
 
 /** `data:` URL of picture bytes, in chunks so a large picture does not blow the call stack. */

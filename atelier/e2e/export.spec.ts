@@ -219,6 +219,45 @@ test.describe("export", () => {
     await expect(dialog.locator("[data-export-summary]")).toContainText("Saved");
   });
 
+  test("a backup saves the board and its pictures and imports as a new board", async ({ page }, info) => {
+    if (info.project.name !== "desktop") test.skip();
+    const id = await openBoard(page, undefined, { zoom: 0.4 });
+    const { frames } = await buildBoard(page);
+    await addTexts(page, frames["Intro"]);
+    const before = await objects(page);
+    const images = before.filter((o) => o.type === "image").length;
+    expect(images).toBe(6);
+    await selectIds(page, []);
+    const dialog = await openDialog(page);
+    await dialog.getByRole("radio", { name: "Backup" }).check({ force: true });
+    const d = await runExport(page, dialog);
+    const bytes = await save(d);
+    expect(d.suggestedFilename()).toMatch(/\.atelier$/);
+    expect(bytes.subarray(0, 2).toString()).toBe("PK");
+    await expect(dialog.locator("[data-export-summary]")).toContainText("Saved");
+    await dialog.getByRole("button", { name: "Close" }).click();
+
+    // a different file is refused with a clear message
+    await page.goto("/");
+    await page.locator("[data-import-input]").setInputFiles({ name: "notes.atelier", mimeType: "application/zip", buffer: Buffer.from("this is not an archive") });
+    await expect(page.getByText("That file is not an Atelier backup.")).toBeVisible();
+
+    // the real backup becomes a new board
+    await page.locator("[data-import-input]").setInputFiles({ name: d.suggestedFilename(), mimeType: "application/zip", buffer: bytes });
+    const toast = page.getByText(/^Imported “/);
+    await expect(toast).toBeVisible({ timeout: 60_000 });
+    await page.getByRole("button", { name: "Open" }).click();
+    await page.waitForFunction(() => !!(window as unknown as { __atelier?: unknown }).__atelier);
+    await expect.poll(async () => (await objects(page)).length, { timeout: 30_000 }).toBe(before.length);
+    const after = await objects(page);
+    expect(after.filter((o) => o.type === "image")).toHaveLength(6);
+    expect(new URL(page.url()).pathname).not.toBe(`/b/${id}`);
+    // pictures are new assets (re-uploaded through the pipeline), and they draw
+    const oldAssets = new Set(before.filter((o) => o.type === "image").map((o) => o.assetId));
+    for (const o of after.filter((x) => x.type === "image")) expect(oldAssets.has(o.assetId)).toBe(false);
+    await expect(page.locator("[data-object-type=image] img, [data-object-type=image] canvas").first()).toBeVisible({ timeout: 30_000 });
+  });
+
   test("the dialog is keyboard operable and has no accessibility violations; Escape closes it", async ({ page }, info) => {
     if (info.project.name !== "desktop") test.skip();
     await openBoard(page, undefined, { zoom: 0.4 });

@@ -1,6 +1,6 @@
 // Messages between the export manager (main thread) and the export worker, and the shared result types.
 
-export type JobKind = "raster" | "svg" | "pdf" | "zip" | "backup" | "import";
+export type JobKind = "raster" | "svg" | "pdf" | "zip" | "backup" | "import" | "jsoncanvas";
 
 export type WorkerIn = { type: "start"; id: string; kind: JobKind; payload: unknown } | { type: "cancel"; id: string };
 
@@ -14,6 +14,8 @@ export interface ExportSummary {
   warnings: string[];
   width?: number;
   height?: number;
+  /** File extension of the result when the job decides it (a JSON Canvas export is a .zip when it carries pictures). */
+  extension?: string;
 }
 
 export type WorkerOut =
