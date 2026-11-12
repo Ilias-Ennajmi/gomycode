@@ -1,6 +1,6 @@
 "use client";
 
-import { GalleryHorizontal, GitCompareArrows, History, Inbox, Layers, Palette, Search, SlidersHorizontal, X, type LucideIcon } from "lucide-react";
+import { GalleryHorizontal, Inbox, Layers, Palette, Search, SlidersHorizontal, X, type LucideIcon } from "lucide-react";
 import { useEffect, useId, useRef, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { PANEL_MAX_WIDTH, PANEL_MIN_WIDTH, useEditor } from "@/components/editor/EditorContext";
 import { useIsDesktop } from "./doc-hooks";
@@ -8,9 +8,7 @@ import { FindReplace } from "./FindReplace";
 import { InboxPanel } from "./InboxPanel";
 import { InspectorPanel } from "./InspectorPanel";
 import { LayersPanel } from "./LayersPanel";
-import { HistoryPanel } from "./HistoryPanel";
 import { PalettePanel } from "./PalettePanel";
-import { RoundsPanel } from "./RoundsPanel";
 import { SlidesPanel } from "@/components/present/SlidesPanel";
 
 export type PanelDef = { id: string; title: string; icon: LucideIcon; render(): ReactNode };
@@ -22,8 +20,6 @@ export const DEFAULT_PANELS: PanelDef[] = [
   { id: "palette", title: "Palette", icon: Palette, render: () => <PalettePanel /> },
   { id: "inbox", title: "Inbox", icon: Inbox, render: () => <InboxPanel /> },
   { id: "slides", title: "Slides", icon: GalleryHorizontal, render: () => <SlidesPanel /> },
-  { id: "rounds", title: "Rounds", icon: GitCompareArrows, render: () => <RoundsPanel /> },
-  { id: "history", title: "Version history", icon: History, render: () => <HistoryPanel /> },
 ];
 
 const KEY_STEP = 16;

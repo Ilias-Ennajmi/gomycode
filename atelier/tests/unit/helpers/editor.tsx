@@ -19,7 +19,7 @@ export function obj(type: ObjectType, id: string, extra: Record<string, unknown>
 export type TestEditor = ReturnType<typeof makeEditor>;
 
 /** A board, selection and fake canvas handle wired into a real EditorProvider. */
-export function makeEditor(objs: NewObject[] = [], opts: { boardId?: string; localOnly?: boolean } = {}) {
+export function makeEditor(objs: NewObject[] = []) {
   const doc = new BoardDoc();
   doc.createMany(objs);
   doc.stopCapturing();
@@ -69,7 +69,7 @@ export function makeEditor(objs: NewObject[] = [], opts: { boardId?: string; loc
     toasts.push(o);
   };
   const wrap = (ui: ReactElement) => (
-    <EditorProvider handle={handle} toast={toast} navigate={navigate} boardId={opts.boardId} localOnly={opts.localOnly}>
+    <EditorProvider handle={handle} toast={toast} navigate={navigate}>
       {ui}
     </EditorProvider>
   );

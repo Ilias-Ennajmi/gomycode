@@ -18,8 +18,6 @@ import { CanvasView, type CanvasHandle } from "@/components/canvas/CanvasView";
 import { toast } from "@/components/chrome/Toast";
 import { EditorChrome } from "@/components/chrome/EditorChrome";
 import { ColorServices } from "@/components/editor/ColorServices";
-import { BoardInfoProvider } from "@/components/rounds/BoardInfo";
-import { RoundsHost } from "@/components/rounds/RoundsHost";
 import { EditorProvider } from "@/components/editor/EditorContext";
 import { EditorOverlays } from "@/components/editor/EditorOverlays";
 import { SETTINGS_KEY, loadSettings, saveSettings, type NavSettings } from "@/lib/settings";
@@ -246,8 +244,7 @@ export function BoardClient({ boardId, localOnly }: { boardId: string; localOnly
         cameraShortcuts={false /* the command registry binds Shift+1/2 and Mod +/-/0 */}
       />
       {canvas ? (
-        <BoardInfoProvider value={{ boardId, localOnly, sync: session.sync }}>
-        <EditorProvider handle={canvas} uploader={session.uploader} inbox={session.inbox} boardId={boardId} localOnly={localOnly} assets={getAssetResolver()} onToggleSnap={toggleSnap} navigate={(href) => router.push(href)}>
+        <EditorProvider handle={canvas} uploader={session.uploader} inbox={session.inbox} assets={getAssetResolver()} onToggleSnap={toggleSnap} navigate={(href) => router.push(href)}>
           <EditorChrome
             boardId={boardId}
             title={title}
@@ -259,9 +256,7 @@ export function BoardClient({ boardId, localOnly }: { boardId: string; localOnly
           />
           <EditorOverlays />
           <ColorServices />
-          <RoundsHost />
         </EditorProvider>
-        </BoardInfoProvider>
       ) : null}
     </main>
   );

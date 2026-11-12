@@ -164,7 +164,7 @@ test.describe("keyboard", () => {
     await openBoard(page);
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     const seen: string[] = [];
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 9; i++) {
       await page.keyboard.press("Tab");
       const name = await page.evaluate(() => {
         const el = document.activeElement as HTMLElement | null;

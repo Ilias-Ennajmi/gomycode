@@ -7,9 +7,6 @@ const PREINSTALLED_CHROMIUM = "/opt/pw-browsers/chromium";
 const executablePath =
   process.env.PW_CHROMIUM_PATH ?? (existsSync(PREINSTALLED_CHROMIUM) ? PREINSTALLED_CHROMIUM : undefined);
 
-// Where the share page loads pictures from (a build-time value; the share tests answer these requests themselves, see e2e/support/images.ts).
-process.env.NEXT_PUBLIC_R2_PUBLIC_HOST ??= "assets.example.test";
-
 const PORT = Number(process.env.PORT ?? 3100);
 // A second server, not in local-only mode, so the login page can be checked (in local-only mode /login redirects into
 // the app). It has placeholder Supabase settings and never contacts anything: without a session it serves /login.
@@ -43,13 +40,7 @@ export default defineConfig({
       url: `http://localhost:${PORT}/api/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 300_000,
-      env: {
-        ATELIER_LOCAL_ONLY: "1",
-        PORT: String(PORT),
-        NEXT_TELEMETRY_DISABLED: "1",
-        // Share pages: the visitor cookie needs a signing secret (e2e only; never a real one).
-        SHARE_COOKIE_SECRET: "e2e-share-cookie-secret-0123456789abcdef0123",
-      },
+      env: { ATELIER_LOCAL_ONLY: "1", PORT: String(PORT), NEXT_TELEMETRY_DISABLED: "1" },
     },
     {
       command: `npx next start -p ${AUTH_PORT}`,

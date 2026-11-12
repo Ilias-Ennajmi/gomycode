@@ -72,25 +72,12 @@ describe("TopBar", () => {
     expect(screen.getByRole("button", { name: "Present" })).toHaveAccessibleDescription("Coming in Phase 3");
   });
 
-  it("Share opens the Share dialog; it is the one primary button", () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ links: [] }), { status: 200, headers: { "content-type": "application/json" } })));
-    makeEditor([], { boardId: "b1" }).render(<TopBar {...base} />);
-    const b = screen.getByRole("button", { name: "Share" });
-    expect(b).toBeEnabled();
-    expect(b.className).toContain("bg-brand");
-    fireEvent.click(b);
-    expect(screen.getByRole("dialog", { name: "Share this board" })).toBeInTheDocument();
-    vi.unstubAllGlobals();
-  });
-
-  it("Share stays disabled where the editor does not know its board (a bare top bar)", () => {
+  it("Share is disabled and says why; it is the one primary button", () => {
     makeEditor().render(<TopBar {...base} />);
     const b = screen.getByRole("button", { name: "Share" });
     expect(b).toBeDisabled();
+    expect(b).toHaveAccessibleDescription("Coming in Phase 3");
     expect(b.className).toContain("bg-brand");
-    document.body.innerHTML = "";
-    render(<TopBar {...base} />);
-    expect(screen.getByRole("button", { name: "Share" })).toBeDisabled();
   });
 
   it.each([

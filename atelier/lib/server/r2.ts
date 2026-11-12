@@ -177,19 +177,3 @@ export async function deleteAssetObjects(
   );
   if (results.some((r) => r.status === "rejected")) throw new StorageDeleteError("failed");
 }
-
-/** The PUT URLs for one frame's two preview images (`p/{token}/{frameId}-w480.webp` and `-w1280.webp`): image/webp, 10 minutes. */
-export function presignPreviewUploads({
-  token,
-  frameId,
-  now,
-  config = r2Config(),
-}: {
-  token: string;
-  frameId: string;
-  now?: Date;
-  config?: R2Config | null;
-}): { w480: string; w1280: string } {
-  const sign = (size: "w480" | "w1280") => presignPut({ key: `p/${token}/${frameId}-${size}.webp`, contentType: "image/webp", expiresSeconds: 600, now, config });
-  return { w480: sign("w480"), w1280: sign("w1280") };
-}

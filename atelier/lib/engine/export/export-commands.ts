@@ -22,7 +22,6 @@ export const EXPORT_COMMANDS: Command[] = [
   open("Export as WebP…", "export.webp", { format: "webp" }),
   open("Export as SVG…", "export.svg", { format: "svg" }),
   open("Export as PDF deck…", "export.pdf", { format: "pdf", scope: "board" }),
-  open("Export as ZIP (originals, credits, palettes)…", "export.zip", { format: "zip", scope: "board" }),
   open("Save a backup (.atelier)…", "export.backup", { format: "backup", scope: "board" }),
   open("Export as JSON Canvas…", "export.jsonCanvas", { format: "jsonCanvas", scope: "board" }),
 ];

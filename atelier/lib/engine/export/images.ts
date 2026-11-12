@@ -190,12 +190,12 @@ export function createImageSource(table: AssetTable, o: ProviderOptions = {}): E
 }
 
 /** Fetches the original file of an asset for backups and ZIPs: its bytes as a Blob and the extension its type implies. */
-export function createOriginalFetcher(table: AssetTable, fetchFn: typeof fetch = (...a) => globalThis.fetch(...a)): (assetId: string, signal?: AbortSignal) => Promise<{ blob: Blob; ext: string } | null> {
-  return async (assetId, signal) => {
+export function createOriginalFetcher(table: AssetTable, fetchFn: typeof fetch = (...a) => globalThis.fetch(...a)): (assetId: string) => Promise<{ blob: Blob; ext: string } | null> {
+  return async (assetId) => {
     const url = table[assetId]?.urls.original;
     if (!url) return null;
     try {
-      const res = await fetchFn(url, { mode: "cors", credentials: "omit", ...(signal ? { signal } : {}) });
+      const res = await fetchFn(url, { mode: "cors", credentials: "omit" });
       if (!res.ok) return null;
       const blob = await res.blob();
       const head = new Uint8Array(await blob.slice(0, 16).arrayBuffer());

@@ -29,8 +29,6 @@ import type { BoardDoc } from "../doc/board-doc";
 import type { ToolId } from "../input/tool-machine";
 import { EXPORT_COMMANDS } from "../export/export-commands";
 import { PRESENT_COMMANDS } from "../present/present-commands";
-import { ROUND_COMMANDS } from "../rounds/round-commands";
-import { SHARE_COMMANDS } from "../../share/share-commands";
 import { MEDIA_COMMANDS } from "./media-commands";
 import { PALETTE_COMMANDS } from "./palette-commands";
 import { PROVENANCE_COMMANDS } from "./provenance-commands";
@@ -491,17 +489,10 @@ export const BUILTIN_COMMANDS: Command[] = [
   // link cards and embeds (paste as text, open, retry, insert by URL)
   ...LINK_COMMANDS,
 
-  // export: the dialog and its presets
   ...EXPORT_COMMANDS,
 
   // presentation mode and slide order
   ...PRESENT_COMMANDS,
-
-  // rounds: publish, compare, version history
-  ...ROUND_COMMANDS,
-
-  // sharing: the Share dialog
-  ...SHARE_COMMANDS,
 ];
 
 /** Add the built-in commands to a registry (done for the app-wide one on import). */
