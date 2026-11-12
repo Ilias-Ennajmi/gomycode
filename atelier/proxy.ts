@@ -31,7 +31,11 @@ const OPEN_PATHS = new Set([
   "/share-target",
   "/api/health",
 ]);
-const OPEN_PREFIXES = ["/_next/", "/brand/", "/icons/", "/.well-known/"];
+// Share links (Phase 3): a client opens /s/{token} and calls /api/s/{token}/* with no Atelier account. These are the only
+// public app routes. They expose no owner data: every /api/s/ handler except `meta` and the session routes goes through
+// requireVisitor (lib/share/guard.ts), which re-checks the link, the signed cookie, the permission and the scope on every call.
+// A prefix match on the normalised pathname: "/s", "/sx/..." and "/api/share-links/..." are NOT open.
+const OPEN_PREFIXES = ["/_next/", "/brand/", "/icons/", "/.well-known/", "/s/", "/api/s/"];
 
 function isOpenPath(pathname: string) {
   return OPEN_PATHS.has(pathname) || OPEN_PREFIXES.some((p) => pathname.startsWith(p));
