@@ -5,7 +5,7 @@ import type { VariantName } from "./variants";
 
 export type LocalBlobs = Partial<Record<AssetVariant, Blob>>;
 /** What the caller knows about a locally registered asset; kept after the blobs are forgotten. */
-export type LocalInfo = Pick<AssetMeta, "kind" | "width" | "height" | "bytes" | "variants"> & Partial<Pick<AssetMeta, "title" | "provenance" | "palette" | "phash">> & { mime?: string };
+export type LocalInfo = Pick<AssetMeta, "kind" | "width" | "height" | "bytes" | "variants"> & Partial<Pick<AssetMeta, "title" | "provenance" | "palette" | "phash" | "analysisVersion">> & { mime?: string };
 
 function normaliseHost(h: string | null | undefined): string | null {
   const host = (h ?? "").trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "");
@@ -82,7 +82,7 @@ export class AssetResolverImpl implements AssetResolver {
         phash: info.phash ?? prev?.phash ?? null,
         title: info.title ?? prev?.title ?? "",
         provenance: info.provenance ?? prev?.provenance ?? null,
-        analysisVersion: prev?.analysisVersion ?? 0,
+        analysisVersion: Math.max(info.analysisVersion ?? 0, prev?.analysisVersion ?? 0),
       });
     }
   }

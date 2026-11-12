@@ -3,6 +3,8 @@
  * variants to make. The browser calls (createImageBitmap, OffscreenCanvas) are injected as a PipelineEnv; the real
  * one lives in pipeline.worker.ts (and in pipeline.ts when no Worker is available).
  */
+import { extractPalette, type RawImage } from "@/lib/engine/color/extract";
+import { dhash } from "@/lib/engine/color/phash";
 import type { PaletteColor } from "@/lib/engine/model/types";
 import { VARIANT_SIZES, variantPlan, type VariantName } from "./variants";
 
@@ -34,7 +36,17 @@ export interface DecodedBitmap {
 export interface PipelineEnv {
   createImageBitmap(file: Blob, options: { imageOrientation: "from-image" }): Promise<DecodedBitmap>;
   encodeWebp(bitmap: DecodedBitmap, width: number, height: number, quality: number): Promise<Blob>;
+  /**
+   * RGBA pixels of the bitmap shrunk to at most `maxSide` px on its longest side, for the colour analysis. Optional: an
+   * environment without it (or one that throws) just produces no palette and no hash.
+   */
+  readPixels?(bitmap: DecodedBitmap, maxSide: number): RawImage | Promise<RawImage>;
 }
+
+/** The longest side of the pixel sample the colour analysis reads back. */
+export const ANALYSIS_SIDE = 64;
+
+export type Analysis = { palette: PaletteColor[]; phash: string };
 
 export type ProcessedImage = {
   /** Pixel size after EXIF orientation. */
@@ -161,6 +173,45 @@ export async function detectAnimated(file: Blob): Promise<boolean> {
   }
 }
 
+/**
+ * Palette (k-means in OKLab) and perceptual hash (dHash) of a decoded bitmap, or null when the environment cannot read
+ * pixels or fails: colour analysis is an extra and must never stop an image from being added.
+ */
+async function analyseBitmap(bitmap: DecodedBitmap, env: PipelineEnv): Promise<Analysis | null> {
+  if (!env.readPixels) return null;
+  try {
+    const raw = await env.readPixels(bitmap, ANALYSIS_SIDE);
+    return { palette: extractPalette(raw), phash: dhash(raw) };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Decode a file and run only the colour analysis (no variants): for images added before Phase 2. Throws ImageError when
+ * the file is empty, too large, unreadable or the environment cannot read pixels.
+ */
+export async function runAnalysis(file: Blob, env: PipelineEnv): Promise<Analysis> {
+  assertAcceptable(file);
+  const mime = file.type || "application/octet-stream";
+  let bitmap: DecodedBitmap;
+  try {
+    bitmap = await env.createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch {
+    throw new ImageError("unsupported", `unsupported format (${mime}); this browser can't read it`);
+  }
+  try {
+    if (!(bitmap.width > 0 && bitmap.height > 0) || bitmap.width > MAX_IMAGE_SIDE || bitmap.height > MAX_IMAGE_SIDE) {
+      throw new ImageError("unsupported", `unsupported image size (${bitmap.width} x ${bitmap.height})`);
+    }
+    const out = await analyseBitmap(bitmap, env);
+    if (!out) throw new ImageError("unsupported", "could not read the image's colours");
+    return out;
+  } finally {
+    bitmap.close?.();
+  }
+}
+
 export async function runPipeline(file: Blob, env: PipelineEnv): Promise<ProcessedImage> {
   assertAcceptable(file);
   const mime = file.type || "application/octet-stream";
@@ -182,7 +233,8 @@ export async function runPipeline(file: Blob, env: PipelineEnv): Promise<Process
       const v = fitWithin(width, height, VARIANT_SIZES[name]);
       variants[name] = await env.encodeWebp(bitmap, v.w, v.h, WEBP_QUALITY);
     }
-    return { width, height, mime, original: file, variants, animated };
+    const analysis = await analyseBitmap(bitmap, env);
+    return { width, height, mime, original: file, variants, animated, ...(analysis ?? {}) };
   } finally {
     bitmap.close?.();
   }
@@ -206,6 +258,25 @@ export function browserEnv(): PipelineEnv {
         source = canvas;
       }
       return canvas.convertToBlob({ type: "image/webp", quality });
+    },
+    readPixels(bitmap, maxSide) {
+      const size = fitWithin(bitmap.width, bitmap.height, maxSide);
+      let source: ImageBitmap | OffscreenCanvas = bitmap as ImageBitmap;
+      let canvas = new OffscreenCanvas(size.w, size.h);
+      for (const step of downscaleSteps(bitmap.width, bitmap.height, size.w, size.h)) {
+        canvas = new OffscreenCanvas(step.w, step.h);
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        if (!ctx) throw new Error("no 2d context");
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(source, 0, 0, step.w, step.h);
+        source = canvas;
+      }
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) throw new Error("no 2d context");
+      // No steps means the image already fits: draw it as it is.
+      if (source === (bitmap as unknown)) ctx.drawImage(source, 0, 0);
+      const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      return { data, width, height };
     },
   };
 }

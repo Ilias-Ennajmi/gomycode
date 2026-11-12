@@ -3,25 +3,27 @@ import {
   assertAcceptable,
   browserEnv,
   ImageError,
+  runAnalysis,
   runPipeline,
+  type Analysis,
   type ImageErrorReason,
   type PipelineEnv,
   type ProcessedImage,
 } from "./pipeline-core";
 
-export { ImageError, MAX_IMAGE_BYTES, VARIANT_SIZES, variantPlan, type ProcessedImage, type VariantName } from "./pipeline-core";
+export { ImageError, MAX_IMAGE_BYTES, VARIANT_SIZES, variantPlan, type Analysis, type ProcessedImage, type VariantName } from "./pipeline-core";
 
 /** At most this many images are decoded and resized at once (a bulk drop of hundreds must not freeze the tab). */
 export const MAX_CONCURRENT_PROCESSING = 3;
 const limit = createLimiter(MAX_CONCURRENT_PROCESSING);
 
 type Reply =
-  | { id: number; ok: true; result: ProcessedImage }
+  | { id: number; ok: true; result: ProcessedImage | Analysis }
   | { id: number; ok: false; reason: ImageErrorReason; message: string };
 
 let worker: Worker | null = null;
 let nextId = 1;
-const waiting = new Map<number, { resolve: (r: ProcessedImage) => void; reject: (e: unknown) => void }>();
+const waiting = new Map<number, { resolve: (r: unknown) => void; reject: (e: unknown) => void }>();
 
 function getWorker(): Worker | null {
   if (typeof Worker === "undefined" || typeof OffscreenCanvas === "undefined") return null;
@@ -68,9 +70,33 @@ async function processNow(file: Blob, env?: PipelineEnv): Promise<ProcessedImage
     }
     return runPipeline(file, browserEnv());
   }
-  return new Promise<ProcessedImage>((resolve, reject) => {
+  return askWorker<ProcessedImage>(w, { file });
+}
+
+function askWorker<T>(w: Worker, message: { file: Blob; op?: "process" | "analyse" }): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
     const id = nextId++;
-    waiting.set(id, { resolve, reject });
-    w.postMessage({ id, file });
+    waiting.set(id, { resolve: resolve as (r: unknown) => void, reject });
+    w.postMessage({ id, ...message });
+  });
+}
+
+/**
+ * Palette (up to 8 colours with weights) and perceptual hash of an image that is already stored, in the Worker when the
+ * browser has one. Shares the processing limit with processImage, so a backfill never competes with more than its share.
+ * Throws ImageError (unreadable, too large, no pixel access). `opts.env` runs on the calling thread (tests).
+ */
+export function analyseImage(file: Blob, opts: { env?: PipelineEnv } = {}): Promise<Analysis> {
+  return limit(async () => {
+    assertAcceptable(file);
+    if (opts.env) return runAnalysis(file, opts.env);
+    const w = getWorker();
+    if (!w) {
+      if (typeof createImageBitmap === "undefined" || typeof OffscreenCanvas === "undefined") {
+        throw new ImageError("unsupported", "this browser can't process images");
+      }
+      return runAnalysis(file, browserEnv());
+    }
+    return askWorker<Analysis>(w, { file, op: "analyse" });
   });
 }

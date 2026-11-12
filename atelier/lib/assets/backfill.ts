@@ -1,7 +1,9 @@
 import type { AssetUploader } from "./upload-queue";
 import type { AssetResolverImpl } from "./resolver";
 import { VARIANT_NAMES, variantPlan, type VariantName } from "./variants";
-import type { ProcessedImage } from "./pipeline-core";
+import type { Analysis, ProcessedImage } from "./pipeline-core";
+import type { AssetMetaStore } from "./meta-store";
+import type { AssetResolver } from "./resolver-types";
 
 export type BackfillDeps = {
   resolver: Pick<AssetResolverImpl, "url" | "available" | "meta">;
@@ -91,4 +93,122 @@ export function scheduleBackfill(
     }
   })();
   return { cancel: () => void (cancelled = true), finished };
+}
+
+// ---- colour analysis of assets that have none ----------------------------------------------------------------------------
+
+export type AnalysisDeps = {
+  /** Where the image comes from: the 256 px variant when there is one, else w1024, else the original. */
+  resolver: Pick<AssetResolver, "url">;
+  /** Read for what is known about the asset, updated with the result (subscribers are told). */
+  meta: AssetMetaStore;
+  /** Defaults to the global fetch. */
+  fetch?: typeof fetch;
+  /** Decode + analyse. Defaults to the pipeline (worker). */
+  analyse?: (file: Blob) => Promise<Analysis>;
+  /** Aborts the download in flight (scheduleAnalysis().cancel()). */
+  signal?: AbortSignal;
+};
+
+// One analysis at a time, across every caller (it decodes an image).
+let analysisTail: Promise<unknown> = Promise.resolve();
+
+/**
+ * Ids (in the order given, each once) of the images whose colour analysis has not been done: palette and perceptual hash
+ * are missing (`analysisVersion` 0). Videos and assets the metadata store knows nothing about are left out.
+ */
+export function pendingAnalysisIds(meta: AssetMetaStore, assetIds: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const id of assetIds) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const m = meta.get(id);
+    if (m && m.kind !== "video" && m.analysisVersion < 1) out.push(id);
+  }
+  return out;
+}
+
+/**
+ * An image uploaded before Phase 2 (or whose upload could not analyse it) has no palette or hash: fetch its small variant,
+ * analyse it (in the worker), record the result with PATCH /api/assets/:id and in the metadata store.
+ * A no-op when the metadata is unknown, the asset is a video or already analysed (analysisVersion 1), or the browser is
+ * offline. Calls are serialised. Throws when the image cannot be fetched or analysed, or the PATCH fails; the colours found
+ * are kept locally in that last case, so a retry only repeats the PATCH. Local-only mode (the route answers 503) has no
+ * server to tell, so the result counts as done; a 404 means the server does not know the asset (yet).
+ */
+export function ensureAnalysis(assetId: string, deps: AnalysisDeps): Promise<void> {
+  const run = analysisTail.then(() => analyseWork(assetId, deps));
+  analysisTail = run.catch(() => {});
+  return run;
+}
+
+async function analyseWork(assetId: string, deps: AnalysisDeps): Promise<void> {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+  if (deps.signal?.aborted) return;
+  const stored = deps.meta.get(assetId);
+  if (!stored || stored.kind === "video" || stored.analysisVersion >= 1) return;
+
+  let found: Analysis | null = stored.palette && stored.phash ? { palette: stored.palette, phash: stored.phash } : null;
+  if (!found) {
+    const url = deps.resolver.url(assetId, "w256");
+    if (!url) return;
+    const f = deps.fetch ?? ((...a: Parameters<typeof fetch>) => globalThis.fetch(...a));
+    const res = await f(url, { signal: deps.signal });
+    if (!res.ok) throw new Error(`Fetching the image failed (${res.status})`);
+    const blob = await res.blob();
+    if (deps.signal?.aborted) return;
+    const analyse = deps.analyse ?? (await import("./pipeline")).analyseImage;
+    found = await analyse(blob);
+    if (deps.signal?.aborted) return;
+    // Keep what was found even if the server cannot be told right now.
+    deps.meta.put({ ...(deps.meta.get(assetId) ?? stored), palette: found.palette, phash: found.phash });
+  }
+
+  const f = deps.fetch ?? ((...a: Parameters<typeof fetch>) => globalThis.fetch(...a));
+  const patched = await f(`/api/assets/${encodeURIComponent(assetId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ palette: found.palette, phash: found.phash, analysisVersion: 1 }),
+    signal: deps.signal,
+  });
+  const current = deps.meta.get(assetId) ?? stored;
+  if (patched.ok || patched.status === 503) {
+    deps.meta.put({ ...current, palette: found.palette, phash: found.phash, analysisVersion: 1 });
+    return;
+  }
+  if (patched.status === 404) return; // the server has not seen this asset (its upload is still pending)
+  throw new Error(`Recording the colours failed (${patched.status})`);
+}
+
+/**
+ * Analyse `assetIds` one after another, each when the browser is idle (requestIdleCallback with a 2 s timeout, or a short
+ * timer where that does not exist). Failures go to `onError` and the next asset still runs. `cancel()` stops after the
+ * current step and aborts a download in flight; a cancelled job reports no error.
+ */
+export function scheduleAnalysis(
+  assetIds: string[],
+  deps: Omit<AnalysisDeps, "signal">,
+  opts: { idle?: (fn: () => void) => void; onError?: (e: unknown) => void } = {},
+): { cancel(): void; finished: Promise<void> } {
+  const controller = new AbortController();
+  const idle = opts.idle ?? defaultIdle;
+  const finished = (async () => {
+    for (const id of assetIds) {
+      await new Promise<void>((resolve) => idle(resolve));
+      if (controller.signal.aborted) return;
+      try {
+        await ensureAnalysis(id, { ...deps, signal: controller.signal });
+      } catch (e) {
+        if (controller.signal.aborted) return;
+        opts.onError?.(e);
+      }
+    }
+  })();
+  return { cancel: () => controller.abort(), finished };
+}
+
+function defaultIdle(fn: () => void): void {
+  if (typeof requestIdleCallback === "function") requestIdleCallback(() => fn(), { timeout: 2000 });
+  else setTimeout(fn, 200);
 }

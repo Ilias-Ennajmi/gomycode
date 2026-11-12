@@ -14,6 +14,17 @@ export const ALLOWED_VIDEO_MIMES = ["video/mp4", "video/webm"] as const;
 
 export type AssetKind = "image" | "video" | "gif";
 
+/** At most this many colours are stored per asset (the analysis makes at most 8). */
+export const MAX_PALETTE_COLORS = 12;
+
+/** `assets.palette`: lower-case or upper-case `#rrggbb` with a 0..1 weight. Empty = analysed, nothing to find (fully transparent). */
+export const paletteSchema = z
+  .array(z.object({ hex: z.string().regex(/^#[0-9a-fA-F]{6}$/), weight: z.number().min(0).max(1) }).strict())
+  .max(MAX_PALETTE_COLORS);
+
+/** Normalised for storage: lower-case hex. */
+export const normalisePalette = (p: { hex: string; weight: number }[]) => p.map((c) => ({ hex: c.hex.toLowerCase(), weight: c.weight }));
+
 const metaSchema = z.object({
   assetId: z.string().refine(isAssetId).optional(),
   mime: z.string().min(1).max(100),
@@ -23,6 +34,7 @@ const metaSchema = z.object({
   kind: z.enum(["image", "video", "gif"]).optional(),
   variants: z.array(z.enum(VARIANT_NAMES as [VariantName, ...VariantName[]])).max(12).optional(),
   phash: z.string().regex(/^[0-9a-fA-F]{16}$/).optional(),
+  palette: paletteSchema.optional(),
 });
 
 export type AssetMeta = {
@@ -36,6 +48,8 @@ export type AssetMeta = {
   variants: VariantName[];
   /** 16 lower-case hex characters. */
   phash?: string;
+  /** The colour analysis ran on the client (possibly with no colours at all); absent = not analysed yet. */
+  palette?: { hex: string; weight: number }[];
 };
 export type AssetMetaResult = { ok: true; meta: AssetMeta } | { ok: false; status: 400 | 413 | 415; error: string };
 
@@ -71,6 +85,7 @@ export function parseAssetMeta(raw: unknown): AssetMetaResult {
   const meta: AssetMeta = { mime: d.mime, bytes: d.bytes, width: d.width, height: d.height, kind, variants };
   if (d.assetId) meta.assetId = d.assetId;
   if (d.phash) meta.phash = d.phash.toLowerCase();
+  if (d.palette) meta.palette = normalisePalette(d.palette);
   return { ok: true, meta };
 }
 

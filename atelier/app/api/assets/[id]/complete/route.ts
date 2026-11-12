@@ -31,7 +31,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
   const parsed = parseAssetMeta(raw);
   if (!parsed.ok) return json(parsed.status, { error: parsed.error });
-  const { mime, bytes, width, height, kind, variants, phash } = parsed.meta;
+  const { mime, bytes, width, height, kind, variants, phash, palette } = parsed.meta;
 
   const { error } = await auth.supabase.from("assets").upsert(
     {
@@ -45,6 +45,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       variants: variantsColumn(variants, bytes) as Json,
       // A retry that does not repeat the hash must not erase it.
       ...(phash ? { phash } : {}),
+      // The colour analysis (an empty palette means "analysed, nothing to find"); without it the backfill does it later.
+      ...(palette ? { palette: palette as Json, analysis_version: 1 } : {}),
     },
     { onConflict: "id" },
   );

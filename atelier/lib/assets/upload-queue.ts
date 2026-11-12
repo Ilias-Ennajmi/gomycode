@@ -1,6 +1,6 @@
 import { DERIVED_ORIGIN, type BoardDoc } from "@/lib/engine/doc/board-doc";
 import { defaultsFor } from "@/lib/engine/model/defaults";
-import type { Point, Provenance } from "@/lib/engine/model/types";
+import type { PaletteColor, Point, Provenance } from "@/lib/engine/model/types";
 import { newId } from "@/lib/ids";
 import { backoffDelay } from "@/lib/sync/backoff";
 import { idbDone, idbOpen, idbRequest } from "@/lib/sync/idb-util";
@@ -39,6 +39,10 @@ type Meta = {
   kind?: AssetKind;
   variants?: VariantName[];
   phash?: string | null;
+  /** Colour analysis from the pipeline (an empty list = analysed, nothing to find); absent = not analysed. Sent on complete. */
+  palette?: PaletteColor[] | null;
+  /** The perceptual hash, always (unlike `phash`, which only canvas images send to look for a duplicate). Sent on complete. */
+  hash?: string | null;
   provenance?: Provenance | null;
   createdAt: number;
 };
@@ -103,7 +107,9 @@ function localInfo(meta: Meta, variants: VariantName[]): LocalInfo {
     mime: meta.mime,
     title: "",
     provenance: meta.provenance ?? null,
-    phash: meta.phash ?? null,
+    phash: meta.hash ?? meta.phash ?? null,
+    palette: meta.palette ?? null,
+    analysisVersion: meta.palette ? 1 : 0,
   };
 }
 
@@ -282,6 +288,8 @@ export class AssetUploader {
       variants,
       // Only canvas images can be re-pointed at a duplicate, so only they send the hash.
       phash: objectId && processed.phash ? processed.phash : null,
+      palette: processed.palette ?? null,
+      hash: processed.phash ?? null,
       provenance: o.provenance ?? null,
       createdAt: Date.now(),
     };
@@ -510,7 +518,8 @@ export class AssetUploader {
         height: meta.height,
         kind,
         variants,
-        ...(meta.phash ? { phash: meta.phash } : {}),
+        ...(meta.hash || meta.phash ? { phash: meta.hash ?? meta.phash } : {}),
+        ...(meta.palette ? { palette: meta.palette } : {}),
       }),
     });
     if (!done.ok) throw new HttpError(done.status, "Finishing the upload");
@@ -532,11 +541,11 @@ export class AssetUploader {
       height: it.meta.height,
       bytes: it.meta.bytes,
       variants,
-      palette: null,
-      phash: it.meta.phash ?? null,
+      palette: it.meta.palette ?? null,
+      phash: it.meta.hash ?? it.meta.phash ?? null,
       title: "",
       provenance: it.meta.provenance ?? null,
-      analysisVersion: 0,
+      analysisVersion: it.meta.palette ? 1 : 0,
     });
   }
 }
