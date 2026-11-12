@@ -1,5 +1,5 @@
 import * as Y from "yjs";
-import type { UpdatesDb } from "./updates";
+import type { SnapshotDb, SnapshotMeta, UpdatesDb } from "./updates";
 
 /** Compact when a board has more than this many update rows... */
 export const COMPACT_ROWS = 200;
@@ -19,6 +19,43 @@ export function shouldCompact(p: { rowCount: number; referenceAt: string | null;
   if (p.rowCount === 0 || !p.referenceAt) return false;
   const at = Date.parse(p.referenceAt);
   return Number.isFinite(at) && p.now.getTime() - at > COMPACT_AGE_MS;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const utcDay = (iso: string): string => iso.slice(0, 10);
+const newerFirst = (a: SnapshotMeta, b: SnapshotMeta): number => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : b.uptoSeq - a.uptoSeq);
+
+/**
+ * Thins a board's version history. Kept: every round (forever); one compaction per UTC day, the newest, for 30 days; a named
+ * compaction ("Before restore") for 30 days; the newest compaction that readers rebuild from (rows up to its seq are gone from
+ * the server, so it must survive however old it is); and the board's newest snapshot of any kind. Everything else goes. Returns
+ * how many were removed (one batch, no call when there is nothing to remove). Depends on `now`, never on the clock.
+ */
+export async function pruneSnapshots(boardId: string, now: Date, db: SnapshotDb): Promise<number> {
+  const all = await db.listSnapshots(boardId);
+  if (all.length === 0) return 0;
+  const cutoff = new Date(now.getTime() - HISTORY_DAYS * DAY_MS).toISOString();
+
+  const keep = new Set<string>();
+  keep.add([...all].sort(newerFirst)[0].id); // the newest snapshot of any kind
+  const bases = all.filter((s) => s.kind === "compaction" && s.label === null);
+  if (bases.length > 0) keep.add(bases.reduce((best, s) => (s.uptoSeq > best.uptoSeq || (s.uptoSeq === best.uptoSeq && s.createdAt > best.createdAt) ? s : best)).id);
+
+  const seenDays = new Set<string>();
+  for (const s of [...all].sort(newerFirst)) {
+    if (s.kind === "round") keep.add(s.id);
+    else if (s.createdAt >= cutoff) {
+      if (s.label !== null) keep.add(s.id);
+      else if (!seenDays.has(utcDay(s.createdAt))) {
+        seenDays.add(utcDay(s.createdAt));
+        keep.add(s.id);
+      }
+    }
+  }
+
+  const doomed = all.filter((s) => !keep.has(s.id)).map((s) => s.id);
+  if (doomed.length > 0) await db.deleteSnapshots(boardId, doomed);
+  return doomed.length;
 }
 
 export type CompactResult = { compacted: false } | { compacted: true; uptoSeq: number; merged: number; skipped: number };
@@ -56,12 +93,10 @@ export async function compact(db: UpdatesDb, boardId: string, opts: { now?: Date
   const state = Y.encodeStateAsUpdate(doc);
   doc.destroy();
 
-  const id = await db.insertSnapshot(boardId, state, uptoSeq, "compaction");
+  await db.insertSnapshot(boardId, state, uptoSeq, "compaction");
   await db.deleteUpdatesUpTo(boardId, uptoSeq);
 
-  const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
-  const historyCutoff = new Date(now.getTime() - HISTORY_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  await db.pruneSnapshots(boardId, { keepId: id, uptoSeq, dayStart, historyCutoff });
+  await pruneSnapshots(boardId, now, db);
   return { compacted: true, uptoSeq, merged: mergeable.length, skipped };
 }
 

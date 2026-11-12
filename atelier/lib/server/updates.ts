@@ -9,19 +9,40 @@ export const READ_PAGE = 250;
 export type UpdateRow = { seq: number; update: Uint8Array; createdAt: string };
 export type SnapshotRow = { id: string; state: Uint8Array; uptoSeq: number; createdAt: string; kind: "compaction" | "round" };
 
+/** A stored snapshot of a board, without its bytes. */
+export interface SnapshotMeta {
+  id: string;
+  kind: "compaction" | "round";
+  /** A name ("Round 2", "Before restore"). Only unlabelled compactions are bases that readers rebuild from. */
+  label: string | null;
+  createdAt: string;
+  /** The highest update seq the snapshot covers. */
+  uptoSeq: number;
+}
+
+/** What pruning needs: every snapshot of a board, and a way to remove compaction ones. */
+export interface SnapshotDb {
+  /** Every snapshot of the board, in no particular order. */
+  listSnapshots(boardId: string): Promise<SnapshotMeta[]>;
+  /** Removes these snapshots of that board. Never a round (kind "round" rows are skipped by the real implementation). */
+  deleteSnapshots(boardId: string, ids: string[]): Promise<void>;
+}
+
 /** What sync and compaction need from the database. The real one is below; tests use it over an in-memory client too. */
-export interface UpdatesDb {
+export interface UpdatesDb extends SnapshotDb {
   boardExists(boardId: string): Promise<boolean>;
   insertUpdate(boardId: string, update: Uint8Array, deviceId: string): Promise<number>;
   /** Rows with seq > afterSeq, ascending. */
   updatesAfter(boardId: string, afterSeq: number, limit: number): Promise<UpdateRow[]>;
   countUpdates(boardId: string): Promise<number>;
-  /** The snapshot covering the most seqs (null when there is none). */
+  /**
+   * The compaction snapshot covering the most seqs (null when there is none). Only unlabelled compactions count: a round or a
+   * named safety snapshot deletes no update rows, so it is not a base to read from, and an update that was still being
+   * committed when it was taken could be missing from it.
+   */
   latestSnapshot(boardId: string): Promise<SnapshotRow | null>;
-  insertSnapshot(boardId: string, state: Uint8Array, uptoSeq: number, kind: "compaction"): Promise<string>;
+  insertSnapshot(boardId: string, state: Uint8Array, uptoSeq: number, kind: "compaction" | "round", opts?: { label?: string | null; createdAt?: string }): Promise<string>;
   deleteUpdatesUpTo(boardId: string, seq: number): Promise<void>;
-  /** Drop older compaction versions: same-day ones the new snapshot supersedes, and ones past the history window. */
-  pruneSnapshots(boardId: string, p: { keepId: string; uptoSeq: number; dayStart: string; historyCutoff: string }): Promise<void>;
 }
 
 function fail(what: string, error: { message?: string } | null): never {
@@ -70,6 +91,8 @@ export function supabaseUpdatesDb(supabase: AtelierServerClient): UpdatesDb {
         .from("board_snapshots")
         .select("id, state, upto_seq, kind, created_at")
         .eq("board_id", boardId)
+        .eq("kind", "compaction")
+        .is("label", null)
         .order("upto_seq", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -78,10 +101,17 @@ export function supabaseUpdatesDb(supabase: AtelierServerClient): UpdatesDb {
       return { id: data.id, state: pgByteaToBytes(data.state), uptoSeq: Number(data.upto_seq), createdAt: data.created_at, kind: data.kind };
     },
 
-    async insertSnapshot(boardId, state, uptoSeq, kind) {
+    async insertSnapshot(boardId, state, uptoSeq, kind, opts = {}) {
       const { data, error } = await supabase
         .from("board_snapshots")
-        .insert({ board_id: boardId, state: bytesToPgBytea(state), upto_seq: uptoSeq, kind })
+        .insert({
+          board_id: boardId,
+          state: bytesToPgBytea(state),
+          upto_seq: uptoSeq,
+          kind,
+          ...(opts.label != null ? { label: opts.label } : {}),
+          ...(opts.createdAt ? { created_at: opts.createdAt } : {}),
+        })
         .select("id")
         .single();
       if (error || !data) fail("insert snapshot", error);
@@ -93,26 +123,18 @@ export function supabaseUpdatesDb(supabase: AtelierServerClient): UpdatesDb {
       if (error) fail("delete merged updates", error);
     },
 
-    async pruneSnapshots(boardId, p) {
-      // Never a snapshot that covers more than the new one (a concurrent compaction may have gone further), never rounds.
-      const sameDay = await supabase
-        .from("board_snapshots")
-        .delete()
-        .eq("board_id", boardId)
-        .eq("kind", "compaction")
-        .neq("id", p.keepId)
-        .lte("upto_seq", p.uptoSeq)
-        .gte("created_at", p.dayStart);
-      if (sameDay.error) fail("prune snapshots", sameDay.error);
-      const old = await supabase
-        .from("board_snapshots")
-        .delete()
-        .eq("board_id", boardId)
-        .eq("kind", "compaction")
-        .neq("id", p.keepId)
-        .lte("upto_seq", p.uptoSeq)
-        .lt("created_at", p.historyCutoff);
-      if (old.error) fail("prune snapshots", old.error);
+    async listSnapshots(boardId) {
+      const { data, error } = await supabase.from("board_snapshots").select("id, kind, label, upto_seq, created_at").eq("board_id", boardId);
+      if (error) fail("list snapshots", error);
+      return (data ?? []).map((r) => ({ id: r.id, kind: r.kind, label: r.label ?? null, createdAt: r.created_at, uptoSeq: Number(r.upto_seq) }));
+    },
+
+    async deleteSnapshots(boardId, ids) {
+      for (let i = 0; i < ids.length; i += 100) {
+        // `kind = compaction` is a second lock on the door: whatever the caller asks, a round is never deleted here.
+        const { error } = await supabase.from("board_snapshots").delete().eq("board_id", boardId).eq("kind", "compaction").in("id", ids.slice(i, i + 100));
+        if (error) fail("delete snapshots", error);
+      }
     },
   };
 }

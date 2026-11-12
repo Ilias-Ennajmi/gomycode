@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Download, type Page } from "@playwright/test";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openBoard, objects, pasteData, placeWith, selectIds } from "./helpers";
 
@@ -256,6 +258,88 @@ test.describe("export", () => {
     const oldAssets = new Set(before.filter((o) => o.type === "image").map((o) => o.assetId));
     for (const o of after.filter((x) => x.type === "image")) expect(oldAssets.has(o.assetId)).toBe(false);
     await expect(page.locator("[data-object-type=image] img, [data-object-type=image] canvas").first()).toBeVisible({ timeout: 30_000 });
+  });
+
+  test("a ZIP holds the originals, a credits sheet, the palette files and a PNG of each frame", async ({ page }, info) => {
+    if (info.project.name !== "desktop") test.skip();
+    await openBoard(page, undefined, { zoom: 0.4 });
+    await buildBoard(page);
+    // credit one picture (the second, a cropped round one) and give another a title that would clash
+    await page.evaluate(() => {
+      const api = (window as unknown as { __atelier: { doc: { all(): { id: string; type: string }[]; update(id: string, p: object): void } } }).__atelier;
+      const images = api.doc.all().filter((o) => o.type === "image");
+      api.doc.update(images[1].id, { title: "Harbour, 6 am", provenance: { sourceUrl: "https://example.com/harbour", credit: "=cmd|'/C calc'!A0", licence: "CC BY 4.0", capturedAt: null } });
+      api.doc.update(images[0].id, { title: "Harbour, 6 am" });
+    });
+    await selectIds(page, []);
+    const dialog = await openDialog(page);
+    await dialog.getByRole("radio", { name: "ZIP" }).check({ force: true });
+    await expect(dialog.getByText("ZIP (originals + credits + palettes)")).toBeVisible();
+    await expect(dialog.locator("[data-export-size]")).toContainText("6 pictures and videos");
+    const d = await runExport(page, dialog);
+    const bytes = await save(d);
+    expect(d.suggestedFilename()).toMatch(/\.zip$/);
+    await expect(dialog.locator("[data-export-summary]")).toContainText("Saved");
+
+    const dir = mkdtempSync(join(tmpdir(), "atelier-zip-"));
+    const file = join(dir, "export.zip");
+    writeFileSync(file, bytes);
+    const listing = execFileSync("unzip", ["-Z1", file], { encoding: "utf8" }).trim().split("\n").sort();
+    expect(listing.filter((n) => n.startsWith("originals/"))).toHaveLength(6);
+    expect(listing).toContain("originals/Harbour_ 6 am.png");
+    expect(listing).toContain("originals/Harbour_ 6 am (2).png");
+    expect(listing).toEqual(expect.arrayContaining(["credits.csv", "manifest.json", "README.txt", "frames/01-Intro.png", "frames/02-Moodboard.png", "frames/03-Notes.png"]));
+    expect(listing.filter((n) => n.startsWith("palette/")).length).toBe(6);
+    expect(execFileSync("unzip", ["-tq", file], { encoding: "utf8" })).toContain("No errors");
+    // the original is the byte-exact upload (a PNG), the frame images are real PNGs of the frames' size
+    const original = execFileSync("unzip", ["-p", file, "originals/Harbour_ 6 am.png"], { maxBuffer: 64 * 1024 * 1024 });
+    expect(original.subarray(1, 4).toString()).toBe("PNG");
+    const frame = execFileSync("unzip", ["-p", file, "frames/01-Intro.png"], { maxBuffer: 64 * 1024 * 1024 });
+    expect(png(frame)).toEqual({ ok: true, w: 960, h: 540 });
+    // credits.csv: header, the credited picture's path in the ZIP, and the formula is neutralised
+    const csv = execFileSync("unzip", ["-p", file, "credits.csv"], { encoding: "utf8" }).replace(/^\uFEFF/, "");
+    const lines = csv.split("\r\n");
+    expect(lines[0]).toBe("file,source,credit,licence,captured");
+    expect(lines[1]).toContain("originals/Harbour");
+    expect(lines[1]).toContain("https://example.com/harbour");
+    expect(lines[1]).toContain("'=cmd|");
+    expect(lines).toHaveLength(3);
+    // the palette files carry the board's palette
+    const css = execFileSync("unzip", ["-p", file, listing.find((n) => n.endsWith("-colors.css"))!], { encoding: "utf8" });
+    expect(css).toContain("--color-");
+    expect(css.toLowerCase()).toContain("#2f4a6d");
+    const manifest = JSON.parse(execFileSync("unzip", ["-p", file, "manifest.json"], { encoding: "utf8" }));
+    expect(manifest).toMatchObject({ format: "atelier-export", version: 1 });
+    expect(manifest.files.length).toBeGreaterThanOrEqual(6 + 6 + 3 + 1);
+    if (OUT) writeFileSync(join(OUT, "listing.txt"), execFileSync("unzip", ["-l", file], { encoding: "utf8" }));
+  });
+
+  test("cancelling a ZIP leaves no download behind", async ({ page }, info) => {
+    if (info.project.name !== "desktop") test.skip();
+    await page.addInitScript(() => {
+      // Hold the frame renders back so the ZIP is still running when Cancel is pressed.
+      const post = Worker.prototype.postMessage;
+      Worker.prototype.postMessage = function (this: Worker, m: unknown, ...rest: unknown[]) {
+        if (m && typeof m === "object" && (m as { type?: string }).type === "start") {
+          setTimeout(() => (post as (...a: unknown[]) => void).call(this, m, ...rest), 6000);
+          return;
+        }
+        return (post as (...a: unknown[]) => void).call(this, m, ...rest);
+      } as typeof Worker.prototype.postMessage;
+    });
+    let downloads = 0;
+    page.on("download", () => void downloads++);
+    await openBoard(page, undefined, { zoom: 0.4 });
+    await buildBoard(page);
+    const dialog = await openDialog(page);
+    await dialog.getByRole("radio", { name: "ZIP" }).check({ force: true });
+    await dialog.getByRole("button", { name: "Export", exact: true }).click();
+    await expect(dialog.getByRole("progressbar", { name: "Export progress" })).toBeVisible();
+    await dialog.getByRole("button", { name: "Cancel export" }).click();
+    await expect(dialog.getByRole("progressbar")).toHaveCount(0);
+    await expect(dialog.getByRole("button", { name: "Export", exact: true })).toBeEnabled();
+    await page.waitForTimeout(1500);
+    expect(downloads).toBe(0);
   });
 
   test("the dialog is keyboard operable and has no accessibility violations; Escape closes it", async ({ page }, info) => {

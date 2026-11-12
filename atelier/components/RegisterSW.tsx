@@ -3,6 +3,11 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
+/** The client-facing review pages: no service worker there (the owner's offline app is not for visitors, and share pages are never cached). */
+export function isSharePath(pathname: string | null): boolean {
+  return pathname === "/s" || (pathname ?? "").startsWith("/s/");
+}
+
 /** A new service worker may take over only when no board is open: never swap code under an edit. */
 export function shouldActivateNow(pathname: string | null): boolean {
   return !(pathname ?? "").startsWith("/b/");
@@ -33,6 +38,8 @@ export function RegisterSW({ enabled = process.env.NODE_ENV === "production" }: 
 
   useEffect(() => {
     if (!enabled || typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+    // A client reviewing a share link has no use for the owner's offline app, and the page must never be kept offline.
+    if (isSharePath(pathRef.current)) return;
     let cancelled = false;
     let registration: ServiceWorkerRegistration | undefined;
 

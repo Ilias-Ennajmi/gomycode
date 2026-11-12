@@ -64,6 +64,14 @@ describe("RegisterSW", () => {
     expect(sw.container.register).toHaveBeenCalledWith("/sw.js", { scope: "/", updateViaCache: "none" });
   });
 
+  it("does not register a worker for a visitor on a share page", async () => {
+    const sw = fakeServiceWorker({ controller: false });
+    pathname = "/s/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ";
+    await act(async () => void render(<RegisterSW enabled />));
+    expect(sw.container.register).not.toHaveBeenCalled();
+    pathname = "/";
+  });
+
   it("does nothing when disabled (development) or when the browser has no service workers", async () => {
     const sw = fakeServiceWorker({ controller: false });
     await act(async () => void render(<RegisterSW enabled={false} />));

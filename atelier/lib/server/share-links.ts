@@ -4,8 +4,9 @@ import { generateToken } from "@/lib/share/token";
 import { toSummary, validateLinkOptions, validateLinkPatch, type ValidationContext } from "@/lib/share/options";
 import type { LinkRow } from "@/lib/share/link";
 import { jsonResponse, readJsonLimited } from "./http";
-import { requireOwner, responseFromError } from "./owner";
+import { isLocalOnly, requireOwner, responseFromError } from "./owner";
 import { getShareStore, type LinkUpdate, type ShareStore } from "./share-store";
+import { MemoryShareStore } from "./share-store-memory";
 import { assertAppOrigin, siteOrigin } from "./site-url";
 import { isGuid } from "./boards";
 
@@ -19,6 +20,17 @@ export const MAX_LINKS_PER_BOARD = 200;
 const MAX_BODY = 8 * 1024;
 
 const notFound = () => jsonResponse(404, { error: "not-found" });
+
+/** The one owner of a local-only server (no account there). */
+export const LOCAL_OWNER_ID = "00000000-0000-4000-8000-00000000a7e1";
+/** Board ids a local-only server accepts: whatever the browser made (uuid or a test id), never a path. */
+const LOCAL_BOARD_ID = /^[A-Za-z0-9_-]{1,80}$/;
+export const isLocalBoardId = (id: string): boolean => LOCAL_BOARD_ID.test(id);
+
+/** The owner behind a request: the signed-in owner, or the single local owner when the server runs in local-only mode. */
+async function ownerOf(): Promise<{ userId: string }> {
+  return isLocalOnly() ? { userId: LOCAL_OWNER_ID } : requireOwner();
+}
 
 function frameIdsIn(state: Uint8Array | null): string[] {
   if (!state) return [];
@@ -48,6 +60,12 @@ async function contextFor(store: ShareStore, boardId: string, now: Date, roundId
 }
 
 async function ownedBoard(store: ShareStore, boardId: string, ownerId: string): Promise<boolean> {
+  if (isLocalOnly()) {
+    // Boards live in the browser in local-only mode: the in-memory store learns of one the first time it is asked about.
+    if (!isLocalBoardId(boardId) || !(store instanceof MemoryShareStore)) return false;
+    store.ensureBoard({ id: boardId, ownerId });
+    return true;
+  }
   if (!isGuid(boardId)) return false;
   const board = await store.getBoard(boardId);
   return board !== null && board.ownerId.toLowerCase() === ownerId.toLowerCase();
@@ -58,7 +76,7 @@ type Ctx<K extends string> = { params: Promise<Record<K, string>> };
 /** GET /api/boards/[id]/share-links -> { links: ShareLinkSummary[] } */
 export async function listForBoard(_req: Request, { params }: Ctx<"id">): Promise<Response> {
   try {
-    const { userId } = await requireOwner();
+    const { userId } = await ownerOf();
     const { id } = await params;
     const store = getShareStore();
     if (!(await ownedBoard(store, id, userId))) return notFound();
@@ -74,7 +92,7 @@ export async function listForBoard(_req: Request, { params }: Ctx<"id">): Promis
 export async function createForBoard(req: Request, { params }: Ctx<"id">): Promise<Response> {
   try {
     assertAppOrigin(req);
-    const { userId } = await requireOwner();
+    const { userId } = await ownerOf();
     const { id } = await params;
     const store = getShareStore();
     if (!(await ownedBoard(store, id, userId))) return notFound();
@@ -113,7 +131,7 @@ async function ownedLink(store: ShareStore, id: string, ownerId: string): Promis
 export async function patchLink(req: Request, { params }: Ctx<"id">): Promise<Response> {
   try {
     assertAppOrigin(req);
-    const { userId } = await requireOwner();
+    const { userId } = await ownerOf();
     const { id } = await params;
     const store = getShareStore();
     const current = await ownedLink(store, id, userId);
@@ -142,7 +160,7 @@ export async function patchLink(req: Request, { params }: Ctx<"id">): Promise<Re
 export async function revokeLink(req: Request, { params }: Ctx<"id">): Promise<Response> {
   try {
     assertAppOrigin(req);
-    const { userId } = await requireOwner();
+    const { userId } = await ownerOf();
     const { id } = await params;
     if (!isGuid(id)) return notFound();
     const now = new Date();
@@ -157,7 +175,7 @@ export async function revokeLink(req: Request, { params }: Ctx<"id">): Promise<R
 export async function deleteLink(req: Request, { params }: Ctx<"id">): Promise<Response> {
   try {
     assertAppOrigin(req);
-    const { userId } = await requireOwner();
+    const { userId } = await ownerOf();
     const { id } = await params;
     if (!isGuid(id)) return notFound();
     return (await getShareStore().deleteLink(id, userId)) ? jsonResponse(204, null) : notFound();

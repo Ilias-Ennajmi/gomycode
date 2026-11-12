@@ -7,8 +7,9 @@ import { createServiceClient } from "@/lib/supabase/service";
 import type { AtelierServerClient } from "@/lib/supabase/server";
 import type { RoundRow, ShareLinkRow, VisitorRow } from "@/lib/supabase/types";
 import { pgByteaToBytes } from "@/lib/sync/bytes";
-import type { AttemptState, LinkUpdate, NewLink, ShareStore, StoreBoard, ViewerAssetRow, Visitor } from "./share-store";
-import { supabaseUpdatesDb } from "./updates";
+import { RoundNumberTakenError, type AttemptState, type LinkUpdate, type NewLink, type ShareStore, type StoreBoard, type ViewerAssetRow, type Visitor } from "./share-store";
+import { loadBoardState } from "./state";
+import { supabaseUpdatesDb, type SnapshotMeta } from "./updates";
 
 /*
  * The ShareStore over the service-role Supabase client. The service role bypasses RLS, so every method that takes an
@@ -240,6 +241,45 @@ export function createSupabaseShareStoreWith(db: AtelierServerClient, now: () =>
       if (error) fail("read latest round", error);
       const row = (data ?? [])[0];
       return row ? roundFromRow(row as RoundRow) : null;
+    },
+
+    async snapshotBoard(boardId, kind, label) {
+      if (!isUuid(boardId)) throw new Error("share store, snapshot: bad board id");
+      const { state, uptoSeq } = await loadBoardState(boardId, updatesDb);
+      const id = await updatesDb.insertSnapshot(boardId, state, uptoSeq, kind, { label, createdAt: now().toISOString() });
+      return { id, uptoSeq, state };
+    },
+
+    async deleteSnapshot(id, boardId) {
+      if (!isUuid(id) || !isUuid(boardId)) return;
+      // A round's snapshot is referenced by its row (foreign key): the database refuses, which is the point.
+      const { error } = await db.from("board_snapshots").delete().eq("id", id).eq("board_id", boardId);
+      if (error) fail("delete snapshot", error);
+    },
+
+    async listSnapshots(boardId): Promise<SnapshotMeta[]> {
+      if (!isUuid(boardId)) return [];
+      return (await updatesDb.listSnapshots(boardId)).sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : b.uptoSeq - a.uptoSeq));
+    },
+
+    async insertRound(row) {
+      const { data, error } = await db
+        .from("rounds")
+        .insert({
+          id: crypto.randomUUID(),
+          board_id: row.boardId,
+          number: row.number,
+          label: row.label,
+          snapshot_id: row.snapshotId,
+          previews: row.previews as never,
+          diff: row.diff as never,
+          published_at: now().toISOString(),
+        })
+        .select("*")
+        .single();
+      if (error?.code === "23505") throw new RoundNumberTakenError(row.boardId, row.number);
+      if (error || !data) fail("insert round", error);
+      return roundFromRow(data as RoundRow);
     },
 
     async createVisitor(linkId, ipHash) {

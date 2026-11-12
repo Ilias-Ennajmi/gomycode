@@ -3,10 +3,12 @@ import type { Round } from "@/lib/share/round-types";
 import type { AssetRow } from "@/lib/supabase/types";
 import { isLocalOnly } from "./owner";
 import { MemoryShareStore } from "./share-store-memory";
+import type { SnapshotMeta } from "./updates";
 import { createSupabaseShareStore } from "./share-store-supabase";
 
 export type { Action, LinkRow, ShareLinkSummary } from "@/lib/share/link";
 export type { Round, RoundDiff } from "@/lib/share/round-types";
+export type { SnapshotMeta } from "./updates";
 
 /*
  * The only door to share and review data. Visitors have no database role (docs/SPEC.md section 4): every visitor request
@@ -40,6 +42,17 @@ export type NewLink = Omit<LinkRow, "id" | "createdAt" | "revokedAt" | "cookieEp
 
 export type LinkUpdate = Partial<Omit<LinkRow, "id" | "boardId" | "ownerId" | "tokenHash" | "createdAt">> & { bumpEpoch?: boolean };
 
+/** A round to store: the server picks id and time. `number` is the caller's choice and must be free on the board. */
+export type NewRound = Omit<Round, "id" | "publishedAt">;
+
+/** insertRound found the (board, number) pair already used: another publish got there first. */
+export class RoundNumberTakenError extends Error {
+  constructor(public readonly boardId: string, public readonly number: number) {
+    super(`Round ${number} already exists on board ${boardId}`);
+    this.name = "RoundNumberTakenError";
+  }
+}
+
 export interface AttemptState {
   fails: number;
   lockedUntil: string | null;
@@ -61,6 +74,20 @@ export interface ShareStore {
   listRounds(boardId: string): Promise<Round[]>;
   getRound(id: string): Promise<Round | null>;
   latestRound(boardId: string): Promise<Round | null>;
+
+  // --- rounds and versions (Tasks 9 and 10): written by the owner's routes only ---
+  /**
+   * Snapshots the board's CURRENT merged state on the server (the newest compaction snapshot plus every update row after it)
+   * and stores it as `kind`. Nothing the browser sends goes into it. Never deletes update rows. Throws StateTooLargeError
+   * over the size cap.
+   */
+  snapshotBoard(boardId: string, kind: "compaction" | "round", label: string | null): Promise<{ id: string; uptoSeq: number; state: Uint8Array }>;
+  /** Removes one snapshot of that board (used to clean up after a publish that failed); a round's snapshot cannot be removed. */
+  deleteSnapshot(id: string, boardId: string): Promise<void>;
+  /** The board's snapshots, newest first. */
+  listSnapshots(boardId: string): Promise<SnapshotMeta[]>;
+  /** Throws RoundNumberTakenError when `number` is used on that board already. */
+  insertRound(row: NewRound): Promise<Round>;
 
   // --- visitors and password attempts (Task 12) ---
   createVisitor(linkId: string, ipHash: string | null): Promise<Visitor>;
