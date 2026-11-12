@@ -164,7 +164,8 @@ describe("ObjectLayer", () => {
     const { container } = render(<ObjectLayer doc={doc} index={{ visible: () => ["img"] }} assets={assets} view={{ camera: CAMERA, viewport: VIEWPORT }} />);
     act(() => doc.update("img", { x: 40, y: 10, w: 120 }));
     const el = container.querySelector('[data-object-id="img"]') as HTMLElement;
-    expect(el.style.transform).toBe("translate(40px, 10px)");
+    expect(el.style.left).toBe("40px");
+    expect(el.style.top).toBe("10px");
     expect(el.style.width).toBe("120px");
     expect(counts.get("img") ?? 0).toBe(0);
   });

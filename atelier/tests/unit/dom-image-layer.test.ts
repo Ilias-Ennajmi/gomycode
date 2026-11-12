@@ -142,15 +142,17 @@ describe("DomImageLayer", () => {
     expect(imgOf(container, "a").getAttribute("src")).toBe("blob:a/original");
   });
 
-  it("does not mount new items during a gesture", () => {
+  it("mounts items that come into range during a gesture, but leaves the ones already showing alone", () => {
     const { layer, container } = setup();
-    layer.update([item("a")], view());
+    const big = item("a", { rect: { x: 0, y: 0, w: 400, h: 300 } });
+    layer.update([big], view());
     layer.setGesture(true);
-    layer.update([item("a"), item("b")], view());
-    expect(ids(container)).toEqual(["a"]);
-    layer.setGesture(false);
-    layer.update([item("a"), item("b")], view());
+    layer.update([big, item("b", { rect: { x: 500, y: 0, w: 400, h: 300 } })], view(8));
     expect(ids(container)).toEqual(["a", "b"]);
+    expect(imgOf(container, "a").getAttribute("data-variant")).toBe("w1024"); // would be the original
+    expect(imgOf(container, "b").getAttribute("src")).not.toBeNull(); // never a hole
+    layer.update([big], view(8)); // b left the range: released even mid-gesture
+    expect(ids(container)).toEqual(["a"]);
   });
 
   it("setCamera writes only the container transform (when it owns it)", () => {
@@ -220,6 +222,23 @@ describe("DomImageLayer", () => {
     expect(a.style.filter).toBe("grayscale(1)");
     expect((container.querySelector('[data-object-id="a"]') as HTMLElement).style.borderRadius).toMatch(/^12px/);
     expect((container.querySelector('[data-object-id="b"]') as HTMLElement).style.borderRadius).toBe("100px / 75px"); // 200 x 150 circle
+  });
+
+  it("keeps the DOM minimal: left/top, a transform only when rotated, a clip only when cropped or masked", () => {
+    const { layer, container } = setup();
+    layer.update([item("plain", { rect: { x: 5, y: 7, w: 200, h: 150 } }), item("turned", { rotation: 0.5 }), item("cut", { crop: { x: 0, y: 0, w: 0.5, h: 0.5 } }), item("round", { mask: { kind: "circle", radius: 0 } })], view());
+    const w = (id: string) => container.querySelector(`[data-object-id="${id}"]`) as HTMLElement;
+    expect(w("plain").style.left).toBe("5px");
+    expect(w("plain").style.top).toBe("7px");
+    expect(w("plain").style.transform).toBe("");
+    expect(w("plain").style.overflow).toBe("");
+    expect(imgOf(container, "plain").style.position).toBe("");
+    expect(w("turned").style.transform).toBe("rotate(0.5rad)");
+    expect(w("cut").style.overflow).toBe("hidden");
+    expect(imgOf(container, "cut").style.position).toBe("absolute");
+    expect(w("round").style.overflow).toBe("hidden");
+    layer.update([item("plain", { rect: { x: 5, y: 7, w: 200, h: 150 }, crop: { x: 0, y: 0, w: 1, h: 0.5 } })], view());
+    expect(w("plain").style.overflow).toBe("hidden"); // a crop added later turns the clip on
   });
 
   it("applies a crop by sizing and offsetting the picture inside the box", () => {

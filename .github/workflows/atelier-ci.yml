@@ -95,3 +95,40 @@ jobs:
             atelier/playwright-report
             atelier/test-results
           retention-days: 7
+
+  bench:
+    # The 1,000-image performance gate (SPEC section 8). Not required: hosted runners have no GPU, so the thresholds are
+    # relaxed (--ci multiplies them by BENCH_CI_FACTOR); the official numbers are the local run recorded in docs/PERF.md.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: atelier
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_PUBLIC_R2_PUBLIC_HOST: assets.example.test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: atelier/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Start the app with the bench page
+        run: |
+          ATELIER_LOCAL_ONLY=1 ATELIER_BENCH=1 PORT=3300 npm start &
+          for i in $(seq 60); do curl -sf http://localhost:3300/api/health && break; sleep 2; done
+      - name: Benchmark
+        run: BENCH_URL=http://localhost:3300 npm run bench -- --ci
+      - name: Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-results
+          path: atelier/bench/results
+          retention-days: 14

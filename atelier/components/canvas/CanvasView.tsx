@@ -19,8 +19,8 @@ import { CameraStore, easeInOut, interpolateCamera } from "@/lib/engine/input/ca
 import { EditingStore } from "@/lib/engine/input/editing-store";
 import { SelectionStore } from "@/lib/engine/input/selection-store";
 import { OverlayStore, ToolMachine, createToolMachine, type ToolCtx, type ToolId } from "@/lib/engine/input/tool-machine";
-import { DomImageLayer } from "@/lib/engine/render/dom-image-layer";
 import type { ImageLayer } from "@/lib/engine/render/image-layer";
+import { DomImageLayer } from "@/lib/engine/render/dom-image-layer";
 import { SpatialIndex } from "@/lib/engine/spatial/spatial-index";
 import { DEFAULT_NAV_SETTINGS, SETTINGS_KEY, loadSettings, sanitizeSettings, type NavSettings } from "@/lib/settings";
 import type { CropTool } from "@/lib/engine/input/tools/crop";
@@ -86,6 +86,12 @@ export type CanvasViewProps = {
 const SETTLE_MS = 100;
 const SETTLE_MAX_WAIT_MS = 300;
 const ANIMATION_MS = 350;
+/**
+ * The camera layer is promoted to its own compositor layer during a gesture only while this few images are mounted. With
+ * more, promotion costs more than it saves (every image becomes part of a composited group whose bookkeeping is redone
+ * every frame): measured on the 1,000-image bench, panning at 20 fps promoted and 60 fps not.
+ */
+const PROMOTE_MAX_IMAGES = 300;
 
 function prefersReducedMotion(): boolean {
   try {
@@ -139,20 +145,27 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
   const viewportRef = useRef({ w: 0, h: 0 });
   const positioned = useRef(initialCamera !== undefined);
   const animation = useRef<(() => void) | null>(null);
-  const settle = useRef<{ timer: ReturnType<typeof setTimeout> | null; since: number }>({ timer: null, since: 0 });
+  const settle = useRef<{ timer: ReturnType<typeof setTimeout> | null; since: number; last: number }>({ timer: null, since: 0, last: 0 });
 
   const cancelCameraAnimation = useCallback(() => {
     animation.current?.();
     animation.current = null;
   }, []);
 
-  const flushView = useCallback(() => {
+  const flushView = useCallback((final = true) => {
     const s = settle.current;
     if (s.timer) clearTimeout(s.timer);
     s.timer = null;
     s.since = 0;
-    if (layerRef.current) layerRef.current.style.willChange = "";
-    images.setGesture(false);
+    // The camera has stopped: the layer gives up its compositor layer and images may swap variants. A flush in the
+    // middle of a long gesture only refreshes what is mounted: dropping and re-taking the compositor layer every
+    // 300 ms would re-rasterise every image each time.
+    if (final) {
+      if (layerRef.current) layerRef.current.style.willChange = "";
+      images.setGesture(false);
+    } else if (layerRef.current && images.stats().mounted > PROMOTE_MAX_IMAGES) {
+      layerRef.current.style.willChange = ""; // the gesture brought a crowd into view: stop promoting (once)
+    }
     setView({ camera: store.get(), viewport: { ...viewportRef.current } });
   }, [store, images]);
 
@@ -162,14 +175,17 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
     if (s.since === 0) s.since = now;
     if (s.timer) clearTimeout(s.timer);
     const wait = Math.max(0, Math.min(SETTLE_MS, s.since + SETTLE_MAX_WAIT_MS - now));
-    s.timer = setTimeout(flushView, wait);
+    s.last = now;
+    // Still moving (the last change is recent) when the long-gesture limit fires: not the end of the gesture.
+    s.timer = setTimeout(() => flushView(Date.now() - s.last >= SETTLE_MS - 10), wait);
   }, [flushView]);
 
   // Only while the camera is moving does the layer get its own compositor layer.
   const gestureStart = useCallback(() => {
-    if (layerRef.current) layerRef.current.style.willChange = "transform";
+    if (layerRef.current && images.stats().mounted <= PROMOTE_MAX_IMAGES) layerRef.current.style.willChange = "transform";
     images.setGesture(true);
-  }, [images]);
+    scheduleView(); // a gesture that never moves the camera still ends
+  }, [images, scheduleView]);
 
   const applyCamera = useCallback((c: Camera) => {
     const layer = layerRef.current;
@@ -181,11 +197,13 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
 
   useLayoutEffect(() => {
     applyCamera(store.get());
+    images.setCamera(store.get());
     return store.subscribe((c) => {
       applyCamera(c);
+      images.setCamera(c); // a no-op for the DOM layer (it sits inside this layer); the WebGL canvas follows the camera
       scheduleView();
     });
-  }, [store, applyCamera, scheduleView]);
+  }, [store, applyCamera, scheduleView, images]);
 
   // Measure the canvas; place the first camera once the size is known.
   useEffect(() => {

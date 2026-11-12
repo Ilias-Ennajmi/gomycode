@@ -1,12 +1,12 @@
 // DOM implementation of the ImageLayer: a keyed pool of <img> elements, written to only when something changed.
 import type { AssetResolver } from "@/lib/assets/resolver-types";
-import type { VariantName } from "@/lib/assets/variants";
 import type { Camera } from "@/lib/engine/geometry/camera";
 import { maskRadii, toDisplayCrop } from "@/lib/engine/model/image-style";
 import type { Rect } from "@/lib/engine/model/types";
 import { ImageResidency, decodedBytes, defaultBudgetBytes, type ResidencyEntry } from "./residency";
 import type { ImageLayer, ImageLayerItem, ImageLayerStats, ImageLayerView } from "./image-layer";
-import { TIERS, pickVariant, tierSize, type ChosenVariant } from "./variant";
+import type { ChosenVariant } from "./variant";
+import { decodedSize, selectVariant } from "./variant-select";
 import { nodeZ } from "./z-order";
 
 export interface DomImageLayerDeps {
@@ -25,9 +25,6 @@ const CAPTION_MIN_PX = 120;
 const CAPTION_FONT_PX = 11;
 const DIM_OPACITY = 0.25;
 const POOL_MAX = 48;
-const LEGACY_VARIANTS: VariantName[] = ["w1024"];
-/** Phase 1 assets have no recorded size: assume the original is no bigger than a w2048, so it is the tier after w1024. */
-const LEGACY_ORIGINAL_LONGEST = 2048;
 
 type Slot = {
   id: string;
@@ -56,18 +53,16 @@ type Slot = {
 function createSlot(doc: Document): Slot {
   const wrapper = doc.createElement("div");
   const s = wrapper.style;
+  // As little as possible: positioned by left/top, no transform unless rotated, no clip unless cropped or masked. Every
+  // transform, clip or stacking context is a paint property node or chunk, and with a thousand images their per-frame
+  // bookkeeping (not the pixels) is what costs frames.
   s.position = "absolute";
-  s.left = "0";
-  s.top = "0";
-  s.overflow = "hidden";
   s.transformOrigin = "50% 50%";
-  s.contain = "layout paint style";
   wrapper.setAttribute("data-object-type", "image");
   const img = doc.createElement("img");
   img.alt = "";
   img.setAttribute("decoding", "async");
   img.setAttribute("draggable", "false");
-  img.style.position = "absolute";
   img.style.display = "block";
   img.style.maxWidth = "none";
   img.style.userSelect = "none";
@@ -81,8 +76,6 @@ function maskRadius(item: ImageLayerItem): string {
   const { rx, ry } = maskRadii({ w: item.rect.w, h: item.rect.h, mask: item.mask });
   return rx > 0 || ry > 0 ? `${rx}px / ${ry}px` : "";
 }
-
-const clamp01 = (v: number) => (Number.isFinite(v) && v > 0 ? Math.min(1, v) : 1);
 
 function intersects(r: Rect, c: Camera, vp: { w: number; h: number }): boolean {
   const z = c.z;
@@ -165,13 +158,13 @@ export class DomImageLayer implements ImageLayer {
     const z = this.stacking(items);
 
     const entries: ResidencyEntry[] = [];
-    const chosen = new Map<string, { item: ImageLayerItem; tiers: ChosenVariant[]; aw: number; ah: number; originalLongest: number }>();
+    const chosen = new Map<string, { item: ImageLayerItem; apply: boolean; aw: number; ah: number; originalLongest: number }>();
     const seen = new Set<string>();
 
     for (const item of items) {
       let slot = this.slots.get(item.id);
+      const isNew = !slot;
       if (!slot) {
-        if (!settled) continue; // no new mounts while the camera moves
         slot = this.pool.pop() ?? createSlot(doc);
         slot.id = item.id;
         slot.lastSeen = now;
@@ -186,13 +179,14 @@ export class DomImageLayer implements ImageLayer {
       if (visible) slot.lastSeen = now;
       this.writeGeometry(slot, item, z.get(item.id) ?? 0);
       this.writeDim(slot, item);
-      if (!settled) continue;
 
-      const info = this.choose(slot, item, view);
-      chosen.set(item.id, { item, tiers: info.tiers, aw: info.aw, ah: info.ah, originalLongest: info.originalLongest });
+      // While the camera moves, an image that is already showing something keeps it (no source swaps); one that has
+      // just come into range still gets a source, since an empty box would show as a hole in the board.
+      const apply = settled || isNew;
+      const info = selectVariant(this.resolver, item, view, slot.variant, apply);
+      chosen.set(item.id, { item, apply, aw: info.aw, ah: info.ah, originalLongest: info.originalLongest });
       entries.push({ id: item.id, wanted: info.wanted, w: info.w, h: info.h, visible, lastSeen: slot.lastSeen, tiers: info.tiers });
     }
-    if (!settled) return;
 
     for (const [id, slot] of this.slots) if (!seen.has(id)) this.release(id, slot);
 
@@ -200,9 +194,8 @@ export class DomImageLayer implements ImageLayer {
     for (const e of entries) {
       const slot = this.slots.get(e.id)!;
       const c = chosen.get(e.id)!;
-      const tier = plan.get(e.id) ?? e.wanted;
-      this.writeSource(slot, c.item, tier, c.aw, c.ah, c.originalLongest);
-      this.writeCaption(slot, c.item, view.camera.z);
+      if (c.apply) this.writeSource(slot, c.item, plan.get(e.id) ?? e.wanted, c.aw, c.ah, c.originalLongest);
+      if (settled) this.writeCaption(slot, c.item, view.camera.z);
     }
   }
 
@@ -222,29 +215,6 @@ export class DomImageLayer implements ImageLayer {
     return out;
   }
 
-  private choose(slot: Slot, item: ImageLayerItem, view: ImageLayerView) {
-    const meta = this.resolver.available(item.assetId);
-    const variants = meta ? meta.variants : LEGACY_VARIANTS;
-    const aw = meta ? meta.width : 0;
-    const ah = meta ? meta.height : 0;
-    const known = aw > 0 && ah > 0;
-    const originalLongest = known ? Math.max(aw, ah) : LEGACY_ORIGINAL_LONGEST;
-    const tiers = TIERS.filter((t) => t === "original" || variants.includes(t));
-    // Measure along the source's longest axis (the object's, when the source size is unknown).
-    const alongX = known ? aw >= ah : item.rect.w >= item.rect.h;
-    const onScreenPx = (alongX ? item.rect.w : item.rect.h) * view.camera.z;
-    const cropFraction = item.crop ? clamp01(alongX ? item.crop.w : item.crop.h) : 1;
-    const wanted = pickVariant({ onScreenPx, dpr: view.dpr, cropFraction, available: variants, originalLongest, loaded: slot.variant, gesture: false });
-    const aspect = known ? aw / ah : item.rect.h > 0 ? item.rect.w / item.rect.h : 1;
-    const { w, h } = this.decodedSize(wanted, aspect, originalLongest);
-    return { wanted, tiers, w, h, aw, ah, originalLongest };
-  }
-
-  private decodedSize(tier: ChosenVariant, aspect: number, originalLongest: number): { w: number; h: number } {
-    const longest = tierSize(tier, originalLongest);
-    return aspect >= 1 ? { w: longest, h: longest / aspect } : { w: longest * aspect, h: longest };
-  }
-
   // ---- DOM writes: each one guarded by what is already there ----
 
   private writeGeometry(slot: Slot, item: ImageLayerItem, z: number): void {
@@ -253,40 +223,45 @@ export class DomImageLayer implements ImageLayer {
     const ws = slot.wrapper.style;
     if (box !== slot.box) {
       slot.box = box;
+      ws.left = `${x}px`;
+      ws.top = `${y}px`;
       ws.width = `${w}px`;
       ws.height = `${h}px`;
-      ws.transform = item.rotation ? `translate(${x}px, ${y}px) rotate(${item.rotation}rad)` : `translate(${x}px, ${y}px)`;
+      ws.transform = item.rotation ? `rotate(${item.rotation}rad)` : "";
     }
     if (z !== slot.z) {
       slot.z = z;
       ws.zIndex = String(z);
     }
     const radius = maskRadius(item);
-    const look = `${radius}|${item.grayscale}|${item.flipX}|${item.flipY}`;
+    // The crop is in source space; the picture is mirrored by a flip, so the window is mapped to what is displayed.
+    const c = item.crop && item.crop.w > 0 && item.crop.h > 0 ? toDisplayCrop(item.crop, item.flipX, item.flipY) : null;
+    const look = `${radius}|${item.grayscale}|${item.flipX}|${item.flipY}|${c ? 1 : 0}`;
     if (look !== slot.look) {
       slot.look = look;
       ws.borderRadius = radius;
+      ws.overflow = c || radius ? "hidden" : "";
       const is = slot.img.style;
       is.filter = item.grayscale ? "grayscale(1)" : "";
       is.transform = item.flipX || item.flipY ? `scale(${item.flipX ? -1 : 1}, ${item.flipY ? -1 : 1})` : "";
     }
-    // The crop is in source space; the picture is mirrored by a flip, so the window is mapped to what is displayed.
-    const c = item.crop && item.crop.w > 0 && item.crop.h > 0 ? toDisplayCrop(item.crop, item.flipX, item.flipY) : null;
     const fit = c ? `${w}|${h}|${c.x}|${c.y}|${c.w}|${c.h}` : "cover";
     if (fit !== slot.fit) {
       slot.fit = fit;
       const is = slot.img.style;
       if (c) {
+        is.position = "absolute";
         is.width = `${w / c.w}px`;
         is.height = `${h / c.h}px`;
         is.left = `${(-c.x / c.w) * w}px`;
         is.top = `${(-c.y / c.h) * h}px`;
         is.objectFit = "";
       } else {
+        is.position = "";
         is.width = "100%";
         is.height = "100%";
-        is.left = "0";
-        is.top = "0";
+        is.left = "";
+        is.top = "";
         is.objectFit = "cover";
       }
     }
@@ -315,7 +290,7 @@ export class DomImageLayer implements ImageLayer {
       slot.variant = tier;
       slot.img.setAttribute("data-variant", tier);
       const aspect = aw > 0 && ah > 0 ? aw / ah : item.rect.h > 0 ? item.rect.w / item.rect.h : 1;
-      const d = this.decodedSize(tier, aspect, originalLongest);
+      const d = decodedSize(tier, aspect, originalLongest);
       slot.decW = d.w;
       slot.decH = d.h;
       slot.wrapper.style.backgroundColor = "";

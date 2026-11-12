@@ -124,3 +124,7 @@ test.describe("image layer", () => {
     expect(await page.locator("[data-image-layer] img").count()).toBe(stats.mounted);
   });
 });
+
+test("the benchmark page does not exist unless it is switched on", async ({ request }) => {
+  expect((await request.get("/bench")).status()).toBe(404);
+});
