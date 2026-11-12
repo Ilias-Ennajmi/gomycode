@@ -3,6 +3,7 @@ import { folderPath } from "@/components/home/library";
 import { getAssetResolver } from "@/lib/assets/resolver";
 import { AssetUploader, type AssetUploaderOptions } from "@/lib/assets/upload-queue";
 import type { BoardDoc } from "@/lib/engine/doc/board-doc";
+import { migrateBoard } from "@/lib/engine/model/migrate";
 import { firstFrameName } from "@/lib/engine/model/templates";
 import { createBrowserClient } from "@/lib/supabase/client";
 import { patchBoard, putBoard, readBoardList, removeBoard } from "@/lib/sync/board-list-cache";
@@ -106,6 +107,9 @@ export async function openBoardSession(opts: OpenBoardOptions): Promise<OpenResu
     sync = new SyncClient(boardId, doc, api, { ...opts.syncOptions, realtime });
     sync.start();
   }
+
+  // After sync has started, so the (one-off, not undoable) upgrade of an older board is pushed like any other edit.
+  migrateBoard(doc);
 
   const uploader = new AssetUploader({ doc, resolver: opts.resolver ?? getAssetResolver(), localOnly, ...opts.uploaderOptions });
 

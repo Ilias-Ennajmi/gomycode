@@ -60,7 +60,18 @@ export function defaultsFor<K extends ObjectType>(type: K): Defaults<K>;
 export function defaultsFor(type: ObjectType): DefaultsOf<CanvasObject> {
   switch (type) {
     case "image":
-      return { type, ...base(320, 240), assetId: "", crop: null, flipX: false, flipY: false };
+      return {
+        type,
+        ...base(320, 240),
+        assetId: "",
+        crop: null,
+        mask: { kind: "rect", radius: 0 },
+        flipX: false,
+        flipY: false,
+        grayscale: false,
+        title: "",
+        provenance: null,
+      };
     case "text":
       return { type, ...base(200, 32), fontSize: 24, align: "left", lineHeight: 1.3, color: INK, autoWidth: true };
     case "sticky":
@@ -105,5 +116,54 @@ export function defaultsFor(type: ObjectType): DefaultsOf<CanvasObject> {
       return { type, ...base(1, 1), tool: "pen", color: INK, size: 4, points: [] };
     case "group":
       return { type, ...base(1, 1) };
+    case "video":
+      return {
+        type,
+        ...base(320, 180),
+        assetId: "",
+        kind: "video",
+        posterTime: 0,
+        loop: true,
+        muted: true,
+        posterAssetId: null,
+        provenance: null,
+      };
+    case "link":
+      // A link needs a real URL to be valid; callers always set it (the placeholder only keeps the defaults valid).
+      return {
+        type,
+        ...base(320, 120),
+        url: "https://example.com/",
+        title: "",
+        description: "",
+        siteName: "",
+        imageAssetId: null,
+        status: "loading",
+      };
+    case "embed":
+      return {
+        type,
+        ...base(480, 270),
+        provider: "youtube",
+        url: "https://www.youtube.com/",
+        embedUrl: "https://www.youtube-nocookie.com/embed/",
+        title: "",
+      };
+    case "swatch":
+      return { type, ...base(120, 120), hex: "#808080", name: "", format: "hex" };
+    case "palette":
+      return { type, ...base(480, 96), swatches: [], maxColors: 8, layout: "strip", showWeights: true, live: false };
+    case "typeSpecimen":
+      return {
+        type,
+        ...base(360, 200),
+        family: "Inter",
+        weight: 400,
+        italic: false,
+        sample: "The quick brown fox jumps over the lazy dog",
+        size: 40,
+        licenceNote: "",
+        sourceUrl: "",
+      };
   }
 }

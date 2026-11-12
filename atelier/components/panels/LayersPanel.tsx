@@ -10,6 +10,11 @@ import {
   Frame as FrameIcon,
   Group as GroupIcon,
   Image as ImageIcon,
+  Link as LinkIcon,
+  Palette as PaletteIcon,
+  Pipette,
+  Play,
+  SquarePlay,
   Lock,
   LockOpen,
   PenLine,
@@ -41,6 +46,12 @@ const ICONS: Record<ObjectType, LucideIcon> = {
   frame: FrameIcon,
   stroke: PenLine,
   group: GroupIcon,
+  video: Play,
+  link: LinkIcon,
+  embed: SquarePlay,
+  swatch: Pipette,
+  palette: PaletteIcon,
+  typeSpecimen: Type,
 };
 
 /** Windowing starts above this many visible rows. */

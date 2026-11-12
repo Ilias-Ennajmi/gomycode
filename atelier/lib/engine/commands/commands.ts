@@ -112,6 +112,12 @@ const STYLE_KEYS: Record<ObjectType, string[]> = {
   frame: ["background", "clip", "opacity"],
   stroke: ["color", "size", "opacity"],
   group: ["opacity"],
+  video: ["opacity"],
+  link: ["opacity"],
+  embed: ["opacity"],
+  swatch: ["opacity"],
+  palette: ["opacity"],
+  typeSpecimen: ["opacity"],
 };
 const STROKE_KEYS = ["stroke", "strokeWidth", "strokeStyle"];
 

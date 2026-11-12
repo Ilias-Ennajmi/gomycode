@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeHex } from "./color";
 import type { CanvasObject } from "./types";
 
 const finite = z.number().finite();
@@ -23,6 +24,62 @@ const terminal = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("bound"), id, anchor: z.object({ x: clamp01, y: clamp01 }) }),
 ]);
 
+/** A string truncated to `max` characters (hostile or oversized page text is kept, but bounded). */
+const capped = (max: number) => z.string().transform((v) => (v.length > max ? v.slice(0, max) : v));
+
+function isWebUrl(v: string, protocols: readonly string[]): boolean {
+  if (v.length === 0 || v.length > 2048) return false;
+  try {
+    return protocols.includes(new URL(v).protocol);
+  } catch {
+    return false;
+  }
+}
+/** http(s) only: `javascript:`, `data:`, `file:` and friends never get into the document. */
+const httpUrl = z.string().refine((v) => isWebUrl(v, ["http:", "https:"]), "must be an http(s) URL");
+const httpsUrl = z.string().refine((v) => isWebUrl(v, ["https:"]), "must be an https URL");
+const hexColor = z
+  .string()
+  .refine((v) => normalizeHex(v) !== null, "must be #rgb or #rrggbb")
+  .transform((v) => normalizeHex(v) as string);
+const isoDate = z.string().refine((v) => v.length > 0 && v.length <= 40 && !Number.isNaN(Date.parse(v)), "must be an ISO date");
+
+/** Normalised (0..1) crop window inside the source image; anything else (e.g. a Phase 1 pixel crop) reads as null. */
+const normalisedCrop = rect
+  .refine(
+    (r) => r.x >= 0 && r.y >= 0 && r.w > 0 && r.h > 0 && r.x + r.w <= 1 + 1e-6 && r.y + r.h <= 1 + 1e-6,
+    "must lie inside the unit square",
+  )
+  .nullable()
+  .catch(null);
+
+const provenance = z
+  .object({
+    sourceUrl: httpUrl.nullable().catch(null),
+    credit: capped(500).catch(""),
+    licence: capped(300).catch(""),
+    capturedAt: isoDate.nullable().catch(null),
+  })
+  .nullable()
+  .catch(null);
+
+const maskDefault = { kind: "rect" as const, radius: 0 };
+const mask = z
+  .object({
+    kind: z.enum(["rect", "rounded", "circle"]).catch("rect"),
+    radius: finite.refine((v) => v >= 0, "must be >= 0").catch(0),
+  })
+  .catch(maskDefault);
+
+const clampTo = (lo: number, hi: number) => (v: number) => Math.min(hi, Math.max(lo, v));
+
+const paletteSwatch = z.object({
+  hex: hexColor,
+  weight: finite.transform(clampTo(0, 1)).catch(0),
+  name: capped(100).catch(""),
+  locked: z.boolean().catch(false),
+});
+
 const baseShape = {
   id,
   x: finite,
@@ -44,9 +101,13 @@ const schemas = {
     ...baseShape,
     type: z.literal("image"),
     assetId: str,
-    crop: rect.nullable(),
+    crop: normalisedCrop,
+    mask,
     flipX: z.boolean(),
     flipY: z.boolean(),
+    grayscale: z.boolean().catch(false),
+    title: capped(300).catch(""),
+    provenance,
   }),
   text: z.object({
     ...baseShape,
@@ -115,6 +176,75 @@ const schemas = {
     points: z.array(finite).refine((a) => a.length % 3 === 0, "points are x,y,pressure triples"),
   }),
   group: z.object({ ...baseShape, type: z.literal("group") }),
+  video: z.object({
+    ...baseShape,
+    type: z.literal("video"),
+    assetId: str,
+    kind: z.enum(["video", "gif"]).catch("video"),
+    posterTime: finite.refine((v) => v >= 0, "must be >= 0").catch(0),
+    loop: z.boolean().catch(true),
+    muted: z.boolean().catch(true),
+    posterAssetId: str.nullable().catch(null),
+    provenance,
+  }),
+  link: z.object({
+    ...baseShape,
+    type: z.literal("link"),
+    url: httpUrl,
+    title: capped(300).catch(""),
+    description: capped(2000).catch(""),
+    siteName: capped(200).catch(""),
+    imageAssetId: str.nullable().catch(null),
+    status: z.enum(["loading", "ready", "failed"]).catch("loading"),
+  }),
+  embed: z.object({
+    ...baseShape,
+    type: z.literal("embed"),
+    provider: z.enum(["youtube", "vimeo", "figma"]),
+    url: httpUrl,
+    embedUrl: httpsUrl,
+    title: capped(300).catch(""),
+  }),
+  swatch: z.object({
+    ...baseShape,
+    type: z.literal("swatch"),
+    hex: hexColor,
+    name: capped(100).catch(""),
+    format: z.enum(["hex", "rgb", "oklch"]).catch("hex"),
+  }),
+  palette: z.object({
+    ...baseShape,
+    type: z.literal("palette"),
+    swatches: z
+      .array(z.unknown())
+      .catch([])
+      .transform((items) => {
+        const out: z.infer<typeof paletteSwatch>[] = [];
+        for (const item of items.slice(0, 64)) {
+          const r = paletteSwatch.safeParse(item);
+          if (r.success) out.push(r.data);
+        }
+        return out;
+      }),
+    maxColors: finite.transform((v) => Math.round(clampTo(3, 12)(v))).catch(8),
+    layout: z.enum(["strip", "grid"]).catch("strip"),
+    showWeights: z.boolean().catch(true),
+    live: z.boolean().catch(false),
+  }),
+  typeSpecimen: z.object({
+    ...baseShape,
+    type: z.literal("typeSpecimen"),
+    family: capped(100).catch(""),
+    weight: finite.transform((v) => Math.round(clampTo(100, 900)(v))).catch(400),
+    italic: z.boolean().catch(false),
+    sample: capped(500).catch(""),
+    size: finite.transform(clampTo(8, 400)).catch(48),
+    licenceNote: capped(500).catch(""),
+    sourceUrl: z
+      .string()
+      .transform((v) => (isWebUrl(v, ["http:", "https:"]) ? v : ""))
+      .catch(""),
+  }),
 } as const;
 
 

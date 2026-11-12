@@ -1,11 +1,12 @@
 "use client";
 
-import { createContext, forwardRef, memo, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, forwardRef, memo, useContext, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
 import type { AssetResolver } from "@/lib/assets/resolver-types";
 import type { BoardDoc } from "@/lib/engine/doc/board-doc";
 import type { Camera } from "@/lib/engine/geometry/camera";
+import type { CanvasObject, ObjectType } from "@/lib/engine/model/types";
 import type { SpatialIndex } from "@/lib/engine/spatial/spatial-index";
-import { LodContext } from "./lod";
+import { LodContext, useLod } from "./lod";
 import { buildRenderTree } from "./render-tree";
 import { useDocObject } from "./useDocObject";
 import { ArrowView } from "./objects/ArrowView";
@@ -38,40 +39,69 @@ function FrameChildren({ doc, id, assets }: NodeProps) {
   );
 }
 
+/** Everything a view of one object gets. `lod` is the camera zoom the layer was last settled at. */
+export type ObjectViewProps<T extends CanvasObject = CanvasObject> = {
+  obj: T;
+  doc: BoardDoc;
+  assets: AssetResolver;
+  lod: number;
+  /** Only frames receive children (the objects drawn inside them). */
+  children?: ReactNode;
+};
+
+type ViewOf<K extends ObjectType> = ComponentType<ObjectViewProps<Extract<CanvasObject, { type: K }>>>;
+
+/** Quiet grey box for a type whose real view is not available: nothing a newer board holds can crash the canvas. */
+export function PlaceholderView() {
+  return (
+    <div
+      aria-hidden="true"
+      data-placeholder=""
+      style={{ position: "absolute", inset: 0, background: "var(--color-border)", borderRadius: "var(--radius-sm)" }}
+    />
+  );
+}
+
+const NoView = () => null;
+
+/**
+ * One view per object type. Later features replace their entry (video, link, embed, swatch, palette, type specimen);
+ * the entries for types whose view is not built yet are the grey placeholder.
+ */
+export const OBJECT_VIEWS: { [K in ObjectType]: ViewOf<K> } = {
+  image: ({ obj, assets }) => <ImageView obj={obj} assets={assets} />,
+  text: ({ obj, doc }) => <TextView doc={doc} obj={obj} />,
+  sticky: ({ obj, doc }) => <StickyView doc={doc} obj={obj} />,
+  shape: ({ obj, doc }) => <ShapeView doc={doc} obj={obj} />,
+  stroke: ({ obj }) => <StrokeView obj={obj} />,
+  arrow: ({ obj, doc }) => <ArrowView doc={doc} obj={obj} />,
+  frame: ({ obj, doc, children }) => (
+    <FrameView doc={doc} obj={obj}>
+      {children}
+    </FrameView>
+  ),
+  group: NoView,
+  video: PlaceholderView,
+  link: PlaceholderView,
+  embed: PlaceholderView,
+  swatch: PlaceholderView,
+  palette: PlaceholderView,
+  typeSpecimen: PlaceholderView,
+};
+
 const ObjectNode = memo(
   function ObjectNode({ doc, id, assets }: NodeProps) {
     const obj = useDocObject(doc, id);
+    const { zoom } = useLod();
     renderProbe?.(id);
     if (!obj || obj.type === "group") return null;
 
-    let body: ReactNode = null;
-    switch (obj.type) {
-      case "image":
-        body = <ImageView obj={obj} assets={assets} />;
-        break;
-      case "text":
-        body = <TextView doc={doc} obj={obj} />;
-        break;
-      case "sticky":
-        body = <StickyView doc={doc} obj={obj} />;
-        break;
-      case "shape":
-        body = <ShapeView doc={doc} obj={obj} />;
-        break;
-      case "stroke":
-        body = <StrokeView obj={obj} />;
-        break;
-      case "arrow":
-        body = <ArrowView doc={doc} obj={obj} />;
-        break;
-      case "frame":
-        body = (
-          <FrameView doc={doc} obj={obj}>
-            <FrameChildren doc={doc} id={id} assets={assets} />
-          </FrameView>
-        );
-        break;
-    }
+    const View = (OBJECT_VIEWS[obj.type] ?? PlaceholderView) as ComponentType<ObjectViewProps>;
+    const body: ReactNode = (
+      <View obj={obj} doc={doc} assets={assets} lod={zoom}>
+        {obj.type === "frame" ? <FrameChildren doc={doc} id={id} assets={assets} /> : undefined}
+      </View>
+    );
 
     // Arrows are drawn in absolute canvas coordinates, everything else is placed with its own box.
     const placed = obj.type !== "arrow";

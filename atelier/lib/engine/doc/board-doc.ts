@@ -9,7 +9,21 @@ import { newId } from "@/lib/ids";
 /** Origin of every local transaction. Only this origin is tracked by the undo manager. */
 export const LOCAL_ORIGIN = Symbol("atelier.local");
 
-const CURRENT_SCHEMA_VERSION = 1;
+/**
+ * Origin of writes that are derived from other data (live palette, analysis results, schema migration). They are
+ * synced and persisted like any edit but never land on the undo stack, so Cmd+Z only ever reverts what the user did.
+ */
+export const DERIVED_ORIGIN = Symbol("atelier.derived");
+
+/** What a board reads as when it carries no version at all: every Phase 1 board. */
+const UNSTAMPED_SCHEMA_VERSION = 1;
+const DEFAULT_GUTTER = 16;
+const MAX_GUTTER = 200;
+
+function clampGutter(v: unknown): number {
+  if (typeof v !== "number" || !Number.isFinite(v)) return DEFAULT_GUTTER;
+  return Math.min(MAX_GUTTER, Math.max(0, v));
+}
 const UNDO_CAPTURE_MS = 400;
 /** Keys that change an object's own box (and therefore the box of its parent group). */
 const GEOMETRY_KEYS = new Set(["x", "y", "w", "h", "rotation", "parentId"]);
@@ -43,11 +57,22 @@ const HAS_CONTENT = new Set(["text", "sticky", "shape"]);
 export class BoardDoc {
   readonly ydoc: Y.Doc;
   readonly undoManager: Y.UndoManager;
-  readonly meta: { title: string; schemaVersion: number };
+  readonly meta: {
+    title: string;
+    /** 1 when the board has never been stamped (a Phase 1 board); `migrateBoard` writes the current version. */
+    schemaVersion: number;
+    /** Show image credits as a caption on the canvas. Default false. */
+    showCredits: boolean;
+    /** Board-wide grayscale preview (view only). Default false. */
+    valueCheck: boolean;
+    /** Gap used by the layout tools, canvas px. Default 16, clamped to 0..200. */
+    gutter: number;
+  };
 
   private readonly objects: Y.Map<YObj>;
   private readonly metaMap: Y.Map<unknown>;
   private readonly listeners = new Set<(ids: Set<string>, origin: unknown) => void>();
+  private readonly metaListeners = new Set<(keys: Set<string>, origin: unknown) => void>();
 
   // Caches. `cache` is write-through for local edits so reads inside a transaction see pending writes.
   private cache = new Map<string, CanvasObject | null>();
@@ -82,12 +107,31 @@ export class BoardDoc {
       },
       get schemaVersion() {
         const v = metaMap.get("schemaVersion");
-        return typeof v === "number" && Number.isFinite(v) ? v : CURRENT_SCHEMA_VERSION;
+        return typeof v === "number" && Number.isFinite(v) ? v : UNSTAMPED_SCHEMA_VERSION;
       },
       set schemaVersion(v: number) {
         write("schemaVersion", v);
       },
+      get showCredits() {
+        return metaMap.get("showCredits") === true;
+      },
+      set showCredits(v: boolean) {
+        write("showCredits", v === true);
+      },
+      get valueCheck() {
+        return metaMap.get("valueCheck") === true;
+      },
+      set valueCheck(v: boolean) {
+        write("valueCheck", v === true);
+      },
+      get gutter() {
+        return clampGutter(metaMap.get("gutter"));
+      },
+      set gutter(v: number) {
+        write("gutter", clampGutter(v));
+      },
     };
+    metaMap.observe(this.handleMetaEvent);
   }
 
   // ---- reads ---------------------------------------------------------------------------------------------
@@ -192,6 +236,24 @@ export class BoardDoc {
     }
   }
 
+  /**
+   * Like `transact`, but the transaction carries the caller's `origin`. Only `LOCAL_ORIGIN` is tracked by the undo
+   * manager, so `transactAs(DERIVED_ORIGIN, ...)` writes derived data (live palette, migration) that undo never
+   * touches. Change listeners still hear it, with that origin. Writes made through `update()`/`create()` inside `fn`
+   * join this transaction and therefore carry its origin.
+   */
+  transactAs(origin: unknown, fn: () => void): void {
+    this.depth++;
+    try {
+      this.ydoc.transact(() => {
+        fn();
+        if (this.depth === 1) this.flushGroups();
+      }, origin);
+    } finally {
+      this.depth--;
+    }
+  }
+
   undo(): void {
     this.undoManager.undo();
   }
@@ -228,7 +290,17 @@ export class BoardDoc {
     };
   }
 
+  /** Subscribe to changes of the board's meta keys (title, gutter, valueCheck, ...). Returns the unsubscribe function. */
+  onMetaChange(cb: (keys: Set<string>, origin: unknown) => void): () => void {
+    this.metaListeners.add(cb);
+    return () => {
+      this.metaListeners.delete(cb);
+    };
+  }
+
   destroy(): void {
+    this.metaMap.unobserve(this.handleMetaEvent);
+    this.metaListeners.clear();
     this.objects.unobserveDeep(this.handleEvents);
     this.ydoc.off("afterTransaction", this.handleAfterTransaction);
     this.undoManager.destroy();
@@ -460,6 +532,12 @@ export class BoardDoc {
       this.top = undefined;
     }
     for (const cb of [...this.listeners]) cb(touched, tr.origin);
+  };
+
+  private handleMetaEvent = (ev: Y.YMapEvent<unknown>, tr: Y.Transaction): void => {
+    const keys = new Set<string>(ev.keysChanged);
+    if (keys.size === 0) return;
+    for (const cb of [...this.metaListeners]) cb(keys, tr.origin);
   };
 
   private handleAfterTransaction = (): void => {

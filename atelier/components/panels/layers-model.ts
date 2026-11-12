@@ -51,6 +51,18 @@ export function typeLabel(o: CanvasObject): string {
       return o.tool === "highlighter" ? "Highlight" : "Drawing";
     case "group":
       return "Group";
+    case "video":
+      return o.kind === "gif" ? "GIF" : "Video";
+    case "link":
+      return "Link card";
+    case "embed":
+      return "Embed";
+    case "swatch":
+      return "Colour swatch";
+    case "palette":
+      return "Palette";
+    case "typeSpecimen":
+      return "Type specimen";
   }
 }
 

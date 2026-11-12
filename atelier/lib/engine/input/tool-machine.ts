@@ -10,7 +10,7 @@ import { createAllTools } from "./tools";
 
 export { SelectionStore };
 
-export type ToolId = "select" | "hand" | "sticky" | "text" | "shape" | "arrow" | "pen" | "highlighter" | "eraser" | "frame" | "image";
+export type ToolId = "select" | "hand" | "sticky" | "text" | "shape" | "arrow" | "pen" | "highlighter" | "eraser" | "frame" | "image" | "crop";
 
 /** A pointer event in canvas terms. `point` is canvas coordinates, `screen` is CSS px relative to the canvas element. */
 export type CanvasPointer = {

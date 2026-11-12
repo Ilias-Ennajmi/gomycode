@@ -78,6 +78,35 @@ describe("openBoardSession, local-only", () => {
   });
 });
 
+describe("openBoardSession, schema migration", () => {
+  it("a Phase 1 board on this device is upgraded when it opens, and its images still open (local-only)", async () => {
+    const id = newBoardId();
+    await putBoard(summary(id));
+    // Write a v1 image straight into the stored document, as Phase 1 did (no mask/grayscale/title/provenance, no version).
+    const { openLocalBoard } = await import("@/lib/sync/local-store");
+    const Y = await import("yjs");
+    const first = await openLocalBoard(id);
+    const m = new Y.Map<unknown>();
+    for (const [k, v] of Object.entries({
+      id: "img", type: "image", x: 0, y: 0, w: 200, h: 100, rotation: 0, parentId: null, index: "a0", locked: false, opacity: 1,
+      createdAt: 1, updatedAt: 1, assetId: "abc", crop: { x: 5, y: 5, w: 100, h: 50 }, flipX: false, flipY: false,
+    })) m.set(k, v);
+    first.doc.ydoc.transact(() => first.doc.ydoc.getMap("objects").set("img", m));
+    await first.persistence.whenSynced;
+    first.doc.destroy();
+    await first.persistence.destroy();
+
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const r = await openBoardSession({ boardId: id, localOnly: true, resolver: resolver() });
+    if (r.status !== "ready") throw new Error("not ready");
+    expect(r.board.doc.meta.schemaVersion).toBe(2);
+    const img = r.board.doc.get("img");
+    expect(img).toMatchObject({ type: "image", assetId: "abc", w: 200, h: 100, crop: null, grayscale: false });
+    expect(r.board.doc.canUndo()).toBe(false);
+    await r.board.dispose();
+  });
+});
+
 describe("openBoardSession, signed in", () => {
   it("starts sync with the given api and pushes edits; dispose flushes first", async () => {
     const id = newBoardId();
