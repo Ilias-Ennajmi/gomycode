@@ -640,6 +640,603 @@ begin
 end $$;
 
 
+-- =============================================================================
+-- (i) Phase 3 (0003): rounds, share links, visitors, reactions, comments, approvals,
+--     link views, push subscriptions, owner notifications, share auth attempts.
+--
+--   Visitors have no database role: visitor data is written by the service role only.
+--   Ids used here: boards b3..., snapshots 5a..., rounds c0..., links 1c..., visitors 7e....
+-- =============================================================================
+
+-- The statement must fail with exactly this SQLSTATE (unique 23505, check 23514, foreign key 23503,
+-- not null 23502, insufficient privilege 42501). A statement that fails for another reason is a FAIL too.
+create function rls_test.p3_expect_state(label text, stmt text, expected text)
+returns void language plpgsql as $$
+begin
+  begin
+    execute stmt;
+  exception when others then
+    if sqlstate = expected then return; end if;
+    raise exception 'FAIL: % raised % (%), expected %', label, sqlstate, sqlerrm, expected;
+  end;
+  raise exception 'FAIL: % was allowed (expected %)', label, expected;
+end $$;
+
+-- (i0) Fixtures. Boards and snapshots by the service role; everything the owner may write, as the owner;
+--      visitor data by the service role (it is the only writer).
+do $$
+declare
+  a constant uuid := 'aaaaaaaa-0000-0000-0000-00000000000a';
+  b constant uuid := 'bbbbbbbb-0000-0000-0000-00000000000b';
+begin
+  perform rls_test.as_service();
+  insert into atelier.boards (id, owner_id, title) values
+    ('b3000000-0000-0000-0000-0000000000a1', a, 'P3 A1'),
+    ('b3000000-0000-0000-0000-0000000000a2', a, 'P3 A2'),
+    ('b3000000-0000-0000-0000-0000000000b1', b, 'P3 B1');
+  insert into atelier.board_snapshots (id, board_id, state, upto_seq, kind) values
+    ('5a000000-0000-0000-0000-0000000000a1', 'b3000000-0000-0000-0000-0000000000a1', '\x01', 1, 'round'),
+    ('5a000000-0000-0000-0000-0000000000a3', 'b3000000-0000-0000-0000-0000000000a1', '\x01', 2, 'round'),
+    ('5a000000-0000-0000-0000-0000000000a2', 'b3000000-0000-0000-0000-0000000000a2', '\x01', 1, 'round'),
+    ('5a000000-0000-0000-0000-0000000000b1', 'b3000000-0000-0000-0000-0000000000b1', '\x01', 1, 'round');
+
+  -- Owner A writes what an owner may write.
+  perform rls_test.as_user(a);
+  insert into atelier.rounds (id, board_id, number, label, snapshot_id, previews, diff) values
+    ('c0000000-0000-0000-0000-0000000000a1', 'b3000000-0000-0000-0000-0000000000a1', 1, 'Round 1',
+     '5a000000-0000-0000-0000-0000000000a1', '{"f1":"p/1.webp"}', '{"added":3}'),
+    ('c0000000-0000-0000-0000-0000000000a2', 'b3000000-0000-0000-0000-0000000000a2', 1, null,
+     '5a000000-0000-0000-0000-0000000000a2', '{}', '{}');
+  insert into atelier.share_links (id, board_id, name, token_hash, mode, round_id, scope, frame_ids, permission,
+                                   password_hash, expires_at, welcome_note, blind_votes) values
+    ('1c000000-0000-0000-0000-0000000000a1', 'b3000000-0000-0000-0000-0000000000a1', 'Client', 'hash-a1', 'round',
+     'c0000000-0000-0000-0000-0000000000a1', 'frames', array['f1','f2'], 'comment',
+     '$argon2id$stub', now() + interval '7 days', 'Hello', true),
+    ('1c000000-0000-0000-0000-0000000000a2', 'b3000000-0000-0000-0000-0000000000a2', null, 'hash-a2', 'live',
+     null, 'board', '{}', 'view', null, null, null, false);
+  insert into atelier.comments (id, board_id, share_link_id, author_kind, body)
+    values ('c1000000-0000-0000-0000-0000000000a1', 'b3000000-0000-0000-0000-0000000000a1',
+            '1c000000-0000-0000-0000-0000000000a1', 'owner', 'Owner note');
+  insert into atelier.comments (id, board_id, share_link_id, author_kind, body)
+    values ('c1000000-0000-0000-0000-0000000000a4', 'b3000000-0000-0000-0000-0000000000a2',
+            '1c000000-0000-0000-0000-0000000000a2', 'owner', 'Owner note on the live link');
+  insert into atelier.push_subscriptions (endpoint, p256dh, auth, user_agent)
+    values ('https://push.example/a', 'k', 'a', 'test');
+  insert into atelier.owner_notifications (kind, board_id, share_link_id, summary) values
+    ('comment', 'b3000000-0000-0000-0000-0000000000a1', '1c000000-0000-0000-0000-0000000000a1', 'new comment'),
+    ('approval', 'b3000000-0000-0000-0000-0000000000a2', '1c000000-0000-0000-0000-0000000000a2', 'approved');
+
+  -- User B has their own, smaller set.
+  perform rls_test.as_user(b);
+  insert into atelier.rounds (id, board_id, number, snapshot_id)
+    values ('c0000000-0000-0000-0000-0000000000b1', 'b3000000-0000-0000-0000-0000000000b1', 1,
+            '5a000000-0000-0000-0000-0000000000b1');
+  insert into atelier.share_links (id, board_id, token_hash, mode, round_id, scope, permission)
+    values ('1c000000-0000-0000-0000-0000000000b1', 'b3000000-0000-0000-0000-0000000000b1', 'hash-b1', 'round',
+            'c0000000-0000-0000-0000-0000000000b1', 'board', 'react');
+  insert into atelier.comments (id, board_id, author_kind, body)
+    values ('c1000000-0000-0000-0000-0000000000b1', 'b3000000-0000-0000-0000-0000000000b1', 'owner', 'B note');
+  insert into atelier.push_subscriptions (endpoint, p256dh, auth) values ('https://push.example/b', 'k', 'a');
+  insert into atelier.owner_notifications (kind, board_id, summary)
+    values ('reaction', 'b3000000-0000-0000-0000-0000000000b1', 'liked');
+
+  -- Visitors and what they did: only the service role writes this.
+  perform rls_test.as_service();
+  insert into atelier.visitors (id, share_link_id, display_name, ip_hash) values
+    ('7e000000-0000-0000-0000-0000000000a1', '1c000000-0000-0000-0000-0000000000a1', 'Jane', 'iphash1'),
+    ('7e000000-0000-0000-0000-0000000000a2', '1c000000-0000-0000-0000-0000000000a2', 'Joe', 'iphash1'),
+    ('7e000000-0000-0000-0000-0000000000b1', '1c000000-0000-0000-0000-0000000000b1', 'Bea', 'iphash2');
+  insert into atelier.reactions (share_link_id, visitor_id, round_id, object_id, kind) values
+    ('1c000000-0000-0000-0000-0000000000a1', '7e000000-0000-0000-0000-0000000000a1', 'c0000000-0000-0000-0000-0000000000a1', 'obj1', 'pick'),
+    ('1c000000-0000-0000-0000-0000000000a2', '7e000000-0000-0000-0000-0000000000a2', null, 'obj1', 'pick'),
+    ('1c000000-0000-0000-0000-0000000000b1', '7e000000-0000-0000-0000-0000000000b1', 'c0000000-0000-0000-0000-0000000000b1', 'obj1', 'reject');
+  insert into atelier.approvals (share_link_id, visitor_id, frame_id, round_id) values
+    ('1c000000-0000-0000-0000-0000000000a1', '7e000000-0000-0000-0000-0000000000a1', 'f1', 'c0000000-0000-0000-0000-0000000000a1'),
+    ('1c000000-0000-0000-0000-0000000000a2', '7e000000-0000-0000-0000-0000000000a2', 'f9', null),
+    ('1c000000-0000-0000-0000-0000000000b1', '7e000000-0000-0000-0000-0000000000b1', 'f1', 'c0000000-0000-0000-0000-0000000000b1');
+  insert into atelier.link_views (share_link_id, visitor_id, frame_id, duration_ms) values
+    ('1c000000-0000-0000-0000-0000000000a1', '7e000000-0000-0000-0000-0000000000a1', 'f1', 1500),
+    ('1c000000-0000-0000-0000-0000000000a2', null, null, null),
+    ('1c000000-0000-0000-0000-0000000000b1', '7e000000-0000-0000-0000-0000000000b1', 'f1', 900);
+  insert into atelier.share_auth_attempts (share_link_id, ip_hash, fails, locked_until) values
+    ('1c000000-0000-0000-0000-0000000000a1', 'iphash1', 4, now() + interval '2 seconds'),
+    ('1c000000-0000-0000-0000-0000000000a2', 'iphash1', 1, null),
+    ('1c000000-0000-0000-0000-0000000000b1', 'iphash2', 1, null);
+  insert into atelier.comments (id, board_id, share_link_id, visitor_id, author_kind, object_id, frame_id, pin_space, pin_x, pin_y, round_id, body) values
+    ('c1000000-0000-0000-0000-0000000000a2', 'b3000000-0000-0000-0000-0000000000a1', '1c000000-0000-0000-0000-0000000000a1',
+     '7e000000-0000-0000-0000-0000000000a1', 'visitor', 'obj1', 'f1', 'object', 0.5, 0.25, 'c0000000-0000-0000-0000-0000000000a1', 'Love this'),
+    ('c1000000-0000-0000-0000-0000000000a3', 'b3000000-0000-0000-0000-0000000000a2', '1c000000-0000-0000-0000-0000000000a2',
+     '7e000000-0000-0000-0000-0000000000a2', 'visitor', null, null, null, null, null, null, 'Hi from the live link');
+  reset role;
+end $$;
+
+-- (i1) Owner A sees and manages their own rows in every new table.
+do $$
+declare
+  a constant uuid := 'aaaaaaaa-0000-0000-0000-00000000000a';
+  t text;
+  expected bigint;
+begin
+  perform rls_test.as_user(a);
+  for t, expected in select * from (values
+    ('rounds', 2), ('share_links', 2), ('visitors', 2), ('reactions', 2), ('comments', 4), ('approvals', 2),
+    ('link_views', 2), ('push_subscriptions', 1), ('owner_notifications', 2), ('share_auth_attempts', 2)) v(t, n)
+  loop
+    perform rls_test.assert_eq('A sees ' || t, rls_test.count_rows(t), expected);
+  end loop;
+
+  -- Owner-writable tables: update.
+  perform rls_test.assert_eq('A renames a round', rls_test.affected(
+    $q$update atelier.rounds set label = 'Final' where id = 'c0000000-0000-0000-0000-0000000000a1'$q$), 1);
+  perform rls_test.assert_eq('A edits a link', rls_test.affected(
+    $q$update atelier.share_links set allow_download = true, cookie_epoch = cookie_epoch + 1
+       where id = '1c000000-0000-0000-0000-0000000000a1'$q$), 1);
+  perform rls_test.assert_eq('A resolves a visitor comment', rls_test.affected(
+    $q$update atelier.comments set resolved_at = now() where id = 'c1000000-0000-0000-0000-0000000000a2'$q$), 1);
+  perform rls_test.assert_eq('A edits their own comment body', rls_test.affected(
+    $q$update atelier.comments set body = 'Edited' where id = 'c1000000-0000-0000-0000-0000000000a1'$q$), 1);
+  perform rls_test.assert_eq('A marks a notification read', rls_test.affected(
+    $q$update atelier.owner_notifications set read_at = now() where board_id = 'b3000000-0000-0000-0000-0000000000a1'$q$), 1);
+  perform rls_test.assert_eq('A replies to a visitor comment', rls_test.affected(
+    $q$insert into atelier.comments (board_id, share_link_id, author_kind, body, parent_id)
+       values ('b3000000-0000-0000-0000-0000000000a1', '1c000000-0000-0000-0000-0000000000a1', 'owner', 'Thanks!',
+               'c1000000-0000-0000-0000-0000000000a2')$q$), 1);
+  -- Visitor data: the owner may delete (clear a visitor's reaction), and it is gone.
+  perform rls_test.assert_eq('A deletes a reaction', rls_test.affected(
+    $q$delete from atelier.reactions where share_link_id = '1c000000-0000-0000-0000-0000000000a2'$q$), 1);
+  perform rls_test.assert_eq('A deletes a link view', rls_test.affected(
+    $q$delete from atelier.link_views where share_link_id = '1c000000-0000-0000-0000-0000000000a2'$q$), 1);
+  reset role;
+
+  -- Put back what the deletes removed (as the only writer) so later counts are stable.
+  perform rls_test.as_service();
+  insert into atelier.reactions (share_link_id, visitor_id, round_id, object_id, kind)
+    values ('1c000000-0000-0000-0000-0000000000a2', '7e000000-0000-0000-0000-0000000000a2', null, 'obj1', 'pick');
+  insert into atelier.link_views (share_link_id) values ('1c000000-0000-0000-0000-0000000000a2');
+  reset role;
+end $$;
+
+-- (i2) User B sees only their own, cannot touch A's, cannot write into A's boards or links.
+do $$
+declare
+  b constant uuid := 'bbbbbbbb-0000-0000-0000-00000000000b';
+  t text;
+  pred text;
+begin
+  perform rls_test.as_user(b);
+  -- Each table paired with a predicate that selects exactly A's rows.
+  for t, pred in select * from (values
+    ('rounds', $p$board_id in ('b3000000-0000-0000-0000-0000000000a1', 'b3000000-0000-0000-0000-0000000000a2')$p$),
+    ('share_links', $p$board_id in ('b3000000-0000-0000-0000-0000000000a1', 'b3000000-0000-0000-0000-0000000000a2')$p$),
+    ('comments', $p$board_id in ('b3000000-0000-0000-0000-0000000000a1', 'b3000000-0000-0000-0000-0000000000a2')$p$),
+    ('owner_notifications', $p$owner_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$p$),
+    ('push_subscriptions', $p$owner_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$p$),
+    ('visitors', $p$share_link_id in ('1c000000-0000-0000-0000-0000000000a1', '1c000000-0000-0000-0000-0000000000a2')$p$),
+    ('reactions', $p$share_link_id in ('1c000000-0000-0000-0000-0000000000a1', '1c000000-0000-0000-0000-0000000000a2')$p$),
+    ('approvals', $p$share_link_id in ('1c000000-0000-0000-0000-0000000000a1', '1c000000-0000-0000-0000-0000000000a2')$p$),
+    ('link_views', $p$share_link_id in ('1c000000-0000-0000-0000-0000000000a1', '1c000000-0000-0000-0000-0000000000a2')$p$),
+    ('share_auth_attempts', $p$share_link_id in ('1c000000-0000-0000-0000-0000000000a1', '1c000000-0000-0000-0000-0000000000a2')$p$)
+  ) v(t, pred)
+  loop
+    perform rls_test.assert_eq('B sees only their one row in ' || t, rls_test.count_rows(t), 1);
+    perform rls_test.assert_eq('B cannot delete A''s rows in ' || t,
+      rls_test.affected(format('delete from atelier.%I where %s', t, pred)), 0);
+  end loop;
+
+  perform rls_test.assert_eq('B cannot update A''s round', rls_test.affected(
+    $q$update atelier.rounds set label = 'pwned' where id = 'c0000000-0000-0000-0000-0000000000a1'$q$), 0);
+  perform rls_test.assert_eq('B cannot revoke A''s link', rls_test.affected(
+    $q$update atelier.share_links set revoked_at = now() where id = '1c000000-0000-0000-0000-0000000000a1'$q$), 0);
+  perform rls_test.assert_eq('B cannot resolve A''s comment', rls_test.affected(
+    $q$update atelier.comments set resolved_at = now() where id = 'c1000000-0000-0000-0000-0000000000a2'$q$), 0);
+  perform rls_test.assert_eq('B cannot mark A''s notification read', rls_test.affected(
+    $q$update atelier.owner_notifications set read_at = now() where owner_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$), 0);
+
+  perform rls_test.expect_denied('B inserting a round on A''s board',
+    $q$insert into atelier.rounds (board_id, number, snapshot_id)
+       values ('b3000000-0000-0000-0000-0000000000a1', 9, '5a000000-0000-0000-0000-0000000000a1')$q$);
+  perform rls_test.expect_denied('B inserting a link on A''s board',
+    $q$insert into atelier.share_links (board_id, token_hash, mode, scope, permission)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'hash-evil', 'live', 'board', 'view')$q$);
+  perform rls_test.expect_denied('B inserting a link in A''s name',
+    $q$insert into atelier.share_links (board_id, owner_id, token_hash, mode, scope, permission)
+       values ('b3000000-0000-0000-0000-0000000000b1', 'aaaaaaaa-0000-0000-0000-00000000000a', 'hash-evil2', 'live', 'board', 'view')$q$);
+  perform rls_test.expect_denied('B commenting on A''s board',
+    $q$insert into atelier.comments (board_id, author_kind, body)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'owner', 'hi')$q$);
+  perform rls_test.expect_denied('B commenting on their board but attributing it to A''s link',
+    $q$insert into atelier.comments (board_id, share_link_id, author_kind, body)
+       values ('b3000000-0000-0000-0000-0000000000b1', '1c000000-0000-0000-0000-0000000000a1', 'owner', 'hi')$q$);
+  perform rls_test.expect_denied('B notifying about A''s board',
+    $q$insert into atelier.owner_notifications (kind, board_id) values ('comment', 'b3000000-0000-0000-0000-0000000000a1')$q$);
+  perform rls_test.expect_denied('B notifying A',
+    $q$insert into atelier.owner_notifications (owner_id, kind, board_id)
+       values ('aaaaaaaa-0000-0000-0000-00000000000a', 'comment', 'b3000000-0000-0000-0000-0000000000b1')$q$);
+  perform rls_test.expect_denied('B registering a push endpoint for A',
+    $q$insert into atelier.push_subscriptions (owner_id, endpoint, p256dh, auth)
+       values ('aaaaaaaa-0000-0000-0000-00000000000a', 'https://push.example/evil', 'k', 'a')$q$);
+  perform rls_test.assert_eq('B does not own A''s link', (select count(*) from (select atelier.owns_share_link('1c000000-0000-0000-0000-0000000000a1') as x) s where x), 0);
+  perform rls_test.assert_eq('B owns B''s link', (select count(*) from (select atelier.owns_share_link('1c000000-0000-0000-0000-0000000000b1') as x) s where x), 1);
+  reset role;
+end $$;
+
+-- (i3) anon, a token with no subject and an anonymous sign-in get nothing, in every new table.
+do $$
+declare
+  a constant uuid := 'aaaaaaaa-0000-0000-0000-00000000000a';
+  t text;
+  tables constant text[] := array['rounds','share_links','visitors','reactions','comments','approvals','link_views',
+                                  'push_subscriptions','owner_notifications','share_auth_attempts'];
+begin
+  perform rls_test.as_anon();
+  foreach t in array tables loop
+    perform rls_test.expect_denied('anon select on ' || t, format('select count(*) from atelier.%I', t));
+    perform rls_test.expect_denied('anon delete on ' || t, format('delete from atelier.%I', t));
+  end loop;
+  perform rls_test.expect_denied('anon insert into visitors',
+    $q$insert into atelier.visitors (share_link_id) values ('1c000000-0000-0000-0000-0000000000a1')$q$);
+  perform rls_test.expect_denied('anon reading link tokens through owns_share_link',
+    $q$select atelier.owns_share_link('1c000000-0000-0000-0000-0000000000a1')$q$);
+
+  perform rls_test.as_nobody();
+  foreach t in array tables loop
+    perform rls_test.assert_eq('no-subject token sees 0 rows in ' || t, rls_test.count_rows(t), 0);
+  end loop;
+  perform rls_test.expect_denied('no-subject token inserting a link',
+    $q$insert into atelier.share_links (board_id, token_hash, mode, scope, permission)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'hash-nobody', 'live', 'board', 'view')$q$);
+
+  -- A Supabase anonymous sign-in whose subject matches the owner id still gets nothing.
+  perform rls_test.as_user(a, true);
+  foreach t in array tables loop
+    perform rls_test.assert_eq('anonymous sign-in sees 0 rows in ' || t, rls_test.count_rows(t), 0);
+  end loop;
+  perform rls_test.expect_denied('anonymous sign-in inserting a link',
+    $q$insert into atelier.share_links (board_id, token_hash, mode, scope, permission)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'hash-anonsignin', 'live', 'board', 'view')$q$);
+  perform rls_test.expect_denied('anonymous sign-in commenting',
+    $q$insert into atelier.comments (board_id, author_kind, body) values ('b3000000-0000-0000-0000-0000000000a1', 'owner', 'x')$q$);
+  perform rls_test.assert_eq('anonymous sign-in cannot revoke links', rls_test.affected(
+    $q$update atelier.share_links set revoked_at = now()$q$), 0);
+  reset role;
+end $$;
+
+-- (i4) The owner can read visitor data but can never write it: no fabricated visitors, votes or approvals,
+--      and no comment in a visitor's name.
+do $$
+declare a constant uuid := 'aaaaaaaa-0000-0000-0000-00000000000a';
+begin
+  perform rls_test.as_user(a);
+  perform rls_test.expect_denied('owner inserting a visitor',
+    $q$insert into atelier.visitors (share_link_id, display_name) values ('1c000000-0000-0000-0000-0000000000a1', 'Fake')$q$);
+  perform rls_test.expect_denied('owner inserting a reaction',
+    $q$insert into atelier.reactions (share_link_id, visitor_id, object_id, kind)
+       values ('1c000000-0000-0000-0000-0000000000a1', '7e000000-0000-0000-0000-0000000000a1', 'o', 'pick')$q$);
+  perform rls_test.expect_denied('owner inserting an approval',
+    $q$insert into atelier.approvals (share_link_id, visitor_id, frame_id)
+       values ('1c000000-0000-0000-0000-0000000000a1', '7e000000-0000-0000-0000-0000000000a1', 'f1')$q$);
+  perform rls_test.expect_denied('owner inserting a link view',
+    $q$insert into atelier.link_views (share_link_id) values ('1c000000-0000-0000-0000-0000000000a1')$q$);
+  perform rls_test.expect_denied('owner inserting an auth-attempt row',
+    $q$insert into atelier.share_auth_attempts (share_link_id, ip_hash) values ('1c000000-0000-0000-0000-0000000000a1', 'x')$q$);
+  perform rls_test.expect_denied('owner updating a visitor',
+    $q$update atelier.visitors set display_name = 'Renamed'$q$);
+  perform rls_test.expect_denied('owner updating a reaction',
+    $q$update atelier.reactions set kind = 'reject'$q$);
+  perform rls_test.expect_denied('owner updating an approval',
+    $q$update atelier.approvals set frame_id = 'f2'$q$);
+  perform rls_test.expect_denied('owner resetting an auth-attempt counter',
+    $q$update atelier.share_auth_attempts set fails = 0, locked_until = null$q$);
+
+  perform rls_test.expect_denied('owner inserting a comment as a visitor',
+    $q$insert into atelier.comments (board_id, visitor_id, author_kind, body)
+       values ('b3000000-0000-0000-0000-0000000000a1', '7e000000-0000-0000-0000-0000000000a1', 'visitor', 'fake')$q$);
+  perform rls_test.expect_denied('owner inserting an owner comment carrying a visitor id',
+    $q$insert into atelier.comments (board_id, visitor_id, author_kind, body)
+       values ('b3000000-0000-0000-0000-0000000000a1', '7e000000-0000-0000-0000-0000000000a1', 'owner', 'fake')$q$);
+  perform rls_test.expect_denied('owner turning a visitor comment into their own',
+    $q$update atelier.comments set author_kind = 'owner' where id = 'c1000000-0000-0000-0000-0000000000a2'$q$);
+  perform rls_test.expect_denied('owner moving a comment to another board',
+    $q$update atelier.comments set board_id = 'b3000000-0000-0000-0000-0000000000a2' where id = 'c1000000-0000-0000-0000-0000000000a1'$q$);
+  perform rls_test.expect_denied('owner attributing a comment to a link of someone else',
+    $q$insert into atelier.comments (board_id, share_link_id, author_kind, body)
+       values ('b3000000-0000-0000-0000-0000000000a1', '1c000000-0000-0000-0000-0000000000b1', 'owner', 'x')$q$);
+  perform rls_test.expect_denied('owner creating a link owned by someone else',
+    $q$insert into atelier.share_links (board_id, owner_id, token_hash, mode, scope, permission)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'bbbbbbbb-0000-0000-0000-00000000000b', 'hash-b-forged', 'live', 'board', 'view')$q$);
+  perform rls_test.expect_denied('owner handing a link to someone else',
+    $q$update atelier.share_links set owner_id = 'bbbbbbbb-0000-0000-0000-00000000000b' where id = '1c000000-0000-0000-0000-0000000000a2'$q$);
+  perform rls_test.expect_denied('owner moving a link onto a board of someone else',
+    $q$update atelier.share_links set board_id = 'b3000000-0000-0000-0000-0000000000b1' where id = '1c000000-0000-0000-0000-0000000000a2'$q$);
+  reset role;
+end $$;
+
+-- (i5) The service role (server routes) sees everything and is the only visitor-data writer.
+do $$
+declare
+  t text;
+  expected bigint;
+begin
+  perform rls_test.as_service();
+  for t, expected in select * from (values
+    ('rounds', 3), ('share_links', 3), ('visitors', 3), ('reactions', 3), ('comments', 6), ('approvals', 3),
+    ('link_views', 3), ('push_subscriptions', 2), ('owner_notifications', 3), ('share_auth_attempts', 3)) v(t, n)
+  loop
+    perform rls_test.assert_eq('service role sees ' || t, rls_test.count_rows(t), expected);
+  end loop;
+  reset role;
+end $$;
+
+-- (i6) Data-shape constraints on the owner-writable tables (as the owner).
+do $$
+declare a constant uuid := 'aaaaaaaa-0000-0000-0000-00000000000a';
+begin
+  perform rls_test.as_user(a);
+  -- share_links
+  perform rls_test.p3_expect_state('duplicate token_hash',
+    $q$insert into atelier.share_links (board_id, token_hash, mode, scope, permission)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'hash-a1', 'live', 'board', 'view')$q$, '23505');
+  perform rls_test.p3_expect_state('scope frames with no frame ids',
+    $q$insert into atelier.share_links (board_id, token_hash, mode, scope, frame_ids, permission)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'hash-s0', 'live', 'frames', '{}', 'view')$q$, '23514');
+  perform rls_test.p3_expect_state('scope frames with 101 frame ids',
+    $q$insert into atelier.share_links (board_id, token_hash, mode, scope, frame_ids, permission)
+       select 'b3000000-0000-0000-0000-0000000000a1', 'hash-s101', 'live', 'frames',
+              array(select 'f' || g from generate_series(1, 101) g), 'view'$q$, '23514');
+  perform rls_test.p3_expect_state('board scope with 101 frame ids',
+    $q$insert into atelier.share_links (board_id, token_hash, mode, scope, frame_ids, permission)
+       select 'b3000000-0000-0000-0000-0000000000a1', 'hash-b101', 'live', 'board',
+              array(select 'f' || g from generate_series(1, 101) g), 'view'$q$, '23514');
+  perform rls_test.assert_eq('scope frames with exactly 100 frame ids is fine', rls_test.affected(
+    $q$insert into atelier.share_links (board_id, token_hash, mode, scope, frame_ids, permission)
+       select 'b3000000-0000-0000-0000-0000000000a1', 'hash-s100', 'live', 'frames',
+              array(select 'f' || g from generate_series(1, 100) g), 'view'$q$), 1);
+  perform rls_test.p3_expect_state('mode round without a round',
+    $q$insert into atelier.share_links (board_id, token_hash, mode, scope, permission)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'hash-r0', 'round', 'board', 'view')$q$, '23514');
+  perform rls_test.p3_expect_state('unknown mode',
+    $q$insert into atelier.share_links (board_id, token_hash, mode, scope, permission)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'hash-m', 'draft', 'board', 'view')$q$, '23514');
+  perform rls_test.p3_expect_state('unknown scope',
+    $q$insert into atelier.share_links (board_id, token_hash, mode, scope, permission)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'hash-sc', 'live', 'everything', 'view')$q$, '23514');
+  perform rls_test.p3_expect_state('unknown permission',
+    $q$insert into atelier.share_links (board_id, token_hash, mode, scope, permission)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'hash-p', 'live', 'board', 'edit')$q$, '23514');
+  perform rls_test.p3_expect_state('link without a token hash',
+    $q$insert into atelier.share_links (board_id, token_hash, mode, scope, permission)
+       values ('b3000000-0000-0000-0000-0000000000a1', null, 'live', 'board', 'view')$q$, '23502');
+  perform rls_test.p3_expect_state('welcome note of 1,001 characters',
+    $q$insert into atelier.share_links (board_id, token_hash, mode, scope, permission, welcome_note)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'hash-w', 'live', 'board', 'view', repeat('x', 1001))$q$, '23514');
+  perform rls_test.p3_expect_state('link name of 81 characters',
+    $q$insert into atelier.share_links (board_id, token_hash, mode, scope, permission, name)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'hash-n', 'live', 'board', 'view', repeat('x', 81))$q$, '23514');
+  perform rls_test.p3_expect_state('a link pointing at a round of another board',
+    $q$insert into atelier.share_links (board_id, token_hash, mode, round_id, scope, permission)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'hash-xr', 'round', 'c0000000-0000-0000-0000-0000000000a2', 'board', 'view')$q$, '23503');
+
+  -- rounds
+  perform rls_test.p3_expect_state('rounds (board, number) is unique',
+    $q$insert into atelier.rounds (board_id, number, snapshot_id)
+       values ('b3000000-0000-0000-0000-0000000000a1', 1, '5a000000-0000-0000-0000-0000000000a3')$q$, '23505');
+  perform rls_test.p3_expect_state('a round on a snapshot of another board',
+    $q$insert into atelier.rounds (board_id, number, snapshot_id)
+       values ('b3000000-0000-0000-0000-0000000000a1', 2, '5a000000-0000-0000-0000-0000000000a2')$q$, '23503');
+  perform rls_test.p3_expect_state('a round on a missing snapshot',
+    $q$insert into atelier.rounds (board_id, number, snapshot_id)
+       values ('b3000000-0000-0000-0000-0000000000a1', 2, '5a000000-0000-0000-0000-0000000000ff')$q$, '23503');
+  perform rls_test.p3_expect_state('round number 0',
+    $q$insert into atelier.rounds (board_id, number, snapshot_id)
+       values ('b3000000-0000-0000-0000-0000000000a1', 0, '5a000000-0000-0000-0000-0000000000a3')$q$, '23514');
+  perform rls_test.p3_expect_state('round label of 121 characters',
+    $q$insert into atelier.rounds (board_id, number, snapshot_id, label)
+       values ('b3000000-0000-0000-0000-0000000000a1', 2, '5a000000-0000-0000-0000-0000000000a3', repeat('x', 121))$q$, '23514');
+  perform rls_test.p3_expect_state('round previews that is not an object',
+    $q$insert into atelier.rounds (board_id, number, snapshot_id, previews)
+       values ('b3000000-0000-0000-0000-0000000000a1', 2, '5a000000-0000-0000-0000-0000000000a3', '[1]')$q$, '23514');
+  perform rls_test.assert_eq('a second round on the right snapshot is fine', rls_test.affected(
+    $q$insert into atelier.rounds (board_id, number, snapshot_id)
+       values ('b3000000-0000-0000-0000-0000000000a1', 2, '5a000000-0000-0000-0000-0000000000a3')$q$), 1);
+
+  -- comments
+  perform rls_test.p3_expect_state('comment of 2,001 characters',
+    $q$insert into atelier.comments (board_id, author_kind, body) values ('b3000000-0000-0000-0000-0000000000a1', 'owner', repeat('x', 2001))$q$, '23514');
+  perform rls_test.assert_eq('comment of exactly 2,000 characters is fine', rls_test.affected(
+    $q$insert into atelier.comments (board_id, author_kind, body) values ('b3000000-0000-0000-0000-0000000000a1', 'owner', repeat('x', 2000))$q$), 1);
+  perform rls_test.p3_expect_state('whitespace-only comment',
+    $q$insert into atelier.comments (board_id, author_kind, body) values ('b3000000-0000-0000-0000-0000000000a1', 'owner', E' \n\t ')$q$, '23514');
+  perform rls_test.p3_expect_state('empty comment',
+    $q$insert into atelier.comments (board_id, author_kind, body) values ('b3000000-0000-0000-0000-0000000000a1', 'owner', '')$q$, '23514');
+  perform rls_test.p3_expect_state('pin_x of 1e308',
+    $q$insert into atelier.comments (board_id, author_kind, body, pin_space, pin_x, pin_y)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'owner', 'x', 'canvas', 1e308, 0)$q$, '23514');
+  perform rls_test.p3_expect_state('pin_y of NaN',
+    $q$insert into atelier.comments (board_id, author_kind, body, pin_space, pin_x, pin_y)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'owner', 'x', 'canvas', 0, 'NaN')$q$, '23514');
+  perform rls_test.p3_expect_state('pin_x of infinity',
+    $q$insert into atelier.comments (board_id, author_kind, body, pin_space, pin_x, pin_y)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'owner', 'x', 'canvas', 'Infinity', 0)$q$, '23514');
+  perform rls_test.p3_expect_state('pin_x of -1e7 - 1',
+    $q$insert into atelier.comments (board_id, author_kind, body, pin_space, pin_x, pin_y)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'owner', 'x', 'canvas', -10000001, 0)$q$, '23514');
+  perform rls_test.p3_expect_state('half a pin',
+    $q$insert into atelier.comments (board_id, author_kind, body, pin_space, pin_x)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'owner', 'x', 'canvas', 5)$q$, '23514');
+  perform rls_test.p3_expect_state('unknown pin space',
+    $q$insert into atelier.comments (board_id, author_kind, body, pin_space, pin_x, pin_y)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'owner', 'x', 'page', 1, 1)$q$, '23514');
+  perform rls_test.assert_eq('a pin at the limit is fine', rls_test.affected(
+    $q$insert into atelier.comments (board_id, author_kind, body, pin_space, pin_x, pin_y)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'owner', 'x', 'canvas', 1e7, -1e7)$q$), 1);
+  perform rls_test.p3_expect_state('a reply to a comment of another board',
+    $q$insert into atelier.comments (board_id, author_kind, body, parent_id)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'owner', 'x', 'c1000000-0000-0000-0000-0000000000a3')$q$, '23503');
+  perform rls_test.p3_expect_state('a reply to a missing comment',
+    $q$insert into atelier.comments (board_id, author_kind, body, parent_id)
+       values ('b3000000-0000-0000-0000-0000000000a1', 'owner', 'x', 'c1000000-0000-0000-0000-0000000000ff')$q$, '23503');
+
+  -- push_subscriptions, owner_notifications
+  perform rls_test.p3_expect_state('push endpoint over http',
+    $q$insert into atelier.push_subscriptions (endpoint, p256dh, auth) values ('http://x', 'k', 'a')$q$, '23514');
+  perform rls_test.p3_expect_state('push endpoint of 2,049 characters',
+    $q$insert into atelier.push_subscriptions (endpoint, p256dh, auth) values ('https://' || repeat('x', 2041), 'k', 'a')$q$, '23514');
+  perform rls_test.p3_expect_state('duplicate push endpoint',
+    $q$insert into atelier.push_subscriptions (endpoint, p256dh, auth) values ('https://push.example/a', 'k', 'a')$q$, '23505');
+  perform rls_test.p3_expect_state('notification kind outside the list',
+    $q$insert into atelier.owner_notifications (kind, board_id) values ('spam', 'b3000000-0000-0000-0000-0000000000a1')$q$, '23514');
+  perform rls_test.p3_expect_state('notification summary of 201 characters',
+    $q$insert into atelier.owner_notifications (kind, board_id, summary) values ('comment', 'b3000000-0000-0000-0000-0000000000a1', repeat('x', 201))$q$, '23514');
+  reset role;
+end $$;
+
+-- (i7) Data-shape constraints on visitor data (service role: the only writer).
+do $$
+begin
+  perform rls_test.as_service();
+  perform rls_test.p3_expect_state('duplicate reaction (visitor, object, kind, round NULL)',
+    $q$insert into atelier.reactions (share_link_id, visitor_id, round_id, object_id, kind)
+       values ('1c000000-0000-0000-0000-0000000000a2', '7e000000-0000-0000-0000-0000000000a2', null, 'obj1', 'pick')$q$, '23505');
+  perform rls_test.p3_expect_state('duplicate reaction in a round',
+    $q$insert into atelier.reactions (share_link_id, visitor_id, round_id, object_id, kind)
+       values ('1c000000-0000-0000-0000-0000000000a1', '7e000000-0000-0000-0000-0000000000a1', 'c0000000-0000-0000-0000-0000000000a1', 'obj1', 'pick')$q$, '23505');
+  perform rls_test.assert_eq('a different kind on the same object is fine', rls_test.affected(
+    $q$insert into atelier.reactions (share_link_id, visitor_id, round_id, object_id, kind)
+       values ('1c000000-0000-0000-0000-0000000000a2', '7e000000-0000-0000-0000-0000000000a2', null, 'obj1', 'more')$q$), 1);
+  perform rls_test.assert_eq('the same pick in another round is fine', rls_test.affected(
+    $q$insert into atelier.reactions (share_link_id, visitor_id, round_id, object_id, kind)
+       values ('1c000000-0000-0000-0000-0000000000a1', '7e000000-0000-0000-0000-0000000000a1', null, 'obj1', 'pick')$q$), 1);
+  perform rls_test.p3_expect_state('unknown reaction kind',
+    $q$insert into atelier.reactions (share_link_id, visitor_id, object_id, kind)
+       values ('1c000000-0000-0000-0000-0000000000a2', '7e000000-0000-0000-0000-0000000000a2', 'o', 'love')$q$, '23514');
+  perform rls_test.p3_expect_state('a reaction by a visitor of another link',
+    $q$insert into atelier.reactions (share_link_id, visitor_id, object_id, kind)
+       values ('1c000000-0000-0000-0000-0000000000a1', '7e000000-0000-0000-0000-0000000000a2', 'o2', 'pick')$q$, '23503');
+  perform rls_test.p3_expect_state('duplicate approval (visitor, frame, round NULL)',
+    $q$insert into atelier.approvals (share_link_id, visitor_id, frame_id, round_id)
+       values ('1c000000-0000-0000-0000-0000000000a2', '7e000000-0000-0000-0000-0000000000a2', 'f9', null)$q$, '23505');
+  perform rls_test.p3_expect_state('an approval by a visitor of another link',
+    $q$insert into atelier.approvals (share_link_id, visitor_id, frame_id)
+       values ('1c000000-0000-0000-0000-0000000000a1', '7e000000-0000-0000-0000-0000000000a2', 'f3')$q$, '23503');
+  perform rls_test.p3_expect_state('link view of 600,001 ms',
+    $q$insert into atelier.link_views (share_link_id, duration_ms) values ('1c000000-0000-0000-0000-0000000000a1', 600001)$q$, '23514');
+  perform rls_test.p3_expect_state('link view of -1 ms',
+    $q$insert into atelier.link_views (share_link_id, duration_ms) values ('1c000000-0000-0000-0000-0000000000a1', -1)$q$, '23514');
+  perform rls_test.assert_eq('link view of exactly 600,000 ms is fine', rls_test.affected(
+    $q$insert into atelier.link_views (share_link_id, duration_ms) values ('1c000000-0000-0000-0000-0000000000a1', 600000)$q$), 1);
+  perform rls_test.p3_expect_state('a link view by a visitor of another link',
+    $q$insert into atelier.link_views (share_link_id, visitor_id) values ('1c000000-0000-0000-0000-0000000000a1', '7e000000-0000-0000-0000-0000000000a2')$q$, '23503');
+  perform rls_test.p3_expect_state('visitor name of 61 characters',
+    $q$insert into atelier.visitors (share_link_id, display_name) values ('1c000000-0000-0000-0000-0000000000a1', repeat('x', 61))$q$, '23514');
+  perform rls_test.p3_expect_state('unknown author kind (service role)',
+    $q$insert into atelier.comments (board_id, author_kind, body) values ('b3000000-0000-0000-0000-0000000000a1', 'robot', 'x')$q$, '23514');
+  perform rls_test.p3_expect_state('a visitor comment without a visitor',
+    $q$insert into atelier.comments (board_id, author_kind, body) values ('b3000000-0000-0000-0000-0000000000a1', 'visitor', 'x')$q$, '23514');
+  perform rls_test.p3_expect_state('negative failed-attempt counter',
+    $q$insert into atelier.share_auth_attempts (share_link_id, ip_hash, fails) values ('1c000000-0000-0000-0000-0000000000a1', 'neg', -1)$q$, '23514');
+  perform rls_test.p3_expect_state('duplicate auth-attempt row',
+    $q$insert into atelier.share_auth_attempts (share_link_id, ip_hash) values ('1c000000-0000-0000-0000-0000000000a1', 'iphash1')$q$, '23505');
+  reset role;
+end $$;
+
+-- (i8) Cascades: deleting a link removes what its visitors did; deleting a board removes its links, rounds and comments.
+do $$
+declare a constant uuid := 'aaaaaaaa-0000-0000-0000-00000000000a';
+begin
+  perform rls_test.as_user(a);
+  perform rls_test.assert_eq('A deletes the live link', rls_test.affected(
+    $q$delete from atelier.share_links where id = '1c000000-0000-0000-0000-0000000000a2'$q$), 1);
+  reset role;
+
+  perform rls_test.as_service();
+  perform rls_test.assert_eq('cascade: visitors of the deleted link',
+    (select count(*) from atelier.visitors where share_link_id = '1c000000-0000-0000-0000-0000000000a2'), 0);
+  perform rls_test.assert_eq('cascade: reactions of the deleted link',
+    (select count(*) from atelier.reactions where share_link_id = '1c000000-0000-0000-0000-0000000000a2'), 0);
+  perform rls_test.assert_eq('cascade: approvals of the deleted link',
+    (select count(*) from atelier.approvals where share_link_id = '1c000000-0000-0000-0000-0000000000a2'), 0);
+  perform rls_test.assert_eq('cascade: link views of the deleted link',
+    (select count(*) from atelier.link_views where share_link_id = '1c000000-0000-0000-0000-0000000000a2'), 0);
+  perform rls_test.assert_eq('cascade: auth attempts of the deleted link',
+    (select count(*) from atelier.share_auth_attempts where share_link_id = '1c000000-0000-0000-0000-0000000000a2'), 0);
+  perform rls_test.assert_eq('cascade: notifications about the deleted link',
+    (select count(*) from atelier.owner_notifications where share_link_id = '1c000000-0000-0000-0000-0000000000a2'), 0);
+  perform rls_test.assert_eq('cascade: the visitor''s comment went with the visitor',
+    (select count(*) from atelier.comments where id = 'c1000000-0000-0000-0000-0000000000a3'), 0);
+  perform rls_test.assert_eq('the owner''s own comment survives, detached from the link',
+    (select count(*) from atelier.comments where id = 'c1000000-0000-0000-0000-0000000000a4' and share_link_id is null), 1);
+  perform rls_test.assert_eq('the other link is untouched',
+    (select count(*) from atelier.visitors where share_link_id = '1c000000-0000-0000-0000-0000000000a1'), 1);
+  reset role;
+
+  -- Deleting a board (as its owner) removes links, rounds, comments, notifications and everything below them.
+  perform rls_test.as_user(a);
+  perform rls_test.assert_eq('A deletes board A1', rls_test.affected(
+    $q$delete from atelier.boards where id = 'b3000000-0000-0000-0000-0000000000a1'$q$), 1);
+  reset role;
+
+  perform rls_test.as_service();
+  perform rls_test.assert_eq('cascade: links of the deleted board',
+    (select count(*) from atelier.share_links where board_id = 'b3000000-0000-0000-0000-0000000000a1'), 0);
+  perform rls_test.assert_eq('cascade: rounds of the deleted board',
+    (select count(*) from atelier.rounds where board_id = 'b3000000-0000-0000-0000-0000000000a1'), 0);
+  perform rls_test.assert_eq('cascade: comments of the deleted board (replies too)',
+    (select count(*) from atelier.comments where board_id = 'b3000000-0000-0000-0000-0000000000a1'), 0);
+  perform rls_test.assert_eq('cascade: notifications of the deleted board',
+    (select count(*) from atelier.owner_notifications where board_id = 'b3000000-0000-0000-0000-0000000000a1'), 0);
+  perform rls_test.assert_eq('cascade: visitors below the deleted board''s link',
+    (select count(*) from atelier.visitors where id = '7e000000-0000-0000-0000-0000000000a1'), 0);
+  perform rls_test.assert_eq('cascade: reactions below the deleted board''s link',
+    (select count(*) from atelier.reactions where share_link_id = '1c000000-0000-0000-0000-0000000000a1'), 0);
+  perform rls_test.assert_eq('B''s data is untouched',
+    (select count(*) from atelier.share_links where board_id = 'b3000000-0000-0000-0000-0000000000b1'), 1);
+  reset role;
+end $$;
+
+-- (i9) Schema invariants of 0003: RLS on, every foreign key indexed, the (id, board_id) unique index, and the
+--      visitor-data tables expose no insert/update privilege to `authenticated`.
+do $$
+declare r record;
+begin
+  for r in
+    select c.conrelid::regclass::text as tbl, c.conname
+      from pg_constraint c
+     where c.contype = 'f'
+       and c.conrelid::regclass::text in ('atelier.rounds','atelier.share_links','atelier.visitors','atelier.reactions',
+             'atelier.comments','atelier.approvals','atelier.link_views','atelier.push_subscriptions',
+             'atelier.owner_notifications','atelier.share_auth_attempts')
+       and not exists (
+         select 1 from pg_index i
+          where i.indrelid = c.conrelid
+            and i.indpred is null
+            and (i.indkey::text || ' ') like array_to_string(c.conkey, ' ') || ' %')
+  loop
+    raise exception 'FAIL: foreign key % on % has no covering index', r.conname, r.tbl;
+  end loop;
+
+  if not exists (select 1 from pg_indexes where schemaname = 'atelier' and indexname = 'board_snapshots_id_board_key') then
+    raise exception 'FAIL: board_snapshots (id, board_id) is not unique-indexed';
+  end if;
+
+  if has_table_privilege('anon', 'atelier.share_links', 'select') or has_table_privilege('anon', 'atelier.visitors', 'insert')
+     or has_table_privilege('anon', 'atelier.comments', 'select') or has_table_privilege('anon', 'atelier.rounds', 'select') then
+    raise exception 'FAIL: anon holds a privilege on the share tables';
+  end if;
+
+  if has_table_privilege('authenticated', 'atelier.visitors', 'insert')
+     or has_table_privilege('authenticated', 'atelier.reactions', 'update')
+     or has_table_privilege('authenticated', 'atelier.approvals', 'insert')
+     or has_table_privilege('authenticated', 'atelier.link_views', 'insert')
+     or has_table_privilege('authenticated', 'atelier.share_auth_attempts', 'update') then
+    raise exception 'FAIL: authenticated can write visitor data';
+  end if;
+  if has_column_privilege('authenticated', 'atelier.comments', 'author_kind', 'update')
+     or has_column_privilege('authenticated', 'atelier.comments', 'visitor_id', 'update')
+     or has_column_privilege('authenticated', 'atelier.comments', 'board_id', 'update') then
+    raise exception 'FAIL: authenticated can rewrite the authorship of a comment';
+  end if;
+end $$;
+
 -- Deleting a user removes everything they own (ON DELETE CASCADE all the way down).
 delete from auth.users where id = 'aaaaaaaa-0000-0000-0000-00000000000a';
 do $$
