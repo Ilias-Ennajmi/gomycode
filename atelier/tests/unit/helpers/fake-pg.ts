@@ -18,6 +18,8 @@ export type FakePg = {
 const TIMESTAMPED = new Set(["board_updates", "board_snapshots", "assets", "boards", "inbox_items"]);
 const OWNED = new Set(["boards", "assets", "folders", "inbox_items"]);
 const BY_BOARD = new Set(["board_updates", "board_snapshots", "asset_usages"]);
+/** Composite unique constraints the tests rely on (the real ones are in the migrations). */
+const UNIQUE: Record<string, string[]> = { rounds: ["board_id", "number"] };
 
 export function createFakePg(): FakePg {
   const seqs: Record<string, number> = {};
@@ -169,6 +171,10 @@ function makeClient(pg: FakePg, claims: Record<string, unknown> | null, seqs: Re
         for (const p of Array.isArray(this.payload) ? this.payload : [this.payload!]) {
           const row = this.fill(p);
           if (!visible(this.table, row)) return { data: null, error: { code: "42501", message: "new row violates row-level security policy" } };
+          const unique = UNIQUE[this.table];
+          if (unique && rows.some((r) => unique.every((c) => r[c] === row[c]))) {
+            return { data: null, error: { code: "23505", message: "duplicate key value violates unique constraint" } };
+          }
           const existing = rows.find((r) => r[this.onConflict] !== undefined && r[this.onConflict] === row[this.onConflict]);
           if (existing) {
             if (this.op === "insert" || !visible(this.table, existing)) {

@@ -23,3 +23,12 @@ export interface Round {
   diff: RoundDiff;
   publishedAt: string;
 }
+
+/** One frame the owner's browser rendered a preview image for (sent when a round is published). */
+export interface PreviewFrame {
+  frameId: string;
+  name: string;
+  /** Pixel size of the 1280-wide image. */
+  w: number;
+  h: number;
+}

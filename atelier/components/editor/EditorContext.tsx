@@ -29,9 +29,11 @@ import { QuickCapture } from "@/components/chrome/QuickCapture";
 import { useInbox, type InboxEditorState } from "@/components/editor/useInbox";
 import type { InboxClient } from "@/lib/inbox/inbox-client";
 import { ExportDialog } from "@/components/export/ExportDialog";
+import { ShareDialog } from "@/components/share/ShareDialog";
 import { PresentView } from "@/components/present/PresentView";
 import { getAssetResolver } from "@/lib/assets/resolver";
 import type { ExportPreset } from "@/lib/engine/export/export-commands";
+import { creditsRows } from "@/lib/engine/provenance/credits";
 import type { CanvasObject, Point } from "@/lib/engine/model/types";
 
 /** Ids of right-hand panels. The built-in ones are "layers", "inspector" and "find"; later phases add more. */
@@ -74,6 +76,8 @@ export type EditorContextValue = {
   inbox: InboxEditorState | null;
   /** Open the Quick capture dialog (no-op without an Inbox). */
   openCapture(): void;
+  /** Whether Share can open: the editor knows which board it shows. */
+  canShare: boolean;
   /** Open another page, e.g. a board from the palette. Defaults to a full page navigation. */
   navigate(href: string): void;
   /** A command context for the current state. Keyboard and palette callers leave `animate` off. */
@@ -112,6 +116,9 @@ export type EditorProviderProps = {
   assets?: CommandCtx["assets"];
   /** The Inbox client: enables the Inbox panel, Quick capture and dropping Inbox items on the canvas. */
   inbox?: InboxClient;
+  /** Which board this is, and whether the server is in local-only mode: what the Share dialog needs. Without a board id there is no Share. */
+  boardId?: string;
+  localOnly?: boolean;
   registry?: CommandRegistry;
   toast?: ToastFn;
   /** Flips the snapping setting (the board page owns the settings state). */
@@ -131,6 +138,8 @@ export function EditorProvider({
   uploader,
   assets,
   inbox,
+  boardId,
+  localOnly = false,
   registry = defaultRegistry,
   toast = defaultToast,
   onToggleSnap,
@@ -246,6 +255,7 @@ export function EditorProvider({
   );
   const [urlPrompt, setUrlPrompt] = useState<"link" | "embed" | null>(null);
   const [exportOpen, setExportOpen] = useState<{ preset?: ExportPreset } | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   // Presentation mode covers the editor: its chrome is hidden (not unmounted) until it ends.
   const [presenting, setPresenting] = useState<{ index: number } | null>(null);
   // Cards on the canvas offer "Retry preview" through this.
@@ -329,9 +339,19 @@ export function EditorProvider({
         replaceImage: uploader?.addAssetOnly ? replaceImage : undefined,
         toggleSnap: onToggleSnap,
         promptUrl: (kind) => setUrlPrompt(kind),
-        openExport: (preset) => setExportOpen({ preset }),
+        openExport: (preset) => {
+          setShareOpen(false);
+          setExportOpen({ preset });
+        },
+        openShare: boardId
+          ? () => {
+              setExportOpen(null);
+              setShareOpen(true);
+            }
+          : undefined,
         startPresent: ({ index }) => {
           setExportOpen(null);
+          setShareOpen(false);
           setUrlPrompt(null);
           inboxEditor.closeCapture();
           setPresenting({ index });
@@ -362,11 +382,12 @@ export function EditorProvider({
       clipboard,
       inbox: inboxEditor.state,
       openCapture: inboxEditor.openCapture,
+      canShare: !!boardId,
       navigate: (href) => (nav.current ? nav.current(href) : window.location.assign(href)),
       commandCtx,
       run,
     }),
-    [handle, registry, toast, panels, palette, hidden, clipboard, inboxEditor.state, inboxEditor.openCapture, commandCtx, run],
+    [handle, registry, toast, panels, palette, hidden, clipboard, inboxEditor.state, inboxEditor.openCapture, boardId, commandCtx, run],
   );
 
   return (
@@ -385,10 +406,11 @@ export function EditorProvider({
           }}
         />
       ) : null}
-      {exportOpen ? <ExportDialog doc={handle.doc} selectionIds={handle.selection.ids} assets={getAssetResolver()} toast={toast} preset={exportOpen.preset} onClose={() => setExportOpen(null)} /> : null}
       {inbox && inboxEditor.captureOpen && uploader?.addAssetOnly ? (
         <QuickCapture client={inbox} uploader={{ addAssetOnly: (...a) => uploader.addAssetOnly!(...a) }} onClose={inboxEditor.closeCapture} />
       ) : null}
+      {shareOpen && boardId ? <ShareDialog boardId={boardId} doc={handle.doc} toast={toast} localOnly={localOnly} onClose={() => setShareOpen(false)} /> : null}
+      {exportOpen ? <ExportDialog doc={handle.doc} selectionIds={handle.selection.ids} assets={getAssetResolver()} toast={toast} preset={exportOpen.preset} creditsRows={() => creditsRows(handle.doc)} onClose={() => setExportOpen(null)} /> : null}
     </Ctx.Provider>
   );
 }

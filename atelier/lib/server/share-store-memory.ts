@@ -2,7 +2,9 @@ import { lockSeconds } from "@/lib/share/backoff";
 import type { LinkRow } from "@/lib/share/link";
 import type { Round } from "@/lib/share/round-types";
 import * as Y from "yjs";
-import type { AttemptState, LinkUpdate, NewLink, ShareStore, StoreBoard, Visitor, ViewerAssetRow } from "./share-store";
+import { RoundNumberTakenError, type AttemptState, type LinkUpdate, type NewLink, type NewRound, type ShareStore, type StoreBoard, type Visitor, type ViewerAssetRow } from "./share-store";
+import { MAX_STATE_BYTES, StateTooLargeError } from "./state";
+import type { SnapshotMeta } from "./updates";
 
 /**
  * The in-memory ShareStore: backs the unit tests and local-only mode (development and end-to-end tests, no database).
@@ -14,6 +16,13 @@ const ATTEMPT_FORGET_MS = 60 * 60 * 1000;
 
 const copy = <T>(v: T): T => structuredClone(v);
 
+function emptyState(): Uint8Array {
+  const doc = new Y.Doc();
+  const state = Y.encodeStateAsUpdate(doc);
+  doc.destroy();
+  return state;
+}
+
 export class MemoryShareStore implements ShareStore {
   private readonly now: () => Date;
   private links = new Map<string, LinkRow>();
@@ -21,7 +30,7 @@ export class MemoryShareStore implements ShareStore {
   private attempts = new Map<string, { fails: number; lockedUntil: string | null; updatedAt: number }>();
   private rounds = new Map<string, Round>();
   private boards = new Map<string, StoreBoard>();
-  private snapshots = new Map<string, { boardId: string; state: Uint8Array }>();
+  private snapshots = new Map<string, { boardId: string; state: Uint8Array; kind: "compaction" | "round"; label: string | null; createdAt: string; uptoSeq: number }>();
   private live = new Map<string, Uint8Array[]>();
   private assets = new Map<string, ViewerAssetRow>();
 
@@ -34,8 +43,15 @@ export class MemoryShareStore implements ShareStore {
   seedBoard(b: { id: string; ownerId: string; title?: string; deletedAt?: string | null }): void {
     this.boards.set(b.id, { id: b.id, ownerId: b.ownerId, title: b.title ?? "Untitled", deletedAt: b.deletedAt ?? null });
   }
-  seedSnapshot(boardId: string, snapshotId: string, state: Uint8Array): void {
-    this.snapshots.set(snapshotId, { boardId, state: new Uint8Array(state) });
+  seedSnapshot(boardId: string, snapshotId: string, state: Uint8Array, meta: Partial<Pick<SnapshotMeta, "kind" | "label" | "createdAt" | "uptoSeq">> = {}): void {
+    this.snapshots.set(snapshotId, {
+      boardId,
+      state: new Uint8Array(state),
+      kind: meta.kind ?? "round",
+      label: meta.label ?? null,
+      createdAt: meta.createdAt ?? this.now().toISOString(),
+      uptoSeq: meta.uptoSeq ?? 0,
+    });
   }
   seedRound(r: Round): void {
     this.rounds.set(r.id, copy(r));
@@ -45,6 +61,16 @@ export class MemoryShareStore implements ShareStore {
     const list = this.live.get(boardId) ?? [];
     list.push(new Uint8Array(update));
     this.live.set(boardId, list);
+  }
+  /** Replaces the board's live state (local-only mode: the dialog hands over the whole current state each time). */
+  replaceLiveState(boardId: string, update: Uint8Array): void {
+    this.live.set(boardId, [new Uint8Array(update)]);
+  }
+  /** Makes sure the board exists (local-only mode has no boards table); the title is only set when it is new or given. */
+  ensureBoard(b: { id: string; ownerId: string; title?: string }): void {
+    const known = this.boards.get(b.id);
+    if (!known) this.seedBoard(b);
+    else if (b.title !== undefined) known.title = b.title;
   }
   seedAsset(a: { id: string; kind?: "image" | "video" | "gif" | "file"; width?: number | null; height?: number | null; variants?: unknown; source_url?: string | null; credit?: string | null; licence?: string | null }): void {
     this.assets.set(a.id, {
@@ -120,6 +146,33 @@ export class MemoryShareStore implements ShareStore {
   }
   async latestRound(boardId: string): Promise<Round | null> {
     return (await this.listRounds(boardId))[0] ?? null;
+  }
+
+  async snapshotBoard(boardId: string, kind: "compaction" | "round", label: string | null): Promise<{ id: string; uptoSeq: number; state: Uint8Array }> {
+    const state = (await this.getLiveState(boardId)) ?? emptyState();
+    if (state.byteLength > MAX_STATE_BYTES) throw new StateTooLargeError(state.byteLength);
+    const id = crypto.randomUUID();
+    const uptoSeq = this.live.get(boardId)?.length ?? 0;
+    this.seedSnapshot(boardId, id, state, { kind, label, uptoSeq });
+    return { id, uptoSeq, state: new Uint8Array(state) };
+  }
+  async deleteSnapshot(id: string, boardId: string): Promise<void> {
+    const s = this.snapshots.get(id);
+    if (!s || s.boardId !== boardId) return;
+    for (const r of this.rounds.values()) if (r.snapshotId === id) return; // a round's snapshot stays
+    this.snapshots.delete(id);
+  }
+  async listSnapshots(boardId: string): Promise<SnapshotMeta[]> {
+    return [...this.snapshots.entries()]
+      .filter(([, s]) => s.boardId === boardId)
+      .map(([id, s]) => ({ id, kind: s.kind, label: s.label, createdAt: s.createdAt, uptoSeq: s.uptoSeq }))
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : b.uptoSeq - a.uptoSeq));
+  }
+  async insertRound(row: NewRound): Promise<Round> {
+    for (const r of this.rounds.values()) if (r.boardId === row.boardId && r.number === row.number) throw new RoundNumberTakenError(row.boardId, row.number);
+    const round: Round = { ...copy(row), id: crypto.randomUUID(), publishedAt: this.now().toISOString() };
+    this.rounds.set(round.id, round);
+    return copy(round);
   }
 
   // ---- visitors and attempts -----------------------------------------------------------------------------

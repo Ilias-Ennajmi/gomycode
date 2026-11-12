@@ -17,6 +17,8 @@ import {
   type ExportHandle,
   type ExportResult,
 } from "@/lib/engine/export/export-api";
+import { planZipExport, exportZip, type ZipExportResult } from "@/lib/engine/export/zip-api";
+import { zipGuard } from "@/lib/engine/export/zip";
 import type { AssetSource } from "@/lib/engine/export/images";
 import { getExportManager, type ExportManager } from "@/lib/engine/export/manager";
 import { ExportCancelled } from "@/lib/engine/export/protocol";
@@ -36,13 +38,15 @@ type Props = {
   manager?: Pick<ExportManager, "run">;
   /** Credits rows for the deck's credits page. Without it the dialog does not offer that page. */
   creditsRows?: () => CreditsRow[];
+  /** ZIP export hooks (tests): the fetch used for originals and the "choose a file" dialog (default: the File System Access API). */
+  zip?: { fetchFn?: typeof fetch; pickSaveFile?: (suggestedName: string) => Promise<WritableStream<Uint8Array> | null> | null };
   onClose(): void;
 };
 
 type Run =
   | { state: "idle" }
   | { state: "running"; ratio: number; label: string }
-  | { state: "done"; result: ExportResult }
+  | { state: "done"; result: ExportResult | ZipExportResult; streamed?: boolean }
   | { state: "error"; message: string };
 
 /** Formats this dialog can write. (PDF, ZIP and backups are added by their own tasks.) */
@@ -52,6 +56,7 @@ const IMAGE_FORMATS: { id: ExportFormat; label: string }[] = [
   { id: "webp", label: "WebP" },
   { id: "svg", label: "SVG" },
   { id: "pdf", label: "PDF" },
+  { id: "zip", label: "ZIP" },
   { id: "backup", label: "Backup" },
   { id: "jsonCanvas", label: "JSON Canvas" },
 ];
@@ -71,6 +76,21 @@ function Radio<T extends string | number>({ name, value, current, onChange, chil
   );
 }
 
+/** ZIPs from this size on are streamed into a file the owner chooses (where the browser can), not built in memory. */
+export const STREAM_MIN_BYTES = 64 * 1024 * 1024;
+
+type SavePicker = (o: { suggestedName: string; types: { description: string; accept: Record<string, string[]> }[] }) => Promise<{ createWritable(): Promise<WritableStream<Uint8Array>> }>;
+
+/** The browser's "save as" dialog for a ZIP, as a writable stream. null when the browser has none. Rejects with AbortError when closed. */
+async function pickZipFile(name: string): Promise<WritableStream<Uint8Array> | null> {
+  const pick = (globalThis as unknown as { showSaveFilePicker?: SavePicker }).showSaveFilePicker;
+  if (!pick) return null;
+  const handle = await pick.call(globalThis, { suggestedName: name, types: [{ description: "ZIP archive", accept: { "application/zip": [".zip"] } }] });
+  return handle.createWritable();
+}
+
+const hasFilePicker = (): boolean => typeof (globalThis as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker === "function";
+
 export function describeFailure(e: unknown): string {
   const raw = e instanceof Error ? e.message : "";
   if (/OffscreenCanvas|Worker/i.test(raw)) return raw || "This browser can't export here. Update your browser and try again.";
@@ -84,7 +104,7 @@ export function describeFailure(e: unknown): string {
  * failed to load, fonts that were substituted, a size that was reduced). A native modal <dialog>: focus is trapped, Escape
  * closes it (and cancels a running export).
  */
-export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager, creditsRows, onClose }: Props) {
+export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager, creditsRows, zip, onClose }: Props) {
   const uid = useId();
   const src = useMemo(() => boardDocSource(doc), [doc]);
   const frames = useMemo(() => framesInOrder(src), [src]);
@@ -110,6 +130,11 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
   const [coverDate, setCoverDate] = useState(() => new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }));
   const [palettePage, setPalettePage] = useState(false);
   const [creditsPage, setCreditsPage] = useState(false);
+  const [zipCredits, setZipCredits] = useState(true);
+  const [zipPalette, setZipPalette] = useState(true);
+  const [zipFrames, setZipFrames] = useState(true);
+  /** The question shown before building a very large ZIP in memory. */
+  const [zipConfirm, setZipConfirm] = useState<string | null>(null);
   const [run, setRun] = useState<Run>({ state: "idle" });
 
   const handle = useRef<ExportHandle | null>(null);
@@ -132,8 +157,9 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
   const isPdf = format === "pdf";
   const isBackup = format === "backup";
   const isCanvas = format === "jsonCanvas";
+  const isZip = format === "zip";
   /** Formats that always take the whole board and have no picture options. */
-  const wholeBoard = isBackup || isCanvas;
+  const wholeBoard = isBackup || isCanvas || isZip;
   const canBeTransparent = format !== "jpeg" && !isPdf && !wholeBoard;
   const pdfFrameIds = useMemo((): string[] | null => {
     if (effectiveScope === "frame") return frameId ? [frameId] : [];
@@ -157,11 +183,77 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
   }, [src, target, credits, size, customWidth, isSvg, isPdf, frames.length]);
 
   const running = run.state === "running";
-  const extension = format === "jpeg" ? "jpg" : isBackup ? "atelier" : isCanvas ? "canvas" : format;
+  const extension = format === "jpeg" ? "jpg" : isBackup ? "atelier" : isCanvas ? "canvas" : isZip ? "zip" : format;
+  const zipPlan = useMemo(() => (isZip ? planZipExport(doc, getAssetMetaStore()) : null), [isZip, doc]);
+  const zipStreams = isZip && !!zipPlan && zipPlan.estimatedBytes >= STREAM_MIN_BYTES && (zip?.pickSaveFile !== undefined || hasFilePicker());
+  const zipVerdict = useMemo(
+    () => (zipPlan ? zipGuard({ count: zipPlan.assets.length, estimatedBytes: zipPlan.estimatedBytes, frames: zipFrames ? zipPlan.frames.length : 0 }, { hasSink: zipStreams }) : null),
+    [zipPlan, zipFrames, zipStreams],
+  );
+  const zipBlocked = zipVerdict?.ok === false ? zipVerdict.reason : null;
   const pageCount = isPdf ? (pdfFrameIds ?? frames.map((f) => f.id)).length + (cover ? 1 : 0) + (palettePage ? 1 : 0) : 0;
+
+  async function startZip() {
+    if (!zipPlan || !zipVerdict || zipVerdict.ok === false) return;
+    if (!zipStreams && zipVerdict.confirm && zipConfirm === null) {
+      setZipConfirm(zipVerdict.confirm);
+      return;
+    }
+    const fileName = name.trim() ? `${sanitizeFileName(name, "export")}.zip` : `${sanitizeFileName(doc.meta.title, "board")}.zip`;
+    let sink: WritableStream<Uint8Array> | undefined;
+    if (zipStreams) {
+      // Called straight from the click: the browser only opens a save dialog for a user gesture.
+      try {
+        sink = (await (zip?.pickSaveFile ? zip.pickSaveFile(fileName) : pickZipFile(fileName))) ?? undefined;
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return; // closed the dialog: nothing happened
+        sink = undefined;
+      }
+      if (!sink) {
+        // The browser would not open the dialog: fall back to building it in memory, if that is allowed.
+        const again = zipGuard({ count: zipPlan.assets.length, estimatedBytes: zipPlan.estimatedBytes, frames: zipFrames ? zipPlan.frames.length : 0 }, { hasSink: false });
+        if (!again.ok) {
+          setRun({ state: "error", message: again.reason });
+          return;
+        }
+      }
+    }
+    setZipConfirm(null);
+    setRun({ state: "running", ratio: 0, label: "Preparing" });
+    const onProgress = (ratio: number, label: string) => {
+      if (alive.current) setRun((cur) => (cur.state === "running" ? { state: "running", ratio, label } : cur));
+    };
+    const h = exportZip(
+      doc,
+      { includeCredits: zipCredits, includePalette: zipPalette, includeFrames: zipFrames, sink },
+      { manager: manager ?? getExportManager(), assets, onProgress, meta: getAssetMetaStore(), fetchFn: zip?.fetchFn },
+    );
+    handle.current = h as ExportHandle;
+    try {
+      const result = await h.promise;
+      const filename = name.trim() ? `${sanitizeFileName(name, "export")}.zip` : result.filename;
+      if (result.blob) downloadFile(filename, result.blob);
+      if (!alive.current) return;
+      setRun({ state: "done", result: { ...result, filename }, streamed: !result.blob });
+      toast({ message: `Exported ${filename}`, durationMs: 6000 });
+    } catch (e) {
+      if (!alive.current) return;
+      if (e instanceof ExportCancelled) {
+        setRun({ state: "idle" });
+        toast({ message: "Export cancelled", durationMs: 3000 });
+      } else {
+        const message = e instanceof Error && e.name === "ZipRefused" ? e.message : describeFailure(e);
+        setRun({ state: "error", message });
+        toast({ message, durationMs: 8000 });
+      }
+    } finally {
+      if (handle.current === (h as unknown)) handle.current = null;
+    }
+  }
 
   async function start() {
     if (running) return;
+    if (isZip) return startZip();
     setRun({ state: "running", ratio: 0, label: "Preparing" });
     const onProgress = (ratio: number, label: string) => {
       if (alive.current) setRun((cur) => (cur.state === "running" ? { state: "running", ratio, label } : cur));
@@ -227,10 +319,15 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
   }
 
   const summary = run.state === "done" ? run.result.summary : null;
+  const zipDone = run.state === "done" && "fileCount" in run.result;
   const problems = summary
     ? [
         summary.clampedReason,
-        summary.failedAssets.length ? `${summary.failedAssets.length} image${summary.failedAssets.length === 1 ? "" : "s"} could not be loaded and show as grey boxes.` : null,
+        zipDone
+          ? summary.failedAssets.length
+            ? `${summary.failedAssets.length} file${summary.failedAssets.length === 1 ? "" : "s"} could not be downloaded and ${summary.failedAssets.length === 1 ? "was" : "were"} left out. README.txt in the ZIP lists ${summary.failedAssets.length === 1 ? "it" : "them"}.`
+            : null
+          : summary.failedAssets.length ? `${summary.failedAssets.length} image${summary.failedAssets.length === 1 ? "" : "s"} could not be loaded and show as grey boxes.` : null,
         summary.substitutedFonts.length ? `Drawn in Inter instead of: ${summary.substitutedFonts.join(", ")}.` : null,
         ...summary.warnings,
       ].filter((s): s is string => !!s)
@@ -294,7 +391,7 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
           <p id={`${uid}-format-l`} className={`${labelClass} mt-5`}>
             Format
           </p>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6" role="radiogroup" aria-labelledby={`${uid}-format-l`}>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4" role="radiogroup" aria-labelledby={`${uid}-format-l`}>
             {IMAGE_FORMATS.map((f) => (
               <Radio<ExportFormat> key={f.id} name={`${uid}-format`} value={f.id} current={format} onChange={setFormat}>
                 {f.label}
@@ -302,7 +399,28 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
             ))}
           </div>
 
-          {wholeBoard ? (
+          {isZip && zipPlan ? (
+            <div className="mt-5 flex flex-col gap-1" data-zip-options="">
+              <p className="text-(length:--text-md) font-medium">ZIP (originals + credits + palettes)</p>
+              <p className={helpClass}>
+                The original file of every picture and video on the board, exactly as it was added, in one folder.
+              </p>
+              <label className="mt-2 flex min-h-11 items-center gap-3 text-(length:--text-md)">
+                <input type="checkbox" checked={zipCredits} onChange={(e) => { setZipCredits(e.target.checked); setZipConfirm(null); }} className="size-4 shrink-0 accent-(--color-accent)" />
+                Credits sheet (credits.csv)
+              </label>
+              <label className="flex min-h-11 items-center gap-3 text-(length:--text-md)">
+                <input type="checkbox" checked={zipPalette} onChange={(e) => { setZipPalette(e.target.checked); setZipConfirm(null); }} className="size-4 shrink-0 accent-(--color-accent)" />
+                Palette files (.ase, .swatches, CSS, Tailwind, JSON)
+              </label>
+              {zipPlan.frames.length > 0 ? (
+                <label className="flex min-h-11 items-center gap-3 text-(length:--text-md)">
+                  <input type="checkbox" checked={zipFrames} onChange={(e) => { setZipFrames(e.target.checked); setZipConfirm(null); }} className="size-4 shrink-0 accent-(--color-accent)" />
+                  Frame images (one PNG per frame)
+                </label>
+              ) : null}
+            </div>
+          ) : wholeBoard ? (
             <p className={`${helpClass} mt-4`} data-whole-board="">
               {isBackup
                 ? "A backup holds the whole board and the original file of every picture and video. Open it from the home screen with Import backup: it always becomes a new board and never replaces one."
@@ -401,7 +519,7 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
             </>
           )}
 
-          {isPdf ? null : <div className="mt-4 flex flex-col">
+          {isPdf || isZip ? null : <div className="mt-4 flex flex-col">
             <label className="flex min-h-11 items-center gap-3 text-(length:--text-md)">
               <input type="checkbox" checked={transparent && canBeTransparent} disabled={!canBeTransparent} onChange={(e) => setTransparent(e.target.checked)} className="size-4 accent-(--color-accent)" />
               Transparent background{!canBeTransparent ? " (not available for JPG)" : ""}
@@ -424,7 +542,9 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
         </fieldset>
 
         <p id={outId} className="mt-4 text-(length:--text-sm) text-fg-muted" data-export-size="">
-          {wholeBoard
+          {isZip && zipPlan
+            ? `${zipPlan.assets.length === 1 ? "1 picture or video" : `${zipPlan.assets.length.toLocaleString("en-US")} pictures and videos`}, about ${Math.max(1, Math.round(zipPlan.estimatedBytes / (1024 * 1024))).toLocaleString("en-US")} MB${zipFrames && zipPlan.frames.length ? `, plus ${zipPlan.frames.length} frame image${zipPlan.frames.length === 1 ? "" : "s"}` : ""}.`
+            : wholeBoard
             ? ""
             : preview?.empty
             ? isPdf
@@ -444,6 +564,25 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
           </p>
         ) : null}
 
+        {zipBlocked ? (
+          <p role="alert" className="mt-3 text-(length:--text-sm) text-alert" data-zip-blocked="">
+            {zipBlocked}
+          </p>
+        ) : null}
+        {zipConfirm !== null && run.state !== "running" ? (
+          <div role="alert" className="mt-3 flex flex-col gap-2 rounded-md border border-line px-3 py-2 text-(length:--text-sm)" data-zip-confirm="">
+            <p className="m-0">{zipConfirm}</p>
+            <div className="flex gap-2">
+              <button type="button" className={buttonPrimary} onClick={() => void startZip()}>
+                Continue
+              </button>
+              <button type="button" className={buttonSecondary} onClick={() => setZipConfirm(null)}>
+                Not now
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {run.state === "running" ? <ExportProgress ratio={run.ratio} label={run.label} onCancel={() => handle.current?.cancel()} /> : null}
 
         {run.state === "error" ? (
@@ -454,7 +593,10 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
 
         {run.state === "done" ? (
           <div role="status" className="mt-4 text-(length:--text-sm)" data-export-summary="">
-            <p className="font-medium text-fg">Saved {run.result.filename}.</p>
+            <p className="font-medium text-fg">
+              Saved {run.result.filename}
+              {run.streamed ? " to the file you chose" : ""}.
+            </p>
             {problems.length ? (
               <ul className="mt-1 list-disc pl-5 text-fg-muted">
                 {problems.map((p) => (
@@ -476,7 +618,7 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
           >
             {run.state === "done" ? "Close" : "Cancel"}
           </button>
-          <button type="submit" className={buttonPrimary} disabled={running || (!wholeBoard && preview?.empty === true)} data-autofocus="">
+          <button type="submit" className={buttonPrimary} disabled={running || zipBlocked !== null || (!wholeBoard && preview?.empty === true)} data-autofocus="">
             {running ? "Exporting…" : "Export"}
           </button>
         </div>

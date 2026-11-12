@@ -34,6 +34,7 @@ export type CommandUI = {
   replaceImage(id: string): void;
   /** Ask for a web address in a small dialog, then add it to the board as a link card or an embed. */
   promptUrl(kind: "link" | "embed"): void;
+  /** Open the Export dialog, optionally with a format and scope already chosen. */
   openExport(preset?: ExportPreset): void;
   /** What link cards need to fetch their preview (the "Retry preview" action). Null when there is no uploader. */
   linkDeps(): LinkCardDeps | null;
@@ -43,6 +44,8 @@ export type CommandUI = {
   startPresent(opts: { index: number }): void;
   exitPresent(): void;
   isPresenting(): boolean;
+  /** Open the Share dialog (links, new link, QR). Absent when the editor does not know which board it shows. */
+  openShare(): void;
 };
 
 /** Clipboard operations behind the copy/cut/paste commands (wired by useClipboard). */
