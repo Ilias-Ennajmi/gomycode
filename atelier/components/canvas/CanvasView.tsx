@@ -20,7 +20,8 @@ import { EditingStore } from "@/lib/engine/input/editing-store";
 import { SelectionStore } from "@/lib/engine/input/selection-store";
 import { OverlayStore, ToolMachine, createToolMachine, type ToolCtx, type ToolId } from "@/lib/engine/input/tool-machine";
 import type { ImageLayer } from "@/lib/engine/render/image-layer";
-import { DomImageLayer } from "@/lib/engine/render/dom-image-layer";
+import { createImageLayer, detectWebGL } from "@/lib/engine/render/image-layer-factory";
+import { WebGLImageLayer } from "@/lib/engine/render/webgl-image-layer";
 import { SpatialIndex } from "@/lib/engine/spatial/spatial-index";
 import { DEFAULT_NAV_SETTINGS, SETTINGS_KEY, loadSettings, sanitizeSettings, type NavSettings } from "@/lib/settings";
 import type { CropTool } from "@/lib/engine/input/tools/crop";
@@ -77,6 +78,8 @@ export type CanvasViewProps = {
   settings?: NavSettings;
   /** Camera for the first frame. Default: fit all objects (at most 100 %), or the origin centred when empty. */
   initialCamera?: Camera;
+  /** Draw images with the WebGL layer (PixiJS, loaded on demand) when the browser can. Default: the DOM layer. */
+  preferWebGL?: boolean;
   /** Bind Shift+1, Shift+2 and Ctrl/Cmd +, -, 0. Turn off when the command registry binds them instead. */
   cameraShortcuts?: boolean;
   /** Overlays and chrome drawn in screen space above the objects. */
@@ -118,6 +121,7 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
     settings: settingsProp,
     initialCamera,
     cameraShortcuts = true,
+    preferWebGL = false,
     children,
   },
   handleRef,
@@ -139,7 +143,16 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
   const settings = settingsProp ?? storedSettings;
   const settingsRef = useRef(settings);
   const [dpr] = useState(() => (typeof window === "undefined" ? 1 : window.devicePixelRatio || 1));
-  const images = useMemo<ImageLayer>(() => new DomImageLayer({ resolver: assets, inheritCamera: true }), [assets]);
+  const images = useMemo<ImageLayer>(
+    () =>
+      createImageLayer({
+        preferWebGL,
+        webglSupported: preferWebGL && detectWebGL(),
+        deps: { resolver: assets, inheritCamera: true },
+        createWebGL: (deps) => new WebGLImageLayer(deps),
+      }),
+    [assets, preferWebGL],
+  );
   const [view, setView] = useState<ObjectLayerView>(() => ({ camera: store.get(), viewport: { w: 0, h: 0 } }));
 
   const viewportRef = useRef({ w: 0, h: 0 });

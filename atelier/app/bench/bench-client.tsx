@@ -102,6 +102,8 @@ type Built = { doc: BoardDoc; index: SpatialIndex; resolver: BenchResolver };
 export function BenchClient() {
   const [status, setStatus] = useState("Preparing the benchmark board...");
   const [built, setBuilt] = useState<Built | null>(null);
+  // /bench?layer=webgl runs the same board on the WebGL image layer.
+  const [webgl] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("layer") === "webgl");
   const handle = useRef<CanvasHandle | null>(null);
   const resolveReady = useRef<() => void>(() => {});
 
@@ -190,7 +192,7 @@ export function BenchClient() {
   if (!built) return <p style={{ position: "fixed", inset: 0, margin: 0, padding: 24, color: "var(--color-ink)", background: "var(--color-bg)" }}>{status}</p>;
   return (
     <main style={{ position: "fixed", inset: 0, background: "var(--color-bg)" }}>
-      <CanvasView ref={handle} doc={built.doc} index={built.index} assets={built.resolver} cameraShortcuts={false} />
+      <CanvasView ref={handle} doc={built.doc} index={built.index} assets={built.resolver} cameraShortcuts={false} preferWebGL={webgl} />
     </main>
   );
 }
