@@ -1,0 +1,92 @@
+# Checks the Atelier web app (atelier/) on every pull request and push that touches it:
+# types, lint, unit tests, a production build, the row-level-security tests against a real
+# Postgres, then end-to-end tests on a desktop and a phone screen in local-only mode.
+# Nothing here needs a secret.
+name: Atelier CI
+
+on:
+  pull_request:
+    paths:
+      - "atelier/**"
+      - ".github/workflows/atelier-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "atelier/**"
+      - ".github/workflows/atelier-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atelier-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # Playwright supports Ubuntu up to 24.04.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: atelier
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: atelier
+          POSTGRES_PASSWORD: atelier
+          POSTGRES_DB: atelier_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U atelier -d atelier_test" --health-interval 5s --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: "1"
+      DATABASE_URL: postgresql://atelier:atelier@localhost:5432/atelier_test
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: atelier/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Types
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Row-level security tests
+        # scripts/test-rls.sh arrives with the database schema (Task 2).
+        run: |
+          if [ -f scripts/test-rls.sh ]; then bash scripts/test-rls.sh; else echo "No RLS tests yet"; fi
+
+      - name: Browser
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: npm run e2e
+
+      - name: Test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            atelier/playwright-report
+            atelier/test-results
+          retention-days: 7

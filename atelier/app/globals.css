@@ -1,0 +1,89 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+
+/*
+ * Tailwind is mapped onto the tokens and nothing else: the default palette is reset so a raw
+ * Tailwind colour (bg-red-500) can't sneak in. Use bg-canvas, bg-panel, text-fg, border-line...
+ */
+@theme inline {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-canvas: var(--color-bg);
+  --color-panel: var(--color-surface);
+  --color-fg: var(--color-ink);
+  --color-fg-muted: var(--color-muted);
+  --color-line: var(--color-border);
+  --color-brand: var(--color-accent);
+  --color-on-brand: var(--color-on-accent);
+  --color-alert: var(--color-danger);
+  --color-select: var(--color-selection);
+
+  --font-*: initial;
+  --font-ui: var(--font-ui);
+
+  --radius-*: initial;
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+
+  --shadow-*: initial;
+  --shadow-1: var(--elev-1);
+  --shadow-2: var(--elev-2);
+  --shadow-3: var(--elev-3);
+
+  --ease-out: var(--ease-out);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-selection);
+  outline-offset: 2px;
+}
+
+/* Bigger targets on touch screens. */
+@media (pointer: coarse) {
+  :root {
+    --target-min: var(--target-coarse);
+  }
+}
+
+/* Reduced motion removes movement; durations collapse so opacity changes stay instant too. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-slow: 0ms;
+  }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Logo variants follow the theme. */
+.lockup-dark {
+  display: none;
+}
+[data-theme="dark"] .lockup-light {
+  display: none;
+}
+[data-theme="dark"] .lockup-dark {
+  display: block;
+}

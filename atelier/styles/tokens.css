@@ -1,0 +1,114 @@
+/*
+ * Atelier design tokens: the ONLY place raw colour values live.
+ * Components use var(--token) or the Tailwind names mapped in app/globals.css.
+ *
+ * Themes are selected with data-theme="light|dark" on <html> (set before first paint by the
+ * inline script in app/layout.tsx). Neither canvas colour is ever pure white or pure black:
+ * paper #F5F2EC (light) and #121212 (dark), so images are the colour on the board.
+ */
+
+/* ---------- Theme independent ---------- */
+:root {
+  /* Type. Inter only in the UI; Playfair Display lives in the outlined wordmark SVGs. */
+  --font-ui: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-md: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+
+  /* Spacing, 4 px grid. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+
+  /* Radii. */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  /* Hit targets: 24 px minimum, 44 px on coarse pointers (see globals.css). */
+  --target-min: 24px;
+  --target-coarse: 44px;
+
+  /* Stacking. */
+  --z-canvas: 0;
+  --z-overlay: 10;
+  --z-toolbar: 20;
+  --z-panel: 30;
+  --z-menu: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+
+  /* Motion: transform/opacity only. Keyboard-triggered actions never animate. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --dur-fast: 150ms;
+  --dur-base: 200ms;
+  --dur-slow: 300ms;
+}
+
+/* ---------- Light (default) ---------- */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --color-bg: #f5f2ec; /* canvas paper */
+  --color-surface: #ffffff; /* panels, toolbar, menus */
+  --color-ink: #141414;
+  --color-muted: #5e5b55;
+  --color-border: #e0dcd3;
+  --color-accent: #2f4a6d; /* brand ink-blue */
+  --color-on-accent: #ffffff;
+  --color-danger: #b3261e;
+  --color-selection: #2f4a6d;
+  --color-selection-fill: rgb(47 74 109 / 0.08);
+  --color-scrim: rgb(20 20 20 / 0.4);
+
+  /* Sticky note fills (canvas content, not chrome). */
+  --sticky-yellow: #f6e58d;
+  --sticky-peach: #f8c9a8;
+  --sticky-pink: #f4b8c5;
+  --sticky-lilac: #d2c3ee;
+  --sticky-blue: #bcd5f0;
+  --sticky-mint: #bfe6cf;
+  --sticky-sand: #e6d9bf;
+  --sticky-grey: #d9d6cf;
+
+  /* Elevation, 3 levels. */
+  --elev-1: 0 1px 2px rgb(20 20 20 / 0.08), 0 0 0 1px rgb(20 20 20 / 0.04);
+  --elev-2: 0 4px 12px -2px rgb(20 20 20 / 0.12), 0 0 0 1px rgb(20 20 20 / 0.05);
+  --elev-3: 0 12px 32px -8px rgb(20 20 20 / 0.2), 0 0 0 1px rgb(20 20 20 / 0.06);
+}
+
+/* ---------- Dark ---------- */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #121212;
+  --color-surface: #1c1c1e;
+  --color-ink: #f2f0eb;
+  --color-muted: #a5a29b;
+  --color-border: #2e2e31;
+  --color-accent: #8fa8cc;
+  --color-on-accent: #121212;
+  --color-danger: #ff8a80;
+  --color-selection: #8fa8cc;
+  --color-selection-fill: rgb(143 168 204 / 0.12);
+  --color-scrim: rgb(0 0 0 / 0.6);
+
+  --sticky-yellow: #7a6a1f;
+  --sticky-peach: #8a5a3a;
+  --sticky-pink: #84475a;
+  --sticky-lilac: #5d4e82;
+  --sticky-blue: #3f5f86;
+  --sticky-mint: #3f7a5c;
+  --sticky-sand: #6f6448;
+  --sticky-grey: #5a5853;
+
+  --elev-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 0 0 1px rgb(255 255 255 / 0.05);
+  --elev-2: 0 4px 12px -2px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.06);
+  --elev-3: 0 12px 32px -8px rgb(0 0 0 / 0.65), 0 0 0 1px rgb(255 255 255 / 0.07);
+}
