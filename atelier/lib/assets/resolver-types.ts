@@ -14,4 +14,6 @@ export interface AssetResolver {
    * metadata arrived): treat that as a Phase 1 asset, which has w1024 and the original.
    */
   available(assetId: string): { variants: VariantName[]; width: number; height: number } | null;
+  /** Called when URLs or metadata may have changed (an upload registered, metadata arrived). Returns the unsubscribe function. */
+  subscribe?(cb: () => void): () => void;
 }

@@ -25,11 +25,26 @@ export class AssetResolverImpl implements AssetResolver {
   /** Asset metadata (variants, size). Shared with the rest of the app through getAssetMetaStore(). */
   readonly meta: AssetMetaStore;
 
+  private readonly listeners = new Set<() => void>();
+
   constructor(opts: { publicHost?: string | null; meta?: AssetMetaStore } = {}) {
     // Read with literal property access so Next inlines the NEXT_PUBLIC_ value into the browser bundle.
     const fromEnv = process.env.NEXT_PUBLIC_R2_PUBLIC_HOST || process.env.R2_PUBLIC_HOST;
     this.host = normaliseHost("publicHost" in opts ? opts.publicHost : fromEnv);
     this.meta = opts.meta ?? new AssetMetaStore({ persist: false });
+    this.meta.subscribe(() => this.notify());
+  }
+
+  /** Told when a URL or the metadata behind one may have changed. Returns the unsubscribe function. */
+  subscribe(cb: () => void): () => void {
+    this.listeners.add(cb);
+    return () => {
+      this.listeners.delete(cb);
+    };
+  }
+
+  private notify(): void {
+    for (const cb of [...this.listeners]) cb();
   }
 
   url(assetId: string, variant: AssetVariant): string | null {
@@ -69,6 +84,7 @@ export class AssetResolverImpl implements AssetResolver {
       if (blob) urls[name] = URL.createObjectURL(blob);
     }
     this.local.set(assetId, urls);
+    this.notify();
     if (info) {
       const prev = this.meta.get(assetId);
       this.meta.put({
@@ -92,6 +108,7 @@ export class AssetResolverImpl implements AssetResolver {
     if (!urls) return;
     for (const u of Object.values(urls)) if (u) URL.revokeObjectURL(u);
     this.local.delete(assetId);
+    this.notify();
   }
 }
 

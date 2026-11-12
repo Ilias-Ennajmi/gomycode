@@ -1,5 +1,6 @@
 import { deleteLocalBoardDoc } from "@/components/home/board-docs";
 import { folderPath } from "@/components/home/library";
+import { hydrateBoardAssets } from "@/lib/assets/hydrate";
 import { getAssetMetaStore } from "@/lib/assets/meta-store";
 import { getAssetResolver } from "@/lib/assets/resolver";
 import { AssetUploader, type AssetUploaderOptions } from "@/lib/assets/upload-queue";
@@ -113,7 +114,31 @@ export async function openBoardSession(opts: OpenBoardOptions): Promise<OpenResu
   migrateBoard(doc);
 
   // What this device already knows about its assets (sizes, variants) is available before any network call.
-  if (!opts.resolver) void getAssetMetaStore().hydrate();
+  // Assets this device has never seen (a board opened on a new device) get their real size and variants from the server;
+  // until then the canvas treats them as Phase 1 assets (w1024 and the original). Later arrivals are looked up too.
+  let stopHydrating = () => {};
+  if (!opts.resolver) {
+    const meta = getAssetMetaStore();
+    const lookup = (ids?: Iterable<string>) => hydrateBoardAssets({ doc, meta, fetchFn: opts.fetchFn, localOnly, ids });
+    void meta.hydrate().then(() => lookup());
+    if (!localOnly) {
+      const pending = new Set<string>();
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const off = doc.onChange((changed) => {
+        for (const id of changed) pending.add(id);
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          const ids = [...pending];
+          pending.clear();
+          void lookup(ids);
+        }, 1000);
+      });
+      stopHydrating = () => {
+        off();
+        clearTimeout(timer);
+      };
+    }
+  }
   const uploader = new AssetUploader({ doc, resolver: opts.resolver ?? getAssetResolver(), localOnly, ...opts.uploaderOptions });
 
   let disposed = false;
@@ -127,6 +152,7 @@ export async function openBoardSession(opts: OpenBoardOptions): Promise<OpenResu
       async dispose() {
         if (disposed) return;
         disposed = true;
+        stopHydrating();
         try {
           await sync?.flush();
         } catch {

@@ -1,17 +1,20 @@
 "use client";
 
-import { createContext, forwardRef, memo, useContext, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { createContext, forwardRef, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
 import type { AssetResolver } from "@/lib/assets/resolver-types";
 import type { BoardDoc } from "@/lib/engine/doc/board-doc";
 import type { Camera } from "@/lib/engine/geometry/camera";
-import type { CanvasObject, ObjectType } from "@/lib/engine/model/types";
+import type { CanvasObject, ImageObj, ObjectType } from "@/lib/engine/model/types";
+import { DomImageLayer } from "@/lib/engine/render/dom-image-layer";
+import type { ImageLayer } from "@/lib/engine/render/image-layer";
+import { objectZ } from "@/lib/engine/render/image-items";
 import type { SpatialIndex } from "@/lib/engine/spatial/spatial-index";
 import { LodContext, useLod } from "./lod";
 import { buildRenderTree } from "./render-tree";
 import { useDocObject } from "./useDocObject";
+import { useImageLayerFeed } from "./useImageLayerFeed";
 import { ArrowView } from "./objects/ArrowView";
 import { FrameView } from "./objects/FrameView";
-import { ImageView } from "./objects/ImageView";
 import { ShapeView } from "./objects/ShapeView";
 import { StickyView } from "./objects/StickyView";
 import { StrokeView } from "./objects/StrokeView";
@@ -70,7 +73,8 @@ const NoView = () => null;
  * the entries for types whose view is not built yet are the grey placeholder.
  */
 export const OBJECT_VIEWS: { [K in ObjectType]: ViewOf<K> } = {
-  image: ({ obj, assets }) => <ImageView obj={obj} assets={assets} />,
+  // Images are drawn by the ImageLayer (see useImageLayerFeed), not by React.
+  image: NoView,
   text: ({ obj, doc }) => <TextView doc={doc} obj={obj} />,
   sticky: ({ obj, doc }) => <StickyView doc={doc} obj={obj} />,
   shape: ({ obj, doc }) => <ShapeView doc={doc} obj={obj} />,
@@ -119,6 +123,8 @@ const ObjectNode = memo(
           transformOrigin: "50% 50%",
           transform: placed ? `translate(${obj.x}px, ${obj.y}px) rotate(${obj.rotation}rad)` : undefined,
           opacity: obj.opacity < 1 ? obj.opacity : undefined,
+          // Shared with the image layer so images and these objects interleave by their z-order.
+          zIndex: objectZ(doc, obj),
         }}
       >
         {body}
@@ -140,6 +146,10 @@ export type ObjectLayerProps = {
   dpr?: number;
   /** Margin around the viewport (screen px) within which objects stay mounted. */
   marginPx?: number;
+  /** Draws the images. Default: a DomImageLayer of its own (the canvas passes the one it also drives while gesturing). */
+  imageLayer?: ImageLayer;
+  /** Credits overlay text per image (null = none). */
+  captionFor?: (obj: ImageObj) => string | null;
 };
 
 /**
@@ -147,7 +157,7 @@ export type ObjectLayerProps = {
  * written by the owner (CanvasView) directly, never through React state.
  */
 export const ObjectLayer = forwardRef<HTMLDivElement, ObjectLayerProps>(function ObjectLayer(
-  { doc, index, assets, view, dpr = 1, marginPx = 512 },
+  { doc, index, assets, view, dpr = 1, marginPx = 512, imageLayer, captionFor },
   ref,
 ) {
   const [version, setVersion] = useState(0);
@@ -155,8 +165,24 @@ export const ObjectLayer = forwardRef<HTMLDivElement, ObjectLayerProps>(function
     // `version` is only a recompute trigger.
     void version;
     const ids = index.visible(view.camera, view.viewport, marginPx);
-    return { ids, tree: buildRenderTree(doc, ids) };
+    const tree = buildRenderTree(doc, ids);
+    // Images are not React's: they go to the image layer, and only the rest is mounted as nodes.
+    const imageIds = ids.filter((id) => doc.get(id)?.type === "image");
+    if (imageIds.length === 0) return { ids, tree, imageIds, roots: tree.roots, kids: tree.kids };
+    const isImage = new Set(imageIds);
+    const kids = new Map<string, string[]>();
+    for (const [frame, list] of tree.kids) kids.set(frame, list.filter((id) => !isImage.has(id)));
+    return { ids, tree, imageIds, roots: tree.roots.filter((id) => !isImage.has(id)), kids };
   }, [doc, index, view, marginPx, version]);
+
+  const ownLayer = useMemo(() => (imageLayer ? null : new DomImageLayer({ resolver: assets, inheritCamera: true })), [imageLayer, assets]);
+  const layer = imageLayer ?? ownLayer!;
+  const imageHost = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    layer.mount(imageHost.current!);
+    return () => layer.destroy();
+  }, [layer]);
+  useImageLayerFeed({ doc, layer, assets, ids: computed.imageIds, camera: view.camera, viewport: view.viewport, dpr, captionFor });
 
   // Recompute when the doc changes in a way that alters what is mounted or how it nests; plain moves of mounted
   // objects only re-render those objects (see useDocObject).
@@ -180,7 +206,7 @@ export const ObjectLayer = forwardRef<HTMLDivElement, ObjectLayerProps>(function
   );
 
   const lod = useMemo(() => ({ zoom: view.camera.z, dpr }), [view.camera.z, dpr]);
-  const { roots, kids } = computed.tree;
+  const { roots, kids } = computed;
 
   return (
     <LodContext.Provider value={lod}>
@@ -190,6 +216,8 @@ export const ObjectLayer = forwardRef<HTMLDivElement, ObjectLayerProps>(function
           data-canvas-layer=""
           style={{ position: "absolute", left: 0, top: 0, transformOrigin: "0 0", pointerEvents: "none" }}
         >
+          {/* No stacking context of its own: the images inside take part in this layer's z-order. */}
+          <div ref={imageHost} data-image-layer="" style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0 }} />
           {roots.map((id) => (
             <ObjectNode key={id} doc={doc} id={id} assets={assets} />
           ))}

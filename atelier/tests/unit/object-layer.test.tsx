@@ -112,30 +112,61 @@ describe("ObjectLayer", () => {
     index.destroy();
   });
 
-  it("picks the image variant by on-screen pixels and falls back when one is missing", () => {
+  it("draws images through the image layer, picking the variant by on-screen pixels", () => {
     const doc = new BoardDoc();
     doc.create({ ...defaultsFor("image"), id: "img", assetId: "as", x: 0, y: 0, w: 800, h: 600 } as NewObject);
-    const calls: string[] = [];
-    const assets: AssetResolver = { url: (id, v) => (calls.push(v), v === "w1024" ? "blob:w" : "blob:o"), available: () => null };
+    // Unknown metadata (`available` is null): a Phase 1 asset, w1024 then the original.
+    const assets: AssetResolver = { url: (_id, v) => (v === "original" ? "blob:o" : "blob:w"), available: () => null };
     const view = (z: number) => ({ camera: { x: 0, y: 0, z }, viewport: { w: 4000, h: 3000 } });
-    const { container, rerender } = render(<ObjectLayer doc={doc} index={{ visible: () => ["img"] }} assets={assets} view={view(1)} dpr={1} />);
-    expect(container.querySelector("img")!.getAttribute("src")).toBe("blob:w"); // 800 px <= 1024
-    expect(container.querySelector("img")!.getAttribute("decoding")).toBe("async");
-    rerender(<ObjectLayer doc={doc} index={{ visible: () => ["img"] }} assets={assets} view={view(2)} dpr={1} />);
-    expect(container.querySelector("img")!.getAttribute("src")).toBe("blob:o"); // 1600 px
-    rerender(<ObjectLayer doc={doc} index={{ visible: () => ["img"] }} assets={assets} view={view(1)} dpr={2} />);
-    expect(container.querySelector("img")!.getAttribute("src")).toBe("blob:o"); // 800 * 2 dpr
-    const onlyOriginal: AssetResolver = { url: (_id, v) => (v === "original" ? "blob:o2" : null), available: () => null };
-    rerender(<ObjectLayer doc={doc} index={{ visible: () => ["img"] }} assets={onlyOriginal} view={view(0.5)} dpr={1} />);
-    expect(container.querySelector("img")!.getAttribute("src")).toBe("blob:o2");
+    const layer = (z: number, dpr: number, a = assets) => <ObjectLayer doc={doc} index={{ visible: () => ["img"] }} assets={a} view={view(z)} dpr={dpr} />;
+    const { container, rerender } = render(layer(1, 1));
+    const img = () => container.querySelector('[data-object-id="img"] img')!;
+    expect(img().getAttribute("src")).toBe("blob:w"); // 800 px <= 1024
+    expect(img().getAttribute("decoding")).toBe("async");
+    expect(container.querySelectorAll('[data-object-id="img"]')).toHaveLength(1); // drawn once, by the layer
+    rerender(layer(2, 1));
+    expect(img().getAttribute("src")).toBe("blob:o"); // 1600 px
+    rerender(layer(1, 2));
+    expect(img().getAttribute("src")).toBe("blob:o"); // 800 * 2 dpr
+    const onlyOriginal: AssetResolver = { url: () => "blob:o2", available: () => null };
+    rerender(layer(0.5, 1, onlyOriginal));
+    expect(img().getAttribute("src")).toBe("blob:o2");
+  });
+
+  it("stacks images and other objects together by index", () => {
+    const doc = new BoardDoc();
+    doc.createMany([
+      shape("under", 0, 0),
+      { ...defaultsFor("image"), id: "img", assetId: "as", x: 0, y: 0, w: 100, h: 100 } as NewObject,
+      shape("over", 0, 0),
+    ]);
+    const assets: AssetResolver = { url: () => "blob:x", available: () => null };
+    const { container } = render(<ObjectLayer doc={doc} index={{ visible: () => ["under", "img", "over"] }} assets={assets} view={{ camera: CAMERA, viewport: VIEWPORT }} />);
+    const z = (id: string) => Number((container.querySelector(`[data-object-id="${id}"]`) as HTMLElement).style.zIndex);
+    expect(z("under")).toBeLessThan(z("img"));
+    expect(z("img")).toBeLessThan(z("over"));
   });
 
   it("shows a placeholder, not a broken image, when the asset is not available", () => {
     const doc = new BoardDoc();
     doc.create({ ...defaultsFor("image"), id: "img", assetId: "missing", w: 100, h: 100 } as NewObject);
     const { container } = render(<ObjectLayer doc={doc} index={{ visible: () => ["img"] }} assets={noAssets} view={{ camera: CAMERA, viewport: VIEWPORT }} />);
-    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector("img")!.hasAttribute("src")).toBe(false);
     expect(container.querySelector('[data-object-id="img"]')).not.toBeNull();
+  });
+
+  it("moves an image when its object changes, without re-rendering anything in React", () => {
+    const doc = new BoardDoc();
+    doc.create({ ...defaultsFor("image"), id: "img", assetId: "as", x: 0, y: 0, w: 100, h: 100 } as NewObject);
+    const counts = new Map<string, number>();
+    setObjectRenderProbe((id) => counts.set(id, (counts.get(id) ?? 0) + 1));
+    const assets: AssetResolver = { url: () => "blob:x", available: () => null };
+    const { container } = render(<ObjectLayer doc={doc} index={{ visible: () => ["img"] }} assets={assets} view={{ camera: CAMERA, viewport: VIEWPORT }} />);
+    act(() => doc.update("img", { x: 40, y: 10, w: 120 }));
+    const el = container.querySelector('[data-object-id="img"]') as HTMLElement;
+    expect(el.style.transform).toBe("translate(40px, 10px)");
+    expect(el.style.width).toBe("120px");
+    expect(counts.get("img") ?? 0).toBe(0);
   });
 
   it("renders text as grey bars below zoom 0.15 and as text above", () => {

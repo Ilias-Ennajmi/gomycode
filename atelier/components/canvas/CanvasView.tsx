@@ -19,6 +19,8 @@ import { CameraStore, easeInOut, interpolateCamera } from "@/lib/engine/input/ca
 import { EditingStore } from "@/lib/engine/input/editing-store";
 import { SelectionStore } from "@/lib/engine/input/selection-store";
 import { OverlayStore, ToolMachine, createToolMachine, type ToolCtx, type ToolId } from "@/lib/engine/input/tool-machine";
+import { DomImageLayer } from "@/lib/engine/render/dom-image-layer";
+import type { ImageLayer } from "@/lib/engine/render/image-layer";
 import { SpatialIndex } from "@/lib/engine/spatial/spatial-index";
 import { DEFAULT_NAV_SETTINGS, SETTINGS_KEY, loadSettings, sanitizeSettings, type NavSettings } from "@/lib/settings";
 import { DraftOverlay } from "./DraftOverlay";
@@ -49,6 +51,8 @@ export interface CanvasHandle {
   readonly editing: EditingStore;
   /** Transient tool drawing state (snap guides, marquee, drop highlight). */
   readonly overlays: OverlayStore;
+  /** Draws the images: `images.stats()` (mounted, resident bytes, variant mix) and palette highlighting (`setDimmed`). */
+  readonly images: ImageLayer;
   /** The active tool and the registry of tools. Chrome switches tools with `tools.setTool(id)`. */
   readonly tools: ToolMachine;
 }
@@ -125,6 +129,7 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
   const settings = settingsProp ?? storedSettings;
   const settingsRef = useRef(settings);
   const [dpr] = useState(() => (typeof window === "undefined" ? 1 : window.devicePixelRatio || 1));
+  const images = useMemo<ImageLayer>(() => new DomImageLayer({ resolver: assets, inheritCamera: true }), [assets]);
   const [view, setView] = useState<ObjectLayerView>(() => ({ camera: store.get(), viewport: { w: 0, h: 0 } }));
 
   const viewportRef = useRef({ w: 0, h: 0 });
@@ -143,8 +148,9 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
     s.timer = null;
     s.since = 0;
     if (layerRef.current) layerRef.current.style.willChange = "";
+    images.setGesture(false);
     setView({ camera: store.get(), viewport: { ...viewportRef.current } });
-  }, [store]);
+  }, [store, images]);
 
   const scheduleView = useCallback(() => {
     const s = settle.current;
@@ -158,7 +164,8 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
   // Only while the camera is moving does the layer get its own compositor layer.
   const gestureStart = useCallback(() => {
     if (layerRef.current) layerRef.current.style.willChange = "transform";
-  }, []);
+    images.setGesture(true);
+  }, [images]);
 
   const applyCamera = useCallback((c: Camera) => {
     const layer = layerRef.current;
@@ -333,9 +340,10 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
       selection,
       editing,
       overlays,
+      images,
       tools: machine,
     }),
-    [store, doc, index, selection, editing, overlays, machine, cancelCameraAnimation],
+    [store, doc, index, selection, editing, overlays, images, machine, cancelCameraAnimation],
   );
 
   return (
@@ -357,7 +365,7 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
       }}
     >
       <EditingContext.Provider value={editingContext}>
-        <ObjectLayer ref={layerRef} doc={doc} index={index} assets={assets} view={view} dpr={dpr} />
+        <ObjectLayer ref={layerRef} doc={doc} index={index} assets={assets} view={view} dpr={dpr} imageLayer={images} />
         <DraftOverlay overlays={overlays} camera={store} />
         <GuidesOverlay overlays={overlays} camera={store} />
         <SelectionOverlay doc={doc} selection={selection} overlays={overlays} camera={store} />

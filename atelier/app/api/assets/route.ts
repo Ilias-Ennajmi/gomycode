@@ -1,5 +1,6 @@
-import { newAssetId } from "@/lib/assets/asset-id";
+import { isAssetId, newAssetId } from "@/lib/assets/asset-id";
 import { parseAssetMeta } from "@/lib/assets/asset-schema";
+import { isVariantName, type VariantName } from "@/lib/assets/variants";
 import { requireOwner, responseFromError } from "@/lib/server/owner";
 import { presignAssetUploads } from "@/lib/server/r2";
 
@@ -61,4 +62,55 @@ export async function POST(request: Request): Promise<Response> {
   } catch {
     return json(503, { error: "storage-not-configured" });
   }
+}
+
+/** At most this many ids per GET /api/assets (the browser asks 100 at a time). */
+const MAX_IDS = 200;
+
+/**
+ * What the canvas needs to draw assets it has not seen on this device: size, the variants that exist, the analysis.
+ * `GET /api/assets?ids=a,b,c`, owner only (RLS and an explicit owner filter). Assets that do not exist, are someone
+ * else's, or have no pixel size are simply left out of the answer.
+ */
+export async function GET(request: Request): Promise<Response> {
+  let auth;
+  try {
+    auth = await requireOwner();
+  } catch (e) {
+    return responseFromError(e);
+  }
+
+  const raw = new URL(request.url).searchParams.get("ids") ?? "";
+  const ids = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  if (ids.length === 0 || ids.length > MAX_IDS || !ids.every(isAssetId)) return json(400, { error: "bad-request" });
+
+  const { data, error } = await auth.supabase
+    .from("assets")
+    .select("id,kind,width,height,bytes,variants,palette,phash,title,analysis_version")
+    .eq("owner_id", auth.userId)
+    .in("id", ids);
+  if (error || !Array.isArray(data)) return json(500, { error: "server-error" });
+
+  const assets = [];
+  for (const r of data as Array<Record<string, unknown>>) {
+    const width = r.width;
+    const height = r.height;
+    if (typeof r.id !== "string" || typeof width !== "number" || typeof height !== "number" || !(width > 0) || !(height > 0)) continue;
+    if (r.kind !== "image" && r.kind !== "video" && r.kind !== "gif") continue;
+    const stored = r.variants && typeof r.variants === "object" && !Array.isArray(r.variants) ? (r.variants as Record<string, unknown>) : {};
+    const variants = (Object.keys(stored).filter((k) => isVariantName(k) && stored[k]) as VariantName[]).sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
+    assets.push({
+      id: r.id,
+      kind: r.kind,
+      width,
+      height,
+      bytes: typeof r.bytes === "number" ? r.bytes : 0,
+      variants,
+      palette: Array.isArray(r.palette) ? r.palette : null,
+      phash: typeof r.phash === "string" ? r.phash : null,
+      title: typeof r.title === "string" ? r.title : "",
+      analysisVersion: typeof r.analysis_version === "number" ? r.analysis_version : 0,
+    });
+  }
+  return json(200, { assets });
 }
