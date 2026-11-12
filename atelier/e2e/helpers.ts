@@ -228,8 +228,10 @@ export async function waitForPageCached(page: Page, pathname: string): Promise<v
   await expect
     .poll(() =>
       page.evaluate(async (p) => {
-        const cache = await caches.open("atelier-pages-v1");
-        return !!(await cache.match(location.origin + p));
+        // The page cache is versioned (atelier-pages-vN); whichever the current worker uses.
+        const name = (await caches.keys()).find((n) => n.startsWith("atelier-pages-"));
+        if (!name) return false;
+        return !!(await (await caches.open(name)).match(location.origin + p));
       }, pathname),
     )
     .toBe(true);

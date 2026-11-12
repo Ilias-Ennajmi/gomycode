@@ -71,3 +71,28 @@ describe("hydrateBoardAssets", () => {
     expect(fetchFn).not.toHaveBeenCalled();
   });
 });
+
+describe("hydrateAssetIds (the Inbox's assets)", () => {
+  it("asks only for ids the store does not know, and stores the answers", async () => {
+    const { AssetMetaStore } = await import("@/lib/assets/meta-store");
+    const { hydrateAssetIds } = await import("@/lib/assets/hydrate");
+    const known = "6f1c2d3e-4b5a-4c6d-8e7f-0a1b2c3d4e01";
+    const fresh = "6f1c2d3e-4b5a-4c6d-8e7f-0a1b2c3d4e02";
+    const meta = new AssetMetaStore({ persist: false });
+    meta.put({ id: known, kind: "image", width: 10, height: 10, bytes: 1, variants: [], palette: null, phash: null, title: "", provenance: null, analysisVersion: 0 });
+    const fetchFn = vi.fn(async (...args: [string]) => (void args, Response.json({ assets: [{ id: fresh, kind: "image", width: 800, height: 600, bytes: 5, variants: ["w256"], palette: null, phash: null, title: "", analysisVersion: 0 }] })));
+    await hydrateAssetIds({ ids: [known, fresh, fresh], meta, fetchFn: fetchFn as unknown as typeof fetch });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(fetchFn.mock.calls[0][0]).toBe(`/api/assets?ids=${fresh}`);
+    expect(meta.get(fresh)).toMatchObject({ width: 800, variants: ["w256"] });
+  });
+
+  it("does nothing in local-only mode and survives a failing server", async () => {
+    const { AssetMetaStore } = await import("@/lib/assets/meta-store");
+    const { hydrateAssetIds } = await import("@/lib/assets/hydrate");
+    const fetchFn = vi.fn(async () => Promise.reject(new TypeError("offline")));
+    await hydrateAssetIds({ ids: ["6f1c2d3e-4b5a-4c6d-8e7f-0a1b2c3d4e02"], meta: new AssetMetaStore({ persist: false }), fetchFn: fetchFn as unknown as typeof fetch, localOnly: true });
+    expect(fetchFn).not.toHaveBeenCalled();
+    await expect(hydrateAssetIds({ ids: ["6f1c2d3e-4b5a-4c6d-8e7f-0a1b2c3d4e02"], meta: new AssetMetaStore({ persist: false }), fetchFn: fetchFn as unknown as typeof fetch })).resolves.toBeUndefined();
+  });
+});

@@ -464,6 +464,8 @@ export const BUILTIN_COMMANDS: Command[] = [
   { id: "view.find", label: "Find and replace", group: "view", shortcut: "Mod+F", global: true, when: (c) => !!c.ui?.openFind, run: (c) => c.ui?.openFind?.() },
   { id: "view.layers", label: "Layers panel", group: "view", when: (c) => !!c.ui?.togglePanel, run: (c) => c.ui?.togglePanel?.("layers") },
   { id: "view.inspector", label: "Inspector panel", group: "view", when: (c) => !!c.ui?.togglePanel, run: (c) => c.ui?.togglePanel?.("inspector") },
+  { id: "view.inbox", label: "Inbox panel", group: "view", when: (c) => !!c.ui?.openCapture && !!c.ui?.togglePanel, run: (c) => c.ui?.togglePanel?.("inbox") },
+  { id: "inbox.capture", label: "Quick capture to Inbox", group: "insert", shortcut: "Mod+Shift+I", global: true, when: (c) => !!c.ui?.openCapture, run: (c) => c.ui?.openCapture?.() },
   { id: "view.palette", label: "Command palette", group: "view", shortcut: "Mod+K", global: true, when: (c) => !!c.ui?.togglePalette, run: (c) => c.ui?.togglePalette?.() },
 
   // tools

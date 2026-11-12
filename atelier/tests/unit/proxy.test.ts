@@ -199,6 +199,8 @@ describe("proxy: paths that never need a session", () => {
     "/brand/favicon.svg",
     "/brand/atelier-lockup-light.svg",
     "/sw.js",
+    "/sw-share.js",
+    "/share-target",
     "/manifest.webmanifest",
     "/offline.html",
     "/api/health",

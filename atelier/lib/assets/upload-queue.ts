@@ -103,6 +103,11 @@ export type AssetUploaderOptions = {
    */
   localOnly?: boolean;
   /**
+   * Pages that have no board (the Inbox) pass false: queued images that belong to a board's canvas stay in IndexedDB for that
+   * board to finish; only assets added without an object (addAssetOnly) are resumed. Default true.
+   */
+  resumeCanvasImages?: boolean;
+  /**
    * The server said an image is a copy of one the owner already has and the object was pointed at it (nothing was
    * uploaded). `onBoard`: another object here already used that asset. Not called for an image deleted meanwhile.
    */
@@ -380,7 +385,9 @@ export class AssetUploader {
         const blobs = await this.readBlobs(meta.assetId);
         // Entries queued by Phase 1 carry no variant list: whatever is stored is what there is.
         if (!meta.variants) meta.variants = blobs ? orderedVariants(blobs.variants) : [];
-        if (!this.o.localOnly) {
+        // A canvas image is finished by the board that placed it (a duplicate must re-point its object); pages without that
+        // board (the Inbox, the library) leave it in IndexedDB for the board to resume.
+        if (!this.o.localOnly && !(meta.objectId && this.o.resumeCanvasImages === false)) {
           this.queue.set(meta.assetId, { assetId: meta.assetId, objectId: meta.objectId ?? null, name: meta.name, state: "queued", attempts: 0, meta, done: new Set(), waiting: false });
         }
         if (blobs) this.o.resolver.registerLocal(meta.assetId, { ...blobs.variants, original: blobs.original }, localInfo(meta, meta.variants));

@@ -197,6 +197,28 @@ test.describe("export", () => {
     expect(svg).toContain("data:image/");
   });
 
+  test("a PDF deck: one page per frame in presentation order, with cover and palette pages", async ({ page }, info) => {
+    if (info.project.name !== "desktop") test.skip();
+    await openBoard(page, undefined, { zoom: 0.4 });
+    const { frames } = await buildBoard(page);
+    await addTexts(page, frames["Intro"]);
+    await selectIds(page, []);
+    const dialog = await openDialog(page);
+    await dialog.getByRole("radio", { name: "PDF" }).check({ force: true });
+    await expect(dialog.locator("[data-export-size]")).toContainText("3 pages");
+    await dialog.getByRole("checkbox", { name: "Cover page" }).check();
+    await dialog.getByRole("checkbox", { name: "Palette page" }).check();
+    await expect(dialog.locator("[data-export-size]")).toContainText("5 pages");
+    const d = await runExport(page, dialog);
+    const bytes = await save(d);
+    const pdf = bytes.toString("latin1");
+    expect(d.suggestedFilename()).toMatch(/\.pdf$/);
+    expect(pdf.startsWith("%PDF-")).toBe(true);
+    expect((pdf.match(/\/Type\s*\/Page(?![s\w])/g) ?? []).length).toBe(5);
+    expect(pdf).toContain("/FontFile2");
+    await expect(dialog.locator("[data-export-summary]")).toContainText("Saved");
+  });
+
   test("the dialog is keyboard operable and has no accessibility violations; Escape closes it", async ({ page }, info) => {
     if (info.project.name !== "desktop") test.skip();
     await openBoard(page, undefined, { zoom: 0.4 });

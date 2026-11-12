@@ -126,3 +126,14 @@ Do this on the production URL. Tick each line.
 - **Vercel Hobby is non-commercial** (see the top of this page).
 - **Duplicate board** works only for boards that have been opened once on this device.
 - HEIC and other formats the browser cannot decode are refused with a message naming the file (Chromium cannot read HEIC).
+- **The Inbox's Web Share Target works on Android only, from the installed app.** In Chrome on Android, install Atelier (menu, "Install app"), then
+  Share from any app and choose Atelier. The service worker (`public/sw.js` with `public/sw-share.js`) answers the share's POST to
+  `/share-target` on the device, keeps what was shared in IndexedDB and opens `/inbox`, where the signed-in page sends it on; nothing
+  shared is read by the server. **iOS Safari has no Web Share Target**, so on iPhone and iPad the Inbox is fed by pasting or choosing
+  files on the Inbox page, or by Quick capture (Ctrl/Cmd+Shift+I) on a board. The Inbox page says so in its help text. A POST that
+  reaches the server without the service worker (not installed yet, a browser that skips it) is only redirected to `/inbox`; its
+  body is never read. Deploying a new service worker needs no step: it takes over when no board is open.
+- **The Inbox holds 200 waiting items** (items already placed on a board do not count). A share carries at most 10 files; a picture over 50 MB, a
+  video over 200 MB, SVG and any type that is not JPEG, PNG, WebP, GIF, AVIF, MP4 or WebM are left out, and the Inbox page says how many.
+- **Deleting a library picture removes its files from R2** and is refused while a board (or a board in the trash) uses it. If R2 refuses,
+  the picture stays in the library so the delete can be repeated.

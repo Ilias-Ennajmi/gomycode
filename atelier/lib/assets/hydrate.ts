@@ -74,3 +74,28 @@ export async function hydrateBoardAssets(opts: {
     }
   }
 }
+
+/**
+ * Like hydrateBoardAssets, for a plain list of asset ids (the Inbox, which has no board): asks `GET /api/assets?ids=` for
+ * the ones the store does not know, 100 at a time, and stores the answers. Never throws; does nothing in local-only mode.
+ */
+export async function hydrateAssetIds(opts: { ids: Iterable<string>; meta: AssetMetaStore; fetchFn?: typeof fetch; localOnly?: boolean }): Promise<void> {
+  if (opts.localOnly) return;
+  const fetchFn = opts.fetchFn ?? ((...a: Parameters<typeof fetch>) => globalThis.fetch(...a));
+  const missing = [...new Set(opts.ids)].filter((id) => !opts.meta.get(id));
+  for (let i = 0; i < missing.length; i += CHUNK) {
+    const chunk = missing.slice(i, i + CHUNK);
+    try {
+      const res = await fetchFn(`/api/assets?ids=${chunk.join(",")}`, { cache: "no-store" });
+      if (!res.ok) continue;
+      const body = (await res.json()) as { assets?: unknown };
+      if (!Array.isArray(body.assets)) continue;
+      for (const row of body.assets) {
+        const m = toMeta(row);
+        if (m && chunk.includes(m.id) && !opts.meta.get(m.id)) opts.meta.put(m);
+      }
+    } catch {
+      /* offline: the thumbnails keep their guess */
+    }
+  }
+}

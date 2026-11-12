@@ -25,6 +25,9 @@ import { retryLinkPreview } from "@/lib/engine/links/link-cards";
 import { createLinkCardDeps } from "@/lib/engine/links/preview-client";
 import { linkRetry } from "@/lib/engine/links/retry-store";
 import { UrlPromptDialog } from "@/components/chrome/UrlPromptDialog";
+import { QuickCapture } from "@/components/chrome/QuickCapture";
+import { useInbox, type InboxEditorState } from "@/components/editor/useInbox";
+import type { InboxClient } from "@/lib/inbox/inbox-client";
 import { ExportDialog } from "@/components/export/ExportDialog";
 import { getAssetResolver } from "@/lib/assets/resolver";
 import type { ExportPreset } from "@/lib/engine/export/export-commands";
@@ -66,6 +69,10 @@ export type EditorContextValue = {
   hidden: HiddenState;
   /** Copy, cut, paste and drop of the board (see useClipboard). */
   clipboard: ClipboardApi;
+  /** The Inbox (null when the editor was given none): placing items on the board, and the shared client. */
+  inbox: InboxEditorState | null;
+  /** Open the Quick capture dialog (no-op without an Inbox). */
+  openCapture(): void;
   /** Open another page, e.g. a board from the palette. Defaults to a full page navigation. */
   navigate(href: string): void;
   /** A command context for the current state. Keyboard and palette callers leave `animate` off. */
@@ -102,6 +109,8 @@ export type EditorProviderProps = {
   uploader?: Pick<AssetUploader, "add"> & Partial<Pick<AssetUploader, "addAssetOnly">>;
   /** Pixel sizes of assets, for the crop maths (the asset resolver). */
   assets?: CommandCtx["assets"];
+  /** The Inbox client: enables the Inbox panel, Quick capture and dropping Inbox items on the canvas. */
+  inbox?: InboxClient;
   registry?: CommandRegistry;
   toast?: ToastFn;
   /** Flips the snapping setting (the board page owns the settings state). */
@@ -120,6 +129,7 @@ export function EditorProvider({
   handle,
   uploader,
   assets,
+  inbox,
   registry = defaultRegistry,
   toast = defaultToast,
   onToggleSnap,
@@ -252,6 +262,7 @@ export function EditorProvider({
     links: linkDeps ?? undefined,
   });
   useDropFiles(handle, clipboard.pasteInput);
+  const inboxEditor = useInbox({ handle, client: inbox, linkDeps, toast, openPanel: (id) => panels.open(id) });
 
   const pickImages = useCallback(() => {
     const input = document.createElement("input");
@@ -317,6 +328,7 @@ export function EditorProvider({
         promptUrl: (kind) => setUrlPrompt(kind),
         openExport: (preset) => setExportOpen({ preset }),
         linkDeps: () => linkDeps,
+        openCapture: inbox ? inboxEditor.openCapture : undefined,
       },
     };
   });
@@ -337,11 +349,13 @@ export function EditorProvider({
       palette,
       hidden,
       clipboard,
+      inbox: inboxEditor.state,
+      openCapture: inboxEditor.openCapture,
       navigate: (href) => (nav.current ? nav.current(href) : window.location.assign(href)),
       commandCtx,
       run,
     }),
-    [handle, registry, toast, panels, palette, hidden, clipboard, commandCtx, run],
+    [handle, registry, toast, panels, palette, hidden, clipboard, inboxEditor.state, inboxEditor.openCapture, commandCtx, run],
   );
 
   return (
@@ -359,6 +373,9 @@ export function EditorProvider({
         />
       ) : null}
       {exportOpen ? <ExportDialog doc={handle.doc} selectionIds={handle.selection.ids} assets={getAssetResolver()} toast={toast} preset={exportOpen.preset} onClose={() => setExportOpen(null)} /> : null}
+      {inbox && inboxEditor.captureOpen && uploader?.addAssetOnly ? (
+        <QuickCapture client={inbox} uploader={{ addAssetOnly: (...a) => uploader.addAssetOnly!(...a) }} onClose={inboxEditor.closeCapture} />
+      ) : null}
     </Ctx.Provider>
   );
 }

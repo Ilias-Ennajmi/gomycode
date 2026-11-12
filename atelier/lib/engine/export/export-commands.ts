@@ -21,4 +21,5 @@ export const EXPORT_COMMANDS: Command[] = [
   open("Export as JPG…", "export.jpg", { format: "jpeg" }),
   open("Export as WebP…", "export.webp", { format: "webp" }),
   open("Export as SVG…", "export.svg", { format: "svg" }),
+  open("Export as PDF deck…", "export.pdf", { format: "pdf", scope: "board" }),
 ];

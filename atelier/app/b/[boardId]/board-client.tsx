@@ -6,6 +6,8 @@ import { getAssetResolver } from "@/lib/assets/resolver";
 import { AssetUploader } from "@/lib/assets/upload-queue";
 import { BoardMessage, BoardOpening } from "@/components/board/BoardMessage";
 import { useAddRequest } from "@/components/board/useAddRequest";
+import { createInboxClient } from "@/lib/inbox/client-factory";
+import type { InboxClient } from "@/lib/inbox/inbox-client";
 import { loadBoardMeta, openBoardSession, renameBoard, type OpenedBoard } from "@/lib/board/session";
 import { recordLeave } from "@/lib/board/leave";
 import { markBoardReady } from "@/lib/board/ready";
@@ -25,6 +27,7 @@ type Session = {
   doc: BoardDoc;
   index: SpatialIndex;
   uploader: AssetUploader;
+  inbox: InboxClient;
   sync: OpenedBoard["sync"];
   camera: Camera | undefined;
   title: string;
@@ -87,7 +90,7 @@ export function BoardClient({ boardId, localOnly }: { boardId: string; localOnly
 
   useEffect(() => {
     let cancelled = false;
-    let opened: { board: OpenedBoard; index: SpatialIndex } | null = null;
+    let opened: { board: OpenedBoard; index: SpatialIndex; inbox: InboxClient } | null = null;
     let left = false;
 
     const leave = () => {
@@ -126,12 +129,14 @@ export function BoardClient({ boardId, localOnly }: { boardId: string; localOnly
         return;
       }
       const index = new SpatialIndex(board.doc);
-      opened = { board, index };
+      // The Inbox: the panel, Quick capture and dropping its items on the canvas share this one client.
+      const inbox = createInboxClient({ localOnly, uploader: board.uploader, onRejected: (_item, e) => toast({ message: e.message }) });
+      opened = { board, index, inbox };
       window.addEventListener("pagehide", onPageHide);
       window.addEventListener("pageshow", onPageShow);
       setTitle(meta.title);
       setBreadcrumb(meta.breadcrumb);
-      setPhase({ kind: "ready", session: { doc: board.doc, index, uploader: board.uploader, sync: board.sync, camera: loadCamera(boardId), title: meta.title, breadcrumb: meta.breadcrumb } });
+      setPhase({ kind: "ready", session: { doc: board.doc, index, uploader: board.uploader, inbox, sync: board.sync, camera: loadCamera(boardId), title: meta.title, breadcrumb: meta.breadcrumb } });
     })();
 
     return () => {
@@ -140,6 +145,7 @@ export function BoardClient({ boardId, localOnly }: { boardId: string; localOnly
       window.removeEventListener("pageshow", onPageShow);
       leave(); // reads the document now; the rest of the clean-up may destroy it
       opened?.index.destroy();
+      opened?.inbox.dispose();
       void opened?.board.dispose();
       setPhase({ kind: "opening" });
     };
@@ -238,7 +244,7 @@ export function BoardClient({ boardId, localOnly }: { boardId: string; localOnly
         cameraShortcuts={false /* the command registry binds Shift+1/2 and Mod +/-/0 */}
       />
       {canvas ? (
-        <EditorProvider handle={canvas} uploader={session.uploader} assets={getAssetResolver()} onToggleSnap={toggleSnap} navigate={(href) => router.push(href)}>
+        <EditorProvider handle={canvas} uploader={session.uploader} inbox={session.inbox} assets={getAssetResolver()} onToggleSnap={toggleSnap} navigate={(href) => router.push(href)}>
           <EditorChrome
             boardId={boardId}
             title={title}

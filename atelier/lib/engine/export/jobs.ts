@@ -1,7 +1,8 @@
 // What the export worker runs, written as plain async functions so they can be tested without a worker.
 import { createImageSource, svgImages, type AssetTable, type ExportImageSource } from "./images";
-import { loadExportFonts, substitutedFamilies } from "./fonts";
+import { bundledFont, loadExportFonts, substitutedFamilies, woffToTtf } from "./fonts";
 import { emptySummary, type ExportSummary } from "./protocol";
+import type { PdfPlan } from "./pdf-plan";
 import { renderRaster, type RasterOptions } from "./raster";
 import type { Scene } from "./scene";
 import { sceneToSvg } from "./svg";
@@ -60,6 +61,46 @@ export async function runSvgJob(p: SvgPayload, c: JobCtx, env: JobEnv = {}): Pro
     summary.width = Math.round(p.scene.width);
     summary.height = Math.round(p.scene.height);
     return { blob: new Blob([r.svg], { type: "image/svg+xml" }), summary: finish(summary, source) };
+  } finally {
+    source.dispose();
+  }
+}
+
+export type PdfPayload = { plan: PdfPlan; assets: AssetTable; fontBase: string };
+
+/** TrueType bytes of the bundled fonts, unwrapped from the WOFF files they are shipped as (fetched once each). */
+function fontSource(base: string, fetchFn: typeof fetch) {
+  const cache = new Map<string, Promise<ArrayBuffer | null>>();
+  return {
+    ttf(font: { family: string; weight: number; italic: boolean }): Promise<ArrayBuffer | null> {
+      const b = bundledFont(font);
+      if (!b) return Promise.resolve(null);
+      let p = cache.get(b.file);
+      if (!p) {
+        p = (async () => {
+          try {
+            const res = await fetchFn(`${base}${b.file}`);
+            if (!res.ok) return null;
+            const bytes = woffToTtf(new Uint8Array(await res.arrayBuffer()));
+            return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+          } catch {
+            return null;
+          }
+        })();
+        cache.set(b.file, p);
+      }
+      return p;
+    },
+  };
+}
+
+export async function runPdfJob(p: PdfPayload, c: JobCtx, env: JobEnv = {}): Promise<{ blob: Blob; summary: ExportSummary }> {
+  const { renderPdf } = await import("./pdf");
+  const fetchFn = env.fetchFn ?? ((...a: Parameters<typeof fetch>) => globalThis.fetch(...a));
+  const source = sourceFor(p.assets, env);
+  try {
+    const r = await renderPdf(p.plan, { images: source, signal: c.signal, onProgress: c.onProgress, canvasFactory: env.canvasFactory, fonts: fontSource(p.fontBase, fetchFn) });
+    return { blob: r.blob, summary: finish(r.summary, source) };
   } finally {
     source.dispose();
   }

@@ -6,6 +6,7 @@ import { buildAssetTable, type AssetSource } from "./images";
 import { canvasFont, EXPORT_FONT_FILES, loadExportFonts } from "./fonts";
 import type { ExportManager } from "./manager";
 import { ExportCancelled, type ExportSummary } from "./protocol";
+import { planPdf, type PdfExtras, type PdfOptions } from "./pdf-plan";
 import { clampScale, type RasterOptions } from "./raster";
 import { buildScene, type ExportTarget, type Scene, type SceneOptions, type SceneSource } from "./scene";
 import type { TextMeasurer } from "./text-layout";
@@ -182,5 +183,31 @@ export function exportSvg(src: SceneSource, target: ExportTarget, o: SvgExportOp
     adopt(job);
     const out = await job.promise;
     return { blob: out.blob, summary: out.summary, filename: exportFileName(src, target, "svg"), width: Math.round(scene.width), height: Math.round(scene.height) };
+  });
+}
+
+export interface PdfExportOptions extends Omit<PdfOptions, "compress"> {
+  /** Credits rows for the credits page (`creditsRows(doc)`): the caller supplies them. */
+  credits?: PdfExtras["credits"];
+  palette?: PdfExtras["palette"];
+  assetPalettes?: PdfExtras["assetPalettes"];
+}
+
+/** A PDF deck: one page per frame in presentation order, plus the optional cover, palette and credits pages. */
+export function exportPdf(src: SceneSource, o: PdfExportOptions, deps: ExportDeps): ExportHandle<ExportResult & { pageCount: number }> {
+  return managed(async (signal, adopt) => {
+    const measure = deps.measure ?? canvasMeasurer();
+    deps.onProgress?.(0, "Preparing");
+    await ensureMainFonts(deps.fontBase);
+    if (signal.aborted) throw new ExportCancelled();
+    const { credits, palette, assetPalettes, ...options } = o;
+    const plan = planPdf(src, { ...options, compress: true }, measure, { credits, palette, assetPalettes });
+    const ids = new Set<string>();
+    for (const page of plan.pages) if (page.kind === "frame") for (const id of page.scene.assetIds) ids.add(id);
+    const assets = buildAssetTable([...ids], deps.assets);
+    const job = deps.manager.run("pdf", { plan, assets, fontBase: deps.fontBase ?? defaultFontBase() }, (r, l) => deps.onProgress?.(r, l));
+    adopt(job);
+    const out = await job.promise;
+    return { blob: out.blob, summary: out.summary, filename: exportFileName(src, { kind: "board" }, "pdf"), pageCount: plan.pages.length };
   });
 }

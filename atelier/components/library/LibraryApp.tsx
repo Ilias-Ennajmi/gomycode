@@ -14,6 +14,8 @@ import { createLocalLibraryApi } from "@/lib/assets/local-library";
 import { addRequestHref } from "@/lib/assets/place-asset";
 import { getAssetResolver } from "@/lib/assets/resolver";
 import { registerStoredAssets } from "@/lib/assets/upload-queue";
+import { createInboxClient } from "@/lib/inbox/client-factory";
+import type { InboxClient } from "@/lib/inbox/inbox-client";
 import { AssetGrid, assetName } from "./AssetGrid";
 import { BoardPicker, loadPickableBoards } from "./BoardPicker";
 import { DuplicateGroups } from "./DuplicateGroups";
@@ -63,6 +65,8 @@ export function LibraryApp({ localOnly, api: apiProp }: { localOnly: boolean; ap
   const [picking, setPicking] = useState<LibraryAsset | null>(null);
   const [, redraw] = useState(0);
   const run = useRef(0);
+  const inbox = useRef<InboxClient | null>(null);
+  useEffect(() => () => inbox.current?.dispose(), []);
   const headingId = useId();
 
   const filter: LibraryFilter = useMemo(() => ({ query, kind: kind || null, sort, unused: view === "unused" }), [query, kind, sort, view]);
@@ -149,6 +153,21 @@ export function LibraryApp({ localOnly, api: apiProp }: { localOnly: boolean; ap
     }
     if (problem) show(removed.length > 0 ? `Deleted ${removed.length}. ${problem}` : problem);
     else show(removed.length === 1 ? "Deleted 1 picture." : `Deleted ${removed.length} pictures.`);
+  }
+
+  // "Send to Inbox": the picture waits in the Inbox, so it can be placed on any board from the editor's Inbox panel.
+  async function sendToInbox(a: LibraryAsset) {
+    inbox.current ??= createInboxClient({ localOnly, onRejected: (_item, e) => show(e.message) });
+    await inbox.current.add({
+      kind: a.kind === "video" ? "video" : "image",
+      assetId: a.id,
+      url: null,
+      text: null,
+      title: a.title.trim() ? a.title.trim().slice(0, 300) : null,
+      sourceUrl: a.provenance?.sourceUrl ?? null,
+      credit: a.provenance?.credit ? a.provenance.credit.slice(0, 500) : null,
+    });
+    show(`Sent “${assetName(a)}” to your Inbox.`);
   }
 
   const selectedAssets = assets.filter((a) => selected.has(a.id));
@@ -271,6 +290,7 @@ export function LibraryApp({ localOnly, api: apiProp }: { localOnly: boolean; ap
             onToggleSelect={toggle}
             onDelete={(a) => askDelete([a])}
             onAddToBoard={setPicking}
+            onSendToInbox={(a) => void sendToInbox(a)}
             onShowDuplicates={() => setView("duplicates")}
             boardHref={(id) => `/b/${id}`}
           />

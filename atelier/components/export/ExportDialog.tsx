@@ -8,6 +8,7 @@ import type { BoardDoc } from "@/lib/engine/doc/board-doc";
 import type { ExportFormat, ExportPreset, ExportScope } from "@/lib/engine/export/export-commands";
 import {
   exportImage,
+  exportPdf,
   exportSvg,
   framesInOrder,
   previewSceneSize,
@@ -20,6 +21,8 @@ import { ExportCancelled } from "@/lib/engine/export/protocol";
 import { clampScale } from "@/lib/engine/export/raster";
 import { boardDocSource, type ExportTarget } from "@/lib/engine/export/scene";
 import type { ToastFn } from "@/lib/engine/commands/registry";
+import type { CreditsRow } from "@/lib/engine/provenance/credits";
+import { getAssetMetaStore } from "@/lib/assets/meta-store";
 import { ExportProgress } from "./ExportProgress";
 
 type Props = {
@@ -29,6 +32,8 @@ type Props = {
   toast: ToastFn;
   preset?: ExportPreset;
   manager?: Pick<ExportManager, "run">;
+  /** Credits rows for the deck's credits page. Without it the dialog does not offer that page. */
+  creditsRows?: () => CreditsRow[];
   onClose(): void;
 };
 
@@ -44,6 +49,7 @@ const IMAGE_FORMATS: { id: ExportFormat; label: string }[] = [
   { id: "jpeg", label: "JPG" },
   { id: "webp", label: "WebP" },
   { id: "svg", label: "SVG" },
+  { id: "pdf", label: "PDF" },
 ];
 
 const SIZES = [1, 2, 4] as const;
@@ -74,7 +80,7 @@ export function describeFailure(e: unknown): string {
  * failed to load, fonts that were substituted, a size that was reduced). A native modal <dialog>: focus is trapped, Escape
  * closes it (and cancels a running export).
  */
-export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager, onClose }: Props) {
+export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager, creditsRows, onClose }: Props) {
   const uid = useId();
   const src = useMemo(() => boardDocSource(doc), [doc]);
   const frames = useMemo(() => framesInOrder(src), [src]);
@@ -93,6 +99,13 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
   const [linkImages, setLinkImages] = useState(false);
   const [credits, setCredits] = useState(false);
   const [name, setName] = useState("");
+  const [pdfQuality, setPdfQuality] = useState<"screen" | "print">("screen");
+  const [cover, setCover] = useState(false);
+  const [coverTitle, setCoverTitle] = useState(() => doc.meta.title);
+  const [coverClient, setCoverClient] = useState("");
+  const [coverDate, setCoverDate] = useState(() => new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }));
+  const [palettePage, setPalettePage] = useState(false);
+  const [creditsPage, setCreditsPage] = useState(false);
   const [run, setRun] = useState<Run>({ state: "idle" });
 
   const handle = useRef<ExportHandle | null>(null);
@@ -112,7 +125,16 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
   );
 
   const isSvg = format === "svg";
-  const canBeTransparent = format !== "jpeg";
+  const isPdf = format === "pdf";
+  const canBeTransparent = format !== "jpeg" && !isPdf;
+  const pdfFrameIds = useMemo((): string[] | null => {
+    if (effectiveScope === "frame") return frameId ? [frameId] : [];
+    if (effectiveScope === "selection") {
+      const picked = frames.filter((f) => selectionIds.has(f.id)).map((f) => f.id);
+      return picked.length ? picked : null;
+    }
+    return null;
+  }, [effectiveScope, frameId, frames, selectionIds]);
   const lossy = format === "jpeg" || format === "webp";
 
   // The output size, before anything starts.
@@ -120,14 +142,15 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
     try {
       const s = previewSceneSize(src, target, { credits });
       const req = size === "custom" ? { widthPx: Number(customWidth) } : { scale: size };
-      return { ...s, out: isSvg ? null : clampScale(s, req) };
+      return { ...s, empty: isPdf ? frames.length === 0 : s.empty, out: isSvg || isPdf ? null : clampScale(s, req) };
     } catch {
       return null;
     }
-  }, [src, target, credits, size, customWidth, isSvg]);
+  }, [src, target, credits, size, customWidth, isSvg, isPdf, frames.length]);
 
   const running = run.state === "running";
   const extension = format === "jpeg" ? "jpg" : format;
+  const pageCount = isPdf ? (pdfFrameIds ?? frames.map((f) => f.id)).length + (cover ? 1 : 0) + (palettePage ? 1 : 0) : 0;
 
   async function start() {
     if (running) return;
@@ -137,7 +160,21 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
     };
     const deps = { manager: manager ?? getExportManager(), assets, onProgress };
     const common = { transparent: transparent && canBeTransparent, credits };
-    const h = isSvg
+    const h = isPdf
+      ? exportPdf(
+          src,
+          {
+            quality: pdfQuality,
+            cover: cover ? { title: coverTitle.trim() || doc.meta.title, client: coverClient.trim(), date: coverDate.trim() } : null,
+            palettePage,
+            creditsPage: creditsPage && !!creditsRows,
+            frameIds: pdfFrameIds,
+            credits: creditsPage && creditsRows ? creditsRows() : undefined,
+            assetPalettes: palettePage ? assetPalettes() : undefined,
+          },
+          deps,
+        )
+      : isSvg
       ? exportSvg(src, target, { ...common, imageMode: linkImages ? "link" : "embed" }, deps)
       : exportImage(src, target, { ...common, format: format as "png" | "jpeg" | "webp", size: size === "custom" ? { widthPx: Number(customWidth) } : { scale: size }, quality: quality / 100 }, deps);
     handle.current = h;
@@ -162,6 +199,18 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
     } finally {
       if (handle.current === h) handle.current = null;
     }
+  }
+
+  /** The colour palettes of the board's pictures with the area each covers: the palette page's fallback. */
+  function assetPalettes() {
+    const meta = getAssetMetaStore();
+    const out: { palette: { hex: string; weight: number }[]; area: number }[] = [];
+    for (const o of src.all()) {
+      if (o.type !== "image") continue;
+      const p = meta.get(o.assetId)?.palette;
+      if (p && p.length) out.push({ palette: p, area: o.w * o.h });
+    }
+    return out;
   }
 
   const summary = run.state === "done" ? run.result.summary : null;
@@ -239,7 +288,58 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
             ))}
           </div>
 
-          {isSvg ? (
+          {isPdf ? (
+            <div className="mt-5 flex flex-col gap-1" data-pdf-options="">
+              <p id={`${uid}-pq-l`} className={labelClass}>
+                Picture quality
+              </p>
+              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-labelledby={`${uid}-pq-l`}>
+                <Radio<"screen" | "print"> name={`${uid}-pq`} value="screen" current={pdfQuality} onChange={setPdfQuality}>
+                  Screen · 150 dpi
+                </Radio>
+                <Radio<"screen" | "print"> name={`${uid}-pq`} value="print" current={pdfQuality} onChange={setPdfQuality}>
+                  Print · 300 dpi
+                </Radio>
+              </div>
+              <label className="mt-2 flex min-h-11 items-center gap-3 text-(length:--text-md)">
+                <input type="checkbox" checked={cover} onChange={(e) => setCover(e.target.checked)} className="size-4 accent-(--color-accent)" />
+                Cover page
+              </label>
+              {cover ? (
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <div>
+                    <label htmlFor={`${uid}-ct`} className={labelClass}>
+                      Title
+                    </label>
+                    <input id={`${uid}-ct`} className={inputClass} value={coverTitle} maxLength={200} onChange={(e) => setCoverTitle(e.target.value)} />
+                  </div>
+                  <div>
+                    <label htmlFor={`${uid}-cc`} className={labelClass}>
+                      Client
+                    </label>
+                    <input id={`${uid}-cc`} className={inputClass} value={coverClient} maxLength={120} onChange={(e) => setCoverClient(e.target.value)} />
+                  </div>
+                  <div>
+                    <label htmlFor={`${uid}-cd`} className={labelClass}>
+                      Date
+                    </label>
+                    <input id={`${uid}-cd`} className={inputClass} value={coverDate} maxLength={60} onChange={(e) => setCoverDate(e.target.value)} />
+                  </div>
+                </div>
+              ) : null}
+              <label className="flex min-h-11 items-center gap-3 text-(length:--text-md)">
+                <input type="checkbox" checked={palettePage} onChange={(e) => setPalettePage(e.target.checked)} className="size-4 accent-(--color-accent)" />
+                Palette page
+              </label>
+              {creditsRows ? (
+                <label className="flex min-h-11 items-center gap-3 text-(length:--text-md)">
+                  <input type="checkbox" checked={creditsPage} onChange={(e) => setCreditsPage(e.target.checked)} className="size-4 accent-(--color-accent)" />
+                  Credits page
+                </label>
+              ) : null}
+              <p className={helpClass}>One page per frame, in presentation order, at the frame&apos;s size. Text stays real text.</p>
+            </div>
+          ) : isSvg ? (
             <div className="mt-5">
               <label className="flex min-h-11 items-center gap-3 text-(length:--text-md)">
                 <input type="checkbox" checked={linkImages} onChange={(e) => setLinkImages(e.target.checked)} className="size-4 accent-(--color-accent)" />
@@ -281,7 +381,7 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
             </>
           )}
 
-          <div className="mt-4 flex flex-col">
+          {isPdf ? null : <div className="mt-4 flex flex-col">
             <label className="flex min-h-11 items-center gap-3 text-(length:--text-md)">
               <input type="checkbox" checked={transparent && canBeTransparent} disabled={!canBeTransparent} onChange={(e) => setTransparent(e.target.checked)} className="size-4 accent-(--color-accent)" />
               Transparent background{!canBeTransparent ? " (not available for JPG)" : ""}
@@ -290,7 +390,7 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
               <input type="checkbox" checked={credits} onChange={(e) => setCredits(e.target.checked)} className="size-4 accent-(--color-accent)" />
               Add credit captions to pictures
             </label>
-          </div>
+          </div>}
 
           <div className="mt-2">
             <label htmlFor={`${uid}-name`} className={labelClass}>
@@ -305,9 +405,13 @@ export function ExportDialog({ doc, selectionIds, assets, toast, preset, manager
 
         <p id={outId} className="mt-4 text-(length:--text-sm) text-fg-muted" data-export-size="">
           {preview?.empty
-            ? "There is nothing to export here yet."
+            ? isPdf
+              ? "A deck needs at least one frame: each frame becomes a page."
+              : "There is nothing to export here yet."
             : preview
-              ? isSvg
+              ? isPdf
+                ? `Output: ${pageCount} page${pageCount === 1 ? "" : "s"}.`
+                : isSvg
                 ? `Output: ${Math.round(preview.width)} × ${Math.round(preview.height)} units, vector.`
                 : `Output: ${preview.out!.width.toLocaleString("en-US")} × ${preview.out!.height.toLocaleString("en-US")} px.`
               : ""}

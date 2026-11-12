@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronUp, Copy, FolderInput, Film, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Copy, FolderInput, Film, Inbox, Trash2 } from "lucide-react";
 import { boardsLabel, formatBytes, type LibraryAsset } from "@/lib/assets/library-types";
 
 export type AssetGridProps = {
@@ -14,6 +14,8 @@ export type AssetGridProps = {
   /** Called only for an asset no board uses. */
   onDelete: (a: LibraryAsset) => void;
   onAddToBoard: (a: LibraryAsset) => void;
+  /** "Send to Inbox": queue the picture so it can be placed on any board. Omit to hide the button. */
+  onSendToInbox?: (a: LibraryAsset) => void;
   /** The "Possible duplicate" badge: take the owner to the groups. */
   onShowDuplicates?: (a: LibraryAsset) => void;
   boardHref: (boardId: string) => string;
@@ -117,6 +119,12 @@ function Card({ asset, p }: { asset: LibraryAsset; p: AssetGridProps }) {
             <FolderInput size={14} aria-hidden="true" />
             Add to board
           </button>
+          {p.onSendToInbox ? (
+            <button type="button" className={cardButton} onClick={() => p.onSendToInbox?.(asset)}>
+              <Inbox size={14} aria-hidden="true" />
+              Send to Inbox
+            </button>
+          ) : null}
           <button
             type="button"
             className={`${cardButton} ${inUse ? "opacity-60" : "hoverable:text-alert"}`}
@@ -127,8 +135,8 @@ function Card({ asset, p }: { asset: LibraryAsset; p: AssetGridProps }) {
             }}
           >
             <Trash2 size={14} aria-hidden="true" />
-            Delete
-            <span className="sr-only"> {name}</span>
+            Delete{" "}
+            <span className="sr-only">{name}</span>
           </button>
           {inUse ? (
             <span id={`${uid}-why`} className="w-full text-(length:--text-xs) text-fg-muted">

@@ -15,15 +15,15 @@ export type FakePg = {
   client(claims: Record<string, unknown> | null): ReturnType<typeof makeClient>;
 };
 
-const TIMESTAMPED = new Set(["board_updates", "board_snapshots", "assets", "boards"]);
-const OWNED = new Set(["boards", "assets", "folders"]);
+const TIMESTAMPED = new Set(["board_updates", "board_snapshots", "assets", "boards", "inbox_items"]);
+const OWNED = new Set(["boards", "assets", "folders", "inbox_items"]);
 const BY_BOARD = new Set(["board_updates", "board_snapshots", "asset_usages"]);
 
 export function createFakePg(): FakePg {
   const seqs: Record<string, number> = {};
   const failures: Record<string, { code?: string; message: string }[]> = {};
   const pg: FakePg = {
-    tables: { boards: [], assets: [], folders: [], board_updates: [], board_snapshots: [], asset_usages: [] },
+    tables: { boards: [], assets: [], folders: [], board_updates: [], board_snapshots: [], asset_usages: [], inbox_items: [] },
     stats: {},
     failNext(table, error) {
       (failures[table] ??= []).push(error);
@@ -106,6 +106,17 @@ function makeClient(pg: FakePg, claims: Record<string, unknown> | null, seqs: Re
       this.filters.push((r) => r[c] !== v);
       return this;
     }
+    /** `is(col, null)`: SQL `col is null`. */
+    is(c: string, v: null | boolean) {
+      this.filters.push((r) => (v === null ? r[c] == null : r[c] === v));
+      return this;
+    }
+    /** Only `not(col, "is", null)` (SQL `col is not null`) is understood. */
+    not(c: string, op: string, v: unknown) {
+      if (op !== "is" || v !== null) throw new Error("fake-pg: not() only supports 'is', null");
+      this.filters.push((r) => r[c] != null);
+      return this;
+    }
     in(c: string, vs: unknown[]) {
       this.filters.push((r) => vs.includes(r[c]));
       return this;
@@ -137,7 +148,7 @@ function makeClient(pg: FakePg, claims: Record<string, unknown> | null, seqs: Re
       const row: Row = { ...p };
       if (OWNED.has(this.table) && row.owner_id === undefined) row.owner_id = sub; // default auth.uid()
       if (this.table === "board_updates") row.seq = ++seqs.board_updates || (seqs.board_updates = 1);
-      if (this.table === "board_snapshots" && row.id === undefined) row.id = crypto.randomUUID();
+      if ((this.table === "board_snapshots" || this.table === "inbox_items") && row.id === undefined) row.id = crypto.randomUUID();
       if (TIMESTAMPED.has(this.table) && row.created_at === undefined) row.created_at = new Date().toISOString();
       return row;
     }

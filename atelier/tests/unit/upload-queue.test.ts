@@ -502,6 +502,31 @@ describe("AssetUploader, bulk drops", () => {
     expect(net.calls.filter((c) => c.method === "PUT" && c.url.endsWith("/w256"))).toHaveLength(60);
   }, 30_000);
 
+  it("resumeCanvasImages: false leaves another page's canvas images alone (they need their board to adopt a duplicate) but still finishes asset-only ones", async () => {
+    const dbName = "atelier-uploads-resume-split";
+    const stuck = fakeNetwork(() => "network");
+    const doc = new BoardDoc();
+    const first = new AssetUploader({ doc, resolver: new AssetResolverImpl(), process: async () => processedWith([]), fetch: stuck.fetch, delay: () => new Promise(() => {}), dbName });
+    await first.add(png("on-canvas.png"), { x: 0, y: 0 });
+    await first.addAssetOnly(png("inbox.png"));
+    expect(first.pending()).toBe(2);
+    first.dispose();
+
+    const net = fakeNetwork();
+    const second = new AssetUploader({ doc: new BoardDoc(), resolver: new AssetResolverImpl(), process: async () => processedWith([]), fetch: net.fetch, delay: async () => {}, dbName, resumeCanvasImages: false });
+    await second.ready;
+    expect(second.pending()).toBe(1);
+    await second.whenIdle();
+    expect(net.calls.filter((c) => c.url.endsWith("/complete"))).toHaveLength(1);
+
+    // the board that owns the canvas image still finds it in the queue
+    const third = new AssetUploader({ doc, resolver: new AssetResolverImpl(), process: async () => processedWith([]), fetch: net.fetch, delay: async () => {}, dbName });
+    await third.ready;
+    expect(third.pending()).toBe(1);
+    await third.whenIdle();
+    expect(net.calls.filter((c) => c.url.endsWith("/complete"))).toHaveLength(2);
+  });
+
   it("a backing-off item does not hold an upload slot", async () => {
     let first = true;
     const net = fakeNetwork((c) => {

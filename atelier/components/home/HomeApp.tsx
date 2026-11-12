@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Settings, Star, Trash2, WifiOff, LayoutGrid, Images, Folder as FolderIcon } from "lucide-react";
+import { Plus, Search, Settings, Star, Trash2, WifiOff, LayoutGrid, Images, Inbox, Folder as FolderIcon } from "lucide-react";
 import { buttonPrimary } from "@/components/ui/controls";
 import { getAssetResolver } from "@/lib/assets/resolver";
 import { registerStoredAssets } from "@/lib/assets/upload-queue";
+import { useInboxCount } from "@/components/inbox/useInboxCount";
 import type { BoardSummary, Folder } from "@/lib/sync/board-list-cache";
 import { BoardCard } from "./BoardCard";
 import { ConfirmFolderDelete, MoveDialog, NameDialog } from "./BoardDialogs";
@@ -33,6 +34,7 @@ export function HomeApp({ localOnly }: { localOnly: boolean }) {
   const router = useRouter();
   const { toast, show, dismiss } = useToast();
   const { list, loaded, offline, readOnly, actions } = useLibrary({ localOnly, notify: show });
+  const inboxCount = useInboxCount(localOnly);
   const [view, setView] = useState<View>({ kind: "recent" });
   const [query, setQuery] = useState("");
   const [dialog, setDialog] = useState<DialogState | null>(null);
@@ -130,6 +132,21 @@ export function HomeApp({ localOnly }: { localOnly: boolean }) {
                 Offline
               </span>
             ) : null}
+            <Link
+              href="/inbox"
+              aria-label={inboxCount > 0 ? `Inbox, ${inboxCount} waiting` : "Inbox"}
+              className={`${secondaryPill} relative max-sm:min-w-11 max-sm:justify-center max-sm:px-0`}
+            >
+              <Inbox size={18} aria-hidden="true" />
+              <span className="max-sm:sr-only" aria-hidden="true">
+                Inbox
+              </span>
+              {inboxCount > 0 ? (
+                <span aria-hidden="true" className="inline-flex min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-(length:--text-xs) font-semibold leading-5 text-on-brand">
+                  {inboxCount > 99 ? "99+" : inboxCount}
+                </span>
+              ) : null}
+            </Link>
             <Link href="/library" className={`${secondaryPill} max-sm:min-w-11 max-sm:justify-center max-sm:px-0`}>
               <Images size={18} aria-hidden="true" />
               <span className="max-sm:sr-only">Library</span>

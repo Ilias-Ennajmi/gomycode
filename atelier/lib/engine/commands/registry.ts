@@ -37,6 +37,8 @@ export type CommandUI = {
   openExport(preset?: ExportPreset): void;
   /** What link cards need to fetch their preview (the "Retry preview" action). Null when there is no uploader. */
   linkDeps(): LinkCardDeps | null;
+  /** Open the Quick capture dialog (Inbox). Absent when the editor has no Inbox. */
+  openCapture(): void;
 };
 
 /** Clipboard operations behind the copy/cut/paste commands (wired by useClipboard). */

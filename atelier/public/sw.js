@@ -8,19 +8,29 @@
 //  * Images from other origins (R2): cache-first in `atelier-images`, capped at 500 entries.
 //  * Google Fonts (type specimen cards): the stylesheet from fonts.googleapis.com and the files from fonts.gstatic.com
 //    are stale-while-revalidate in `atelier-fonts`, capped at 60 entries, so a family that was used once works offline.
+//  * Web Share Target: a POST to /share-target (the OS share sheet, once Atelier is installed) is answered here by
+//    public/sw-share.js, which keeps what was shared in IndexedDB and redirects to /inbox?shared=1. Nothing is sent
+//    to the server by the worker. Without this worker the request reaches app/share-target/route.ts, which only redirects.
 //  * Updates wait. A new worker only takes over when the page asks (message SKIP_WAITING), which
 //    the page does when no board is open, so nobody's board is swapped out from under them. The
 //    worker never reloads or navigates a page.
 //
 // Bump VERSION whenever the caching rules change. The image cache has no version on purpose: it
 // holds the owner's pictures and must survive code updates.
-const VERSION = "v1";
+const VERSION = "v2";
 const SHELL = `atelier-shell-${VERSION}`;
 const PAGES = `atelier-pages-${VERSION}`;
 const STATIC = `atelier-static-${VERSION}`;
 const IMAGES = "atelier-images";
 const FONTS = "atelier-fonts";
 const KEEP = [SHELL, PAGES, STATIC, IMAGES, FONTS];
+
+// Share Target handling (self.AtelierShare). If it cannot be loaded the worker still works; a share then goes to the server.
+try {
+  importScripts("/sw-share.js");
+} catch {
+  // Offline while installing: the app is unaffected.
+}
 
 const MAX_IMAGES = 500;
 const MAX_STATIC = 300;
@@ -43,7 +53,7 @@ const IMAGE_FILE = /\.(?:avif|webp|png|jpe?g|gif|svg)$/i;
 
 /** Pages whose HTML carries no account details, so a copy may be kept. */
 function isShellPage(pathname) {
-  return pathname === "/" || pathname.startsWith("/b/");
+  return pathname === "/" || pathname === "/inbox" || pathname === "/library" || pathname.startsWith("/b/");
 }
 
 /** Never handled by the worker at all. */
@@ -186,9 +196,15 @@ function forWorker(request, response) {
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
-  if (request.method !== "GET") return;
   const url = new URL(request.url);
   const sameOrigin = url.origin === self.location.origin;
+
+  // The share sheet posts a form here. Answered on the device: store, then redirect to the Inbox.
+  if (request.method === "POST" && sameOrigin && url.pathname === "/share-target" && self.AtelierShare) {
+    event.respondWith(self.AtelierShare.handleShareTarget(request, self.indexedDB));
+    return;
+  }
+  if (request.method !== "GET") return;
 
   if (sameOrigin) {
     if (isPrivate(url.pathname)) return; // API and login: always the network, never stored

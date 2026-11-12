@@ -139,6 +139,39 @@ describe("ExportDialog", () => {
     expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
   });
 
+  it("exports a PDF deck: page count, options, and a pdf job with the cover and palette choices", async () => {
+    const doc = board();
+    for (const [name, order] of [["Intro", "a0"], ["Hero", "a1"]]) doc.create({ ...defaultsFor("frame"), name, order, x: order === "a0" ? 2000 : 4000 } as unknown as NewObject);
+    const m = fakeManager();
+    mount(doc, m, { creditsRows: () => [{ file: "a", source: "", credit: "J", licence: "CC", capturedAt: "" }] });
+    fireEvent.click(screen.getByRole("radio", { name: "PDF" }));
+    expect(screen.getByText("Output: 2 pages.")).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /Transparent/ })).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Print · 300 dpi" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Cover page" }));
+    fireEvent.change(screen.getByLabelText("Client"), { target: { value: "Acme" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Credits page" }));
+    expect(screen.getByText("Output: 3 pages.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await waitFor(() => expect(m.calls).toHaveLength(1));
+    expect(m.calls[0].kind).toBe("pdf");
+    const plan = (m.calls[0].payload as unknown as { plan: { quality: string; pages: { kind: string; client?: string }[] } }).plan;
+    expect(plan.quality).toBe("print");
+    expect(plan.pages.map((p) => p.kind)).toEqual(["cover", "frame", "frame", "credits"]);
+    expect(plan.pages[0].client).toBe("Acme");
+    await act(async () => m.done());
+    expect(await screen.findByText(/Saved Spring\.pdf/)).toBeInTheDocument();
+  });
+
+  it("does not offer a credits page without a source of credits, and needs a frame for a deck", () => {
+    const m = fakeManager();
+    mount(board(), m);
+    fireEvent.click(screen.getByRole("radio", { name: "PDF" }));
+    expect(screen.queryByRole("checkbox", { name: "Credits page" })).toBeNull();
+    expect(screen.getByText(/needs at least one frame/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
+  });
+
   it("is a labelled modal dialog", () => {
     const m = fakeManager();
     mount(board(), m);

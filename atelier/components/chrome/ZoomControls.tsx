@@ -1,6 +1,6 @@
 "use client";
 
-import { Layers, Map as MapIcon, Palette, Redo2, Search, SlidersHorizontal, Undo2 } from "lucide-react";
+import { Inbox, Layers, Map as MapIcon, Palette, Redo2, Search, SlidersHorizontal, Undo2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useEditor } from "@/components/editor/EditorContext";
 import { useIsDesktop } from "@/components/panels/doc-hooks";
@@ -20,7 +20,7 @@ const PRESETS = [0.25, 0.5, 1, 2] as const;
  * and Find buttons. Undo and redo use aria-disabled, so they stay focusable and keep their tooltip.
  */
 export function ZoomControls({ minimapOpen, onToggleMinimap }: { minimapOpen: boolean; onToggleMinimap(): void }) {
-  const { handle, registry, run, panels, commandCtx } = useEditor();
+  const { handle, registry, run, panels, commandCtx, inbox } = useEditor();
   const desktop = useIsDesktop(); // the minimap needs room: below 768 px it is neither drawn nor switchable
   const zoom = useZoom(handle);
   const { canUndo, canRedo } = useUndoState(handle.doc);
@@ -81,6 +81,7 @@ export function ZoomControls({ minimapOpen, onToggleMinimap }: { minimapOpen: bo
       <IconButton label="Inspector" icon={SlidersHorizontal} pressed={panels.openId === "inspector"} onClick={() => panels.toggle("inspector")} />
       <IconButton label="Find and replace" icon={Search} shortcut="Mod+F" pressed={panels.openId === "find"} onClick={() => panels.toggle("find")} />
       <IconButton label="Palette" icon={Palette} pressed={panels.openId === "palette"} onClick={() => panels.toggle("palette")} />
+      {inbox ? <IconButton label="Inbox" icon={Inbox} pressed={panels.openId === "inbox"} onClick={() => panels.toggle("inbox")} /> : null}
     </RovingToolbar>
   );
 }

@@ -118,6 +118,17 @@ describe("AssetGrid", () => {
     expect(p.onAddToBoard).toHaveBeenCalledWith(a);
   });
 
+  it("offers Send to Inbox only when the page can do it", async () => {
+    const a = asset(1);
+    const onSendToInbox = vi.fn();
+    const first = render(<AssetGrid {...{ assets: [a], thumbUrl: () => null, selected: new Set<string>(), onToggleSelect: vi.fn(), onDelete: vi.fn(), onAddToBoard: vi.fn(), boardHref: () => "/" }} />);
+    expect(screen.queryByRole("button", { name: "Send to Inbox" })).toBeNull();
+    first.unmount();
+    render(<AssetGrid {...{ assets: [a], thumbUrl: () => null, selected: new Set<string>(), onToggleSelect: vi.fn(), onDelete: vi.fn(), onAddToBoard: vi.fn(), onSendToInbox, boardHref: () => "/" }} />);
+    await userEvent.click(screen.getByRole("button", { name: "Send to Inbox" }));
+    expect(onSendToInbox).toHaveBeenCalledWith(a);
+  });
+
   it("renders a title as plain text, never as markup", () => {
     setup([asset(1, { title: "<b>bold</b><img src=x onerror=alert(1)>" })]);
     expect(screen.getAllByText("<b>bold</b><img src=x onerror=alert(1)>").length).toBeGreaterThan(0);

@@ -43,6 +43,21 @@ describe("web app manifest", () => {
   });
 });
 
+describe("web share target", () => {
+  it("receives shared title, text, link and pictures or videos as a multipart POST to /share-target", () => {
+    expect((manifest() as { share_target?: unknown }).share_target).toEqual({
+      action: "/share-target",
+      method: "POST",
+      enctype: "multipart/form-data",
+      params: { title: "title", text: "text", url: "url", files: [{ name: "media", accept: ["image/*", "video/mp4", "video/webm"] }] },
+    });
+  });
+
+  it("stays inside the manifest scope", () => {
+    expect("/share-target".startsWith(manifest().scope ?? "/")).toBe(true);
+  });
+});
+
 describe("offline page", () => {
   const html = readFileSync(publicFile("offline.html"), "utf8");
   const tokens = readFileSync(join(root, "styles/tokens.css"), "utf8").toLowerCase();

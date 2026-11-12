@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import vm from "node:vm";
+import { IDBFactory } from "fake-indexeddb";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /*
@@ -91,7 +92,13 @@ function boot(fetchImpl: (r: Request | string, init?: RequestInit) => Promise<Re
     clients: { claim: vi.fn(async () => {}) },
   };
   const fetch = vi.fn(fetchImpl);
-  vm.runInNewContext(code, { self, caches, fetch, URL, Response, Headers, Promise, console, setTimeout, clearTimeout });
+  const context = vm.createContext({ self, caches, fetch, URL, Response, Headers, Promise, console, setTimeout, clearTimeout, crypto, Date, Blob, FormData });
+  // importScripts("/sw-share.js"): the share handler is loaded into the same global, like the browser does.
+  Object.assign(context, {
+    importScripts: (path: string) => vm.runInContext(readFileSync(join(process.cwd(), "public", path), "utf8"), context),
+  });
+  Object.assign(self, { indexedDB: new IDBFactory() });
+  vm.runInContext(code, context);
 
   /** Fire a fetch event; resolves to the response the worker answered with, or "network" when it did not handle it. */
   async function dispatch(request: Request): Promise<Response | "network"> {
@@ -129,7 +136,7 @@ describe("install and activate", () => {
     expect(shell).toBeDefined();
     const urls = [...(await sw.caches.open(shell)).store.keys()].map((u) => new URL(u).pathname);
     expect(urls).toEqual(expect.arrayContaining(["/offline.html", "/manifest.webmanifest", "/brand/icon-192.png", "/brand/icon-512.png"]));
-    const pages = [...(await sw.caches.open("atelier-pages-v1")).store.keys()].map((u) => new URL(u).pathname);
+    const pages = [...(await sw.caches.open("atelier-pages-v2")).store.keys()].map((u) => new URL(u).pathname);
     expect(pages).toEqual(["/"]); // the start page, so a first offline start works
     expect(sw.self.skipWaiting).not.toHaveBeenCalled();
   });
@@ -276,7 +283,7 @@ describe("page navigations", () => {
 
   it("a cached page is never served for a login URL", async () => {
     const sw = boot(online());
-    await (await sw.caches.open("atelier-pages-v1")).put(`${ORIGIN}/login`, res({ id: "stale-login" }));
+    await (await sw.caches.open("atelier-pages-v2")).put(`${ORIGIN}/login`, res({ id: "stale-login" }));
     sw.fetch.mockImplementation(offline);
     expect(await sw.dispatch(nav("/login"))).toBe("network");
   });
@@ -431,5 +438,44 @@ describe("versioning", () => {
   });
   it("never reloads or navigates open pages", () => {
     expect(code).not.toMatch(/\.navigate\(|location\.reload|client\.postMessage\([^)]*reload/i);
+  });
+});
+
+describe("Web Share Target", () => {
+  const shareRequest = (path = "/share-target", fields: Record<string, string> = { title: "Hi", url: "https://example.com/a" }) => {
+    const f = new FormData();
+    for (const [k, v] of Object.entries(fields)) f.append(k, v);
+    return new Request(new URL(path, ORIGIN).href, { method: "POST", body: f });
+  };
+
+  it("answers a POST to /share-target itself: stores the share, redirects to the Inbox, and never touches the network", async () => {
+    const sw = boot(online());
+    const answer = (await sw.dispatch(shareRequest())) as Response;
+    expect(answer).not.toBe("network");
+    expect(answer.status).toBe(303);
+    expect(answer.headers.get("location")).toBe("/inbox?shared=1");
+    expect(sw.fetch).not.toHaveBeenCalled();
+  });
+
+  it("does not answer a GET to /share-target, a POST elsewhere, or a POST from another origin", async () => {
+    const sw = boot(online());
+    expect(await sw.dispatch(req("/share-target"))).toBe("network");
+    expect(await sw.dispatch(shareRequest("/api/inbox"))).toBe("network");
+    expect(await sw.dispatch(shareRequest("/b/abc"))).toBe("network");
+    expect(await sw.dispatch(shareRequest("https://evil.test/share-target"))).toBe("network");
+  });
+
+  it("leaves the POST to the server when the share handler could not be loaded", async () => {
+    const sw = boot(online());
+    delete (sw.self as Record<string, unknown>).AtelierShare;
+    expect(await sw.dispatch(shareRequest())).toBe("network");
+  });
+
+  it("keeps the Inbox and Library pages for offline starts, like the start page", async () => {
+    const sw = boot(online());
+    await sw.dispatch(nav("/inbox?shared=1"));
+    await sw.dispatch(nav("/library"));
+    const pages = [...(await sw.caches.open("atelier-pages-v2")).store.keys()].map((u) => new URL(u).pathname);
+    expect(pages).toEqual(expect.arrayContaining(["/inbox", "/library"]));
   });
 });

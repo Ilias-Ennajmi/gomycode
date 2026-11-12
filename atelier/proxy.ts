@@ -24,6 +24,11 @@ const OPEN_PATHS = new Set([
   "/offline.html",
   "/robots.txt",
   "/sw.js",
+  "/sw-share.js",
+  // Web Share Target: the service worker answers the share POST on the device. A request that reaches the server has no
+  // service worker behind it; app/share-target/route.ts only redirects (it never reads the body), so being open here
+  // gives nothing away and avoids a 307 that would re-post the shared files to the login page.
+  "/share-target",
   "/api/health",
 ]);
 const OPEN_PREFIXES = ["/_next/", "/brand/", "/icons/", "/.well-known/"];
@@ -130,6 +135,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   // Static files, PWA files and /.well-known never go through the proxy.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|brand/|icons/|manifest.webmanifest|sw.js|offline.html|\\.well-known/|robots.txt).*)",
+    "/((?!_next/static|_next/image|favicon.ico|brand/|icons/|manifest.webmanifest|sw.js|sw-share.js|offline.html|\\.well-known/|robots.txt).*)",
   ],
 };
