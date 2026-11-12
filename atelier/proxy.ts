@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getSupabaseEnv } from "@/lib/supabase/env";
+import { checkSecondFactor } from "@/lib/server/mfa";
 import { claimsAreOwner, isLocalOnly, type OwnerClaims } from "@/lib/server/owner";
 
 /*
@@ -10,7 +11,8 @@ import { claimsAreOwner, isLocalOnly, type OwnerClaims } from "@/lib/server/owne
  *
  *   no session          -> pages redirect to /login?next=..., API calls get 401 JSON
  *   someone else        -> signed out here, /login?error=not-owner (API: 403 JSON)
- *   the owner           -> through
+ *   the owner           -> through, once the second step is done if two-step verification is on
+ *                          (pages go to /login/verify, API calls get 401 mfa-required)
  *
  * Local-only mode (ATELIER_LOCAL_ONLY=1, development and end-to-end tests) skips all of it and is
  * refused in production by isLocalOnly().
@@ -98,6 +100,28 @@ export async function proxy(request: NextRequest) {
     if (isApiPath(pathname)) return jsonError(403, "forbidden");
     if (isLoginPath(pathname)) return response;
     return redirectTo("/login?error=not-owner");
+  }
+
+  // The login pages decide for themselves (/login/verify is where the second step happens).
+  if (isLoginPath(pathname)) return response;
+
+  // Two-step verification: a session that has not used its second factor is only half signed in.
+  // The token already says aal2 when it has, which saves the check; otherwise read the levels.
+  if (claims.aal !== "aal2") {
+    const second = await checkSecondFactor(supabase);
+    if (second === "needed") {
+      if (isApiPath(pathname)) return jsonError(401, "mfa-required");
+      return redirectTo(`/login/verify?next=${encodeURIComponent(pathname + search)}`);
+    }
+    if (second === "error") {
+      return answer(
+        () =>
+          new NextResponse("Couldn't check your sign-in. Reload to try again.", {
+            status: 503,
+            headers: { "content-type": "text/plain; charset=utf-8" },
+          }),
+      );
+    }
   }
 
   return response;

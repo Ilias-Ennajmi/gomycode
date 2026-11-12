@@ -151,8 +151,45 @@ describe("proxy: the owner", () => {
     expect(auth.signOut).not.toHaveBeenCalled();
   });
 
-  it("can open /login/verify", async () => {
+  it("is sent to /login/verify when two-step verification is on but not done", async () => {
     session({ sub: OWNER, aal: "aal1" });
+    levels("aal1", "aal2");
+    const res = await proxy(req("/b/abc?x=1"));
+    expect(location(res)).toBe("/login/verify?next=%2Fb%2Fabc%3Fx%3D1");
+  });
+
+  it("passes once the second step is done, without asking Supabase again", async () => {
+    session({ sub: OWNER, aal: "aal2" });
+    levels("aal2", "aal2");
+    expect(isPassThrough(await proxy(req("/")))).toBe(true);
+    expect(auth.mfa.getAuthenticatorAssuranceLevel).not.toHaveBeenCalled();
+  });
+
+  it("guards the settings page the same way", async () => {
+    session({ sub: OWNER, aal: "aal1" });
+    levels("aal1", "aal2");
+    expect(location(await proxy(req("/settings")))).toBe("/login/verify?next=%2Fsettings");
+  });
+
+  it("answers API calls that still need the second step with 401 mfa-required", async () => {
+    session({ sub: OWNER, aal: "aal1" });
+    levels("aal1", "aal2");
+    const res = await proxy(req("/api/boards"));
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: "mfa-required" });
+  });
+
+  it("fails closed with 503 when the assurance level cannot be read", async () => {
+    session({ sub: OWNER, aal: "aal1" });
+    auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue({ data: null, error: { message: "x" } });
+    const res = await proxy(req("/"));
+    expect(res.status).toBe(503);
+    expect(res.headers.get("x-middleware-next")).toBeNull();
+  });
+
+  it("can open /login/verify while the second step is pending", async () => {
+    session({ sub: OWNER, aal: "aal1" });
+    levels("aal1", "aal2");
     expect(isPassThrough(await proxy(req("/login/verify?next=%2F")))).toBe(true);
   });
 });

@@ -150,6 +150,29 @@ describe("requireOwner", () => {
     expect((await rejection()).status).toBe(403);
   });
 
+  it("asks for the second step when the owner has two-step verification but only aal1", async () => {
+    auth.getClaims.mockResolvedValue({ data: { claims: { sub: OWNER, aal: "aal1" } }, error: null });
+    auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue({
+      data: { currentLevel: "aal1", nextLevel: "aal2" },
+      error: null,
+    });
+    const res = await rejection();
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: "mfa-required" });
+  });
+
+  it("lets the owner through once the second step is done", async () => {
+    auth.getClaims.mockResolvedValue({ data: { claims: { sub: OWNER, aal: "aal2" } }, error: null });
+    await expect(requireOwner()).resolves.toMatchObject({ userId: OWNER });
+    expect(auth.mfa.getAuthenticatorAssuranceLevel).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the assurance level cannot be read", async () => {
+    auth.getClaims.mockResolvedValue({ data: { claims: { sub: OWNER, aal: "aal1" } }, error: null });
+    auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue({ data: null, error: { message: "x" } });
+    expect((await rejection()).status).toBe(401);
+  });
+
   it("throws 503 in local-only mode (there is no account to check)", async () => {
     vi.stubEnv("ATELIER_LOCAL_ONLY", "1");
     const res = await rejection();

@@ -1,4 +1,5 @@
 import { createServerClient, type AtelierServerClient } from "@/lib/supabase/server";
+import { checkSecondFactor } from "./mfa";
 
 type Env = Record<string, string | undefined>;
 
@@ -55,6 +56,12 @@ export async function requireOwner(): Promise<{ userId: string; supabase: Atelie
   const claims = data?.claims as OwnerClaims | undefined;
   if (error || !claims?.sub) throw json(401, { error: "unauthorized" });
   if (!claimsAreOwner(claims)) throw json(403, { error: "forbidden" });
+
+  // Once two-step verification is on, a password-only session is not enough (repeats the proxy).
+  if (claims.aal !== "aal2") {
+    const second = await checkSecondFactor(supabase);
+    if (second !== "ok") throw json(401, { error: second === "needed" ? "mfa-required" : "unauthorized" });
+  }
 
   return { userId: claims.sub, supabase };
 }

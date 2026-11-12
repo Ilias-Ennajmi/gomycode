@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { checkSecondFactor } from "@/lib/server/mfa";
 import { isLocalOnly, isOwnerId } from "@/lib/server/owner";
 import { safeNextPath } from "@/lib/server/next-path";
 import { createServerClient } from "@/lib/supabase/server";
@@ -47,6 +48,14 @@ export async function signIn(_prev: SignInState, formData: FormData): Promise<Si
   if (data.user.is_anonymous === true || !isOwnerId(data.user.id)) {
     await supabase.auth.signOut({ scope: "local" });
     return { error: NOT_OWNER_MESSAGE, email };
+  }
+
+  // Two-step verification: password accepted, now the code.
+  const second = await checkSecondFactor(supabase);
+  if (second === "needed") redirect(`/login/verify?next=${encodeURIComponent(next)}`);
+  if (second === "error") {
+    await supabase.auth.signOut({ scope: "local" });
+    return { error: TRY_AGAIN, email };
   }
 
   redirect(next);
