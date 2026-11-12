@@ -101,6 +101,60 @@ export type ErrorLogRow = {
   created_at: string;
 };
 
+/** 0003 (Phase 3): published rounds and share links. Visitor-data tables are written only through the service role. */
+export type RoundRow = {
+  id: string;
+  board_id: string;
+  number: number;
+  label: string | null;
+  snapshot_id: string;
+  previews: Json;
+  diff: Json;
+  published_at: string;
+};
+
+export type ShareLinkRow = {
+  id: string;
+  board_id: string;
+  owner_id: string;
+  name: string | null;
+  token_hash: string;
+  mode: "round" | "live";
+  round_id: string | null;
+  scope: "board" | "frames";
+  frame_ids: string[];
+  permission: "view" | "react" | "comment";
+  password_hash: string | null;
+  expires_at: string | null;
+  welcome_note: string | null;
+  allow_download: boolean;
+  watermark: boolean;
+  show_credits: boolean;
+  blind_votes: boolean;
+  votes_revealed: boolean;
+  cookie_epoch: number;
+  created_at: string;
+  revoked_at: string | null;
+};
+
+export type VisitorRow = {
+  id: string;
+  share_link_id: string;
+  display_name: string | null;
+  ip_hash: string | null;
+  created_at: string;
+  last_seen_at: string;
+  last_round_id: string | null;
+};
+
+export type ShareAuthAttemptRow = {
+  share_link_id: string;
+  ip_hash: string;
+  fails: number;
+  locked_until: string | null;
+  updated_at: string;
+};
+
 type Empty = { [_ in never]: never };
 
 export type Database = {
@@ -114,6 +168,10 @@ export type Database = {
       asset_usages: Table<AssetUsageRow, "asset_id" | "board_id">;
       error_log: Table<ErrorLogRow, "area" | "message">;
       inbox_items: Table<InboxItemRow, "kind">;
+      rounds: Table<RoundRow, "board_id" | "number" | "snapshot_id">;
+      share_links: Table<ShareLinkRow, "board_id" | "owner_id" | "token_hash" | "mode" | "scope" | "permission">;
+      visitors: Table<VisitorRow, "share_link_id">;
+      share_auth_attempts: Table<ShareAuthAttemptRow, "share_link_id" | "ip_hash">;
     };
     Views: Empty;
     Functions: Empty;

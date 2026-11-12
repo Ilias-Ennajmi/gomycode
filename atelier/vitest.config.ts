@@ -5,7 +5,12 @@ import { fileURLToPath } from "node:url";
 // (*.test.tsx) run in jsdom. A .ts test that needs the DOM can opt in with a
 // `// @vitest-environment jsdom` docblock.
 export default defineConfig({
-  resolve: { alias: { "@": fileURLToPath(new URL(".", import.meta.url)) } },
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL(".", import.meta.url)),
+      "server-only": fileURLToPath(new URL("./tests/setup/server-only-stub.ts", import.meta.url)),
+    },
+  },
   test: {
     projects: [
       {

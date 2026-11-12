@@ -83,6 +83,7 @@ visitor action runs in a server route with the service role.
    | `R2_PUBLIC_HOST` | the public host from step 3 | server side |
    | `NEXT_PUBLIC_R2_PUBLIC_HOST` | the same host | the browser reads this one (it is inlined at build time, so redeploy after changing it) |
    | `SHARE_COOKIE_SECRET` | 48 random bytes, base64: `openssl rand -base64 48` | **server only**. Signs the cookie a client gets on a share link (Phase 3). Without it share links cannot be opened. Rotate by putting the new value first and the old one after a comma (`NEW,OLD`) for 12 hours, then remove `OLD`; clients on a dropped secret just open the link again |
+   | `NEXT_PUBLIC_SITE_URL` | the production address, e.g. `https://atelier.example.com` (no path) | optional. The address share links are issued on (the one the owner copies and sends). Without it Atelier uses the address the owner is browsing on; set it so a link made on a Preview deployment still points at production. Must be https in production |
 
 3. **Never set `ATELIER_LOCAL_ONLY` in Vercel.** It switches off sign-in and sync. The app refuses to start it when
    `VERCEL_ENV=production`, but a Preview deployment would honour it, and a Preview URL is reachable by anyone who has the link.

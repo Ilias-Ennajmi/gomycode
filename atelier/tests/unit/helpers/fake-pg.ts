@@ -37,8 +37,11 @@ export function createFakePg(): FakePg {
 
 function makeClient(pg: FakePg, claims: Record<string, unknown> | null, seqs: Record<string, number>, failures: Record<string, { code?: string; message: string }[]>) {
   const sub = typeof claims?.sub === "string" ? claims.sub : null;
+  /** The service role bypasses row-level security (the share store runs as it): every row is visible, no session needed. */
+  const service = claims?.role === "service_role";
   const ownsBoard = (id: unknown) => pg.tables.boards.some((b) => b.id === id && b.owner_id === sub);
   const visible = (table: string, row: Row) => {
+    if (service) return true;
     if (OWNED.has(table)) return row.owner_id === sub;
     if (BY_BOARD.has(table)) return ownsBoard(row.board_id);
     return true;
@@ -158,7 +161,7 @@ function makeClient(pg: FakePg, claims: Record<string, unknown> | null, seqs: Re
       pg.stats[key] = (pg.stats[key] ?? 0) + 1;
       const queued = failures[this.table]?.shift();
       if (queued) return { data: null, error: queued };
-      if (!sub) return { data: null, error: { code: "42501", message: "permission denied" } };
+      if (!sub && !service) return { data: null, error: { code: "42501", message: "permission denied" } };
 
       const rows = (pg.tables[this.table] ??= []);
       let out: Row[] = [];
