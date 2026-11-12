@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Settings, Star, Trash2, WifiOff, LayoutGrid, Folder as FolderIcon } from "lucide-react";
+import { Plus, Search, Settings, Star, Trash2, WifiOff, LayoutGrid, Images, Folder as FolderIcon } from "lucide-react";
 import { buttonPrimary } from "@/components/ui/controls";
 import { getAssetResolver } from "@/lib/assets/resolver";
 import { registerStoredAssets } from "@/lib/assets/upload-queue";
@@ -130,6 +130,10 @@ export function HomeApp({ localOnly }: { localOnly: boolean }) {
                 Offline
               </span>
             ) : null}
+            <Link href="/library" className={`${secondaryPill} max-sm:min-w-11 max-sm:justify-center max-sm:px-0`}>
+              <Images size={18} aria-hidden="true" />
+              <span className="max-sm:sr-only">Library</span>
+            </Link>
             <Link href="/settings" aria-label="Settings" className={`${secondaryPill} px-0 min-w-11 justify-center`}>
               <Settings size={18} aria-hidden="true" />
             </Link>

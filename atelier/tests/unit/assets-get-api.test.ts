@@ -67,9 +67,8 @@ describe("GET /api/assets?ids=", () => {
     expect(((await (await get(`?ids=${A}`)).json()) as { assets: unknown[] }).assets).toEqual([]);
   });
 
-  it("answers 400 for no ids, a bad id, or more than 200", async () => {
-    expect((await get("")).status).toBe(400);
-    expect((await get("?ids=")).status).toBe(400);
+  it("answers 400 for empty ids, a bad id, or more than 200", async () => {
+    expect((await get("?ids=")).status).toBe(400); // no `ids` at all lists the library instead (library-api.test.ts)
     expect((await get(`?ids=${A},not-an-id`)).status).toBe(400);
     const many = Array.from({ length: 201 }, (_, i) => `6f1c2d3e-4b5a-4c6d-8e7f-${String(i).padStart(12, "0")}`).join(",");
     expect((await get(`?ids=${many}`)).status).toBe(400);

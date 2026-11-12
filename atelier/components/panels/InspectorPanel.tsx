@@ -13,6 +13,7 @@ import { descendantIds, typeLabel } from "./layers-model";
 import { NumberField } from "./NumberField";
 import { BoardFields, GutterField } from "./BoardFields";
 import { ImageFields } from "./ImageFields";
+import { UsedInBoards } from "./UsedInBoards";
 import { SpecimenFields } from "./SpecimenFields";
 
 const DEG = 180 / Math.PI;
@@ -147,6 +148,7 @@ export function InspectorPanel() {
       {roots.length === 1 && roots[0].type === "image" ? (
         <section aria-label="Image" className="grid gap-2 border-t border-line pt-3">
           <ImageFields key={roots[0].id} obj={roots[0]} disabled={disabled} />
+          <UsedInBoards key={roots[0].assetId} assetId={roots[0].assetId} />
         </section>
       ) : null}
       {roots.length === 1 && roots[0].type === "typeSpecimen" ? (

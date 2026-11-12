@@ -4,6 +4,7 @@ import { hydrateBoardAssets } from "@/lib/assets/hydrate";
 import { getAssetMetaStore } from "@/lib/assets/meta-store";
 import { getAssetResolver } from "@/lib/assets/resolver";
 import { AssetUploader, type AssetUploaderOptions } from "@/lib/assets/upload-queue";
+import { createUsageApi, UsageTracker, type UsageTrackerDeps } from "@/lib/assets/usage-tracker";
 import type { BoardDoc } from "@/lib/engine/doc/board-doc";
 import { migrateBoard } from "@/lib/engine/model/migrate";
 import { firstFrameName } from "@/lib/engine/model/templates";
@@ -38,6 +39,8 @@ export type OpenBoardOptions = {
   syncOptions?: SyncClientOptions;
   resolver?: AssetUploaderOptions["resolver"];
   uploaderOptions?: Partial<AssetUploaderOptions>;
+  /** Where the board's asset ids go (PUT /api/boards/:id/assets). Default: the server, unless a resolver was injected (tests). */
+  usageApi?: UsageTrackerDeps["api"];
 };
 
 const UNSEEN_AFTER_SEQ = 999_999_999_999_999; // 15 digits: the largest the updates route accepts, so the answer is empty
@@ -141,6 +144,13 @@ export async function openBoardSession(opts: OpenBoardOptions): Promise<OpenResu
   }
   const uploader = new AssetUploader({ doc, resolver: opts.resolver ?? getAssetResolver(), localOnly, ...opts.uploaderOptions });
 
+  // Which assets this board uses, for the library's "used in N boards" (signed in only; the server keeps the rows).
+  let usage: UsageTracker | null = null;
+  if (!localOnly && (opts.usageApi || !opts.resolver)) {
+    usage = new UsageTracker({ doc, boardId, api: opts.usageApi ?? createUsageApi(opts.fetchFn) });
+    usage.start();
+  }
+
   let disposed = false;
   return {
     status: "ready",
@@ -153,6 +163,12 @@ export async function openBoardSession(opts: OpenBoardOptions): Promise<OpenResu
         if (disposed) return;
         disposed = true;
         stopHydrating();
+        try {
+          await usage?.flush();
+        } catch {
+          /* flush never rejects */
+        }
+        usage?.stop();
         try {
           await sync?.flush();
         } catch {

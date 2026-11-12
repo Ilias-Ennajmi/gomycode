@@ -2,7 +2,9 @@ import { z } from "zod";
 import { isAssetId } from "@/lib/assets/asset-id";
 import { normalisePalette, paletteSchema } from "@/lib/assets/asset-schema";
 import { VARIANT_NAMES, variantPlan, type VariantName } from "@/lib/assets/variants";
+import { readAssetRow, readUsage, toLibraryAsset, usageOf } from "@/lib/server/library";
 import { requireOwner, responseFromError } from "@/lib/server/owner";
+import { deleteAssetObjects, StorageDeleteError } from "@/lib/server/r2";
 import type { AssetRow, Json } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
@@ -107,4 +109,62 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { error } = await auth.supabase.from("assets").update(update).eq("id", id).eq("owner_id", auth.userId);
   if (error) return json(500, { error: "server-error" });
   return json(200, { ok: true, assetId: id });
+}
+
+type Ctx = { params: Promise<{ id: string }> };
+
+/** One asset as the library shows it, with the boards that use it. 404 for a missing asset or someone else's. */
+export async function GET(_request: Request, { params }: Ctx): Promise<Response> {
+  let auth;
+  try {
+    auth = await requireOwner();
+  } catch (e) {
+    return responseFromError(e);
+  }
+  const { id } = await params;
+  if (!isAssetId(id)) return json(400, { error: "bad-request" });
+  const { row, error } = await readAssetRow(auth.supabase, auth.userId, id);
+  if (error) return json(500, { error: "server-error" });
+  if (!row) return json(404, { error: "not-found" });
+  const usage = await readUsage(auth.supabase, auth.userId, [id]);
+  if (!usage) return json(500, { error: "server-error" });
+  const asset = toLibraryAsset(row, usage, []);
+  return asset ? json(200, asset) : json(404, { error: "not-found" });
+}
+
+/**
+ * Delete an asset for good: its row and every stored file (`a/{id}/original` and the WebP variants). Refused with 409
+ * `in-use` while a board uses it, and with 409 `in-trashed-board` while a board in the trash does (restoring that board
+ * would otherwise bring back a picture that no longer exists). The files go first: when R2 cannot delete them (502 or 503)
+ * the row stays, so the delete can be repeated and nothing is left behind unnoticed. Inbox entries that point at the asset
+ * go with it (the database cascades).
+ */
+export async function DELETE(_request: Request, { params }: Ctx): Promise<Response> {
+  let auth;
+  try {
+    auth = await requireOwner();
+  } catch (e) {
+    return responseFromError(e);
+  }
+  const { id } = await params;
+  if (!isAssetId(id)) return json(400, { error: "bad-request" });
+  const { row, error } = await readAssetRow(auth.supabase, auth.userId, id);
+  if (error) return json(500, { error: "server-error" });
+  if (!row) return json(404, { error: "not-found" });
+
+  const usage = await readUsage(auth.supabase, auth.userId, [id]);
+  if (!usage) return json(500, { error: "server-error" });
+  const { live, trashed } = usageOf(usage, id);
+  if (live.length > 0) return json(409, { error: "in-use", usedIn: live.length, boards: live.slice(0, 5) });
+  if (trashed > 0) return json(409, { error: "in-trashed-board", trashedBoards: trashed });
+
+  try {
+    await deleteAssetObjects(id);
+  } catch (e) {
+    if (e instanceof StorageDeleteError) return e.reason === "not-configured" ? json(503, { error: "storage-not-configured" }) : json(502, { error: "storage-delete-failed" });
+    throw e;
+  }
+  const { error: deleteError } = await auth.supabase.from("assets").delete().eq("id", id).eq("owner_id", auth.userId);
+  if (deleteError) return json(500, { error: "server-error" });
+  return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
 }

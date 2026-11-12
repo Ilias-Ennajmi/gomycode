@@ -22,7 +22,7 @@ describe("BoardClient", () => {
   it("asks for the board with the local-only flag it was given", async () => {
     openBoardSession.mockResolvedValue({ status: "not-found" });
     render(<BoardClient boardId="b" localOnly />);
-    await waitFor(() => expect(openBoardSession).toHaveBeenCalledWith({ boardId: "b", localOnly: true }));
+    await waitFor(() => expect(openBoardSession).toHaveBeenCalledWith(expect.objectContaining({ boardId: "b", localOnly: true })));
   });
 
   it("a session that arrives after leaving the page is disposed, not shown", async () => {

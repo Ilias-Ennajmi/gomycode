@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { getAssetResolver } from "@/lib/assets/resolver";
 import { AssetUploader } from "@/lib/assets/upload-queue";
 import { BoardMessage, BoardOpening } from "@/components/board/BoardMessage";
+import { useAddRequest } from "@/components/board/useAddRequest";
 import { loadBoardMeta, openBoardSession, renameBoard, type OpenedBoard } from "@/lib/board/session";
 import { recordLeave } from "@/lib/board/leave";
 import { markBoardReady } from "@/lib/board/ready";
@@ -103,7 +104,12 @@ export function BoardClient({ boardId, localOnly }: { boardId: string; localOnly
     };
 
     void (async () => {
-      const result = await openBoardSession({ boardId, localOnly });
+      const result = await openBoardSession({
+        boardId,
+        localOnly,
+        // A dropped copy of a picture the library already has is reused, not uploaded again.
+        uploaderOptions: { onDuplicate: ({ onBoard }) => toast({ message: onBoard ? "Already on this board." : "Already in your library. Reused." }) },
+      });
       if (cancelled) {
         if (result.status === "ready") void result.board.dispose();
         return;
@@ -159,6 +165,9 @@ export function BoardClient({ boardId, localOnly }: { boardId: string; localOnly
     if (!session || !canvas) return;
     return markBoardReady(canvas.container(), session.doc.all().length > 0);
   }, [session, canvas]);
+
+  // "Add to board" from the library: place the asset it asked for in the middle of the view.
+  useAddRequest(session?.doc ?? null, canvas, (message) => toast({ message }));
 
   // Development and test hook: `localStorage["atelier:expose"] = "1"` publishes the live board on `window.__atelier`.
   useEffect(() => {

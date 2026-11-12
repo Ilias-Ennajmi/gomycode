@@ -48,7 +48,8 @@ function makeClient(pg: FakePg, claims: Record<string, unknown> | null, seqs: Re
     private op: Op = "select";
     private payload: Row | Row[] | null = null;
     private filters: Array<(r: Row) => boolean> = [];
-    private sort: { col: string; asc: boolean } | null = null;
+    private sort: { col: string; asc: boolean }[] = [];
+    private from = 0;
     private max: number | null = null;
     private mode: "many" | "single" | "maybe" = "many";
     private countMode = false;
@@ -110,7 +111,13 @@ function makeClient(pg: FakePg, claims: Record<string, unknown> | null, seqs: Re
       return this;
     }
     order(col: string, opts?: { ascending?: boolean }) {
-      this.sort = { col, asc: opts?.ascending !== false };
+      this.sort.push({ col, asc: opts?.ascending !== false });
+      return this;
+    }
+    /** Inclusive row range, like PostgREST's Range header (paging past the 1,000-row default). */
+    range(from: number, to: number) {
+      this.from = from;
+      this.max = to - from + 1;
       return this;
     }
     limit(n: number) {
@@ -165,12 +172,19 @@ function makeClient(pg: FakePg, claims: Record<string, unknown> | null, seqs: Re
         if (this.op === "update") for (const r of out) Object.assign(r, this.payload);
         if (this.op === "delete") pg.tables[this.table] = rows.filter((r) => !out.includes(r));
       }
-      if (this.sort) {
-        const { col, asc } = this.sort;
-        out = [...out].sort((a, b) => ((a[col] as number) < (b[col] as number) ? -1 : (a[col] as number) > (b[col] as number) ? 1 : 0) * (asc ? 1 : -1));
+      if (this.sort.length) {
+        out = [...out].sort((a, b) => {
+          for (const { col, asc } of this.sort) {
+            const x = a[col] as number;
+            const y = b[col] as number;
+            if (x !== y) return (x < y ? -1 : 1) * (asc ? 1 : -1);
+          }
+          return 0;
+        });
       }
       const total = out.length;
-      if (this.max !== null) out = out.slice(0, this.max);
+      if (this.max !== null) out = out.slice(this.from, this.from + this.max);
+      else if (this.from) out = out.slice(this.from);
       const copy = out.map((r) => structuredClone(r));
       if (this.head) return { data: null, error: null, count: total };
       const count = this.countMode ? total : null;

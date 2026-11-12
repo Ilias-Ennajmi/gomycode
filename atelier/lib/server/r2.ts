@@ -1,6 +1,6 @@
 import { createHash, createHmac } from "node:crypto";
 import { assetKey, type AssetVariant } from "@/lib/assets/asset-id";
-import type { VariantName } from "@/lib/assets/variants";
+import { VARIANT_NAMES, type VariantName } from "@/lib/assets/variants";
 
 /*
  * Presigned URLs for Cloudflare R2 (S3 Signature Version 4, query-string auth). Hand-written, like stash/lib/r2.ts,
@@ -13,7 +13,7 @@ const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
 const hmac = (key: Buffer | string, s: string) => createHmac("sha256", key).update(s).digest();
 
 export type PresignInput = {
-  method: "GET" | "PUT";
+  method: "GET" | "PUT" | "DELETE";
   host: string;
   /** Path including the bucket for path-style URLs, e.g. "/bucket/a/id/original". Unencoded. */
   path: string;
@@ -136,4 +136,44 @@ export function presignAssetUploads({
   };
   for (const v of variants) uploads[v] = presignPut({ key: assetKey(assetId, v), contentType: "image/webp", ...common });
   return uploads;
+}
+
+/** Why an asset's objects could not be removed: nothing configured, or R2 refused / could not be reached. */
+export class StorageDeleteError extends Error {
+  constructor(readonly reason: "not-configured" | "failed") {
+    super(reason === "not-configured" ? "R2 is not configured" : "R2 did not delete the objects");
+  }
+}
+
+/**
+ * Deletes every stored file of one asset (the original and each WebP variant) with presigned DELETE requests. A file that
+ * is already gone (404) counts as deleted, so a retry after a partial failure finishes the job. Throws StorageDeleteError
+ * when R2 is not configured or any file could not be deleted: the caller keeps the database row so nothing is left behind
+ * silently.
+ */
+export async function deleteAssetObjects(
+  assetId: string,
+  opts: { config?: R2Config | null; fetchFn?: typeof fetch; now?: Date } = {},
+): Promise<void> {
+  const config = opts.config === undefined ? r2Config() : opts.config;
+  if (!config) throw new StorageDeleteError("not-configured");
+  const f = opts.fetchFn ?? ((...a: Parameters<typeof fetch>) => globalThis.fetch(...a));
+  const files: AssetVariant[] = ["original", ...VARIANT_NAMES];
+  const results = await Promise.allSettled(
+    files.map(async (variant) => {
+      const url = presignUrl({
+        method: "DELETE",
+        host: `${config.accountId}.r2.cloudflarestorage.com`,
+        path: `/${config.bucket}/${assetKey(assetId, variant)}`,
+        accessKeyId: config.accessKeyId,
+        secretAccessKey: config.secretAccessKey,
+        region: "auto",
+        expiresSeconds: 60,
+        now: opts.now,
+      });
+      const res = await f(url, { method: "DELETE" });
+      if (!res.ok && res.status !== 404) throw new Error(`delete ${variant}: ${res.status}`);
+    }),
+  );
+  if (results.some((r) => r.status === "rejected")) throw new StorageDeleteError("failed");
 }

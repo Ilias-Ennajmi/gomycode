@@ -593,6 +593,32 @@ describe("AssetUploader, duplicates", () => {
     expect(doc.get(id)).toBeUndefined(); // ... and the re-pointing is not a separate step
   });
 
+  it("tells the caller the picture was already in the library, and whether it is already on this board", async () => {
+    const EXISTING = "11111111-2222-4333-8444-555555555555";
+    const net = fakeNetwork((c) => (c.url === "/api/assets" ? Response.json({ assetId: "x", uploads: {}, duplicateOf: EXISTING }) : null));
+    const doc = new BoardDoc();
+    const seen: Array<{ assetId: string; onBoard: boolean }> = [];
+    const u = new AssetUploader({ doc, resolver: new AssetResolverImpl(), process: async () => processedWith([], { phash: "abcdef0123456789" }), fetch: net.fetch, delay: async () => {}, onDuplicate: (d) => seen.push(d) });
+    await u.add(png(), { x: 0, y: 0 });
+    await u.whenIdle();
+    expect(seen).toEqual([{ assetId: EXISTING, onBoard: false }]);
+    await u.add(png(), { x: 400, y: 0 }); // the board now has EXISTING, so the second duplicate lands on a board that has it
+    await u.whenIdle();
+    expect(seen).toEqual([{ assetId: EXISTING, onBoard: false }, { assetId: EXISTING, onBoard: true }]);
+  });
+
+  it("does not tell the caller about an image the user already deleted", async () => {
+    const EXISTING = "11111111-2222-4333-8444-555555555555";
+    const net = fakeNetwork((c) => (c.url === "/api/assets" ? Response.json({ uploads: {}, duplicateOf: EXISTING }) : null));
+    const doc = new BoardDoc();
+    const onDuplicate = vi.fn();
+    const u = new AssetUploader({ doc, resolver: new AssetResolverImpl(), process: async () => processedWith([], { phash: "abcdef0123456789" }), fetch: net.fetch, delay: () => new Promise((r) => setTimeout(r, 5)), onDuplicate });
+    const id = await u.add(png(), { x: 0, y: 0 });
+    doc.remove([id]);
+    await u.whenIdle();
+    expect(onDuplicate).not.toHaveBeenCalled();
+  });
+
   it("leaves an image the user already deleted alone", async () => {
     const EXISTING = "11111111-2222-4333-8444-555555555555";
     const net = fakeNetwork((c) => (c.url === "/api/assets" ? Response.json({ uploads: {}, duplicateOf: EXISTING }) : null));

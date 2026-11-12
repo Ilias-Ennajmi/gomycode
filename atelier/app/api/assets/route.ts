@@ -1,6 +1,7 @@
 import { isAssetId, newAssetId } from "@/lib/assets/asset-id";
 import { parseAssetMeta } from "@/lib/assets/asset-schema";
 import { isVariantName, type VariantName } from "@/lib/assets/variants";
+import { listLibrary, parseLibraryQuery } from "@/lib/server/library";
 import { requireOwner, responseFromError } from "@/lib/server/owner";
 import { presignAssetUploads } from "@/lib/server/r2";
 
@@ -68,9 +69,14 @@ export async function POST(request: Request): Promise<Response> {
 const MAX_IDS = 200;
 
 /**
- * What the canvas needs to draw assets it has not seen on this device: size, the variants that exist, the analysis.
- * `GET /api/assets?ids=a,b,c`, owner only (RLS and an explicit owner filter). Assets that do not exist, are someone
- * else's, or have no pixel size are simply left out of the answer.
+ * Two reads, owner only (RLS and an explicit owner filter):
+ *
+ * `GET /api/assets?ids=a,b,c` is what the canvas needs to draw assets it has not seen on this device: size, the variants
+ * that exist, the analysis. Assets that do not exist, are someone else's, or have no pixel size are simply left out.
+ *
+ * Without `ids` it is the library list: `?query=&kind=&sort=recent|used|size&unused=1&limit=100&before=ISO` answers
+ * `{ assets: LibraryAsset[] }` (hidden assets left out; `usedIn` counts boards that are not in the trash). `before` pages
+ * the recent sort by creation time; the other sorts return their first `limit` (at most 200).
  */
 export async function GET(request: Request): Promise<Response> {
   let auth;
@@ -80,7 +86,14 @@ export async function GET(request: Request): Promise<Response> {
     return responseFromError(e);
   }
 
-  const raw = new URL(request.url).searchParams.get("ids") ?? "";
+  const params = new URL(request.url).searchParams;
+  if (!params.has("ids")) {
+    const parsed = parseLibraryQuery(params);
+    if (!parsed.ok) return json(400, { error: "bad-request" });
+    const assets = await listLibrary(auth.supabase, auth.userId, parsed.q);
+    return assets ? json(200, { assets }) : json(500, { error: "server-error" });
+  }
+  const raw = params.get("ids") ?? "";
   const ids = raw.split(",").map((s) => s.trim()).filter(Boolean);
   if (ids.length === 0 || ids.length > MAX_IDS || !ids.every(isAssetId)) return json(400, { error: "bad-request" });
 

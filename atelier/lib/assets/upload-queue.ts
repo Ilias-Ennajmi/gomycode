@@ -16,6 +16,8 @@ export type { ProcessedImage } from "./pipeline-core";
 const DB_NAME = "atelier-uploads";
 const META = "uploads";
 const BLOBS = "blobs";
+/** Where assets are kept on this device (the local-only library reads them from here). */
+export const UPLOADS_DB = { name: DB_NAME, meta: META, blobs: BLOBS } as const;
 /** Longest side of a freshly placed image on the canvas, in canvas units. */
 export const DEFAULT_DISPLAY_SIDE = 320;
 /** At most this many images are decoded and resized at once. */
@@ -100,6 +102,11 @@ export type AssetUploaderOptions = {
    * `/api/assets` is never called.
    */
   localOnly?: boolean;
+  /**
+   * The server said an image is a copy of one the owner already has and the object was pointed at it (nothing was
+   * uploaded). `onBoard`: another object here already used that asset. Not called for an image deleted meanwhile.
+   */
+  onDuplicate?: (info: { assetId: string; onBoard: boolean }) => void;
 };
 
 /** Info for the resolver (and the metadata cache) from what the queue holds for an asset. */
@@ -563,7 +570,9 @@ export class AssetUploader {
     const id = it.meta.objectId;
     const obj = id ? doc.get(id) : undefined;
     if (id && obj && (obj.type === "image" || obj.type === "video") && obj.assetId === it.assetId) {
+      const onBoard = doc.all().some((o) => o.id !== id && (o.type === "image" || o.type === "video") && o.assetId === existingId);
       doc.transactAs(DERIVED_ORIGIN, () => doc.update(id, { assetId: existingId }));
+      this.o.onDuplicate?.({ assetId: existingId, onBoard });
     }
     // The duplicate has the same pixels, so it has the same variants; tell the resolver in case it knows nothing of it.
     this.o.resolver.remember?.({
