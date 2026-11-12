@@ -48,7 +48,10 @@ export function isEditingSurface(t: EventTarget | null): boolean {
 
 export function isEditableTarget(t: EventTarget | null): boolean {
   if (!(t instanceof HTMLElement)) return false;
-  return t.isContentEditable || t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT";
+  if (t.isContentEditable || t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT") return true;
+  // Some environments (jsdom) do not implement isContentEditable: look for the attribute on the element or above it.
+  const host = t.closest("[contenteditable]");
+  return host !== null && host.getAttribute("contenteditable") !== "false";
 }
 
 /**

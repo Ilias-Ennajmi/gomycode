@@ -2,7 +2,7 @@
 
 import type { BoardDoc } from "@/lib/engine/doc/board-doc";
 import type { ShapeObj } from "@/lib/engine/model/types";
-import { RichContent } from "./RichContent";
+import { EditableContent } from "./EditableContent";
 import { dashArray, safeColor } from "./style";
 
 function polygonPoints(kind: ShapeObj["kind"], w: number, h: number): string | null {
@@ -51,21 +51,22 @@ export function ShapeView({ doc, obj }: { doc: BoardDoc; obj: ShapeObj }) {
           <rect x={0} y={0} width={w} height={h} rx={Math.min(radius, w / 2, h / 2)} {...common} />
         )}
       </svg>
-      <RichContent
+      <EditableContent
         doc={doc}
         obj={obj}
+        padding="var(--space-2)"
         style={{
           position: "absolute",
           inset: 0,
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
-          padding: "var(--space-2)",
           boxSizing: "border-box",
           textAlign: "center",
           color: "var(--color-ink)",
           fontSize: "var(--text-md)",
           overflowWrap: "anywhere",
+          whiteSpace: "pre-wrap",
         }}
       />
     </>

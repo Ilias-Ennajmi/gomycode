@@ -12,6 +12,11 @@ export const STICKY_COLORS: Record<StickyColor, string> = {
   grey: "--sticky-grey",
 };
 
+/** Padding inside a sticky (equals --space-4); text is laid out in what is left. */
+export const STICKY_PADDING_PX = 16;
+/** Line height (a multiple of the font size) of sticky text. */
+export const STICKY_LINE_HEIGHT = 1.3;
+
 export const STICKY_FONT_PX: Record<StickySize, number> = { S: 16, M: 22, L: 30, XL: 42 };
 
 export type FramePreset = { label: string; w: number; h: number; unit: "px" | "mm" | "in" };

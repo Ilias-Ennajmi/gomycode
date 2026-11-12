@@ -125,6 +125,19 @@ describe("richTextToHtml", () => {
     expect(html).toContain("<p>b</p>");
   });
 
+  it("renders a lineHeight attribute (0.8..3 only) next to text-align", () => {
+    const f = frag();
+    paragraph(f, [["a"]], { lineHeight: 1.8 });
+    paragraph(f, [["b"]], { textAlign: "right", lineHeight: 2 });
+    paragraph(f, [["c"]], { lineHeight: 40 });
+    paragraph(f, [["d"]], { lineHeight: "url(evil)" });
+    const html = richTextToHtml(f);
+    expect(html).toContain('<p style="line-height:1.8">a</p>');
+    expect(html).toContain('<p style="text-align:right;line-height:2">b</p>');
+    expect(html).toContain("<p>c</p>");
+    expect(html).toContain("<p>d</p>");
+  });
+
   it("an empty fragment is the empty string and unknown nodes degrade to their children", () => {
     expect(richTextToHtml(frag())).toBe("");
     const f = frag();

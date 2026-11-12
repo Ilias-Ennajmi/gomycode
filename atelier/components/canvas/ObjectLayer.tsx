@@ -66,7 +66,7 @@ const ObjectNode = memo(
         break;
       case "frame":
         body = (
-          <FrameView obj={obj}>
+          <FrameView doc={doc} obj={obj}>
             <FrameChildren doc={doc} id={id} assets={assets} />
           </FrameView>
         );

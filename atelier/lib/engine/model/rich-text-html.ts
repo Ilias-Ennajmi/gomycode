@@ -54,7 +54,11 @@ const ALIGNS = new Set(["left", "center", "right", "justify"]);
 
 function alignStyle(el: Y.XmlElement): string {
   const a = el.getAttribute("textAlign");
-  return typeof a === "string" && ALIGNS.has(a) ? ` style="text-align:${a}"` : "";
+  const lh = Number(el.getAttribute("lineHeight"));
+  const parts: string[] = [];
+  if (typeof a === "string" && ALIGNS.has(a)) parts.push(`text-align:${a}`);
+  if (Number.isFinite(lh) && lh >= 0.8 && lh <= 3) parts.push(`line-height:${Math.round(lh * 100) / 100}`);
+  return parts.length ? ` style="${parts.join(";")}"` : "";
 }
 
 type Child = Y.XmlElement | Y.XmlText | Y.XmlHook;

@@ -198,6 +198,17 @@ export class BoardDoc {
   canRedo(): boolean {
     return this.undoManager.canRedo();
   }
+  /**
+   * Make edits written under `origin` undoable with Cmd+Z, like local edits. Needed for editors that write to a
+   * content fragment under their own transaction origin (the Tiptap sync plugin uses its plugin key): without this
+   * their typing is not on the undo stack. Edits of other origins (remote peers, persistence) stay untracked, so
+   * undo never reverts someone else's work. Returns a function that stops tracking the origin.
+   */
+  trackOrigin(origin: unknown): () => void {
+    this.undoManager.addTrackedOrigin(origin);
+    return () => this.undoManager.removeTrackedOrigin(origin);
+  }
+
   /** End the current undo group (call on pointerup) so the next edit is a new step. */
   stopCapturing(): void {
     this.undoManager.stopCapturing();

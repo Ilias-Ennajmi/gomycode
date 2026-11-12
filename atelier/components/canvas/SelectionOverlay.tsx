@@ -9,6 +9,7 @@ import { HANDLE_HIT_PX, HANDLE_UNIT, ROTATE_OFFSET_PX, selectionBox, visibleHand
 import type { OverlayStore } from "@/lib/engine/input/tool-machine";
 import type { SelectionStore } from "@/lib/engine/input/selection-store";
 import type { CanvasObject, Rect } from "@/lib/engine/model/types";
+import { useEditingId } from "./editing-context";
 import { useCamera, useCoarsePointer, useOverlayState, useSelectionIds } from "./useStores";
 
 const HANDLE_PX = 8;
@@ -39,6 +40,7 @@ export function SelectionOverlay({ doc, selection, overlays, camera }: Props) {
   const ids = useSelectionIds(selection);
   const state = useOverlayState(overlays);
   const coarse = useCoarsePointer();
+  const editingId = useEditingId();
   const [, bump] = useReducer((n: number) => n + 1, 0);
 
   // Selected objects change while they are dragged, resized or edited elsewhere.
@@ -101,7 +103,7 @@ export function SelectionOverlay({ doc, selection, overlays, camera }: Props) {
                 strokeWidth={1}
                 strokeDasharray={locked ? "4 3" : undefined}
               />
-              {box.resizable ? (
+              {box.resizable && !(editingId !== null && ids.has(editingId)) ? (
                 <>
                   <line x1={0} y1={-h / 2} x2={0} y2={-h / 2 - ROTATE_OFFSET_PX + DOT_R} stroke="var(--color-selection)" strokeWidth={1} />
                   <circle data-handle="rotate" cx={0} cy={-h / 2 - ROTATE_OFFSET_PX} r={DOT_R} fill="var(--color-selection)" stroke="var(--color-surface)" strokeWidth={1.5} />

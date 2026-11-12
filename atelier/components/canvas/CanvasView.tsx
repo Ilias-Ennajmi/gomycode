@@ -7,6 +7,7 @@ import {
   useImperativeHandle,
   useLayoutEffect,
   useRef,
+  useMemo,
   useState,
   type ReactNode,
 } from "react";
@@ -21,6 +22,7 @@ import { OverlayStore, ToolMachine, createToolMachine, type ToolCtx, type ToolId
 import { SpatialIndex } from "@/lib/engine/spatial/spatial-index";
 import { DEFAULT_NAV_SETTINGS, SETTINGS_KEY, loadSettings, sanitizeSettings, type NavSettings } from "@/lib/settings";
 import { DraftOverlay } from "./DraftOverlay";
+import { EditingContext } from "./editing-context";
 import { GuidesOverlay } from "./GuidesOverlay";
 import { ObjectLayer, type ObjectLayerView } from "./ObjectLayer";
 import { SelectionOverlay } from "./SelectionOverlay";
@@ -264,6 +266,16 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
     });
   }, [machine, editing]);
   useEffect(() => () => editing.stop(), [editing]);
+  const editingContext = useMemo(
+    () => ({
+      store: editing,
+      done: () => {
+        editing.stop();
+        rootRef.current?.focus({ preventScroll: true });
+      },
+    }),
+    [editing],
+  );
 
   useCanvasInput(rootRef, {
     doc,
@@ -344,10 +356,12 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
         outlineOffset: -2,
       }}
     >
-      <ObjectLayer ref={layerRef} doc={doc} index={index} assets={assets} view={view} dpr={dpr} />
-      <DraftOverlay overlays={overlays} camera={store} />
-      <GuidesOverlay overlays={overlays} camera={store} />
-      <SelectionOverlay doc={doc} selection={selection} overlays={overlays} camera={store} />
+      <EditingContext.Provider value={editingContext}>
+        <ObjectLayer ref={layerRef} doc={doc} index={index} assets={assets} view={view} dpr={dpr} />
+        <DraftOverlay overlays={overlays} camera={store} />
+        <GuidesOverlay overlays={overlays} camera={store} />
+        <SelectionOverlay doc={doc} selection={selection} overlays={overlays} camera={store} />
+      </EditingContext.Provider>
       {children}
     </div>
   );

@@ -5,7 +5,8 @@ import type { BoardDoc } from "@/lib/engine/doc/board-doc";
 import { richTextToPlainLines } from "@/lib/engine/model/rich-text-html";
 import type { TextObj } from "@/lib/engine/model/types";
 import { TEXT_BARS_ZOOM, useLod } from "../lod";
-import { RichContent } from "./RichContent";
+import { useIsEditing } from "../editing-context";
+import { EditableContent } from "./EditableContent";
 import { safeColor } from "./style";
 
 export type TextLod = "full" | "bars";
@@ -46,10 +47,11 @@ function TextBars({ doc, obj }: { doc: BoardDoc; obj: TextObj }) {
 
 export function TextView({ doc, obj, lod }: { doc: BoardDoc; obj: TextObj; lod?: TextLod }) {
   const ctx = useLod();
+  const editing = useIsEditing(obj.id);
   const level = lod ?? textLodFor(ctx.zoom);
-  if (level === "bars") return <TextBars doc={doc} obj={obj} />;
+  if (level === "bars" && !editing) return <TextBars doc={doc} obj={obj} />;
   return (
-    <RichContent
+    <EditableContent
       doc={doc}
       obj={obj}
       style={{

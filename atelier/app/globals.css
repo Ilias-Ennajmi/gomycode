@@ -96,3 +96,68 @@ body {
 [data-theme="dark"] .lockup-dark {
   display: block;
 }
+
+/*
+ * Rich text on the canvas (text boxes, stickies, shape labels) and in the editor. Tailwind's reset removes list
+ * markers, heading sizes and link styling, so they are set here for exactly what the editor can produce.
+ */
+.atelier-rich p,
+.atelier-rich h1,
+.atelier-rich h2,
+.atelier-rich h3 {
+  margin: 0;
+}
+.atelier-rich h1,
+.atelier-rich h2,
+.atelier-rich h3 {
+  font-weight: 600;
+  line-height: inherit;
+}
+.atelier-rich h1 {
+  font-size: 2em;
+}
+.atelier-rich h2 {
+  font-size: 1.5em;
+}
+.atelier-rich h3 {
+  font-size: 1.25em;
+}
+.atelier-rich ul,
+.atelier-rich ol {
+  margin: 0;
+  padding-left: 1.5em;
+}
+.atelier-rich ul {
+  list-style: disc;
+}
+.atelier-rich ol {
+  list-style: decimal;
+}
+.atelier-rich li > p {
+  margin: 0;
+}
+.atelier-rich a {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+.atelier-rich strong {
+  font-weight: 700;
+}
+
+/* The editor lays text out exactly like the static rendering above, and its whole area is editable. */
+.atelier-editor .ProseMirror {
+  box-sizing: border-box;
+  min-height: inherit;
+  padding: var(--editor-pad, 0);
+  outline: none;
+  white-space: pre-wrap; /* ProseMirror requires it; the static rendering of stickies and boxes uses the same */
+  overflow-wrap: inherit;
+  caret-color: var(--color-selection);
+}
+.atelier-editor[data-nowrap] .ProseMirror {
+  white-space: pre; /* an auto-width text box never wraps */
+}
+.atelier-editor .ProseMirror::selection,
+.atelier-editor .ProseMirror ::selection {
+  background: color-mix(in srgb, var(--color-selection) 30%, transparent);
+}
