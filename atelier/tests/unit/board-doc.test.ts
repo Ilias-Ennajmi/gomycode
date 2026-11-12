@@ -423,6 +423,30 @@ describe("BoardDoc validation of stored data", () => {
     expect(warn).toHaveBeenCalledTimes(2); // one per invalid object, not per read
   });
 
+  it("an entry that is not an object map at all (a string, a number, an array) is skipped, never dereferenced", () => {
+    const d = new BoardDoc();
+    const good = d.create(shape());
+    const kid = d.create(shape({ parentId: null }));
+    const objects = d.ydoc.getMap<unknown>("objects");
+    d.ydoc.transact(() => {
+      objects.set("str", "just a string");
+      objects.set("num", 42);
+      objects.set("arr", new Y.Array<unknown>());
+      objects.set("nothing", null);
+    }, "remote");
+    expect(() => d.all()).not.toThrow();
+    expect(d.all().map((o) => o.id).sort()).toEqual([good, kid].sort());
+    for (const id of ["str", "num", "arr", "nothing"]) {
+      expect(d.get(id)).toBeUndefined();
+      expect(d.content(id)).toBeUndefined();
+    }
+    // Writing still works around them, including operations that scan every entry.
+    expect(() => d.create(shape({ x: 5 }))).not.toThrow();
+    expect(() => d.remove([good])).not.toThrow();
+    expect(d.all()).toHaveLength(2);
+    expect(() => d.update("str", { x: 1 })).not.toThrow();
+  });
+
   it("an object repaired by a remote edit reappears", () => {
     const d = new BoardDoc();
     const objects = d.ydoc.getMap<Y.Map<unknown>>("objects");

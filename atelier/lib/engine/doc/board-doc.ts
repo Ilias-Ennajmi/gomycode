@@ -95,8 +95,14 @@ export class BoardDoc {
   get(id: string): CanvasObject | undefined {
     const hit = this.cache.get(id);
     if (hit !== undefined) return hit ?? undefined;
-    const m = this.objects.get(id);
-    if (!m) return undefined;
+    const m = this.mapOf(id);
+    if (!m) {
+      if (this.objects.has(id) && !this.warned.has(id)) {
+        this.warned.add(id);
+        console.warn(`BoardDoc: skipping invalid object "${id}"`);
+      }
+      return undefined;
+    }
     const raw: Record<string, unknown> = {};
     m.forEach((v, k) => {
       if (k !== "content") raw[k] = v;
@@ -137,7 +143,7 @@ export class BoardDoc {
   }
 
   content(id: string): Y.XmlFragment | undefined {
-    const c = this.objects.get(id)?.get("content");
+    const c = this.mapOf(id)?.get("content");
     return c instanceof Y.XmlFragment ? c : undefined;
   }
 
@@ -256,7 +262,7 @@ export class BoardDoc {
   }
 
   private updateInternal(id: string, patch: Partial<CanvasObject>, fromFlush: boolean): void {
-    const m = this.objects.get(id);
+    const m = this.mapOf(id);
     const cur = this.get(id);
     if (!m || !cur) return;
     const clean: Record<string, unknown> = {};
@@ -292,8 +298,8 @@ export class BoardDoc {
   private removeInternal(ids: string[]): void {
     // Descendant closure over the raw parent links, so invalid children are removed too. Cycle safe.
     const children = new Map<string, string[]>();
-    this.objects.forEach((m, id) => {
-      const p = m.get("parentId");
+    this.objects.forEach((_m, id) => {
+      const p = this.mapOf(id)?.get("parentId");
       if (typeof p === "string") {
         const list = children.get(p);
         if (list) list.push(id);
@@ -330,8 +336,17 @@ export class BoardDoc {
     this.invalidateStructure();
   }
 
+  /**
+   * The object's Y.Map, or undefined when there is none. A damaged or foreign document can hold something else under an
+   * object id (a string, a number, a nested array); such entries are not objects and are skipped, never dereferenced.
+   */
+  private mapOf(id: string): YObj | undefined {
+    const m: unknown = this.objects.get(id);
+    return m instanceof Y.Map ? (m as YObj) : undefined;
+  }
+
   private rawParent(id: string): string | null {
-    const p = this.objects.get(id)?.get("parentId");
+    const p = this.mapOf(id)?.get("parentId");
     return typeof p === "string" ? p : null;
   }
 
@@ -386,8 +401,8 @@ export class BoardDoc {
   private topKey(): string | null {
     if (this.top === undefined) {
       let top: string | null = null;
-      this.objects.forEach((m) => {
-        const i = m.get("index");
+      this.objects.forEach((_m, id) => {
+        const i = this.mapOf(id)?.get("index");
         if (typeof i === "string" && (top === null || i > top)) top = i;
       });
       this.top = top;
