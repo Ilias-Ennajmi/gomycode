@@ -94,6 +94,9 @@ test.describe("video and GIF", () => {
 });
 
 test.describe("type specimen", () => {
+  // The production build's service worker would answer (or forward) the font requests outside page.route.
+  test.use({ serviceWorkers: "block" });
+
   test("three families offline fall back to a system font with a text badge, and the Inspector edits them", async ({ page }) => {
     await page.route("https://fonts.googleapis.com/**", (r) => r.abort());
     await openBoard(page);
