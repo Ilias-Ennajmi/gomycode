@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { COMPACT_AGE_MS, COMPACT_ROWS, compact, maybeCompact, shouldCompact } from "@/lib/server/compaction";
 import { appendUpdate, readUpdates, supabaseUpdatesDb, type UpdatesDb } from "@/lib/server/updates";
@@ -26,6 +26,15 @@ function edits(n: number, from = 0, doc = new Y.Doc()) {
 async function pushAll(updates: Uint8Array[]) {
   for (const u of updates) await appendUpdate(db, BOARD, u, "dev");
 }
+// The code keeps one compaction per UTC day, so the tests must not depend on the time of day they run at:
+// freeze `Date` at mid-morning UTC (a few hours later is still the same day).
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-06-01T08:00:00Z"));
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 const later = (ms: number) => new Date(Date.now() + ms);
 function replay(snapshot: Uint8Array | null, updates: Uint8Array[]): Y.Doc {
   const d = new Y.Doc();
