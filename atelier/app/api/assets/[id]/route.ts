@@ -14,7 +14,8 @@ const json = (status: number, body: unknown) => Response.json(body, { status, he
 const isWebUrl = (v: string): boolean => {
   try {
     const u = new URL(v);
-    return u.protocol === "https:" || u.protocol === "http:";
+    // http(s) only, and never a link that carries a username or password.
+    return (u.protocol === "https:" || u.protocol === "http:") && u.username === "" && u.password === "";
   } catch {
     return false;
   }

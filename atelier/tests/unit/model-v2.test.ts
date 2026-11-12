@@ -78,6 +78,12 @@ describe("model v2: new object types", () => {
     ) as ImageObj;
     expect(ok.provenance?.sourceUrl).toBe("https://example.com/a.jpg");
     expect((validateObject(full("image", { provenance: "x" })) as ImageObj).provenance).toBeNull();
+    // A link with a username or password, or an oversized one, is not kept.
+    for (const bad of ["https://user:pw@example.com/a.jpg", "https://user@example.com/a.jpg", `https://example.com/${"a".repeat(2100)}`]) {
+      const o = validateObject(full("image", { provenance: { sourceUrl: bad, credit: "Jo", licence: "", capturedAt: null } })) as ImageObj;
+      expect(o.provenance?.sourceUrl, bad.slice(0, 40)).toBeNull();
+      expect(o.provenance?.credit).toBe("Jo");
+    }
   });
 
   it("palette: maxColors is clamped to 3..12 instead of rejecting", () => {

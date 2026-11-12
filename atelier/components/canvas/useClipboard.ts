@@ -14,18 +14,18 @@ import type { LinkCardDeps } from "@/lib/engine/links/link-cards";
 import { boundsOf } from "@/lib/engine/geometry/rect";
 import { screenToCanvas } from "@/lib/engine/geometry/camera";
 import { defaultsFor } from "@/lib/engine/model/defaults";
-import type { Point } from "@/lib/engine/model/types";
+import type { Point, Provenance } from "@/lib/engine/model/types";
 import type { CanvasHandle } from "./CanvasView";
 
 /** What a paste or a drop brings in, before it is parsed. */
-export type ClipboardInput = { html?: string; text?: string; files?: File[] };
+export type ClipboardInput = { html?: string; text?: string; files?: File[]; /** The page the data came from, when known (a share). */ url?: string };
 
 export type UseClipboardOptions = {
   handle: CanvasHandle | null;
   /** The current command context (document, selection, toast). Read at event time, so it may change freely. */
   ctx: () => CommandCtx;
   /** Add an image file centred on a canvas point: `AssetUploader.add`. Rejects with ImageError for files it will not take. */
-  addImage?: (file: File, at: Point) => Promise<unknown>;
+  addImage?: (file: File, at: Point, provenance?: Provenance) => Promise<unknown>;
   /** Public URL of an asset for the readable fallback in copied HTML. Defaults to the shared resolver (https URLs only). */
   assetUrl?: (assetId: string) => string | null;
   /** What link cards need to fetch their preview. Without it a pasted URL becomes a plain card with just the domain. */
@@ -175,7 +175,7 @@ export function useClipboard(opts: UseClipboardOptions): ClipboardApi {
             ctx.toast({ message: `Couldn't add ${fileName(f)}: ${e instanceof Error ? e.message : "it can't be read"}` });
           }
         }
-        const items = parseClipboard({ html: input.html, text: input.text, files: usable });
+        const items = parseClipboard({ html: input.html, text: input.text, files: usable, url: input.url });
         if (items.length === 0) return; // empty clipboard, or only files that were refused above
 
         const addImage = O().addImage;
@@ -184,8 +184,8 @@ export function useClipboard(opts: UseClipboardOptions): ClipboardApi {
           links: O().links,
           urlAsText: popts?.asText,
           addImage: addImage
-            ? (file, pos) =>
-                addImage(file, pos).then((id) => {
+            ? (file, pos, provenance) =>
+                (provenance ? addImage(file, pos, provenance) : addImage(file, pos)).then((id) => {
                   if (typeof id === "string") ctx.selection.add([id]);
                   return id;
                 })

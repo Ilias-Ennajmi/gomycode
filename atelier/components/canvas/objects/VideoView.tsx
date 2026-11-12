@@ -5,8 +5,11 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import type { AssetResolver } from "@/lib/assets/resolver-types";
 import { getPlaybackStore, type PlaybackStore } from "@/lib/engine/media/playback-store";
 import { pickPosterVariant } from "@/lib/engine/media/poster";
+import type { BoardDoc } from "@/lib/engine/doc/board-doc";
 import type { VideoObj } from "@/lib/engine/model/types";
+import { creditLine } from "@/lib/engine/provenance/validate";
 import { useLod } from "../lod";
+import { useShowCredits } from "../useShowCredits";
 
 /** Variants a Phase 1 style asset is assumed to have when nothing is known about it. */
 const UNKNOWN: readonly ("w1024")[] = ["w1024"];
@@ -20,9 +23,11 @@ const fill = { position: "absolute", inset: 0, width: "100%", height: "100%", ob
  * while scrolled out of view, and a live video that is both off-screen and not selected returns to its poster. Controls
  * live in the selection bar (they have names and keyboard access there), so the canvas keeps every pointer gesture.
  */
-export function VideoView({ obj, assets, store }: { obj: VideoObj; assets: AssetResolver; store?: PlaybackStore }) {
+export function VideoView({ obj, assets, store, doc }: { obj: VideoObj; assets: AssetResolver; store?: PlaybackStore; /** Where the credits overlay switch lives; without it no credit line is drawn. */ doc?: BoardDoc }) {
   const s = store ?? getPlaybackStore();
   const { zoom, dpr } = useLod();
+  const showCredits = useShowCredits(doc);
+  const credit = showCredits ? creditLine(obj.provenance) : "";
   const state = useSyncExternalStore(
     (cb) => s.subscribe(cb),
     () => s.state(obj.id),
@@ -183,6 +188,30 @@ export function VideoView({ obj, assets, store }: { obj: VideoObj; assets: Asset
           }}
         >
           GIF
+        </span>
+      ) : null}
+
+      {credit ? (
+        <span
+          data-credit=""
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            padding: "0.2em 0.5em",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            pointerEvents: "none",
+            color: "var(--color-bg)",
+            background: "color-mix(in srgb, var(--color-ink) 70%, transparent)",
+            fontSize: 11 / zoom,
+            // Under 120 px across on screen the line would be unreadable: it is hidden, as on pictures.
+            display: obj.w * zoom >= 120 ? undefined : "none",
+          }}
+        >
+          {credit}
         </span>
       ) : null}
 

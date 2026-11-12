@@ -92,7 +92,7 @@ export const OBJECT_VIEWS: { [K in ObjectType]: ViewOf<K> } = {
     </FrameView>
   ),
   group: NoView,
-  video: ({ obj, assets }) => <VideoView obj={obj} assets={assets} />,
+  video: ({ obj, assets, doc }) => <VideoView obj={obj} assets={assets} doc={doc} />,
   link: ({ obj, assets, doc }) => <LinkView obj={obj} assets={assets} pending={isPreviewPending(doc, obj.id)} />,
   embed: ({ obj }) => <EmbedView obj={obj} />,
   swatch: ({ obj }) => <SwatchView obj={obj} />,

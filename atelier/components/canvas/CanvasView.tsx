@@ -19,6 +19,8 @@ import { CameraStore, easeInOut, interpolateCamera } from "@/lib/engine/input/ca
 import { EditingStore } from "@/lib/engine/input/editing-store";
 import { SelectionStore } from "@/lib/engine/input/selection-store";
 import { OverlayStore, ToolMachine, createToolMachine, type ToolCtx, type ToolId } from "@/lib/engine/input/tool-machine";
+import type { ImageObj } from "@/lib/engine/model/types";
+import { creditLine } from "@/lib/engine/provenance/validate";
 import type { ImageLayer } from "@/lib/engine/render/image-layer";
 import { createImageLayer, detectWebGL } from "@/lib/engine/render/image-layer-factory";
 import { WebGLImageLayer } from "@/lib/engine/render/webgl-image-layer";
@@ -33,6 +35,7 @@ import { ObjectLayer, type ObjectLayerView } from "./ObjectLayer";
 import { SelectionOverlay } from "./SelectionOverlay";
 import { useCanvasInput } from "./useCanvasInput";
 import { useActiveToolId } from "./useStores";
+import { useShowCredits } from "./useShowCredits";
 import { useValueCheck } from "./useValueCheck";
 
 /** What the rest of the editor (chrome, commands, tools) may do with the canvas. */
@@ -85,6 +88,9 @@ export type CanvasViewProps = {
   /** Overlays and chrome drawn in screen space above the objects. */
   children?: ReactNode;
 };
+
+/** The credits overlay's text for one picture: "Credit · Licence", else the host of its source link. */
+const creditCaption = (o: ImageObj): string | null => creditLine(o.provenance) || null;
 
 const SETTLE_MS = 100;
 const SETTLE_MAX_WAIT_MS = 300;
@@ -290,6 +296,7 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
     };
   }, [machine, toolCtx, assets]);
   const valueCheck = useValueCheck(doc);
+  const showCredits = useShowCredits(doc);
   const activeTool = useActiveToolId(machine);
 
   // Objects that vanish (deleted here, on another device, or by undo) leave the selection, and end their editing.
@@ -412,7 +419,7 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
       }}
     >
       <EditingContext.Provider value={editingContext}>
-        <ObjectLayer ref={layerRef} doc={doc} index={index} assets={assets} view={view} dpr={dpr} imageLayer={images} />
+        <ObjectLayer ref={layerRef} doc={doc} index={index} assets={assets} view={view} dpr={dpr} imageLayer={images} captionFor={showCredits ? creditCaption : undefined} />
         <DraftOverlay overlays={overlays} camera={store} />
         <GuidesOverlay overlays={overlays} camera={store} />
         {activeTool === "crop" ? null : <SelectionOverlay doc={doc} selection={selection} overlays={overlays} camera={store} />}

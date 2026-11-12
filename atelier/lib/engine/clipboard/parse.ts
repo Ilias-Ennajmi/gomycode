@@ -3,7 +3,9 @@ import type { BoardDoc } from "../doc/board-doc";
 import { boundsOf, unionRects } from "../geometry/rect";
 import { defaultsFor } from "../model/defaults";
 import { keyBetween } from "../model/index-order";
-import type { CanvasObject, NewObject, Point, Terminal } from "../model/types";
+import type { CanvasObject, NewObject, Point, Provenance, Terminal } from "../model/types";
+import { extractProvenance } from "../provenance/extract";
+import { emptyProvenance } from "../provenance/validate";
 import { validateObject } from "../model/validate";
 import { newId } from "@/lib/ids";
 import { isVideoFile } from "@/lib/assets/video";
@@ -14,7 +16,7 @@ import { ATELIER_MARKER, decodeBase64Utf8, type AtelierPayload } from "./seriali
 
 export type PasteItem =
   | { kind: "atelier"; payload: AtelierPayload }
-  | { kind: "image"; file: File }
+  | { kind: "image"; file: File; /** Where it came from, when the clipboard or drop said so. */ provenance?: Provenance }
   | { kind: "url"; url: string }
   | { kind: "text"; text: string; lines: number };
 
@@ -85,10 +87,16 @@ function textItems(raw: string): PasteItem[] {
  * Turn what the browser put on the clipboard (or dropped) into paste items. Image files win over text; an Atelier
  * payload wins over plain text; a damaged payload falls back to text. Never throws.
  */
-export function parseClipboard(input: { html?: string; text?: string; files?: File[] }): PasteItem[] {
+export function parseClipboard(input: { html?: string; text?: string; files?: File[]; /** The page the data came from, when known. */ url?: string }): PasteItem[] {
   try {
     const images = (input.files ?? []).filter(isImageFile);
-    if (images.length) return images.map((file) => ({ kind: "image" as const, file }));
+    if (images.length) {
+      // The html and text of a copied or dragged web image name one picture: they only describe a single file. A page URL
+      // the caller supplies applies to all of them.
+      const hint = images.length === 1 || input.url ? extractProvenance({ html: input.html, text: input.text, url: input.url, fileName: images[0].name }) : {};
+      const provenance: Provenance | undefined = hint.sourceUrl ? { ...emptyProvenance(), sourceUrl: hint.sourceUrl, capturedAt: hint.capturedAt ?? null } : undefined;
+      return images.map((file) => (provenance ? { kind: "image" as const, file, provenance: { ...provenance } } : { kind: "image" as const, file }));
+    }
 
     const payload = input.html ? extractPayload(input.html) : null;
     if (payload) return [{ kind: "atelier", payload }];
@@ -111,7 +119,7 @@ export function createPasteState(): PasteState {
 
 export type PasteOptions = {
   /** Hands an image file to the uploader at a canvas point. A returned id is included in the result. */
-  addImage?: (file: File, at: Point) => string | void | Promise<unknown>;
+  addImage?: (file: File, at: Point, provenance?: Provenance) => string | void | Promise<unknown>;
   onImageError?: (file: File, error: unknown) => void;
   state?: PasteState;
   /** Offset per repeated paste, default 16. */
@@ -261,7 +269,7 @@ export function insertPaste(doc: BoardDoc, items: PasteItem[], at: Point, opts: 
   const center = { x: at.x + n * step, y: at.y + n * step };
 
   const ids: string[] = [];
-  const images: File[] = [];
+  const images: { file: File; provenance?: Provenance }[] = [];
   const urls: string[] = [];
   doc.transact(() => {
     for (const item of items) {
@@ -270,7 +278,7 @@ export function insertPaste(doc: BoardDoc, items: PasteItem[], at: Point, opts: 
       else if (item.kind === "url") {
         if (opts.urlAsText) ids.push(...pasteText(doc, item.url, item.url, center));
         else urls.push(item.url);
-      } else images.push(item.file);
+      } else images.push({ file: item.file, provenance: item.provenance });
     }
     if (urls.length) ids.push(...pasteUrls(doc, urls, center, opts.links));
   });
@@ -281,13 +289,13 @@ export function insertPaste(doc: BoardDoc, items: PasteItem[], at: Point, opts: 
     const pitch = IMAGE_CELL + GUTTER;
     const x0 = center.x - (cols * IMAGE_CELL + (cols - 1) * GUTTER) / 2;
     const y0 = center.y - (rows * IMAGE_CELL + (rows - 1) * GUTTER) / 2;
-    images.forEach((file, i) => {
+    images.forEach(({ file, provenance }, i) => {
       const pos = {
         x: x0 + (i % IMAGES_PER_ROW) * pitch + IMAGE_CELL / 2,
         y: y0 + Math.floor(i / IMAGES_PER_ROW) * pitch + IMAGE_CELL / 2,
       };
       try {
-        const r = opts.addImage!(file, pos);
+        const r = provenance ? opts.addImage!(file, pos, provenance) : opts.addImage!(file, pos);
         if (typeof r === "string") ids.push(r);
         else if (r && typeof (r as Promise<unknown>).then === "function") {
           (r as Promise<unknown>).then(

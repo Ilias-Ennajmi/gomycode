@@ -54,9 +54,21 @@ const normalisedCrop = rect
   .nullable()
   .catch(null);
 
+/** A picture's source link: http(s), at most 2048 characters, no username or password. */
+const sourceUrl = httpUrl
+  .refine((v) => v.length <= 2048, "must be at most 2048 characters")
+  .refine((v) => {
+    try {
+      const u = new URL(v);
+      return u.username === "" && u.password === "";
+    } catch {
+      return false;
+    }
+  }, "must not carry credentials");
+
 const provenance = z
   .object({
-    sourceUrl: httpUrl.nullable().catch(null),
+    sourceUrl: sourceUrl.nullable().catch(null),
     credit: capped(500).catch(""),
     licence: capped(300).catch(""),
     capturedAt: isoDate.nullable().catch(null),

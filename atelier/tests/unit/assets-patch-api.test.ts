@@ -109,6 +109,8 @@ describe("PATCH /api/assets/:id (analysis, title, provenance)", () => {
     for (const p of [
       { ...ok, sourceUrl: "javascript:alert(1)" },
       { ...ok, sourceUrl: "file:///etc/passwd" },
+      { ...ok, sourceUrl: "https://user:pw@example.com/photo" },
+      { ...ok, sourceUrl: "https://user@example.com/photo" },
       { ...ok, sourceUrl: "https://example.com/" + "a".repeat(2100) },
       { ...ok, credit: "c".repeat(501) },
       { ...ok, licence: "l".repeat(201) },

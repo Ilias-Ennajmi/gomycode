@@ -14,6 +14,7 @@ import { NumberField } from "./NumberField";
 import { BoardFields, GutterField } from "./BoardFields";
 import { ImageFields } from "./ImageFields";
 import { UsedInBoards } from "./UsedInBoards";
+import { SourceFields } from "./SourceFields";
 import { SpecimenFields } from "./SpecimenFields";
 
 const DEG = 180 / Math.PI;
@@ -149,6 +150,12 @@ export function InspectorPanel() {
         <section aria-label="Image" className="grid gap-2 border-t border-line pt-3">
           <ImageFields key={roots[0].id} obj={roots[0]} disabled={disabled} />
           <UsedInBoards key={roots[0].assetId} assetId={roots[0].assetId} />
+        </section>
+      ) : null}
+      {roots.length === 1 && (roots[0].type === "image" || roots[0].type === "video") ? (
+        <section aria-label="Source" className="grid gap-2 border-t border-line pt-3">
+          <p className="text-(length:--text-xs) font-medium text-fg-muted">Source</p>
+          <SourceFields key={roots[0].id} obj={roots[0]} doc={doc} disabled={disabled} />
         </section>
       ) : null}
       {roots.length === 1 && roots[0].type === "typeSpecimen" ? (

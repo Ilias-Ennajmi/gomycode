@@ -244,7 +244,7 @@ export function EditorProvider({
   const clipboard = useClipboard({
     handle,
     ctx: commandCtx,
-    addImage: uploader ? (file, at) => uploader.add(file, at) : undefined,
+    addImage: uploader ? (file, at, provenance) => uploader.add(file, at, provenance ? { provenance } : undefined) : undefined,
     links: linkDeps ?? undefined,
   });
   useDropFiles(handle, clipboard.pasteInput);

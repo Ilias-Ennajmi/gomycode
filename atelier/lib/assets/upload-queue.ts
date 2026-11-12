@@ -217,8 +217,8 @@ export class AssetUploader {
   }
 
   /** Add an image file at a canvas point. Resolves with the new image object's id; rejects with ImageError for files we will not add. */
-  async add(file: File, at: Point): Promise<string> {
-    const { objectId } = await this.ingest(file, { name: file.name, at });
+  async add(file: File, at: Point, opts: { provenance?: Provenance } = {}): Promise<string> {
+    const { objectId } = await this.ingest(file, { name: file.name, at, provenance: opts.provenance });
     return objectId as string;
   }
 
@@ -562,6 +562,21 @@ export class AssetUploader {
       }),
     });
     if (!done.ok) throw new HttpError(done.status, "Finishing the upload");
+
+    // The first capture's source goes to the asset once it exists. Best effort: local-only mode answers 503, and the
+    // board object holds the provenance either way.
+    const p = meta.provenance;
+    if (p && (p.sourceUrl || p.credit || p.licence)) {
+      try {
+        await f(`/api/assets/${encodeURIComponent(meta.assetId)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ provenance: p }),
+        });
+      } catch {
+        /* not worth failing an upload that succeeded */
+      }
+    }
   }
 
   /** The server already holds this file: point the image at it and drop our copy. */

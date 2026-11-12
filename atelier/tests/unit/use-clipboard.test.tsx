@@ -17,7 +17,7 @@ import { richContentToJSON } from "@/lib/engine/clipboard/rich";
 
 const shape = (id: string, x: number, y: number, w = 100, h = 80) => ({ ...defaultsFor("shape"), id, x, y, w, h }) as NewObject;
 
-function setup(objs: NewObject[] = [], addImage?: (f: File, at: Point) => Promise<unknown>, links?: LinkCardDeps) {
+function setup(objs: NewObject[] = [], addImage?: (f: File, at: Point, provenance?: unknown) => Promise<unknown>, links?: LinkCardDeps) {
   const doc = new BoardDoc();
   doc.createMany(objs);
   doc.stopCapturing();
@@ -383,5 +383,21 @@ describe("drop", () => {
     expect(nope.defaultPrevented).toBe(false);
     t.container.dispatchEvent(new Event("dragleave", { bubbles: true }));
     expect(t.container.dataset.dropActive).toBeUndefined();
+  });
+});
+
+describe("pasting a picture copied from a web page", () => {
+  it("hands its source link to the uploader", () => {
+    const t = setup();
+    const file = new File([new Uint8Array(8)], "a.png", { type: "image/png" });
+    clip("paste", { "text/html": '<img src="https://images.example.com/a.jpg">' }, [file]);
+    expect(t.add).toHaveBeenCalledTimes(1);
+    expect(t.add.mock.calls[0][2]).toMatchObject({ sourceUrl: "https://images.example.com/a.jpg", credit: "", licence: "" });
+  });
+
+  it("a plain file paste calls the uploader with just the file and the point", () => {
+    const t = setup();
+    clip("paste", {}, [new File([new Uint8Array(8)], "a.png", { type: "image/png" })]);
+    expect(t.add.mock.calls[0]).toHaveLength(2);
   });
 });

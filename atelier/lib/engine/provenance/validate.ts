@@ -73,7 +73,7 @@ export function validateProvenance(p: unknown): Provenance | null {
 }
 
 /** Whether there is anything worth showing or exporting. */
-export function hasProvenance(p: Provenance | null | undefined): p is Provenance {
+export function hasProvenance(p: Provenance | null | undefined): boolean {
   return !!p && (p.sourceUrl !== null || p.credit.trim() !== "" || p.licence.trim() !== "");
 }
 

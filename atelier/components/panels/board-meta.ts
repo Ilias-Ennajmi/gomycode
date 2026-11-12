@@ -20,3 +20,7 @@ export function setGutter(doc: BoardDoc, px: number): void {
 export function setValueCheck(doc: BoardDoc, on: boolean): void {
   doc.meta.valueCheck = on;
 }
+
+export function setShowCredits(doc: BoardDoc, on: boolean): void {
+  doc.meta.showCredits = on;
+}
