@@ -35,6 +35,15 @@
   --ease-out: var(--ease-out);
 }
 
+/* Hover styles only where hover exists and the pointer is precise (never on touch screens). */
+@custom-variant hoverable {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
 html,
 body {
   height: 100%;
