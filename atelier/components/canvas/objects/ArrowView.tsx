@@ -2,41 +2,11 @@
 
 import { useMemo } from "react";
 import type { BoardDoc } from "@/lib/engine/doc/board-doc";
+import { headShape } from "@/lib/engine/geometry/arrow-heads";
 import { arrowPath } from "@/lib/engine/geometry/arrow-path";
-import type { ArrowObj, Head, Point } from "@/lib/engine/model/types";
+import type { ArrowObj } from "@/lib/engine/model/types";
 import { useDocObject } from "../useDocObject";
 import { dashArray, safeColor } from "./style";
-
-function headShape(head: Head, tip: Point, dir: Point, size: number): { d: string; filled: boolean } | null {
-  if (head === "none") return null;
-  const back = { x: -dir.x, y: -dir.y };
-  const rot = (v: Point, a: number): Point => ({ x: v.x * Math.cos(a) - v.y * Math.sin(a), y: v.x * Math.sin(a) + v.y * Math.cos(a) });
-  const at = (v: Point, len: number): Point => ({ x: tip.x + v.x * len, y: tip.y + v.y * len });
-  const f = (p: Point) => `${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
-  switch (head) {
-    case "arrow": {
-      const a = at(rot(back, 0.45), size);
-      const b = at(rot(back, -0.45), size);
-      return { d: `M ${f(a)} L ${f(tip)} L ${f(b)}`, filled: false };
-    }
-    case "triangle": {
-      const a = at(rot(back, 0.4), size);
-      const b = at(rot(back, -0.4), size);
-      return { d: `M ${f(tip)} L ${f(a)} L ${f(b)} Z`, filled: true };
-    }
-    case "dot": {
-      const r = size * 0.4;
-      const c = at(back, r);
-      return { d: `M ${f({ x: c.x - r, y: c.y })} a ${r} ${r} 0 1 0 ${2 * r} 0 a ${r} ${r} 0 1 0 ${-2 * r} 0 Z`, filled: true };
-    }
-    case "bar": {
-      const n = { x: -dir.y, y: dir.x };
-      const a = at(n, size * 0.5);
-      const b = at(n, -size * 0.5);
-      return { d: `M ${f(a)} L ${f(b)}`, filled: false };
-    }
-  }
-}
 
 export function ArrowView({ doc, obj }: { doc: BoardDoc; obj: ArrowObj }) {
   // Re-render when a bound target moves or disappears.
