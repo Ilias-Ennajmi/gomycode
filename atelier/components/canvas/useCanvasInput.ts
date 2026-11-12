@@ -36,6 +36,8 @@ export type CanvasInputDeps = {
   toolCtx: () => ToolCtx;
   /** A press anywhere on the canvas outside the editor ends editing. */
   editing: EditingStore;
+  /** A viewing canvas: no tools, no editing, no context menu; a press-drag pans. Read on every event. */
+  readOnly?: () => boolean;
 };
 
 /** Tools whose drag draws: with "pen draws, finger pans" a touch pans instead of reaching them. */
@@ -72,6 +74,7 @@ export function useCanvasInput(root: RefObject<HTMLElement | null>, deps: Canvas
     let spaceDown = false;
     let pan: { id: number; x: number; y: number } | null = null;
     const D = () => latest.current;
+    const viewOnly = () => D().readOnly?.() === true;
 
     const local = (e: { clientX: number; clientY: number }) => {
       const r = el.getBoundingClientRect();
@@ -103,7 +106,7 @@ export function useCanvasInput(root: RefObject<HTMLElement | null>, deps: Canvas
     const updateCursor = () => {
       const d = D();
       const handTool = d.machine.id === "hand";
-      el.style.cursor = pan ? "grabbing" : spaceDown || handTool ? "grab" : (d.machine.tool?.cursor?.(d.toolCtx()) ?? "");
+      el.style.cursor = pan ? "grabbing" : spaceDown || handTool || viewOnly() ? "grab" : (d.machine.tool?.cursor?.(d.toolCtx()) ?? "");
     };
 
     const cancelTool = () => {
@@ -116,7 +119,7 @@ export function useCanvasInput(root: RefObject<HTMLElement | null>, deps: Canvas
     const onPointerDown = (e: PointerEvent) => {
       // Presses on the editor belong to the editor (caret, selection); presses elsewhere end editing.
       if (isEditingSurface(e.target) || isEditableTarget(e.target)) return;
-      D().editing.stop();
+      if (!viewOnly()) D().editing.stop();
       if (e.pointerType === "mouse" && e.button !== 0 && e.button !== 1) return;
       D().cancelAnimation();
       if (e.button === 1) e.preventDefault();
@@ -137,7 +140,7 @@ export function useCanvasInput(root: RefObject<HTMLElement | null>, deps: Canvas
       }
       const d = D();
       const fingerPans = d.settings().penOnlyDraws && e.pointerType === "touch" && DRAWING_TOOLS.has(d.machine.id);
-      if (spaceDown || e.button === 1 || d.machine.id === "hand" || fingerPans) {
+      if (viewOnly() || spaceDown || e.button === 1 || d.machine.id === "hand" || fingerPans) {
         pan = { id: e.pointerId, ...local(e) };
         d.gestureStart();
         updateCursor();
@@ -165,7 +168,7 @@ export function useCanvasInput(root: RefObject<HTMLElement | null>, deps: Canvas
         updateCursor();
       } else if (r === "hover") {
         const d = D();
-        if (!pan && e.pointerType !== "touch") {
+        if (!pan && e.pointerType !== "touch" && !viewOnly()) {
           d.machine.tool?.onMove(d.toolCtx(), toCanvasPointer(e));
           updateCursor();
         }
@@ -193,7 +196,7 @@ export function useCanvasInput(root: RefObject<HTMLElement | null>, deps: Canvas
     };
 
     const onDoubleClick = (e: MouseEvent) => {
-      if (isEditableTarget(e.target)) return;
+      if (isEditableTarget(e.target) || viewOnly()) return;
       const d = D();
       d.machine.tool?.onDoubleClick?.(d.toolCtx(), toCanvasPointer(e));
     };
@@ -224,7 +227,7 @@ export function useCanvasInput(root: RefObject<HTMLElement | null>, deps: Canvas
       if (isEditableTarget(e.target)) return;
       const d = D();
       d.cancelAnimation();
-      if (!isSpaceKey(e)) {
+      if (!isSpaceKey(e) && !viewOnly()) {
         if (d.machine.tool?.onKey?.(d.toolCtx(), e)) {
           e.preventDefault();
           return;
@@ -262,6 +265,13 @@ export function useCanvasInput(root: RefObject<HTMLElement | null>, deps: Canvas
       updateCursor();
     };
 
+    // A viewing canvas has no context menu: swallow the event before the chrome (listening on this element) hears it.
+    const onContextMenu = (e: MouseEvent) => {
+      if (!viewOnly()) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    };
+    el.addEventListener("contextmenu", onContextMenu, { capture: true });
     el.addEventListener("pointerdown", onPointerDown);
     el.addEventListener("pointermove", onPointerMove);
     el.addEventListener("pointerup", onPointerUp);
@@ -275,6 +285,7 @@ export function useCanvasInput(root: RefObject<HTMLElement | null>, deps: Canvas
     const offMachine = D().machine.subscribe(updateCursor);
     return () => {
       offMachine();
+      el.removeEventListener("contextmenu", onContextMenu, { capture: true });
       el.removeEventListener("pointerdown", onPointerDown);
       el.removeEventListener("pointermove", onPointerMove);
       el.removeEventListener("pointerup", onPointerUp);

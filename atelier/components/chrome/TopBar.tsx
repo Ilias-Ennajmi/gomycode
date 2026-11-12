@@ -66,7 +66,7 @@ export function TopBar({ title, onTitleChange, breadcrumb = [], status, localOnl
       </div>
 
       <div className="pointer-events-auto flex shrink-0 items-center gap-1 rounded-lg border border-line bg-panel p-1 shadow-2">
-        <PhaseButton label="Present" icon={Presentation} />
+        <PresentButton />
         <PhaseButton label="Share" icon={Share2} primary />
         <ExportButton />
       </div>
@@ -159,6 +159,21 @@ function PhaseButton({ label, icon: Icon, primary = false }: { label: string; ic
     </Tip>
   );
 }
+
+/** Starts the presentation (also Mod+Alt+P). Without an editor around it (a bare top bar) it stays a disabled Phase 3 button. */
+function PresentButton() {
+  const editor = useOptionalEditor();
+  if (!editor) return <PhaseButton label="Present" icon={Presentation} />;
+  return (
+    <Tip label="Present" shortcut="Mod+Alt+P" side="bottom">
+      <button type="button" onClick={() => editor.run("present.start")} className={`${chromeTextButton} text-(length:--text-sm) font-medium`}>
+        <Presentation aria-hidden="true" size={16} strokeWidth={1.75} />
+        <span className="max-sm:sr-only">Present</span>
+      </button>
+    </Tip>
+  );
+}
+
 /** Opens the Export dialog (also Mod+Shift+E). Without an editor around it (a bare top bar) it stays a disabled Phase 3 button. */
 function ExportButton() {
   const editor = useOptionalEditor();

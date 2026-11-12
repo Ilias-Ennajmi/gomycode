@@ -53,6 +53,8 @@ export function makeEditor(objs: NewObject[] = []) {
     viewport: () => ({ w: 1000, h: 800 }),
     settings: () => ({ wheel: "zoom", sensitivity: 1, locked: false, snap: true, penOnlyDraws: false }),
     cancelCameraAnimation: () => {},
+    setReadOnly: () => {},
+    isReadOnly: () => false,
     tools,
     editing,
     overlays,

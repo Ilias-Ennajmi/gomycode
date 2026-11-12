@@ -28,6 +28,7 @@ import { insertPaste, parseClipboard } from "../clipboard/parse";
 import type { BoardDoc } from "../doc/board-doc";
 import type { ToolId } from "../input/tool-machine";
 import { EXPORT_COMMANDS } from "../export/export-commands";
+import { PRESENT_COMMANDS } from "../present/present-commands";
 import { MEDIA_COMMANDS } from "./media-commands";
 import { PALETTE_COMMANDS } from "./palette-commands";
 import { PROVENANCE_COMMANDS } from "./provenance-commands";
@@ -489,6 +490,9 @@ export const BUILTIN_COMMANDS: Command[] = [
   ...LINK_COMMANDS,
 
   ...EXPORT_COMMANDS,
+
+  // presentation mode and slide order
+  ...PRESENT_COMMANDS,
 ];
 
 /** Add the built-in commands to a registry (done for the app-wide one on import). */

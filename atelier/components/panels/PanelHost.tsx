@@ -1,6 +1,6 @@
 "use client";
 
-import { Inbox, Layers, Palette, Search, SlidersHorizontal, X, type LucideIcon } from "lucide-react";
+import { GalleryHorizontal, Inbox, Layers, Palette, Search, SlidersHorizontal, X, type LucideIcon } from "lucide-react";
 import { useEffect, useId, useRef, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { PANEL_MAX_WIDTH, PANEL_MIN_WIDTH, useEditor } from "@/components/editor/EditorContext";
 import { useIsDesktop } from "./doc-hooks";
@@ -9,6 +9,7 @@ import { InboxPanel } from "./InboxPanel";
 import { InspectorPanel } from "./InspectorPanel";
 import { LayersPanel } from "./LayersPanel";
 import { PalettePanel } from "./PalettePanel";
+import { SlidesPanel } from "@/components/present/SlidesPanel";
 
 export type PanelDef = { id: string; title: string; icon: LucideIcon; render(): ReactNode };
 
@@ -18,6 +19,7 @@ export const DEFAULT_PANELS: PanelDef[] = [
   { id: "find", title: "Find and replace", icon: Search, render: () => <FindReplace /> },
   { id: "palette", title: "Palette", icon: Palette, render: () => <PalettePanel /> },
   { id: "inbox", title: "Inbox", icon: Inbox, render: () => <InboxPanel /> },
+  { id: "slides", title: "Slides", icon: GalleryHorizontal, render: () => <SlidesPanel /> },
 ];
 
 const KEY_STEP = 16;

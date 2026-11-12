@@ -12,6 +12,7 @@ import { useDocTick, useSelectionIds } from "./doc-hooks";
 import { descendantIds, typeLabel } from "./layers-model";
 import { NumberField } from "./NumberField";
 import { BoardFields, GutterField } from "./BoardFields";
+import { FrameFields } from "./FrameFields";
 import { ImageFields } from "./ImageFields";
 import { UsedInBoards } from "./UsedInBoards";
 import { SourceFields } from "./SourceFields";
@@ -156,6 +157,11 @@ export function InspectorPanel() {
         <section aria-label="Source" className="grid gap-2 border-t border-line pt-3">
           <p className="text-(length:--text-xs) font-medium text-fg-muted">Source</p>
           <SourceFields key={roots[0].id} obj={roots[0]} doc={doc} disabled={disabled} />
+        </section>
+      ) : null}
+      {roots.length === 1 && roots[0].type === "frame" ? (
+        <section aria-label="Slide" className="grid gap-2 border-t border-line pt-3">
+          <FrameFields key={roots[0].id} obj={roots[0]} doc={doc} disabled={roots[0].locked} />
         </section>
       ) : null}
       {roots.length === 1 && roots[0].type === "typeSpecimen" ? (

@@ -15,11 +15,12 @@ import type { AssetResolver } from "@/lib/assets/resolver-types";
 import type { BoardDoc } from "@/lib/engine/doc/board-doc";
 import { fitRect, type Camera } from "@/lib/engine/geometry/camera";
 import { boundsOf, unionRects } from "@/lib/engine/geometry/rect";
-import { CameraStore, easeInOut, interpolateCamera } from "@/lib/engine/input/camera-store";
+import { CameraStore } from "@/lib/engine/input/camera-store";
 import { EditingStore } from "@/lib/engine/input/editing-store";
 import { SelectionStore } from "@/lib/engine/input/selection-store";
 import { OverlayStore, ToolMachine, createToolMachine, type ToolCtx, type ToolId } from "@/lib/engine/input/tool-machine";
 import type { ImageObj } from "@/lib/engine/model/types";
+import { CameraAnimator } from "@/lib/engine/present/animator";
 import { creditLine } from "@/lib/engine/provenance/validate";
 import type { ImageLayer } from "@/lib/engine/render/image-layer";
 import { createImageLayer, detectWebGL } from "@/lib/engine/render/image-layer-factory";
@@ -41,8 +42,12 @@ import { useValueCheck } from "./useValueCheck";
 /** What the rest of the editor (chrome, commands, tools) may do with the canvas. */
 export interface CanvasHandle {
   getCamera(): Camera;
-  /** Set the camera. `animate` eases over about 350 ms (instant under prefers-reduced-motion); any input cancels it. */
-  setCamera(c: Camera, opts?: { animate?: boolean }): void;
+  /**
+   * Set the camera. `animate` eases over about 350 ms (instant under prefers-reduced-motion); any input cancels it.
+   * `settle` (a jump, not an animation) mounts the objects at the new camera at once instead of after the usual 100 ms
+   * debounce: for discrete moves (a slide change) that must not flash an empty view.
+   */
+  setCamera(c: Camera, opts?: { animate?: boolean; settle?: boolean }): void;
   /** Size of the canvas element in CSS px. */
   viewport(): { w: number; h: number };
   container(): HTMLElement;
@@ -50,6 +55,12 @@ export interface CanvasHandle {
   subscribeCamera(cb: (c: Camera) => void): () => void;
   /** Stop a running camera animation, leaving the camera where it is. */
   cancelCameraAnimation(): void;
+  /**
+   * Turn the read-only mode on or off at runtime (presentation mode does): no tools, no selection, no editing and no
+   * context menu, but panning and zooming stay. The `readOnly` prop forces it on.
+   */
+  setReadOnly(on: boolean): void;
+  isReadOnly(): boolean;
   /** Current navigation settings (wheel behaviour, snapping, ...). */
   settings(): NavSettings;
   readonly doc: BoardDoc;
@@ -85,6 +96,11 @@ export type CanvasViewProps = {
   preferWebGL?: boolean;
   /** Bind Shift+1, Shift+2 and Ctrl/Cmd +, -, 0. Turn off when the command registry binds them instead. */
   cameraShortcuts?: boolean;
+  /**
+   * A viewing canvas: no tools, no selection, no editing and no context menu (a press-drag pans, even on an object),
+   * but pan, zoom and the camera shortcuts work. Used by presentation mode and the share viewer.
+   */
+  readOnly?: boolean;
   /** Overlays and chrome drawn in screen space above the objects. */
   children?: ReactNode;
 };
@@ -128,6 +144,7 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
     initialCamera,
     cameraShortcuts = true,
     preferWebGL = false,
+    readOnly: readOnlyProp = false,
     children,
   },
   handleRef,
@@ -163,13 +180,21 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
 
   const viewportRef = useRef({ w: 0, h: 0 });
   const positioned = useRef(initialCamera !== undefined);
-  const animation = useRef<(() => void) | null>(null);
+  const [animator] = useState(
+    () =>
+      new CameraAnimator({
+        get: () => store.get(),
+        set: (c) => store.set(c),
+        viewport: () => ({ ...viewportRef.current }),
+        reducedMotion: prefersReducedMotion,
+      }),
+  );
+  const [forcedReadOnly, setForcedReadOnly] = useState(false);
+  const readOnly = readOnlyProp || forcedReadOnly;
+  const readOnlyRef = useRef(readOnly);
   const settle = useRef<{ timer: ReturnType<typeof setTimeout> | null; since: number; last: number }>({ timer: null, since: 0, last: 0 });
 
-  const cancelCameraAnimation = useCallback(() => {
-    animation.current?.();
-    animation.current = null;
-  }, []);
+  const cancelCameraAnimation = useCallback(() => animator.cancel(), [animator]);
 
   const flushView = useCallback((final = true) => {
     const s = settle.current;
@@ -295,6 +320,13 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
       machine.afterSwitch = null;
     };
   }, [machine, toolCtx, assets]);
+  // Read-only: whatever was being edited or drawn is abandoned.
+  useEffect(() => {
+    readOnlyRef.current = readOnly;
+    if (!readOnly) return;
+    editing.stop();
+    machine.tool?.onCancel?.(toolCtx());
+  }, [readOnly, editing, machine, toolCtx]);
   const valueCheck = useValueCheck(doc);
   const showCredits = useShowCredits(doc);
   const activeTool = useActiveToolId(machine);
@@ -349,14 +381,15 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
     machine,
     toolCtx,
     editing,
+    readOnly: () => readOnlyRef.current,
   });
 
   useEffect(
     () => () => {
       if (settle.current.timer) clearTimeout(settle.current.timer);
-      animation.current?.();
+      animator.cancel();
     },
-    [],
+    [animator],
   );
   useEffect(() => () => ownIndex?.destroy(), [ownIndex]);
 
@@ -367,26 +400,17 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
       setCamera(c, opts) {
         positioned.current = true;
         cancelCameraAnimation();
-        if (!opts?.animate || prefersReducedMotion()) {
+        if (!opts?.animate) {
           store.set(c);
-          return;
-        }
-        const from = store.get();
-        const start = performance.now();
-        let raf = 0;
-        const tick = (now: number) => {
-          const t = (now - start) / ANIMATION_MS;
-          store.set(interpolateCamera(from, c, viewportRef.current, easeInOut(t)));
-          if (t < 1) raf = requestAnimationFrame(tick);
-          else animation.current = null;
-        };
-        raf = requestAnimationFrame(tick);
-        animation.current = () => cancelAnimationFrame(raf);
+          if (opts?.settle) flushView(true);
+        } else void animator.animateTo(c, { durationMs: ANIMATION_MS }); // instant under reduced motion
       },
       viewport: () => ({ ...viewportRef.current }),
       container: () => rootRef.current!,
       subscribeCamera: (cb) => store.subscribe(cb),
       cancelCameraAnimation,
+      setReadOnly: (on) => setForcedReadOnly(on),
+      isReadOnly: () => readOnlyRef.current,
       settings: () => settingsRef.current,
       doc,
       index,
@@ -396,14 +420,15 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
       images,
       tools: machine,
     }),
-    [store, doc, index, selection, editing, overlays, images, machine, cancelCameraAnimation],
+    [store, doc, index, selection, editing, overlays, images, machine, cancelCameraAnimation, animator, flushView],
   );
 
   return (
     <div
       ref={rootRef}
       data-canvas-root=""
-      data-value-check={valueCheck ? "true" : undefined}
+      data-value-check={valueCheck && !readOnly ? "true" : undefined}
+      data-read-only={readOnly ? "true" : undefined}
       role="application"
       aria-label="Board canvas"
       tabIndex={0}
@@ -420,10 +445,14 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
     >
       <EditingContext.Provider value={editingContext}>
         <ObjectLayer ref={layerRef} doc={doc} index={index} assets={assets} view={view} dpr={dpr} imageLayer={images} captionFor={showCredits ? creditCaption : undefined} />
-        <DraftOverlay overlays={overlays} camera={store} />
-        <GuidesOverlay overlays={overlays} camera={store} />
-        {activeTool === "crop" ? null : <SelectionOverlay doc={doc} selection={selection} overlays={overlays} camera={store} />}
-        <CropOverlay tool={machine.get<CropTool>("crop")} camera={store} doc={doc} assets={assets} />
+        {readOnly ? null : (
+          <>
+            <DraftOverlay overlays={overlays} camera={store} />
+            <GuidesOverlay overlays={overlays} camera={store} />
+            {activeTool === "crop" ? null : <SelectionOverlay doc={doc} selection={selection} overlays={overlays} camera={store} />}
+            <CropOverlay tool={machine.get<CropTool>("crop")} camera={store} doc={doc} assets={assets} />
+          </>
+        )}
       </EditingContext.Provider>
       {children}
     </div>

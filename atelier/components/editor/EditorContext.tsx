@@ -29,6 +29,7 @@ import { QuickCapture } from "@/components/chrome/QuickCapture";
 import { useInbox, type InboxEditorState } from "@/components/editor/useInbox";
 import type { InboxClient } from "@/lib/inbox/inbox-client";
 import { ExportDialog } from "@/components/export/ExportDialog";
+import { PresentView } from "@/components/present/PresentView";
 import { getAssetResolver } from "@/lib/assets/resolver";
 import type { ExportPreset } from "@/lib/engine/export/export-commands";
 import type { CanvasObject, Point } from "@/lib/engine/model/types";
@@ -245,6 +246,8 @@ export function EditorProvider({
   );
   const [urlPrompt, setUrlPrompt] = useState<"link" | "embed" | null>(null);
   const [exportOpen, setExportOpen] = useState<{ preset?: ExportPreset } | null>(null);
+  // Presentation mode covers the editor: its chrome is hidden (not unmounted) until it ends.
+  const [presenting, setPresenting] = useState<{ index: number } | null>(null);
   // Cards on the canvas offer "Retry preview" through this.
   useEffect(() => {
     if (!linkDeps) return;
@@ -327,6 +330,14 @@ export function EditorProvider({
         toggleSnap: onToggleSnap,
         promptUrl: (kind) => setUrlPrompt(kind),
         openExport: (preset) => setExportOpen({ preset }),
+        startPresent: ({ index }) => {
+          setExportOpen(null);
+          setUrlPrompt(null);
+          inboxEditor.closeCapture();
+          setPresenting({ index });
+        },
+        exitPresent: () => setPresenting(null),
+        isPresenting: () => presenting !== null,
         linkDeps: () => linkDeps,
         openCapture: inbox ? inboxEditor.openCapture : undefined,
       },
@@ -360,8 +371,10 @@ export function EditorProvider({
 
   return (
     <Ctx.Provider value={value}>
-      {children}
-      <HiddenLayersStyle doc={handle.doc} ids={hiddenIds} />
+      <div data-editor-ui="" style={{ display: presenting ? "none" : "contents" }}>
+        {children}
+      </div>
+      {presenting ? <PresentView handle={handle} startAt={presenting.index} onExit={() => setPresenting(null)} /> : <HiddenLayersStyle doc={handle.doc} ids={hiddenIds} />}
       {urlPrompt ? (
         <UrlPromptDialog
           kind={urlPrompt}

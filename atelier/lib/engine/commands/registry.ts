@@ -39,6 +39,10 @@ export type CommandUI = {
   linkDeps(): LinkCardDeps | null;
   /** Open the Quick capture dialog (Inbox). Absent when the editor has no Inbox. */
   openCapture(): void;
+  /** Start presenting at slide `index` (the caller has checked there is a slide). */
+  startPresent(opts: { index: number }): void;
+  exitPresent(): void;
+  isPresenting(): boolean;
 };
 
 /** Clipboard operations behind the copy/cut/paste commands (wired by useClipboard). */

@@ -44,6 +44,7 @@
   --z-menu: 40;
   --z-modal: 50;
   --z-toast: 60;
+  --z-present: 70; /* the presentation covers the editor, toasts included */
 
   /* Motion: transform/opacity only. Keyboard-triggered actions never animate. */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
@@ -67,6 +68,10 @@
   --color-selection: #2f4a6d;
   --color-selection-fill: rgb(47 74 109 / 0.08);
   --color-scrim: rgb(20 20 20 / 0.4);
+
+  /* Presentation: the letterbox around a slide (never pure black) and the laser pointer (>= 3:1 on paper, white and the letterbox). */
+  --color-present-bg: #0f0f10;
+  --color-laser: #e5303a;
 
   /* Sticky note fills (canvas content, not chrome). */
   --sticky-yellow: #f6e58d;
@@ -98,6 +103,9 @@
   --color-selection: #8fa8cc;
   --color-selection-fill: rgb(143 168 204 / 0.12);
   --color-scrim: rgb(0 0 0 / 0.6);
+
+  --color-present-bg: #0b0b0c;
+  --color-laser: #ff5a62;
 
   --sticky-yellow: #7a6a1f;
   --sticky-peach: #8a5a3a;

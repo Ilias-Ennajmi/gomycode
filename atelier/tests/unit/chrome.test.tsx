@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ContextMenu } from "@/components/chrome/ContextMenu";
 import { Minimap } from "@/components/chrome/Minimap";
@@ -58,16 +58,26 @@ describe("TopBar", () => {
     expect(screen.getByRole("dialog", { name: "Export" })).toBeInTheDocument();
   });
 
-  it("Present and Share are disabled and say why", () => {
+  it("Present is enabled and starts the presentation; a bare top bar keeps it disabled", () => {
+    const ed = makeEditor([obj("frame", "f", { name: "One" })]);
+    ed.render(<TopBar {...base} />);
+    const b = screen.getByRole("button", { name: "Present" });
+    expect(b).toBeEnabled();
+    expect(b.className).not.toContain("bg-brand");
+    fireEvent.click(b);
+    expect(screen.getByRole("region", { name: "Presentation" })).toBeInTheDocument();
+    document.body.innerHTML = "";
+    render(<TopBar {...base} />);
+    expect(screen.getByRole("button", { name: "Present" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Present" })).toHaveAccessibleDescription("Coming in Phase 3");
+  });
+
+  it("Share is disabled and says why; it is the one primary button", () => {
     makeEditor().render(<TopBar {...base} />);
-    for (const name of ["Present", "Share"]) {
-      const b = screen.getByRole("button", { name });
-      expect(b).toBeDisabled();
-      expect(b).toHaveAccessibleDescription("Coming in Phase 3");
-    }
-    // Share is the one primary button
-    expect(screen.getByRole("button", { name: "Share" }).className).toContain("bg-brand");
-    expect(screen.getByRole("button", { name: "Present" }).className).not.toContain("bg-brand");
+    const b = screen.getByRole("button", { name: "Share" });
+    expect(b).toBeDisabled();
+    expect(b).toHaveAccessibleDescription("Coming in Phase 3");
+    expect(b.className).toContain("bg-brand");
   });
 
   it.each([
