@@ -1,4 +1,6 @@
 // Builds the Atelier "Selection" logo system as clean SVGs (glyphs converted to outlines).
+// Usage: node scripts/build-logo.js <dir containing fontsource-playfair-display-*/package> public/brand
+// Needs opentype.js. Playfair Display is SIL OFL 1.1, so outlining its letters inside a logo is allowed.
 const opentype = require('opentype.js');
 const fs = require('fs');
 const path = require('path');
