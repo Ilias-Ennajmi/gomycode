@@ -23,12 +23,16 @@ import { DomImageLayer } from "@/lib/engine/render/dom-image-layer";
 import type { ImageLayer } from "@/lib/engine/render/image-layer";
 import { SpatialIndex } from "@/lib/engine/spatial/spatial-index";
 import { DEFAULT_NAV_SETTINGS, SETTINGS_KEY, loadSettings, sanitizeSettings, type NavSettings } from "@/lib/settings";
+import type { CropTool } from "@/lib/engine/input/tools/crop";
+import { CropOverlay } from "./CropOverlay";
 import { DraftOverlay } from "./DraftOverlay";
 import { EditingContext } from "./editing-context";
 import { GuidesOverlay } from "./GuidesOverlay";
 import { ObjectLayer, type ObjectLayerView } from "./ObjectLayer";
 import { SelectionOverlay } from "./SelectionOverlay";
 import { useCanvasInput } from "./useCanvasInput";
+import { useActiveToolId } from "./useStores";
+import { useValueCheck } from "./useValueCheck";
 
 /** What the rest of the editor (chrome, commands, tools) may do with the canvas. */
 export interface CanvasHandle {
@@ -246,6 +250,17 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
     };
   }, [machine, toolCtx]);
 
+  // A tool that becomes active may pick up the current selection (the crop tool) and learns asset pixel sizes.
+  useEffect(() => {
+    machine.get<CropTool>("crop")?.setAssets(assets);
+    machine.afterSwitch = (incoming) => incoming?.onActivate?.(toolCtx());
+    return () => {
+      machine.afterSwitch = null;
+    };
+  }, [machine, toolCtx, assets]);
+  const valueCheck = useValueCheck(doc);
+  const activeTool = useActiveToolId(machine);
+
   // Objects that vanish (deleted here, on another device, or by undo) leave the selection, and end their editing.
   useEffect(
     () =>
@@ -350,6 +365,7 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
     <div
       ref={rootRef}
       data-canvas-root=""
+      data-value-check={valueCheck ? "true" : undefined}
       role="application"
       aria-label="Board canvas"
       tabIndex={0}
@@ -368,7 +384,8 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
         <ObjectLayer ref={layerRef} doc={doc} index={index} assets={assets} view={view} dpr={dpr} imageLayer={images} />
         <DraftOverlay overlays={overlays} camera={store} />
         <GuidesOverlay overlays={overlays} camera={store} />
-        <SelectionOverlay doc={doc} selection={selection} overlays={overlays} camera={store} />
+        {activeTool === "crop" ? null : <SelectionOverlay doc={doc} selection={selection} overlays={overlays} camera={store} />}
+        <CropOverlay tool={machine.get<CropTool>("crop")} camera={store} doc={doc} assets={assets} />
       </EditingContext.Provider>
       {children}
     </div>

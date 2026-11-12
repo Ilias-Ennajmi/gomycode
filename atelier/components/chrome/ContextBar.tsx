@@ -30,7 +30,7 @@ import { RovingToolbar } from "@/components/ui/RovingToolbar";
 import { boundsOf, unionRects } from "@/lib/engine/geometry/rect";
 import { framePresetPx } from "@/lib/engine/model/defaults";
 import { oneStepOn } from "@/lib/engine/model/one-step";
-import type { ArrowObj, CanvasObject, FrameObj, ShapeObj, StickyObj, StrokeObj, TextObj } from "@/lib/engine/model/types";
+import type { ArrowObj, CanvasObject, FrameObj, ImageObj, ShapeObj, StickyObj, StrokeObj, TextObj } from "@/lib/engine/model/types";
 import { Choice, ColorChip, SwatchGrid, chromeButton, swatchLabel } from "./controls";
 import { useLiveEditor } from "./hooks";
 import { MenuList } from "./Menu";
@@ -38,6 +38,7 @@ import { arrangeEntries, contextMenuEntries } from "./menu-model";
 import { refitText } from "./text-fit";
 import { Field, FramePresetList, HeadChoice, RouteChoice, SHAPE_KINDS, ShapeKindChoice, StickyColorPicker, StickySizeChoice, StrokeStyleChoice, StrokeWidthChoice } from "./pickers";
 import { Popover } from "./Popover";
+import { ImageBarControls } from "./ImageBarControls";
 import { SpecimenBarControl } from "./SpecimenBarControl";
 import { placeFloating } from "./place";
 import { Tip } from "./Tip";
@@ -240,9 +241,10 @@ function BarView({ objs }: { objs: CanvasObject[] }) {
       {!allLocked && only === "arrow" ? <ArrowControls bar={bar} /> : null}
       {!allLocked && only === "frame" ? <FrameControls bar={bar} /> : null}
       {!allLocked && only === "stroke" ? <StrokeControls bar={bar} /> : null}
+      {!allLocked && only === "image" ? <ImageBarControls images={objs as ImageObj[]} side={side} /> : null}
       {!allLocked && single?.type === "typeSpecimen" ? <SpecimenBarControl obj={single} side={side} /> : null}
       {!allLocked && textish ? <FormatControls bar={bar} single={single!} editing={editingText} /> : null}
-      {!allLocked && only && only !== "image" && only !== "group" ? <Sep /> : null}
+      {!allLocked && only && only !== "group" ? <Sep /> : null}
 
       {!allLocked ? (
         <BarPopover bar={bar} label="Opacity" face={<Blend aria-hidden="true" size={18} strokeWidth={1.75} />} popoverLabel="Opacity">

@@ -3,7 +3,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 import type { Camera } from "@/lib/engine/geometry/camera";
 import type { CameraStore } from "@/lib/engine/input/camera-store";
-import type { OverlayState, OverlayStore } from "@/lib/engine/input/tool-machine";
+import type { OverlayState, OverlayStore, ToolId, ToolMachine } from "@/lib/engine/input/tool-machine";
 import type { SelectionStore } from "@/lib/engine/input/selection-store";
 
 /** The live camera as a React value: re-renders on every camera change (overlays need that, objects do not). */
@@ -35,4 +35,10 @@ export function useCoarsePointer(): boolean {
     () => (typeof matchMedia === "function" ? matchMedia("(pointer: coarse)").matches : false),
     () => false,
   );
+}
+
+/** The id of the active tool, live. */
+export function useActiveToolId(machine: ToolMachine): ToolId {
+  const subscribe = useCallback((cb: () => void) => machine.subscribe(cb), [machine]);
+  return useSyncExternalStore(subscribe, () => machine.id, () => machine.id);
 }

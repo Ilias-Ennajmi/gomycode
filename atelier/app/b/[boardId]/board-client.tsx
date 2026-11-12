@@ -228,7 +228,7 @@ export function BoardClient({ boardId, localOnly }: { boardId: string; localOnly
         cameraShortcuts={false /* the command registry binds Shift+1/2 and Mod +/-/0 */}
       />
       {canvas ? (
-        <EditorProvider handle={canvas} uploader={session.uploader} onToggleSnap={toggleSnap} navigate={(href) => router.push(href)}>
+        <EditorProvider handle={canvas} uploader={session.uploader} assets={getAssetResolver()} onToggleSnap={toggleSnap} navigate={(href) => router.push(href)}>
           <EditorChrome
             boardId={boardId}
             title={title}

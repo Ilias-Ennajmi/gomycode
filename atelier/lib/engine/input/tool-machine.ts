@@ -58,6 +58,8 @@ export interface Tool {
   onMove(ctx: ToolCtx, e: CanvasPointer): void;
   onUp(ctx: ToolCtx, e: CanvasPointer): void;
   onCancel?(ctx: ToolCtx): void;
+  /** The tool just became the active one (the crop tool picks up the selected image here). */
+  onActivate?(ctx: ToolCtx): void;
   onDoubleClick?(ctx: ToolCtx, e: CanvasPointer): void;
   /** Return true when the key was handled (the canvas then prevents its default). */
   onKey?(ctx: ToolCtx, e: KeyboardEvent): boolean;
@@ -112,6 +114,8 @@ export class OverlayStore {
 export class ToolMachine {
   /** Called with the outgoing tool just before the active tool changes, so it can abandon a gesture in progress. */
   beforeSwitch: ((outgoing: Tool | undefined) => void) | null = null;
+  /** Called with the incoming tool right after the active tool changed. */
+  afterSwitch: ((incoming: Tool | undefined) => void) | null = null;
 
   private readonly tools = new Map<ToolId, Tool>();
   private active: ToolId;
@@ -165,6 +169,7 @@ export class ToolMachine {
     this.active = id;
     this.lockedFlag = false;
     this.notify();
+    this.afterSwitch?.(this.tool);
   }
 
   subscribe(cb: () => void): () => void {

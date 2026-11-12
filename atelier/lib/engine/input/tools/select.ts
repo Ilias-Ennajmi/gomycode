@@ -374,6 +374,9 @@ export function createSelectTool(): Tool {
       if (o.type === "text" || o.type === "sticky" || o.type === "shape") {
         ctx.selection.set([o.id]);
         ctx.editing.start(o.id, { selectAll: false });
+      } else if (o.type === "image" && !o.locked) {
+        ctx.selection.set([o.id]);
+        ctx.setTool("crop");
       } else if (o.type === "frame" && frameLocalY(o, e.point) < 0) {
         // Only the name above the frame is editable, not its body or border.
         ctx.selection.set([o.id]);
@@ -398,6 +401,10 @@ export function createSelectTool(): Tool {
         if (!only || only.locked || g) return false;
         // Enter edits a text, sticky or shape; typing a character on a selected sticky starts its text with it.
         if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          if (only.type === "image") {
+            ctx.setTool("crop"); // Enter on a picture crops it
+            return true;
+          }
           if (only.type !== "text" && only.type !== "sticky" && only.type !== "shape") return false;
           ctx.editing.start(only.id);
           return true;

@@ -18,6 +18,7 @@ import type { CanvasHandle } from "@/components/canvas/CanvasView";
 import { registry as defaultRegistry, type CommandCtx, type CommandRegistry, type CommandUI, type ToastFn } from "@/lib/engine/commands/registry";
 import "@/lib/engine/commands/commands";
 import { bindShortcuts } from "@/lib/engine/commands/shortcuts";
+import { replaceImageWithFile } from "@/lib/engine/commands/image-commands";
 import { screenToCanvas } from "@/lib/engine/geometry/camera";
 import type { CanvasObject, Point } from "@/lib/engine/model/types";
 
@@ -90,7 +91,9 @@ function readWidth(): number {
 export type EditorProviderProps = {
   handle: CanvasHandle;
   /** Adds images from paste, drop and the image picker. Without it image files are refused. */
-  uploader?: Pick<AssetUploader, "add">;
+  uploader?: Pick<AssetUploader, "add"> & Partial<Pick<AssetUploader, "addAssetOnly">>;
+  /** Pixel sizes of assets, for the crop maths (the asset resolver). */
+  assets?: CommandCtx["assets"];
   registry?: CommandRegistry;
   toast?: ToastFn;
   /** Flips the snapping setting (the board page owns the settings state). */
@@ -108,6 +111,7 @@ export type EditorProviderProps = {
 export function EditorProvider({
   handle,
   uploader,
+  assets,
   registry = defaultRegistry,
   toast = defaultToast,
   onToggleSnap,
@@ -210,9 +214,10 @@ export function EditorProvider({
       clipboardStyle: clipboardStyle.current,
       ui: latest.current.ui,
       clipboard: latest.current.clipboard ?? undefined,
+      assets,
       animate: opts?.animate ?? false,
     }),
-    [handle, toast],
+    [handle, toast, assets],
   );
 
   const clipboard = useClipboard({
@@ -237,6 +242,22 @@ export function EditorProvider({
     input.click();
   }, [handle, clipboard]);
 
+  const replaceImage = useCallback(
+    (id: string) => {
+      const add = uploader?.addAssetOnly?.bind(uploader);
+      if (!add) return;
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.onchange = () => {
+        const file = input.files?.[0];
+        if (file) void replaceImageWithFile(commandCtx(), id, file, { addAssetOnly: add });
+      };
+      input.click();
+    },
+    [uploader, commandCtx],
+  );
+
   useEffect(() => {
     latest.current = {
       clipboard,
@@ -248,6 +269,7 @@ export function EditorProvider({
         },
         togglePanel: (id) => panels.toggle(id),
         pickImages,
+        replaceImage: uploader?.addAssetOnly ? replaceImage : undefined,
         toggleSnap: onToggleSnap,
       },
     };

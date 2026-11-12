@@ -22,6 +22,8 @@ export type CommandUI = {
   toggleSnap(): void;
   /** Open the panel (Layers, Inspector, ...) or close it when it is the one showing. */
   togglePanel(id: string): void;
+  /** Pick a file and swap it into the image `id`, keeping its crop (see replaceImageWithFile). */
+  replaceImage(id: string): void;
 };
 
 /** Clipboard operations behind the copy/cut/paste commands (wired by useClipboard). */
@@ -41,6 +43,8 @@ export type CommandCtx = {
   /** UI hooks (panels, pickers). Commands that need one are unavailable without it. */
   ui?: Partial<CommandUI>;
   clipboard?: CommandClipboard;
+  /** Pixel sizes of assets (the asset resolver); the crop maths falls back to the image's box without it. */
+  assets?: { available(assetId: string): { width: number; height: number } | null };
   /** Camera moves ease only when this is true (a click, never a keystroke). Default false. */
   animate?: boolean;
 };

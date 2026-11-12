@@ -104,13 +104,15 @@ export function bindShortcuts(
     if (e.defaultPrevented || e.isComposing) return;
     const typing = isTypingTarget(e.target);
     if (typing && isRichTextTarget(e.target)) return;
+    const c = { ...ctx(), animate: false };
     for (const cmd of registry.all()) {
       if (typing && !cmd.global) continue; // keys typed into a field belong to the field, except a few app-wide ones
       const keys = cmd.shortcut ? [cmd.shortcut, ...(cmd.altShortcuts ?? [])] : (cmd.altShortcuts ?? []);
       if (!keys.some((k) => matchShortcut(e, k))) continue;
+      if (!registry.available(cmd.id, c)) continue; // an unavailable command leaves the key alone (Escape, C, ...)
       if (cmd.native) return; // the browser's own copy/cut/paste event does the work
       e.preventDefault();
-      registry.run(cmd.id, { ...ctx(), animate: false });
+      registry.run(cmd.id, c);
       return;
     }
   };

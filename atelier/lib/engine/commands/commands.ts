@@ -10,6 +10,9 @@ import {
   translation,
 } from "../input/transform-ops";
 import { alignRects, distribute, type AlignMode } from "../layout/align";
+import { cropForAspect, cropPixelAspect } from "../images/crop";
+import { imageSource } from "../images/ops";
+import { IMAGE_COMMANDS } from "./image-commands";
 import { keyBetween, compareByIndex } from "../model/index-order";
 import { oneStepOn } from "../model/one-step";
 import { nextSiblingIndex, reorderObjects, safeKey, type ZOp } from "./z-order";
@@ -106,7 +109,7 @@ export function deleteSelection(ctx: CommandCtx, verb = "Deleted"): number {
 
 const STYLE_KEYS: Record<ObjectType, string[]> = {
   shape: ["fill", "stroke", "strokeWidth", "strokeStyle", "opacity", "cornerRadius"],
-  image: ["opacity"],
+  image: ["opacity", "mask", "grayscale"],
   sticky: ["fill", "opacity"],
   text: ["color", "fontSize", "align", "lineHeight", "opacity"],
   arrow: ["stroke", "strokeWidth", "strokeStyle", "route", "startHead", "endHead", "opacity"],
@@ -140,23 +143,17 @@ export function styleOf(o: CanvasObject): Partial<CanvasObject> {
   return style as Partial<CanvasObject>;
 }
 
-function stylePatch(style: Partial<CanvasObject>, target: CanvasObject): Partial<CanvasObject> {
+function stylePatch(style: Partial<CanvasObject>, target: CanvasObject, assets?: CommandCtx["assets"]): Partial<CanvasObject> {
   const src = style as Record<string, unknown>;
   const patch: Record<string, unknown> = {};
   if (style.type === target.type) {
     for (const k of STYLE_KEYS[target.type]) if (src[k] !== undefined) patch[k] = src[k];
     if (target.type === "image" && typeof src.w === "number" && typeof src.h === "number" && src.h > 0) {
-      const ratio = src.w / src.h;
-      const intrinsic = target.w / (target.crop?.w ?? 1) / (target.h / (target.crop?.h ?? 1));
-      const wasCropped = !!src.crop;
-      let crop: Rect | null = null;
-      let displayed = intrinsic;
-      if (wasCropped) {
-        displayed = ratio;
-        crop = ratio > intrinsic ? { x: 0, w: 1, h: intrinsic / ratio, y: (1 - intrinsic / ratio) / 2 } : { y: 0, h: 1, w: ratio / intrinsic, x: (1 - ratio / intrinsic) / 2 };
-      }
-      if (wasCropped || target.crop) {
-        const h = target.w / displayed;
+      // The copied crop is carried as its pixel aspect (the source box's ratio), applied to this picture's own pixels.
+      const pic = imageSource(target, assets);
+      const crop = src.crop ? cropForAspect(pic, target.crop, src.w / src.h) : null;
+      if (crop || target.crop) {
+        const h = target.w / cropPixelAspect(pic, crop);
         patch.crop = crop;
         patch.h = h;
         patch.y = target.y + target.h / 2 - h / 2;
@@ -417,7 +414,7 @@ export const BUILTIN_COMMANDS: Command[] = [
       const style = c.clipboardStyle.current;
       if (!style) return;
       const targets = [...c.selection.ids].map((id) => c.doc.get(id)).filter((o): o is CanvasObject => !!o && !o.locked);
-      oneStep(c.doc, () => targets.forEach((o) => c.doc.update(o.id, stylePatch(style, o))));
+      oneStep(c.doc, () => targets.forEach((o) => c.doc.update(o.id, stylePatch(style, o, c.assets))));
     },
   },
   // The browser's copy/cut/paste events do the work from the keyboard; run() is for menus and the palette.
@@ -487,6 +484,9 @@ export const BUILTIN_COMMANDS: Command[] = [
   // tools
   ...TOOLS.map(({ id, tool, label, shortcut }): Command => ({ id, label, group: "insert", shortcut, run: (c) => c.setTool(tool) })),
   { id: "tool.image", label: "Add image", group: "insert", shortcut: "I", when: (c) => !!c.ui?.pickImages, run: (c) => c.ui?.pickImages?.() },
+
+  // image tools (crop, masks, value check, replace)
+  ...IMAGE_COMMANDS,
   ...MEDIA_COMMANDS,
 ];
 

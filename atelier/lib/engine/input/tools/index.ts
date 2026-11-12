@@ -1,5 +1,6 @@
 import type { Tool } from "../tool-machine";
 import { createArrowTool } from "./arrow";
+import { createCropTool } from "./crop";
 import { createEraserTool } from "./eraser";
 import { createFrameTool } from "./frame";
 import { createPenTool } from "./pen";
@@ -9,6 +10,7 @@ import { createStickyTool } from "./sticky";
 import { createTextTool } from "./text";
 
 export type { ArrowTool } from "./arrow";
+export type { CropTool } from "./crop";
 export type { FrameTool } from "./frame";
 export type { PenTool } from "./pen";
 export type { ShapeTool } from "./shape";
@@ -30,5 +32,6 @@ export function createAllTools(): Tool[] {
     createPenTool("highlighter"),
     createEraserTool(),
     createFrameTool(),
+    createCropTool(),
   ];
 }

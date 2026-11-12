@@ -93,7 +93,7 @@ describe("registration", () => {
   it("every machine has its own set of tools, with the documented ids", () => {
     const a = createToolMachine();
     const b = createToolMachine();
-    const ids = ["select", "sticky", "text", "shape", "arrow", "pen", "highlighter", "eraser", "frame"] as const;
+    const ids = ["select", "sticky", "text", "shape", "arrow", "pen", "highlighter", "eraser", "frame", "crop"] as const;
     for (const id of ids) {
       expect(a.get(id)?.id).toBe(id);
       expect(a.get(id)).not.toBe(b.get(id));

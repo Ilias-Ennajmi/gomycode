@@ -161,3 +161,8 @@ body {
 .atelier-editor .ProseMirror ::selection {
   background: color-mix(in srgb, var(--color-selection) 30%, transparent);
 }
+
+/* Value check (view only): everything but pictures, which grey themselves, is previewed in grayscale. */
+[data-value-check="true"] [data-object-type]:not([data-object-type="image"]) {
+  filter: grayscale(1);
+}

@@ -11,6 +11,7 @@ import type { CanvasObject, Point } from "@/lib/engine/model/types";
 import { useDocTick, useSelectionIds } from "./doc-hooks";
 import { descendantIds, typeLabel } from "./layers-model";
 import { NumberField } from "./NumberField";
+import { ImageFields } from "./ImageFields";
 import { SpecimenFields } from "./SpecimenFields";
 
 const DEG = 180 / Math.PI;
@@ -132,6 +133,11 @@ export function InspectorPanel() {
         />
         <NumberField label="Opacity" value={opacity === null ? null : Math.round(opacity * 100)} unit="%" min={0} max={100} disabled={disabled} onCommit={setOpacity} />
       </div>
+      {roots.length === 1 && roots[0].type === "image" ? (
+        <section aria-label="Image" className="grid gap-2 border-t border-line pt-3">
+          <ImageFields key={roots[0].id} obj={roots[0]} disabled={disabled} />
+        </section>
+      ) : null}
       {roots.length === 1 && roots[0].type === "typeSpecimen" ? (
         <section aria-label="Type specimen" className="grid gap-2 border-t border-line pt-3">
           <SpecimenFields key={roots[0].id} obj={roots[0]} doc={doc} disabled={disabled} />
