@@ -1,11 +1,12 @@
 import type { BoardDoc } from "../doc/board-doc";
 import type { Camera } from "../geometry/camera";
 import type { Guide } from "../geometry/snap";
-import type { Point, Rect } from "../model/types";
+import type { Point, Rect, StrokeObj } from "../model/types";
 import type { SpatialIndex } from "../spatial/spatial-index";
 import type { NavSettings } from "@/lib/settings";
+import type { EditingStore } from "./editing-store";
 import { SelectionStore } from "./selection-store";
-import { createSelectTool } from "./tools/select";
+import { createAllTools } from "./tools";
 
 export { SelectionStore };
 
@@ -40,6 +41,10 @@ export interface ToolCtx {
   overlays: OverlayStore;
   /** Size of the canvas element in CSS px. */
   viewport(): { w: number; h: number };
+  /** The object being edited (text, frame name). Tools start editing after creating a sticky or text. */
+  editing: EditingStore;
+  /** A creation tool is done: return to Select, unless the tool is locked (toolbar double-click). */
+  finishTool(): void;
 }
 
 /**
@@ -65,9 +70,11 @@ export type OverlayState = {
   marquee: Rect | null;
   /** Object id to outline as the current drop or bind target. */
   highlight: string | null;
+  /** A stroke being drawn. It joins the document on pointer up, so a long stroke is not rewritten on every move. */
+  draft: StrokeObj | null;
 };
 
-const EMPTY_OVERLAYS: OverlayState = { guides: [], marquee: null, highlight: null };
+const EMPTY_OVERLAYS: OverlayState = { guides: [], marquee: null, highlight: null, draft: null };
 
 /** Transient drawing state of tools (snap guides, marquee, target highlight), rendered by the overlays. */
 export class OverlayStore {
@@ -108,6 +115,7 @@ export class ToolMachine {
 
   private readonly tools = new Map<ToolId, Tool>();
   private active: ToolId;
+  private lockedFlag = false;
   private readonly listeners = new Set<() => void>();
 
   constructor(tools: Tool[] = [], initial: ToolId = "select") {
@@ -128,10 +136,30 @@ export class ToolMachine {
     return this.tools.get(this.active);
   }
 
+  /** A registered tool by id, typed as the tool's own interface (for example `ShapeTool` to read or set its kind). */
+  get<T extends Tool = Tool>(id: ToolId): T | undefined {
+    return this.tools.get(id) as T | undefined;
+  }
+
+  /**
+   * Locked tool: a creation tool that stays active after each use (the toolbar sets it on a double-click). Switching
+   * to another tool unlocks it.
+   */
+  get locked(): boolean {
+    return this.lockedFlag;
+  }
+
+  set locked(v: boolean) {
+    if (v === this.lockedFlag) return;
+    this.lockedFlag = v;
+    this.notify();
+  }
+
   setTool(id: ToolId): void {
     if (id === this.active) return;
     this.beforeSwitch?.(this.tool);
     this.active = id;
+    this.lockedFlag = false;
     this.notify();
   }
 
@@ -149,5 +177,5 @@ export class ToolMachine {
 
 /** A machine with every implemented tool. Each machine gets its own tool instances (tools keep gesture state). */
 export function createToolMachine(initial: ToolId = "select"): ToolMachine {
-  return new ToolMachine([createSelectTool()], initial);
+  return new ToolMachine(createAllTools(), initial);
 }

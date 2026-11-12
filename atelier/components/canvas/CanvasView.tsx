@@ -15,10 +15,12 @@ import type { BoardDoc } from "@/lib/engine/doc/board-doc";
 import { fitRect, type Camera } from "@/lib/engine/geometry/camera";
 import { boundsOf, unionRects } from "@/lib/engine/geometry/rect";
 import { CameraStore, easeInOut, interpolateCamera } from "@/lib/engine/input/camera-store";
+import { EditingStore } from "@/lib/engine/input/editing-store";
 import { SelectionStore } from "@/lib/engine/input/selection-store";
 import { OverlayStore, ToolMachine, createToolMachine, type ToolCtx, type ToolId } from "@/lib/engine/input/tool-machine";
 import { SpatialIndex } from "@/lib/engine/spatial/spatial-index";
 import { DEFAULT_NAV_SETTINGS, SETTINGS_KEY, loadSettings, sanitizeSettings, type NavSettings } from "@/lib/settings";
+import { DraftOverlay } from "./DraftOverlay";
 import { GuidesOverlay } from "./GuidesOverlay";
 import { ObjectLayer, type ObjectLayerView } from "./ObjectLayer";
 import { SelectionOverlay } from "./SelectionOverlay";
@@ -41,6 +43,8 @@ export interface CanvasHandle {
   readonly doc: BoardDoc;
   readonly index: SpatialIndex;
   readonly selection: SelectionStore;
+  /** Which object is being edited (text, frame name). `editing.start(id)` opens the editor; `stop()` closes it. */
+  readonly editing: EditingStore;
   /** Transient tool drawing state (snap guides, marquee, drop highlight). */
   readonly overlays: OverlayStore;
   /** The active tool and the registry of tools. Chrome switches tools with `tools.setTool(id)`. */
@@ -54,6 +58,8 @@ export type CanvasViewProps = {
   index?: SpatialIndex;
   /** Share a selection with the chrome and commands; otherwise the view owns one. */
   selection?: SelectionStore;
+  /** Share the editing state with the chrome and commands; otherwise the view owns it. */
+  editing?: EditingStore;
   /** Share overlay state and the tool machine with the chrome; otherwise the view owns them. */
   overlays?: OverlayStore;
   tools?: ToolMachine;
@@ -90,6 +96,7 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
     assets,
     index: sharedIndex,
     selection: sharedSelection,
+    editing: sharedEditing,
     overlays: sharedOverlays,
     tools: sharedTools,
     settings: settingsProp,
@@ -106,6 +113,8 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
   const index = sharedIndex ?? ownIndex!;
   const [ownSelection] = useState(() => sharedSelection ?? new SelectionStore());
   const selection = sharedSelection ?? ownSelection;
+  const [ownEditing] = useState(() => sharedEditing ?? new EditingStore(doc));
+  const editing = sharedEditing ?? ownEditing;
   const [ownOverlays] = useState(() => sharedOverlays ?? new OverlayStore());
   const overlays = sharedOverlays ?? ownOverlays;
   const [ownTools] = useState(() => sharedTools ?? createToolMachine());
@@ -212,8 +221,12 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
       setTool: (id: ToolId) => machine.setTool(id),
       overlays,
       viewport: () => ({ ...viewportRef.current }),
+      editing,
+      finishTool: () => {
+        if (!machine.locked) machine.setTool("select");
+      },
     }),
-    [doc, index, store, selection, overlays, machine],
+    [doc, index, store, selection, overlays, machine, editing],
   );
 
   // A tool that is switched away from mid-gesture abandons it.
@@ -224,10 +237,12 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
     };
   }, [machine, toolCtx]);
 
-  // Objects that vanish (deleted here, on another device, or by undo) leave the selection.
+  // Objects that vanish (deleted here, on another device, or by undo) leave the selection, and end their editing.
   useEffect(
     () =>
       doc.onChange((changed) => {
+        const editingId = editing.id;
+        if (editingId && changed.has(editingId) && !doc.get(editingId)) editing.stop();
         for (const id of changed) {
           if (selection.has(id) && !doc.get(id)) {
             selection.prune((sid) => !!doc.get(sid));
@@ -235,8 +250,20 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
           }
         }
       }),
-    [doc, selection],
+    [doc, selection, editing],
   );
+
+  // Switching tools ends editing.
+  useEffect(() => {
+    let last = machine.id;
+    return machine.subscribe(() => {
+      if (machine.id !== last) {
+        last = machine.id;
+        editing.stop();
+      }
+    });
+  }, [machine, editing]);
+  useEffect(() => () => editing.stop(), [editing]);
 
   useCanvasInput(rootRef, {
     doc,
@@ -249,6 +276,7 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
     cameraShortcuts,
     machine,
     toolCtx,
+    editing,
   });
 
   useEffect(
@@ -291,10 +319,11 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
       doc,
       index,
       selection,
+      editing,
       overlays,
       tools: machine,
     }),
-    [store, doc, index, selection, overlays, machine, cancelCameraAnimation],
+    [store, doc, index, selection, editing, overlays, machine, cancelCameraAnimation],
   );
 
   return (
@@ -316,6 +345,7 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
       }}
     >
       <ObjectLayer ref={layerRef} doc={doc} index={index} assets={assets} view={view} dpr={dpr} />
+      <DraftOverlay overlays={overlays} camera={store} />
       <GuidesOverlay overlays={overlays} camera={store} />
       <SelectionOverlay doc={doc} selection={selection} overlays={overlays} camera={store} />
       {children}

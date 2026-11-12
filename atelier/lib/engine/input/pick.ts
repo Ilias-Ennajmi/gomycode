@@ -19,6 +19,8 @@ export type PickOptions = {
   includeLocked?: boolean;
   /** Selected frames can be grabbed by their body; unselected ones only by label and border. */
   selected?: ReadonlySet<string>;
+  /** Skip objects this returns false for (and carry on to the ones below them). */
+  accept?: (o: CanvasObject) => boolean;
 };
 
 type Env = { doc: BoardDoc; index: Pick<SpatialIndex, "pointCandidates">; camera: () => Camera };
@@ -75,6 +77,7 @@ export function pickObject(env: Env, p: Point, opts: PickOptions = {}): CanvasOb
     const o = env.doc.get(id);
     if (!o || o.type === "group") continue;
     if (o.locked && !opts.includeLocked) continue;
+    if (opts.accept && !opts.accept(o)) continue;
     const hit =
       o.type === "frame"
         ? hitFrame(o, p, tol, zoom, opts.selected?.has(o.id) ?? false)

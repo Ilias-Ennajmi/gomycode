@@ -15,6 +15,7 @@ import {
   zoomSelectionCamera,
   zoomStepCamera,
 } from "@/lib/engine/input/gestures";
+import type { EditingStore } from "@/lib/engine/input/editing-store";
 import type { SelectionStore } from "@/lib/engine/input/selection-store";
 import type { CanvasPointer, ToolCtx, ToolMachine } from "@/lib/engine/input/tool-machine";
 import type { NavSettings } from "@/lib/settings";
@@ -33,10 +34,17 @@ export type CanvasInputDeps = {
   machine: ToolMachine;
   /** Builds the context handed to tools (fresh settings and camera on every call). */
   toolCtx: () => ToolCtx;
+  /** A press anywhere on the canvas outside the editor ends editing. */
+  editing: EditingStore;
 };
 
 /** Tools whose drag draws: with "pen draws, finger pans" a touch pans instead of reaching them. */
 const DRAWING_TOOLS = new Set(["pen", "highlighter", "eraser"]);
+
+/** An element of the object being edited (its editor or name field): the canvas leaves pointer input to it. */
+export function isEditingSurface(t: EventTarget | null): boolean {
+  return t instanceof Element && t.closest("[data-editing-surface]") !== null;
+}
 
 export function isEditableTarget(t: EventTarget | null): boolean {
   if (!(t instanceof HTMLElement)) return false;
@@ -103,6 +111,9 @@ export function useCanvasInput(root: RefObject<HTMLElement | null>, deps: Canvas
     };
 
     const onPointerDown = (e: PointerEvent) => {
+      // Presses on the editor belong to the editor (caret, selection); presses elsewhere end editing.
+      if (isEditingSurface(e.target) || isEditableTarget(e.target)) return;
+      D().editing.stop();
       if (e.pointerType === "mouse" && e.button !== 0 && e.button !== 1) return;
       D().cancelAnimation();
       if (e.button === 1) e.preventDefault();

@@ -6,6 +6,7 @@ import { SpatialIndex } from "@/lib/engine/spatial/spatial-index";
 import type { CanvasObject, NewObject } from "@/lib/engine/model/types";
 import type { Camera } from "@/lib/engine/geometry/camera";
 import { DEFAULT_NAV_SETTINGS, type NavSettings } from "@/lib/settings";
+import { EditingStore } from "@/lib/engine/input/editing-store";
 import {
   OverlayStore,
   SelectionStore,
@@ -47,6 +48,8 @@ function setup(objs: NewObject[], opts: { camera?: Camera; settings?: Partial<Na
     setTool,
     overlays,
     viewport: () => ({ w: 1000, h: 800 }),
+    editing: new EditingStore(doc),
+    finishTool: vi.fn(),
   };
   const tool = createSelectTool();
   let t = 1000;
@@ -114,9 +117,9 @@ describe("SelectionStore and OverlayStore", () => {
     o.subscribe(cb);
     o.set({ marquee: { x: 0, y: 0, w: 1, h: 1 } });
     o.set({ highlight: "f" });
-    expect(o.state).toEqual({ guides: [], marquee: { x: 0, y: 0, w: 1, h: 1 }, highlight: "f" });
+    expect(o.state).toEqual({ guides: [], marquee: { x: 0, y: 0, w: 1, h: 1 }, highlight: "f", draft: null });
     o.reset();
-    expect(o.state).toEqual({ guides: [], marquee: null, highlight: null });
+    expect(o.state).toEqual({ guides: [], marquee: null, highlight: null, draft: null });
     expect(cb).toHaveBeenCalledTimes(3);
     o.reset();
     expect(cb).toHaveBeenCalledTimes(3);

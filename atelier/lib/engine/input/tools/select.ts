@@ -58,6 +58,17 @@ function keepsAspect(o: CanvasObject): boolean {
   return o.type === "image" || o.type === "sticky";
 }
 
+/** A key that types a character (no Cmd/Ctrl/Alt chord). Space is excluded: it pans. */
+function isTypingKey(e: KeyboardEvent): boolean {
+  return e.key.length === 1 && e.key !== " " && !e.metaKey && !e.ctrlKey && !e.altKey;
+}
+
+/** Local y of a canvas point relative to a frame's top edge, in the frame's own (rotated) frame. */
+function frameLocalY(f: CanvasObject, p: Point): number {
+  const q = f.rotation === 0 ? p : rotateAround(p, { x: f.x + f.w / 2, y: f.y + f.h / 2 }, -f.rotation);
+  return q.y - f.y;
+}
+
 const ARROW_KEYS: Record<string, Point> = {
   ArrowLeft: { x: -1, y: 0 },
   ArrowRight: { x: 1, y: 0 },
@@ -353,10 +364,21 @@ export function createSelectTool(): Tool {
     },
 
     onDoubleClick(ctx, e) {
-      // Enter a group: select the object itself rather than the group. Editing text on double-click is added with
-      // the text editor.
       const o = pickObject(env(ctx), e.point, { enterGroups: true, selected: ctx.selection.ids });
-      if (o && topSelectable(ctx.doc, o).id !== o.id) ctx.selection.set([o.id]);
+      if (!o) return;
+      // Inside a group the first double-click enters the group: it selects the object itself.
+      if (topSelectable(ctx.doc, o).id !== o.id) {
+        ctx.selection.set([o.id]);
+        return;
+      }
+      if (o.type === "text" || o.type === "sticky" || o.type === "shape") {
+        ctx.selection.set([o.id]);
+        ctx.editing.start(o.id, { selectAll: false });
+      } else if (o.type === "frame" && frameLocalY(o, e.point) < 0) {
+        // Only the name above the frame is editable, not its body or border.
+        ctx.selection.set([o.id]);
+        ctx.editing.start(o.id, { selectAll: true });
+      }
     },
 
     onKey(ctx, e) {
@@ -367,6 +389,21 @@ export function createSelectTool(): Tool {
         }
         if (ctx.selection.size > 0) {
           ctx.selection.clear();
+          return true;
+        }
+        return false;
+      }
+      if (e.key === "Enter" || isTypingKey(e)) {
+        const only = ctx.selection.size === 1 ? ctx.doc.get([...ctx.selection.ids][0]) : undefined;
+        if (!only || only.locked || g) return false;
+        // Enter edits a text, sticky or shape; typing a character on a selected sticky starts its text with it.
+        if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          if (only.type !== "text" && only.type !== "sticky" && only.type !== "shape") return false;
+          ctx.editing.start(only.id);
+          return true;
+        }
+        if (e.key !== "Enter" && only.type === "sticky") {
+          ctx.editing.start(only.id, { initialText: e.key });
           return true;
         }
         return false;
