@@ -4,7 +4,7 @@
 #   DATABASE_URL=postgresql://user:pass@localhost:5432/atelier_test bash scripts/test-rls.sh
 #
 # It RESETS the `atelier` and `auth` schemas of that database, installs the Supabase stub
-# (supabase/tests/auth_stub.sql), applies every migration twice (proving they can be re-run),
+# (supabase/tests/auth_stub.sql), applies every migration (filename order) twice (proving they can be re-run),
 # then runs supabase/tests/rls.sql. Use a throwaway database: the connecting user must be
 # able to create roles and SET ROLE (the postgres:16 CI service user is a superuser).
 set -euo pipefail
@@ -36,8 +36,15 @@ psql_run -c 'drop schema if exists atelier cascade; drop schema if exists auth c
 echo "== Installing the Supabase stub"
 psql_run -f supabase/tests/auth_stub.sql
 
+# Every migration, in filename order (0001, 0002, ...), twice: each must be re-runnable.
+migrations=()
+while IFS= read -r f; do migrations+=("$f"); done < <(printf '%s\n' supabase/migrations/*.sql | LC_ALL=C sort)
+if [ "${#migrations[@]}" -eq 0 ]; then
+  echo "No migrations found in supabase/migrations." >&2
+  exit 2
+fi
 for pass in 1 2; do
-  for f in supabase/migrations/*.sql; do
+  for f in "${migrations[@]}"; do
     echo "== Applying $f (pass $pass)"
     psql_run -f "$f"
   done

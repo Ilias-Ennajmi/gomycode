@@ -409,12 +409,245 @@ begin
 end $$;
 
 
+-- -----------------------------------------------------------------------------
+-- (h) Phase 2 (0002): inbox_items, asset analysis columns, hamming / similar_assets,
+--     one usage row per (asset, board).
+-- -----------------------------------------------------------------------------
+
+-- (h1) Owner A: inbox rows (url, text and an image row pointing at A's own asset).
+do $$
+declare
+  a constant uuid := 'aaaaaaaa-0000-0000-0000-00000000000a';
+begin
+  perform rls_test.as_user(a);
+
+  insert into atelier.inbox_items (id, kind, url, title, source_url, credit)
+    values ('1b000000-0000-0000-0000-0000000000a1', 'url', 'https://example.com/post', 'A post',
+            'https://example.com/', 'Jo');
+  insert into atelier.inbox_items (id, kind, asset_id)
+    values ('1b000000-0000-0000-0000-0000000000a2', 'image', 'a5500000-0000-0000-0000-0000000000a1');
+  insert into atelier.inbox_items (id, kind, text_body)
+    values ('1b000000-0000-0000-0000-0000000000a3', 'text', 'remember the grain');
+
+  perform rls_test.assert_eq('owner sees own inbox rows', rls_test.count_rows('inbox_items'), 3);
+  perform rls_test.assert_eq('inbox owner_id defaults to auth.uid()',
+    (select count(*) from atelier.inbox_items where owner_id = a), 3);
+  if (select placed_at from atelier.inbox_items where id = '1b000000-0000-0000-0000-0000000000a1') is not null then
+    raise exception 'FAIL: new inbox row is already placed';
+  end if;
+  perform rls_test.assert_eq('owner marks an inbox row placed',
+    rls_test.affected($q$update atelier.inbox_items set placed_at = now()
+                          where id = '1b000000-0000-0000-0000-0000000000a1'$q$), 1);
+
+  -- The video kind needs an asset too; an owner-owned video asset is fine.
+  insert into atelier.assets (id, owner_id, kind, mime) values ('a5500000-0000-0000-0000-0000000000a5', a, 'video', 'video/mp4');
+  insert into atelier.inbox_items (kind, asset_id) values ('video', 'a5500000-0000-0000-0000-0000000000a5');
+  perform rls_test.assert_eq('owner deletes own inbox row',
+    rls_test.affected($q$delete from atelier.inbox_items where kind = 'video'$q$), 1);
+  reset role;
+end $$;
+
+-- (h2) User B: sees none of it, cannot change it, cannot add rows in A's name.
+do $$
+declare
+  a constant uuid := 'aaaaaaaa-0000-0000-0000-00000000000a';
+  b constant uuid := 'bbbbbbbb-0000-0000-0000-00000000000b';
+begin
+  perform rls_test.as_user(b);
+  perform rls_test.assert_eq('B sees 0 inbox rows', rls_test.count_rows('inbox_items'), 0);
+  perform rls_test.assert_eq('B cannot update A''s inbox rows',
+    rls_test.affected($q$update atelier.inbox_items set title = 'pwned'$q$), 0);
+  perform rls_test.assert_eq('B cannot take over A''s inbox rows',
+    rls_test.affected(format($q$update atelier.inbox_items set owner_id = %L$q$, b)), 0);
+  perform rls_test.assert_eq('B cannot delete A''s inbox rows',
+    rls_test.affected('delete from atelier.inbox_items'), 0);
+  perform rls_test.expect_denied('B inserting an inbox row owned by A',
+    format($q$insert into atelier.inbox_items (owner_id, kind, url) values (%L, 'url', 'https://x.test')$q$, a));
+
+  -- Control: B can use their own inbox.
+  insert into atelier.inbox_items (kind, url) values ('url', 'https://b.example/');
+  perform rls_test.assert_eq('B sees exactly their own inbox row', rls_test.count_rows('inbox_items'), 1);
+  reset role;
+end $$;
+
+-- (h3) An inbox row cannot point at someone else's asset (and A cannot move a row onto B's asset).
+do $$
+declare a constant uuid := 'aaaaaaaa-0000-0000-0000-00000000000a';
+begin
+  perform rls_test.as_user(a);
+  perform rls_test.expect_denied('A inbox row with B''s asset',
+    $q$insert into atelier.inbox_items (kind, asset_id)
+       values ('image', 'a5500000-0000-0000-0000-0000000000b1')$q$);
+  perform rls_test.expect_denied('A re-pointing an inbox row at B''s asset',
+    $q$update atelier.inbox_items set asset_id = 'a5500000-0000-0000-0000-0000000000b1'
+        where id = '1b000000-0000-0000-0000-0000000000a2'$q$);
+  reset role;
+end $$;
+
+-- (h4) anon, no-subject token and anonymous sign-in get nothing.
+do $$
+declare a constant uuid := 'aaaaaaaa-0000-0000-0000-00000000000a';
+begin
+  perform rls_test.as_anon();
+  perform rls_test.expect_denied('anon select on inbox_items', 'select count(*) from atelier.inbox_items');
+  perform rls_test.expect_denied('anon insert into inbox_items',
+    $q$insert into atelier.inbox_items (kind, url) values ('url', 'https://x.test')$q$);
+  perform rls_test.expect_denied('anon calling hamming', $q$select atelier.hamming('0000000000000000','0000000000000000')$q$);
+  perform rls_test.expect_denied('anon calling similar_assets', $q$select * from atelier.similar_assets('0000000000000000')$q$);
+
+  perform rls_test.as_nobody();
+  perform rls_test.assert_eq('no-subject token sees 0 inbox rows', rls_test.count_rows('inbox_items'), 0);
+  perform rls_test.as_user(a, true);
+  perform rls_test.assert_eq('anonymous sign-in sees 0 inbox rows', rls_test.count_rows('inbox_items'), 0);
+  perform rls_test.expect_denied('anonymous sign-in inserting an inbox row',
+    $q$insert into atelier.inbox_items (kind, url) values ('url', 'https://x.test')$q$);
+  reset role;
+end $$;
+
+-- (h5) Data-shape constraints on inbox_items and the new asset columns.
+do $$
+declare a constant uuid := 'aaaaaaaa-0000-0000-0000-00000000000a';
+begin
+  perform rls_test.as_user(a);
+  perform rls_test.expect_check_violation('image row without asset_id',
+    $q$insert into atelier.inbox_items (kind) values ('image')$q$);
+  perform rls_test.expect_check_violation('video row without asset_id',
+    $q$insert into atelier.inbox_items (kind, url) values ('video', 'https://x.test')$q$);
+  perform rls_test.expect_check_violation('url row without url',
+    $q$insert into atelier.inbox_items (kind, text_body) values ('url', 'x')$q$);
+  perform rls_test.expect_check_violation('text row without text_body',
+    $q$insert into atelier.inbox_items (kind, url) values ('text', 'https://x.test')$q$);
+  perform rls_test.expect_check_violation('text row with 20,000 characters',
+    $q$insert into atelier.inbox_items (kind, text_body) values ('text', repeat('x', 20000))$q$);
+  perform rls_test.expect_check_violation('url longer than 2048',
+    $q$insert into atelier.inbox_items (kind, url) values ('url', 'https://x.test/' || repeat('a', 2100))$q$);
+  perform rls_test.expect_check_violation('title longer than 300',
+    $q$insert into atelier.inbox_items (kind, url, title) values ('url', 'https://x.test', repeat('t', 301))$q$);
+  perform rls_test.expect_check_violation('unknown inbox kind',
+    $q$insert into atelier.inbox_items (kind, url) values ('audio', 'https://x.test')$q$);
+  perform rls_test.expect_check_violation('asset title longer than 300',
+    $q$update atelier.assets set title = repeat('t', 301) where id = 'a5500000-0000-0000-0000-0000000000a1'$q$);
+
+  -- New asset columns and defaults; a gif asset kind is allowed (Phase 2 animated images).
+  perform rls_test.assert_eq('assets.analysis_version defaults to 0',
+    (select analysis_version from atelier.assets where id = 'a5500000-0000-0000-0000-0000000000a1')::bigint, 0);
+  if (select hidden from atelier.assets where id = 'a5500000-0000-0000-0000-0000000000a1') then
+    raise exception 'FAIL: assets.hidden should default to false';
+  end if;
+  insert into atelier.assets (id, kind, mime) values ('a5500000-0000-0000-0000-0000000000a6', 'gif', 'image/gif');
+  perform rls_test.assert_eq('owner sets title and analysis_version',
+    rls_test.affected($q$update atelier.assets set title = 'Moodboard hero', analysis_version = 1
+                          where id = 'a5500000-0000-0000-0000-0000000000a6'$q$), 1);
+  reset role;
+end $$;
+
+-- (h6) Deleting an asset removes inbox rows that point at it (an image row cannot survive without it).
+do $$
+declare a constant uuid := 'aaaaaaaa-0000-0000-0000-00000000000a';
+begin
+  perform rls_test.as_user(a);
+  insert into atelier.assets (id, kind, mime) values ('a5500000-0000-0000-0000-0000000000a7', 'image', 'image/png');
+  insert into atelier.inbox_items (id, kind, asset_id)
+    values ('1b000000-0000-0000-0000-0000000000a7', 'image', 'a5500000-0000-0000-0000-0000000000a7');
+  perform rls_test.assert_eq('owner deletes an asset', rls_test.affected(
+    $q$delete from atelier.assets where id = 'a5500000-0000-0000-0000-0000000000a7'$q$), 1);
+  perform rls_test.assert_eq('the inbox row went with it',
+    (select count(*) from atelier.inbox_items where id = '1b000000-0000-0000-0000-0000000000a7'), 0);
+  reset role;
+end $$;
+
+-- (h7) atelier.hamming: bit count of the XOR of two 16-hex-char hashes; 64 when unusable.
+do $$
+begin
+  perform rls_test.as_user('aaaaaaaa-0000-0000-0000-00000000000a');
+  perform rls_test.assert_eq('hamming 4 bits', atelier.hamming('0000000000000000', '000000000000000f'), 4);
+  perform rls_test.assert_eq('hamming 64 bits', atelier.hamming('ffffffffffffffff', '0000000000000000'), 64);
+  perform rls_test.assert_eq('hamming identical', atelier.hamming('0123456789abcdef', '0123456789abcdef'), 0);
+  perform rls_test.assert_eq('hamming is case-insensitive', atelier.hamming('00000000000000ff', '00000000000000FF'), 0);
+  perform rls_test.assert_eq('hamming null is 64', atelier.hamming(null, '0000000000000000'), 64);
+  perform rls_test.assert_eq('hamming null (right) is 64', atelier.hamming('0000000000000000', null), 64);
+  perform rls_test.assert_eq('hamming short hash is 64', atelier.hamming('abcd1234', 'abcd1234'), 64);
+  perform rls_test.assert_eq('hamming non-hex is 64', atelier.hamming('zzzzzzzzzzzzzzzz', 'zzzzzzzzzzzzzzzz'), 64);
+  reset role;
+end $$;
+
+-- (h8) atelier.similar_assets: only the caller's own, visible assets within max_dist.
+do $$
+declare
+  a constant uuid := 'aaaaaaaa-0000-0000-0000-00000000000a';
+  b constant uuid := 'bbbbbbbb-0000-0000-0000-00000000000b';
+  r record;
+  n bigint;
+begin
+  perform rls_test.as_user(a);
+  insert into atelier.assets (id, kind, mime, phash) values
+    ('a5500000-0000-0000-0000-0000000000c1', 'image', 'image/webp', '000000000000000f'),  -- dist 4
+    ('a5500000-0000-0000-0000-0000000000c2', 'image', 'image/webp', '00000000000003ff');  -- dist 10
+  insert into atelier.assets (id, kind, mime, phash, hidden) values
+    ('a5500000-0000-0000-0000-0000000000c3', 'image', 'image/webp', '0000000000000001', true); -- dist 1 but hidden
+
+  select count(*) into n from atelier.similar_assets('0000000000000000', 6);
+  perform rls_test.assert_eq('A finds exactly one similar asset', n, 1);
+  select * into r from atelier.similar_assets('0000000000000000', 6);
+  if r.id <> 'a5500000-0000-0000-0000-0000000000c1' or r.phash <> '000000000000000f' or r.dist <> 4 then
+    raise exception 'FAIL: similar_assets returned % / % / %', r.id, r.phash, r.dist;
+  end if;
+  select count(*) into n from atelier.similar_assets('0000000000000000', 10);
+  perform rls_test.assert_eq('a wider radius adds the dist-10 asset (still not the hidden one)', n, 2);
+  select count(*) into n from atelier.similar_assets('0000000000000000');
+  perform rls_test.assert_eq('default radius is 6', n, 1);
+  select count(*) into n from atelier.similar_assets(null, 6);
+  perform rls_test.assert_eq('a null hash finds nothing', n, 0);
+  -- Ordered nearest first.
+  if (select id from atelier.similar_assets('0000000000000000', 10) order by dist limit 1)
+     <> 'a5500000-0000-0000-0000-0000000000c1' then
+    raise exception 'FAIL: nearest asset not first';
+  end if;
+
+  perform rls_test.as_user(b);
+  select count(*) into n from atelier.similar_assets('0000000000000000', 6);
+  perform rls_test.assert_eq('B finds none of A''s assets', n, 0);
+  select count(*) into n from atelier.similar_assets('0000000000000000', 64);
+  perform rls_test.assert_eq('B finds none of A''s assets even at radius 64', n, 0);
+  -- ... but does find their own.
+  insert into atelier.assets (id, kind, mime, phash) values ('a5500000-0000-0000-0000-0000000000d1', 'image', 'image/webp', '0000000000000003');
+  select count(*) into n from atelier.similar_assets('0000000000000000', 6);
+  perform rls_test.assert_eq('B finds their own', n, 1);
+  reset role;
+end $$;
+
+-- (h9) One usage row per (asset, board).
+do $$
+declare a constant uuid := 'aaaaaaaa-0000-0000-0000-00000000000a';
+begin
+  perform rls_test.as_user(a);
+  begin
+    insert into atelier.asset_usages (asset_id, board_id)
+      values ('a5500000-0000-0000-0000-0000000000a1', 'b0a00000-0000-0000-0000-0000000000a1');
+  exception when unique_violation then
+    reset role;
+    return;
+  end;
+  raise exception 'FAIL: duplicate (asset_id, board_id) usage was allowed';
+end $$;
+
+-- (h10) The service role sees the inbox of every owner.
+do $$
+begin
+  perform rls_test.as_service();
+  perform rls_test.assert_eq('service role sees both users'' inbox rows', rls_test.count_rows('inbox_items'), 4);
+  reset role;
+end $$;
+
+
 -- Deleting a user removes everything they own (ON DELETE CASCADE all the way down).
 delete from auth.users where id = 'aaaaaaaa-0000-0000-0000-00000000000a';
 do $$
 begin
   perform rls_test.assert_eq('cascade: no boards left for A',
     (select count(*) from atelier.boards where owner_id = 'aaaaaaaa-0000-0000-0000-00000000000a'), 0);
+  perform rls_test.assert_eq('cascade: no inbox rows left for A',
+    (select count(*) from atelier.inbox_items where owner_id = 'aaaaaaaa-0000-0000-0000-00000000000a'), 0);
   perform rls_test.assert_eq('cascade: no updates left for A''s board',
     (select count(*) from atelier.board_updates where board_id = 'b0a00000-0000-0000-0000-0000000000a1'), 0);
 end $$;
