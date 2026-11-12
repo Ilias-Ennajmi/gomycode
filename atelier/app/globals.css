@@ -178,3 +178,13 @@ body {
     opacity: 0.55;
   }
 }
+
+/* Layout tools (pointer-triggered): positions and sizes glide for a moment. Off under reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-layout-animate="true"] [data-object-id] {
+    transition:
+      transform var(--dur-slow) var(--ease-out),
+      width var(--dur-slow) var(--ease-out),
+      height var(--dur-slow) var(--ease-out);
+  }
+}

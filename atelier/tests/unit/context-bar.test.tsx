@@ -67,13 +67,13 @@ describe("ContextBar", () => {
     expect(queryInBar(/Sticky colour/)).toBeNull();
   });
 
-  it("a mixed selection shows only the common controls: opacity, lock and arrange", () => {
+  it("a mixed selection shows only the common controls: opacity, lock, layout and arrange", () => {
     const t = mount();
     act(() => t.selection.set(["s", "h"]));
     const names = within(bar())
       .getAllByRole("button")
       .map((b) => b.getAttribute("aria-label"));
-    expect(names).toEqual(["Opacity", "Lock", "Arrange", "More actions"]);
+    expect(names).toEqual(["Opacity", "Lock", "Layout", "Arrange", "More actions"]);
   });
 
   it("changing the sticky size is one undoable step", () => {

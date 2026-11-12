@@ -39,6 +39,7 @@ import { refitText } from "./text-fit";
 import { Field, FramePresetList, HeadChoice, RouteChoice, SHAPE_KINDS, ShapeKindChoice, StickyColorPicker, StickySizeChoice, StrokeStyleChoice, StrokeWidthChoice } from "./pickers";
 import { Popover } from "./Popover";
 import { ImageBarControls } from "./ImageBarControls";
+import { LayoutBarControl } from "./LayoutBarControl";
 import { SpecimenBarControl } from "./SpecimenBarControl";
 import { VideoBarControls } from "./VideoBarControls";
 import { LinkBarControls } from "./LinkBarControls";
@@ -278,6 +279,7 @@ function BarView({ objs }: { objs: CanvasObject[] }) {
           {allLocked ? <LockOpen aria-hidden="true" size={18} strokeWidth={1.75} /> : <Lock aria-hidden="true" size={18} strokeWidth={1.75} />}
         </button>
       </Tip>
+      {!allLocked && objs.length >= 2 ? <LayoutBarControl count={objs.length} side={side} /> : null}
       {!allLocked ? (
         <BarPopover bar={bar} label="Arrange" face={<Layers aria-hidden="true" size={18} strokeWidth={1.75} />} role="menu">
           {(close) => <MenuList entries={arrangeEntries(registry, commandCtx(), (id, o) => void run(id, o))} onRun={close} />}

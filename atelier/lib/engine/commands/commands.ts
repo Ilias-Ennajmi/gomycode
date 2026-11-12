@@ -13,6 +13,8 @@ import { alignRects, distribute, type AlignMode } from "../layout/align";
 import { cropForAspect, cropPixelAspect } from "../images/crop";
 import { imageSource } from "../images/ops";
 import { IMAGE_COMMANDS } from "./image-commands";
+import { LAYOUT_COMMANDS } from "./layout-commands";
+import { selectedRoots } from "./selection-roots";
 import { LINK_COMMANDS } from "../links/link-commands";
 import { keyBetween, compareByIndex } from "../model/index-order";
 import { oneStepOn } from "../model/one-step";
@@ -30,28 +32,7 @@ import { registry, type Command, type CommandCtx } from "./registry";
 
 // ---- helpers (shared with the clipboard wiring) ------------------------------------------------------------------------
 
-/**
- * The selected objects that move and change as units: existing ones in z-order, minus objects whose ancestor is
- * selected too (a frame carries its children) and, unless `includeLocked`, minus locked objects.
- */
-export function selectedRoots(doc: BoardDoc, ids: Iterable<string>, includeLocked = false): CanvasObject[] {
-  const set = new Set(ids);
-  const out: CanvasObject[] = [];
-  for (const o of doc.all()) {
-    if (!set.has(o.id) || (o.locked && !includeLocked)) continue;
-    let p = o.parentId;
-    let covered = false;
-    for (let d = 0; p && d < 16; d++) {
-      if (set.has(p)) {
-        covered = true;
-        break;
-      }
-      p = doc.get(p)?.parentId ?? null;
-    }
-    if (!covered) out.push(o);
-  }
-  return out;
-}
+export { selectedRoots } from "./selection-roots";
 
 export const oneStep = oneStepOn;
 
@@ -488,6 +469,9 @@ export const BUILTIN_COMMANDS: Command[] = [
 
   // image tools (crop, masks, value check, replace)
   ...IMAGE_COMMANDS,
+
+  // layout tools on a selection (grid, masonry, justified, pack, normalise, tidy)
+  ...LAYOUT_COMMANDS,
   ...MEDIA_COMMANDS,
 
   // link cards and embeds (paste as text, open, retry, insert by URL)

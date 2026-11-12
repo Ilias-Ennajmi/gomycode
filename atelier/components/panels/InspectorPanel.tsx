@@ -11,6 +11,7 @@ import type { CanvasObject, Point } from "@/lib/engine/model/types";
 import { useDocTick, useSelectionIds } from "./doc-hooks";
 import { descendantIds, typeLabel } from "./layers-model";
 import { NumberField } from "./NumberField";
+import { BoardFields, GutterField } from "./BoardFields";
 import { ImageFields } from "./ImageFields";
 import { SpecimenFields } from "./SpecimenFields";
 
@@ -41,7 +42,12 @@ export function InspectorPanel() {
   const editable = useMemo(() => roots.filter((o) => !o.locked), [roots]);
 
   if (roots.length === 0) {
-    return <p className="px-4 py-6 text-(length:--text-sm) text-fg-muted">Select something to see its properties.</p>;
+    return (
+      <div className="flex flex-col gap-4 px-4 py-6">
+        <p className="text-(length:--text-sm) text-fg-muted">Select something to see its properties.</p>
+        <BoardFields />
+      </div>
+    );
   }
 
   const boxOf = (rs: CanvasObject[]) =>
@@ -133,6 +139,11 @@ export function InspectorPanel() {
         />
         <NumberField label="Opacity" value={opacity === null ? null : Math.round(opacity * 100)} unit="%" min={0} max={100} disabled={disabled} onCommit={setOpacity} />
       </div>
+      {roots.length >= 2 ? (
+        <section aria-label="Layout" className="grid gap-2 border-t border-line pt-3">
+          <GutterField />
+        </section>
+      ) : null}
       {roots.length === 1 && roots[0].type === "image" ? (
         <section aria-label="Image" className="grid gap-2 border-t border-line pt-3">
           <ImageFields key={roots[0].id} obj={roots[0]} disabled={disabled} />
