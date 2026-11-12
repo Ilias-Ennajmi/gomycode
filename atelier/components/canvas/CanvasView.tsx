@@ -15,8 +15,11 @@ import type { BoardDoc } from "@/lib/engine/doc/board-doc";
 import { fitRect, type Camera } from "@/lib/engine/geometry/camera";
 import { boundsOf, unionRects } from "@/lib/engine/geometry/rect";
 import { CameraStore, easeInOut, interpolateCamera } from "@/lib/engine/input/camera-store";
+import { SelectionStore } from "@/lib/engine/input/selection-store";
 import { SpatialIndex } from "@/lib/engine/spatial/spatial-index";
+import { DEFAULT_NAV_SETTINGS, SETTINGS_KEY, loadSettings, sanitizeSettings, type NavSettings } from "@/lib/settings";
 import { ObjectLayer, type ObjectLayerView } from "./ObjectLayer";
+import { useCanvasInput } from "./useCanvasInput";
 
 /** What the rest of the editor (chrome, commands, tools) may do with the canvas. */
 export interface CanvasHandle {
@@ -30,8 +33,11 @@ export interface CanvasHandle {
   subscribeCamera(cb: (c: Camera) => void): () => void;
   /** Stop a running camera animation, leaving the camera where it is. */
   cancelCameraAnimation(): void;
+  /** Current navigation settings (wheel behaviour, snapping, ...). */
+  settings(): NavSettings;
   readonly doc: BoardDoc;
   readonly index: SpatialIndex;
+  readonly selection: SelectionStore;
 }
 
 export type CanvasViewProps = {
@@ -39,8 +45,14 @@ export type CanvasViewProps = {
   assets: AssetResolver;
   /** Share an index with other consumers; otherwise the view builds its own. */
   index?: SpatialIndex;
+  /** Share a selection with the chrome and commands; otherwise the view owns one. */
+  selection?: SelectionStore;
+  /** Navigation settings; otherwise loaded from this device (and kept in step with other tabs). */
+  settings?: NavSettings;
   /** Camera for the first frame. Default: fit all objects (at most 100 %), or the origin centred when empty. */
   initialCamera?: Camera;
+  /** Bind Shift+1, Shift+2 and Ctrl/Cmd +, -, 0. Turn off when the command registry binds them instead. */
+  cameraShortcuts?: boolean;
   /** Overlays and chrome drawn in screen space above the objects. */
   children?: ReactNode;
 };
@@ -63,7 +75,7 @@ function prefersReducedMotion(): boolean {
  * after the camera stops changing (at most every 300 ms during a long gesture).
  */
 export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function CanvasView(
-  { doc, assets, index: sharedIndex, initialCamera, children },
+  { doc, assets, index: sharedIndex, selection: sharedSelection, settings: settingsProp, initialCamera, cameraShortcuts = true, children },
   handleRef,
 ) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -71,6 +83,11 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
   const [store] = useState(() => new CameraStore(initialCamera));
   const [ownIndex] = useState(() => (sharedIndex ? null : new SpatialIndex(doc)));
   const index = sharedIndex ?? ownIndex!;
+  const [ownSelection] = useState(() => sharedSelection ?? new SelectionStore());
+  const selection = sharedSelection ?? ownSelection;
+  const [storedSettings, setStoredSettings] = useState<NavSettings>(() => settingsProp ?? loadSettings());
+  const settings = settingsProp ?? storedSettings;
+  const settingsRef = useRef(settings);
   const [dpr] = useState(() => (typeof window === "undefined" ? 1 : window.devicePixelRatio || 1));
   const [view, setView] = useState<ObjectLayerView>(() => ({ camera: store.get(), viewport: { w: 0, h: 0 } }));
 
@@ -89,6 +106,7 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
     if (s.timer) clearTimeout(s.timer);
     s.timer = null;
     s.since = 0;
+    if (layerRef.current) layerRef.current.style.willChange = "";
     setView({ camera: store.get(), viewport: { ...viewportRef.current } });
   }, [store]);
 
@@ -100,6 +118,11 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
     const wait = Math.max(0, Math.min(SETTLE_MS, s.since + SETTLE_MAX_WAIT_MS - now));
     s.timer = setTimeout(flushView, wait);
   }, [flushView]);
+
+  // Only while the camera is moving does the layer get its own compositor layer.
+  const gestureStart = useCallback(() => {
+    if (layerRef.current) layerRef.current.style.willChange = "transform";
+  }, []);
 
   const applyCamera = useCallback((c: Camera) => {
     const layer = layerRef.current;
@@ -134,6 +157,36 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
     ro.observe(root);
     return () => ro.disconnect();
   }, [doc, store, flushView]);
+
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
+
+  // Another tab (or the settings page) changed the stored settings.
+  useEffect(() => {
+    if (settingsProp) return;
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== SETTINGS_KEY) return;
+      try {
+        setStoredSettings(e.newValue ? sanitizeSettings(JSON.parse(e.newValue)) : { ...DEFAULT_NAV_SETTINGS });
+      } catch {
+        setStoredSettings({ ...DEFAULT_NAV_SETTINGS });
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [settingsProp]);
+
+  useCanvasInput(rootRef, {
+    doc,
+    camera: store,
+    selection,
+    settings: () => settingsRef.current,
+    viewport: () => viewportRef.current,
+    cancelAnimation: cancelCameraAnimation,
+    gestureStart,
+    cameraShortcuts,
+  });
 
   useEffect(
     () => () => {
@@ -171,10 +224,12 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
       container: () => rootRef.current!,
       subscribeCamera: (cb) => store.subscribe(cb),
       cancelCameraAnimation,
+      settings: () => settingsRef.current,
       doc,
       index,
+      selection,
     }),
-    [store, doc, index, cancelCameraAnimation],
+    [store, doc, index, selection, cancelCameraAnimation],
   );
 
   return (
