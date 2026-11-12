@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type RefObject } from "react";
 import type { BoardDoc } from "@/lib/engine/doc/board-doc";
-import { panBy, zoomAt, type Camera } from "@/lib/engine/geometry/camera";
+import { panBy, screenToCanvas, zoomAt, type Camera } from "@/lib/engine/geometry/camera";
 import type { CameraStore } from "@/lib/engine/input/camera-store";
 import {
   PointerTracker,
@@ -16,6 +16,7 @@ import {
   zoomStepCamera,
 } from "@/lib/engine/input/gestures";
 import type { SelectionStore } from "@/lib/engine/input/selection-store";
+import type { CanvasPointer, ToolCtx, ToolMachine } from "@/lib/engine/input/tool-machine";
 import type { NavSettings } from "@/lib/settings";
 
 export type CanvasInputDeps = {
@@ -29,7 +30,13 @@ export type CanvasInputDeps = {
   /** A camera gesture began: the layer may promote itself to its own compositor layer until the camera settles. */
   gestureStart: () => void;
   cameraShortcuts: boolean;
+  machine: ToolMachine;
+  /** Builds the context handed to tools (fresh settings and camera on every call). */
+  toolCtx: () => ToolCtx;
 };
+
+/** Tools whose drag draws: with "pen draws, finger pans" a touch pans instead of reaching them. */
+const DRAWING_TOOLS = new Set(["pen", "highlighter", "eraser"]);
 
 export function isEditableTarget(t: EventTarget | null): boolean {
   if (!(t instanceof HTMLElement)) return false;
@@ -60,16 +67,47 @@ export function useCanvasInput(root: RefObject<HTMLElement | null>, deps: Canvas
       return { x: e.clientX - r.left, y: e.clientY - r.top };
     };
     const tracked = (e: PointerEvent) => ({ pointerId: e.pointerId, pointerType: e.pointerType, ...local(e) });
+    let toolPointer: number | null = null;
+
+    const toCanvasPointer = (e: MouseEvent | PointerEvent): CanvasPointer => {
+      const screen = local(e);
+      const pe = e as PointerEvent;
+      const pointerType = pe.pointerType || "mouse";
+      return {
+        point: screenToCanvas(D().camera.get(), screen),
+        screen,
+        pointerId: pe.pointerId ?? 1,
+        pointerType,
+        pressure: pe.pressure > 0 ? pe.pressure : 0.5,
+        button: e.button,
+        buttons: e.buttons,
+        shiftKey: e.shiftKey,
+        altKey: e.altKey,
+        metaKey: e.metaKey,
+        ctrlKey: e.ctrlKey,
+        timeStamp: e.timeStamp,
+      };
+    };
 
     const updateCursor = () => {
-      el.style.cursor = pan ? "grabbing" : spaceDown ? "grab" : "";
+      const d = D();
+      const handTool = d.machine.id === "hand";
+      el.style.cursor = pan ? "grabbing" : spaceDown || handTool ? "grab" : (d.machine.tool?.cursor?.(d.toolCtx()) ?? "");
+    };
+
+    const cancelTool = () => {
+      if (toolPointer === null) return;
+      toolPointer = null;
+      const d = D();
+      d.machine.tool?.onCancel?.(d.toolCtx());
     };
 
     const onPointerDown = (e: PointerEvent) => {
       if (e.pointerType === "mouse" && e.button !== 0 && e.button !== 1) return;
       D().cancelAnimation();
       if (e.button === 1) e.preventDefault();
-      if (!isEditableTarget(e.target)) el.focus({ preventScroll: true });
+      // Focus follows pointer use without a focus ring (keyboard users still get one when they Tab in).
+      if (!isEditableTarget(e.target)) el.focus({ preventScroll: true, focusVisible: false } as FocusOptions);
       const r = tracker.down(tracked(e));
       if (r === "ignored") return;
       try {
@@ -79,12 +117,22 @@ export function useCanvasInput(root: RefObject<HTMLElement | null>, deps: Canvas
       }
       if (r === "pinch") {
         pan = null;
+        cancelTool();
         D().gestureStart();
         return;
       }
-      if (spaceDown || e.button === 1) {
+      const d = D();
+      const fingerPans = d.settings().penOnlyDraws && e.pointerType === "touch" && DRAWING_TOOLS.has(d.machine.id);
+      if (spaceDown || e.button === 1 || d.machine.id === "hand" || fingerPans) {
         pan = { id: e.pointerId, ...local(e) };
-        D().gestureStart();
+        d.gestureStart();
+        updateCursor();
+        return;
+      }
+      const tool = d.machine.tool;
+      if (tool) {
+        toolPointer = e.pointerId;
+        tool.onDown(d.toolCtx(), toCanvasPointer(e));
         updateCursor();
       }
     };
@@ -97,6 +145,16 @@ export function useCanvasInput(root: RefObject<HTMLElement | null>, deps: Canvas
         camera.set(panBy(camera.get(), p.x - pan.x, p.y - pan.y));
         pan.x = p.x;
         pan.y = p.y;
+      } else if (r === "primary" && toolPointer === e.pointerId) {
+        const d = D();
+        d.machine.tool?.onMove(d.toolCtx(), toCanvasPointer(e));
+        updateCursor();
+      } else if (r === "hover") {
+        const d = D();
+        if (!pan && e.pointerType !== "touch") {
+          d.machine.tool?.onMove(d.toolCtx(), toCanvasPointer(e));
+          updateCursor();
+        }
       } else if (r === "pinch" && tracker.pinch) {
         const { camera } = D();
         const { center, scale, dx, dy } = tracker.pinch;
@@ -105,12 +163,25 @@ export function useCanvasInput(root: RefObject<HTMLElement | null>, deps: Canvas
     };
 
     const onPointerUp = (e: PointerEvent) => {
-      tracker.up(e);
+      const r = tracker.up(e);
       if (pan && pan.id === e.pointerId) {
         pan = null;
         updateCursor();
       }
+      if (r === "primary" && toolPointer === e.pointerId) {
+        toolPointer = null;
+        const d = D();
+        if (e.type === "pointercancel") d.machine.tool?.onCancel?.(d.toolCtx());
+        else d.machine.tool?.onUp(d.toolCtx(), toCanvasPointer(e));
+        updateCursor();
+      }
       if (el.hasPointerCapture?.(e.pointerId)) el.releasePointerCapture(e.pointerId);
+    };
+
+    const onDoubleClick = (e: MouseEvent) => {
+      if (isEditableTarget(e.target)) return;
+      const d = D();
+      d.machine.tool?.onDoubleClick?.(d.toolCtx(), toCanvasPointer(e));
     };
 
     const onWheel = (e: WheelEvent) => {
@@ -137,7 +208,19 @@ export function useCanvasInput(root: RefObject<HTMLElement | null>, deps: Canvas
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (isEditableTarget(e.target)) return;
-      D().cancelAnimation();
+      const d = D();
+      d.cancelAnimation();
+      if (!isSpaceKey(e)) {
+        if (d.machine.tool?.onKey?.(d.toolCtx(), e)) {
+          e.preventDefault();
+          return;
+        }
+        if (e.key === "Escape" && d.machine.id !== "select") {
+          e.preventDefault();
+          d.machine.setTool("select"); // Escape always returns to Select
+          return;
+        }
+      }
       if (isSpaceKey(e)) {
         e.preventDefault();
         if (!e.repeat) {
@@ -170,16 +253,20 @@ export function useCanvasInput(root: RefObject<HTMLElement | null>, deps: Canvas
     el.addEventListener("pointerup", onPointerUp);
     el.addEventListener("pointercancel", onPointerUp);
     el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("dblclick", onDoubleClick);
     el.addEventListener("keydown", onKeyDown);
     el.addEventListener("keyup", onKeyUp);
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", onBlur);
+    const offMachine = D().machine.subscribe(updateCursor);
     return () => {
+      offMachine();
       el.removeEventListener("pointerdown", onPointerDown);
       el.removeEventListener("pointermove", onPointerMove);
       el.removeEventListener("pointerup", onPointerUp);
       el.removeEventListener("pointercancel", onPointerUp);
       el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("dblclick", onDoubleClick);
       el.removeEventListener("keydown", onKeyDown);
       el.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("keyup", onKeyUp);

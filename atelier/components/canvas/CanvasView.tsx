@@ -16,9 +16,12 @@ import { fitRect, type Camera } from "@/lib/engine/geometry/camera";
 import { boundsOf, unionRects } from "@/lib/engine/geometry/rect";
 import { CameraStore, easeInOut, interpolateCamera } from "@/lib/engine/input/camera-store";
 import { SelectionStore } from "@/lib/engine/input/selection-store";
+import { OverlayStore, ToolMachine, createToolMachine, type ToolCtx, type ToolId } from "@/lib/engine/input/tool-machine";
 import { SpatialIndex } from "@/lib/engine/spatial/spatial-index";
 import { DEFAULT_NAV_SETTINGS, SETTINGS_KEY, loadSettings, sanitizeSettings, type NavSettings } from "@/lib/settings";
+import { GuidesOverlay } from "./GuidesOverlay";
 import { ObjectLayer, type ObjectLayerView } from "./ObjectLayer";
+import { SelectionOverlay } from "./SelectionOverlay";
 import { useCanvasInput } from "./useCanvasInput";
 
 /** What the rest of the editor (chrome, commands, tools) may do with the canvas. */
@@ -38,6 +41,10 @@ export interface CanvasHandle {
   readonly doc: BoardDoc;
   readonly index: SpatialIndex;
   readonly selection: SelectionStore;
+  /** Transient tool drawing state (snap guides, marquee, drop highlight). */
+  readonly overlays: OverlayStore;
+  /** The active tool and the registry of tools. Chrome switches tools with `tools.setTool(id)`. */
+  readonly tools: ToolMachine;
 }
 
 export type CanvasViewProps = {
@@ -47,6 +54,9 @@ export type CanvasViewProps = {
   index?: SpatialIndex;
   /** Share a selection with the chrome and commands; otherwise the view owns one. */
   selection?: SelectionStore;
+  /** Share overlay state and the tool machine with the chrome; otherwise the view owns them. */
+  overlays?: OverlayStore;
+  tools?: ToolMachine;
   /** Navigation settings; otherwise loaded from this device (and kept in step with other tabs). */
   settings?: NavSettings;
   /** Camera for the first frame. Default: fit all objects (at most 100 %), or the origin centred when empty. */
@@ -75,7 +85,18 @@ function prefersReducedMotion(): boolean {
  * after the camera stops changing (at most every 300 ms during a long gesture).
  */
 export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function CanvasView(
-  { doc, assets, index: sharedIndex, selection: sharedSelection, settings: settingsProp, initialCamera, cameraShortcuts = true, children },
+  {
+    doc,
+    assets,
+    index: sharedIndex,
+    selection: sharedSelection,
+    overlays: sharedOverlays,
+    tools: sharedTools,
+    settings: settingsProp,
+    initialCamera,
+    cameraShortcuts = true,
+    children,
+  },
   handleRef,
 ) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -85,6 +106,10 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
   const index = sharedIndex ?? ownIndex!;
   const [ownSelection] = useState(() => sharedSelection ?? new SelectionStore());
   const selection = sharedSelection ?? ownSelection;
+  const [ownOverlays] = useState(() => sharedOverlays ?? new OverlayStore());
+  const overlays = sharedOverlays ?? ownOverlays;
+  const [ownTools] = useState(() => sharedTools ?? createToolMachine());
+  const machine = sharedTools ?? ownTools;
   const [storedSettings, setStoredSettings] = useState<NavSettings>(() => settingsProp ?? loadSettings());
   const settings = settingsProp ?? storedSettings;
   const settingsRef = useRef(settings);
@@ -177,6 +202,42 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
     return () => window.removeEventListener("storage", onStorage);
   }, [settingsProp]);
 
+  const toolCtx = useCallback(
+    (): ToolCtx => ({
+      doc,
+      index,
+      camera: () => store.get(),
+      selection,
+      settings: settingsRef.current,
+      setTool: (id: ToolId) => machine.setTool(id),
+      overlays,
+      viewport: () => ({ ...viewportRef.current }),
+    }),
+    [doc, index, store, selection, overlays, machine],
+  );
+
+  // A tool that is switched away from mid-gesture abandons it.
+  useEffect(() => {
+    machine.beforeSwitch = (outgoing) => outgoing?.onCancel?.(toolCtx());
+    return () => {
+      machine.beforeSwitch = null;
+    };
+  }, [machine, toolCtx]);
+
+  // Objects that vanish (deleted here, on another device, or by undo) leave the selection.
+  useEffect(
+    () =>
+      doc.onChange((changed) => {
+        for (const id of changed) {
+          if (selection.has(id) && !doc.get(id)) {
+            selection.prune((sid) => !!doc.get(sid));
+            return;
+          }
+        }
+      }),
+    [doc, selection],
+  );
+
   useCanvasInput(rootRef, {
     doc,
     camera: store,
@@ -186,6 +247,8 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
     cancelAnimation: cancelCameraAnimation,
     gestureStart,
     cameraShortcuts,
+    machine,
+    toolCtx,
   });
 
   useEffect(
@@ -228,8 +291,10 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
       doc,
       index,
       selection,
+      overlays,
+      tools: machine,
     }),
-    [store, doc, index, selection, cancelCameraAnimation],
+    [store, doc, index, selection, overlays, machine, cancelCameraAnimation],
   );
 
   return (
@@ -251,6 +316,8 @@ export const CanvasView = forwardRef<CanvasHandle, CanvasViewProps>(function Can
       }}
     >
       <ObjectLayer ref={layerRef} doc={doc} index={index} assets={assets} view={view} dpr={dpr} />
+      <GuidesOverlay overlays={overlays} camera={store} />
+      <SelectionOverlay doc={doc} selection={selection} overlays={overlays} camera={store} />
       {children}
     </div>
   );

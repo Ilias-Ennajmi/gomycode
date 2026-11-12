@@ -106,7 +106,7 @@ describe("CanvasView input", () => {
     fireEvent.pointerMove(root, { pointerId: 1, pointerType: "mouse", clientX: 100, clientY: 100 });
     expect(ref.current!.getCamera()).toEqual({ x: 50, y: 20, z: 1 }); // no longer panning
     fireEvent.keyUp(root, { key: " ", code: "Space" });
-    expect(root.style.cursor).toBe("");
+    expect(root.style.cursor).toBe("default"); // back to the Select tool's cursor
   });
 
   it("a middle-button drag pans without Space", async () => {
@@ -204,5 +204,90 @@ describe("CanvasView input", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("CanvasView tools and overlays", () => {
+  const box = (id: string, x: number, y: number): NewObject => ({ ...defaultsFor("shape"), id, x, y, w: 100, h: 80 }) as NewObject;
+  const docWith = (...objs: NewObject[]) => {
+    const doc = new BoardDoc();
+    doc.createMany(objs);
+    return doc;
+  };
+
+  it("clicking selects, the overlay shows the box with 8 handles and the rotate dot, dragging moves", async () => {
+    const doc = docWith(box("a", 100, 100));
+    const { ref, root, container } = await mount(doc);
+    fireEvent.pointerDown(root, { pointerId: 1, pointerType: "mouse", button: 0, buttons: 1, clientX: 150, clientY: 140 });
+    fireEvent.pointerUp(root, { pointerId: 1, pointerType: "mouse", button: 0, buttons: 0, clientX: 150, clientY: 140 });
+    expect([...ref.current!.selection.ids]).toEqual(["a"]);
+    const handles = [...container.querySelectorAll("[data-selection-overlay] [data-handle]")].map((h) => h.getAttribute("data-handle"));
+    expect(handles.sort()).toEqual(["e", "n", "ne", "nw", "rotate", "s", "se", "sw", "w"]);
+
+    fireEvent.pointerDown(root, { pointerId: 1, pointerType: "mouse", button: 0, buttons: 1, clientX: 150, clientY: 140 });
+    fireEvent.pointerMove(root, { pointerId: 1, pointerType: "mouse", buttons: 1, clientX: 200, clientY: 190 });
+    fireEvent.pointerMove(root, { pointerId: 1, pointerType: "mouse", buttons: 1, clientX: 250, clientY: 240 });
+    fireEvent.pointerUp(root, { pointerId: 1, pointerType: "mouse", button: 0, buttons: 0, clientX: 250, clientY: 240 });
+    expect(doc.get("a")).toMatchObject({ x: 200, y: 200 });
+  });
+
+  it("the rotate handle is drawn in the accent colour from tokens only (no raw colours)", async () => {
+    const doc = docWith(box("a", 100, 100));
+    const { ref, container } = await mount(doc);
+    act(() => ref.current!.selection.set(["a"]));
+    const dot = container.querySelector('[data-handle="rotate"]')!;
+    expect(dot.getAttribute("fill")).toBe("var(--color-selection)");
+    expect(container.querySelector("[data-selection-box]")!.getAttribute("stroke")).toBe("var(--color-selection)");
+  });
+
+  it("a marquee drag on empty space shows the marquee and selects what it encloses", async () => {
+    const doc = docWith(box("a", 100, 100), box("b", 600, 500));
+    const { ref, root, container } = await mount(doc);
+    fireEvent.pointerDown(root, { pointerId: 1, pointerType: "mouse", button: 0, buttons: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerMove(root, { pointerId: 1, pointerType: "mouse", buttons: 1, clientX: 300, clientY: 300 });
+    expect(container.querySelector("[data-marquee]")).not.toBeNull();
+    fireEvent.pointerUp(root, { pointerId: 1, pointerType: "mouse", button: 0, buttons: 0, clientX: 300, clientY: 300 });
+    expect(container.querySelector("[data-marquee]")).toBeNull();
+    expect([...ref.current!.selection.ids]).toEqual(["a"]);
+  });
+
+  it("the hand tool pans with a plain drag; Escape returns to Select", async () => {
+    const { ref, root } = await mount(docWith(box("a", 100, 100)));
+    act(() => ref.current!.tools.setTool("hand"));
+    expect(root.style.cursor).toBe("grab");
+    fireEvent.pointerDown(root, { pointerId: 1, pointerType: "mouse", button: 0, buttons: 1, clientX: 300, clientY: 300 });
+    fireEvent.pointerMove(root, { pointerId: 1, pointerType: "mouse", buttons: 1, clientX: 280, clientY: 300 });
+    fireEvent.pointerUp(root, { pointerId: 1, pointerType: "mouse", button: 0, buttons: 0, clientX: 280, clientY: 300 });
+    expect(ref.current!.getCamera().x).toBe(20);
+    expect(ref.current!.selection.size).toBe(0);
+    fireEvent.keyDown(root, { key: "Escape" });
+    expect(ref.current!.tools.id).toBe("select");
+  });
+
+  it("a second finger landing mid-drag reverts the drag and starts a pinch", async () => {
+    const doc = docWith(box("a", 100, 100));
+    const { ref, root } = await mount(doc);
+    fireEvent.pointerDown(root, { pointerId: 1, pointerType: "touch", button: 0, buttons: 1, clientX: 150, clientY: 140 });
+    fireEvent.pointerMove(root, { pointerId: 1, pointerType: "touch", buttons: 1, clientX: 152, clientY: 140 }); // under the 6 px touch threshold
+    fireEvent.pointerDown(root, { pointerId: 2, pointerType: "touch", button: 0, buttons: 1, clientX: 350, clientY: 140 });
+    fireEvent.pointerMove(root, { pointerId: 2, pointerType: "touch", buttons: 1, clientX: 550, clientY: 140 });
+    expect(doc.get("a")).toMatchObject({ x: 100, y: 100 });
+    expect(ref.current!.getCamera().z).toBeGreaterThan(1);
+  });
+
+  it("deleting a selected object drops it from the selection", async () => {
+    const doc = docWith(box("a", 0, 0), box("b", 300, 0));
+    const { ref } = await mount(doc);
+    act(() => ref.current!.selection.set(["a", "b"]));
+    act(() => doc.remove(["a"]));
+    expect([...ref.current!.selection.ids]).toEqual(["b"]);
+  });
+
+  it("pen-draws-finger-pans: a touch drag with a drawing tool active pans the canvas", async () => {
+    const { ref, root } = await mount(new BoardDoc(), { settings: { ...DEFAULT_NAV_SETTINGS, penOnlyDraws: true } });
+    act(() => ref.current!.tools.setTool("pen"));
+    fireEvent.pointerDown(root, { pointerId: 1, pointerType: "touch", button: 0, buttons: 1, clientX: 300, clientY: 300 });
+    fireEvent.pointerMove(root, { pointerId: 1, pointerType: "touch", buttons: 1, clientX: 250, clientY: 300 });
+    expect(ref.current!.getCamera().x).toBe(50);
   });
 });
