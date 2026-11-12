@@ -1,6 +1,8 @@
 import * as Y from "yjs";
 import { compareByIndex, keyBetween } from "../model/index-order";
-import type { ArrowObj, CanvasObject, NewObject, Point, Rect, Terminal } from "../model/types";
+import { boundsOf } from "../geometry/rect";
+import { rotateAround } from "../geometry/transform";
+import type { ArrowObj, CanvasObject, NewObject, Point, Terminal } from "../model/types";
 import { validateObject } from "../model/validate";
 import { newId } from "@/lib/ids";
 
@@ -17,26 +19,10 @@ const EPS = 1e-9;
 
 type YObj = Y.Map<unknown>;
 
-// Local, DOM-free geometry (the shared helpers live in lib/engine/geometry).
-function aabb(o: Rect & { rotation: number }): Rect {
-  const c = Math.abs(Math.cos(o.rotation));
-  const s = Math.abs(Math.sin(o.rotation));
-  const w = o.w * c + o.h * s;
-  const h = o.w * s + o.h * c;
-  const cx = o.x + o.w / 2;
-  const cy = o.y + o.h / 2;
-  return { x: cx - w / 2, y: cy - h / 2, w, h };
-}
-
 /** Canvas position of a normalised anchor on a (possibly rotated) target. */
 function anchorPoint(t: CanvasObject, anchor: Point): Point {
-  const cx = t.x + t.w / 2;
-  const cy = t.y + t.h / 2;
-  const lx = (anchor.x - 0.5) * t.w;
-  const ly = (anchor.y - 0.5) * t.h;
-  const c = Math.cos(t.rotation);
-  const s = Math.sin(t.rotation);
-  return { x: cx + lx * c - ly * s, y: cy + lx * s + ly * c };
+  const center = { x: t.x + t.w / 2, y: t.y + t.h / 2 };
+  return rotateAround({ x: t.x + anchor.x * t.w, y: t.y + anchor.y * t.h }, center, t.rotation);
 }
 
 function sameValue(a: unknown, b: unknown): boolean {
@@ -367,7 +353,7 @@ export class BoardDoc {
       let x1 = -Infinity;
       let y1 = -Infinity;
       for (const k of kids) {
-        const b = aabb(k);
+        const b = boundsOf(k);
         x0 = Math.min(x0, b.x);
         y0 = Math.min(y0, b.y);
         x1 = Math.max(x1, b.x + b.w);
