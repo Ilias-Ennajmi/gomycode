@@ -340,6 +340,21 @@ anon role can do nothing.
   selection), radii, spacing (4 px grid), elevation (3 levels), z-index scale, motion tokens.
 - Light and dark designed together; contrast ≥ 4.5:1 text, ≥ 3:1 UI and focus indicators.
 
+### Brand & logo ("The Selection")
+- Mark: an italic serif "a" inside a canvas selection box with four corner handles and a rotate
+  handle whose dot is the one accent colour — the logo is the core canvas gesture.
+- Files in `public/brand/` (all letters converted to outlines; built by `scripts/build-logo.js` from
+  Playfair Display, SIL Open Font License): `atelier-mark-{light,dark,mono}.svg`,
+  `atelier-lockup-{light,dark}.svg`, `atelier-app-icon.svg` (rounded) and `-maskable.svg` (full-bleed,
+  mark inside the 80 % safe zone), `favicon.svg` (simplified: bold italic "a" + dot, no box), PNGs
+  `icon-192/512`, `icon-maskable-512`, `apple-touch-icon` (180), `favicon-32`, and `brand-sheet.png`.
+- Colours: ink `#141414`, paper `#F5F2EC`, accent ink-blue `#2F4A6D` (on dark `#8FA8CC`), warm stone `#8E8B82`.
+  The accent doubles as the canvas selection colour, so the logo and the product share one gesture.
+- Usage: lockup in the editor top-left at 24–28 px height; the mark alone below 24 px; favicon below 32 px.
+  Minimum clear space = the rotate-dot diameter × 2 on all sides. Never recolour the "a" or stretch the box.
+- Motion idea (Phase 1 polish): loading state draws the selection box, handles pop in, then the dot.
+- Wordmark/editorial face: Playfair Display (share-page titles, PDF covers); UI face stays Inter.
+
 ### Motion rules
 - Keyboard-triggered actions never animate (⌘K palette, shortcuts, tool switching).
 - UI motion uses transform/opacity only; custom ease-out `cubic-bezier(0.23, 1, 0.32, 1)`;
@@ -425,7 +440,7 @@ commits or files.
 ---
 
 ## 12. Open questions (owner to confirm during review)
-1. Final product name (working title "Atelier").
+1. Final product name (working title "Atelier"; the logo is built around it — renaming means redoing the wordmark only, the "a" mark would change).
 2. Accent colour preference for selection/focus (default: a muted ink-blue).
 3. Share-page branding: your studio name/logo on client links? (default: small studio name text, no logo)
 4. Default comment permission for new links (default: view + react; comment opt-in per link).
