@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useImperativeHandle, useRef, type HTMLAttributes, type KeyboardEvent, type ReactNode, type Ref } from "react";
 
 /**
  * A `role="toolbar"` whose buttons share one tab stop: arrow keys, Home and End move between them (focus stays on
@@ -11,13 +11,18 @@ export function RovingToolbar({
   orientation = "horizontal",
   className,
   children,
+  rootRef,
+  ...rest
 }: {
   label: string;
   orientation?: "horizontal" | "vertical";
   className?: string;
   children: ReactNode;
-}) {
+  /** The toolbar element, for callers that position it. */
+  rootRef?: Ref<HTMLDivElement>;
+} & Omit<HTMLAttributes<HTMLDivElement>, "role" | "aria-label" | "aria-orientation" | "onKeyDown" | "className" | "children">) {
   const ref = useRef<HTMLDivElement>(null);
+  useImperativeHandle(rootRef, () => ref.current as HTMLDivElement, []);
 
   const buttons = () => Array.from(ref.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? []);
 
@@ -46,7 +51,7 @@ export function RovingToolbar({
   };
 
   return (
-    <div ref={ref} role="toolbar" aria-label={label} aria-orientation={orientation} onKeyDown={onKeyDown} className={className}>
+    <div {...rest} ref={ref} role="toolbar" aria-label={label} aria-orientation={orientation} onKeyDown={onKeyDown} className={className}>
       {children}
     </div>
   );

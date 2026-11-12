@@ -150,6 +150,10 @@ export class ToolMachine {
   }
 
   set locked(v: boolean) {
+    this.setLocked(v);
+  }
+
+  setLocked(v: boolean): void {
     if (v === this.lockedFlag) return;
     this.lockedFlag = v;
     this.notify();

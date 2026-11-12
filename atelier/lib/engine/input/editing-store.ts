@@ -1,3 +1,4 @@
+import type { Editor } from "@tiptap/core";
 import type { BoardDoc } from "../doc/board-doc";
 import { richTextToPlainLines } from "../model/rich-text-html";
 
@@ -23,6 +24,7 @@ type Session = EditStart & { id: string };
  */
 export class EditingStore {
   private session: Session | null = null;
+  private live: Editor | null = null;
   private readonly listeners = new Set<() => void>();
 
   constructor(private readonly doc: BoardDoc) {}
@@ -30,6 +32,22 @@ export class EditingStore {
   /** Id of the object being edited, or null. */
   get id(): string | null {
     return this.session?.id ?? null;
+  }
+
+  /**
+   * The Tiptap editor of the object being edited, once it has mounted (null before that, and after editing stops).
+   * The context bar applies formatting through it.
+   */
+  get editor(): Editor | null {
+    return this.live;
+  }
+
+  /** Published by the editor component. Ignored while nothing is being edited, so a late mount cannot leak one. */
+  setEditor(editor: Editor | null): void {
+    const next = editor && this.session ? editor : null;
+    if (next === this.live) return;
+    this.live = next;
+    this.notify();
   }
 
   get initialText(): string {
@@ -54,6 +72,7 @@ export class EditingStore {
     const s = this.session;
     if (!s) return;
     this.session = null;
+    this.live = null;
     this.finish(s);
     this.notify();
   }

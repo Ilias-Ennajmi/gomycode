@@ -1,9 +1,10 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useCallback, useContext, type CSSProperties } from "react";
+import type { Editor } from "@tiptap/core";
 import type { BoardDoc } from "@/lib/engine/doc/board-doc";
 import type { CanvasObject } from "@/lib/engine/model/types";
-import { useEditingDone, useEditingStart, useIsEditing } from "../editing-context";
+import { EditingContext, useEditingDone, useEditingStart, useIsEditing } from "../editing-context";
 import { RichTextEditor } from "../RichTextEditor";
 import { RichContent } from "./RichContent";
 
@@ -25,6 +26,9 @@ export function EditableContent({
   const editing = useIsEditing(obj.id);
   const done = useEditingDone();
   const start = useEditingStart();
+  // The formatting bar reaches the live editor through the editing store.
+  const store = useContext(EditingContext)?.store;
+  const publish = useCallback((editor: Editor | null) => store?.setEditor(editor), [store]);
   if (!editing) return <RichContent doc={doc} obj={obj} style={padding ? { ...style, padding } : style} />;
   return (
     <RichTextEditor
@@ -36,6 +40,7 @@ export function EditableContent({
       selectAll={start.selectAll}
       padding={padding}
       style={style}
+      onEditor={publish}
     />
   );
 }
