@@ -1,7 +1,8 @@
 # Checks the Atelier web app (atelier/) on every pull request and push that touches it:
-# types, lint, unit tests, a production build, the row-level-security tests against a real
-# Postgres, then end-to-end tests on a desktop and a phone screen in local-only mode.
-# Nothing here needs a secret.
+# types, lint, unit tests, the row-level-security tests against a real Postgres, a production
+# build, then end-to-end tests (Playwright, Chromium) on a desktop and a phone screen. The e2e
+# app runs in local-only mode; a second copy with placeholder sign-in settings serves the login
+# checks. Nothing here needs a secret.
 name: Atelier CI
 
 on:
@@ -46,6 +47,8 @@ jobs:
       CI: "1"
       DATABASE_URL: postgresql://atelier:atelier@localhost:5432/atelier_test
       NEXT_TELEMETRY_DISABLED: "1"
+      # Public, build-time value (not a secret): where the browser would load images from.
+      NEXT_PUBLIC_R2_PUBLIC_HOST: assets.example.test
     steps:
       - uses: actions/checkout@v4
 
@@ -67,18 +70,20 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Row-level security tests
+        # Applies every migration (twice) to the Postgres service above, then runs supabase/tests/rls.sql.
+        run: bash scripts/test-rls.sh
+
       - name: Build
         run: npm run build
 
-      - name: Row-level security tests
-        # scripts/test-rls.sh arrives with the database schema (Task 2).
-        run: |
-          if [ -f scripts/test-rls.sh ]; then bash scripts/test-rls.sh; else echo "No RLS tests yet"; fi
-
-      - name: Browser
+      - name: Install browser
+        # Playwright's own Chromium (the sandbox shortcut in playwright.config.ts only applies when PW_CHROMIUM_PATH
+        # is set or /opt/pw-browsers/chromium exists, neither of which is true on a hosted runner).
         run: npx playwright install --with-deps chromium
 
-      - name: End-to-end tests
+      - name: End-to-end tests (desktop and phone)
+        # Reuses the build above: with CI set the config only starts it (`npm start`, local-only) plus a sign-in server.
         run: npm run e2e
 
       - name: Test report
