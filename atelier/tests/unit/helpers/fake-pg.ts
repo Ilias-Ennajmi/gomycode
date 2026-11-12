@@ -101,6 +101,10 @@ function makeClient(pg: FakePg, claims: Record<string, unknown> | null, seqs: Re
       this.filters.push((r) => (r[c] as number | string) <= (v as number | string));
       return this;
     }
+    neq(c: string, v: unknown) {
+      this.filters.push((r) => r[c] !== v);
+      return this;
+    }
     in(c: string, vs: unknown[]) {
       this.filters.push((r) => vs.includes(r[c]));
       return this;
