@@ -20,6 +20,8 @@ export type CommandUI = {
   /** Open the file picker and add the chosen images at the middle of the view. */
   pickImages(): void;
   toggleSnap(): void;
+  /** Open the panel (Layers, Inspector, ...) or close it when it is the one showing. */
+  togglePanel(id: string): void;
 };
 
 /** Clipboard operations behind the copy/cut/paste commands (wired by useClipboard). */
@@ -58,6 +60,11 @@ export type Command = {
    * bindShortcuts must not swallow the key.
    */
   native?: boolean;
+  /**
+   * Also runs when the key is pressed in a text input of the editor's own panels (the palette and find must open from
+   * the Inspector's fields too). Still never inside rich-text editing (contenteditable).
+   */
+  global?: boolean;
   /** Unavailable (hidden or disabled in menus, ignored by `run`) when this returns false. */
   when?(ctx: CommandCtx): boolean;
   run(ctx: CommandCtx): void;

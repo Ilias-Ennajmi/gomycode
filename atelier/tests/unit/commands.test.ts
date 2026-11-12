@@ -587,6 +587,30 @@ describe("shortcuts", () => {
     root.remove();
   });
 
+  it("lets the palette and find open from a plain input, but not from rich text", () => {
+    const t = setup([shape("a", 0, 0)]);
+    const root = document.createElement("div");
+    const input = document.createElement("input");
+    const editable = document.createElement("div");
+    editable.setAttribute("contenteditable", "true");
+    Object.defineProperty(editable, "isContentEditable", { value: true });
+    root.append(input, editable);
+    document.body.append(root);
+    const off = bindShortcuts(root, () => t.ctx);
+    const k = key({ key: "k", ctrlKey: true });
+    input.dispatchEvent(k);
+    expect(k.defaultPrevented).toBe(true);
+    expect(t.ui.togglePalette).toHaveBeenCalledTimes(1);
+    input.dispatchEvent(key({ key: "f", ctrlKey: true }));
+    expect(t.ui.openFind).toHaveBeenCalledTimes(1);
+    editable.dispatchEvent(key({ key: "k", ctrlKey: true }));
+    expect(t.ui.togglePalette).toHaveBeenCalledTimes(1); // Mod+K is "link" inside the editor
+    input.dispatchEvent(key({ key: "a", ctrlKey: true }));
+    expect(t.selection.size).toBe(0);
+    off();
+    root.remove();
+  });
+
   it("does not run native clipboard commands from keydown, and skips events that were already handled", () => {
     const t = setup([shape("a", 0, 0)]);
     const root = document.createElement("div");

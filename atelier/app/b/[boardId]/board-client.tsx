@@ -1,18 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
-import type { AssetResolver } from "@/lib/assets/resolver-types";
+import { useRouter } from "next/navigation";
+import { getAssetResolver } from "@/lib/assets/resolver";
+import { AssetUploader } from "@/lib/assets/upload-queue";
 import { BoardDoc } from "@/lib/engine/doc/board-doc";
 import type { Camera } from "@/lib/engine/geometry/camera";
 import { SpatialIndex } from "@/lib/engine/spatial/spatial-index";
 import { CanvasView, type CanvasHandle } from "@/components/canvas/CanvasView";
+import { EditorProvider } from "@/components/editor/EditorContext";
+import { EditorOverlays } from "@/components/editor/EditorOverlays";
+import { SETTINGS_KEY, loadSettings, saveSettings, type NavSettings } from "@/lib/settings";
 
-// Until the asset pipeline lands (Task 17) every image shows its placeholder.
-const stubAssets: AssetResolver = { url: () => null };
-
-type Session = { doc: BoardDoc; index: SpatialIndex; camera: Camera | undefined };
+type Session = { doc: BoardDoc; index: SpatialIndex; uploader: AssetUploader; camera: Camera | undefined };
 
 const cameraKey = (boardId: string) => `atelier-camera-${boardId}`;
 
@@ -41,22 +43,32 @@ function saveCamera(boardId: string, c: Camera): void {
  */
 export function BoardClient({ boardId }: { boardId: string }) {
   const [session, setSession] = useState<Session | null>(null);
-  const handle = useRef<CanvasHandle>(null);
+  const handle = useRef<CanvasHandle | null>(null);
+  // The canvas handle as state: the editor (commands, panels, clipboard) mounts once the canvas exists.
+  const [canvas, setCanvas] = useState<CanvasHandle | null>(null);
+  const canvasRef = useCallback((h: CanvasHandle | null) => {
+    handle.current = h;
+    setCanvas(h);
+  }, []);
+  const router = useRouter();
+  const [settings, setSettings] = useState<NavSettings>(() => loadSettings());
 
   useEffect(() => {
     let cancelled = false;
     const ydoc = new Y.Doc();
     const persistence = new IndexeddbPersistence(`atelier-board-${boardId}`, ydoc);
-    let opened: { doc: BoardDoc; index: SpatialIndex } | null = null;
+    let opened: { doc: BoardDoc; index: SpatialIndex; uploader: AssetUploader } | null = null;
     void persistence.whenSynced.then(() => {
       if (cancelled) return;
       const doc = new BoardDoc(ydoc);
       const index = new SpatialIndex(doc);
-      opened = { doc, index };
-      setSession({ doc, index, camera: loadCamera(boardId) });
+      const uploader = new AssetUploader({ doc, resolver: getAssetResolver() });
+      opened = { doc, index, uploader };
+      setSession({ doc, index, uploader, camera: loadCamera(boardId) });
     });
     return () => {
       cancelled = true;
+      opened?.uploader.dispose();
       opened?.index.destroy();
       opened?.doc.destroy();
       void persistence.destroy();
@@ -94,16 +106,39 @@ export function BoardClient({ boardId }: { boardId: string }) {
     };
   }, [session]);
 
+  // Navigation settings (snapping, wheel) live here so the snap command can change them for this tab right away;
+  // another tab or the settings page changing them arrives as a storage event.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === SETTINGS_KEY) setSettings(loadSettings());
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+  const toggleSnap = () =>
+    setSettings((cur) => {
+      const next = { ...cur, snap: !cur.snap };
+      saveSettings(next);
+      return next;
+    });
+
   return (
     <main style={{ position: "fixed", inset: 0, background: "var(--color-bg)" }}>
       {session ? (
         <CanvasView
-          ref={handle}
+          ref={canvasRef}
           doc={session.doc}
           index={session.index}
-          assets={stubAssets}
+          assets={getAssetResolver()}
           initialCamera={session.camera}
+          settings={settings}
+          cameraShortcuts={false /* the command registry binds Shift+1/2 and Mod +/-/0 */}
         />
+      ) : null}
+      {session && canvas ? (
+        <EditorProvider handle={canvas} uploader={session.uploader} onToggleSnap={toggleSnap} navigate={(href) => router.push(href)}>
+          <EditorOverlays />
+        </EditorProvider>
       ) : null}
     </main>
   );

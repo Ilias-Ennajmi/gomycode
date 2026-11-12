@@ -78,6 +78,11 @@ export function formatShortcut(shortcut: string, mac: boolean = isMacPlatform())
 }
 
 /** True for events that come from something the user is typing into: those keys belong to that control. */
+export function isRichTextTarget(t: EventTarget | null): boolean {
+  if (!(t instanceof HTMLElement)) return false;
+  return t.isContentEditable || t.getAttribute("contenteditable") === "true" || t.getAttribute("contenteditable") === "";
+}
+
 export function isTypingTarget(t: EventTarget | null): boolean {
   if (!(t instanceof HTMLElement)) return false;
   if (t.isContentEditable || t.getAttribute("contenteditable") === "true" || t.getAttribute("contenteditable") === "") return true;
@@ -86,7 +91,8 @@ export function isTypingTarget(t: EventTarget | null): boolean {
 
 /**
  * Run registry commands from the keyboard. Keys typed into inputs, textareas, selects and contenteditable are left
- * alone, as are events something else already handled (`defaultPrevented`) and IME composition. Keyboard-triggered
+ * alone (only commands marked `global`, the palette and find, also run from plain inputs), as are events something
+ * else already handled (`defaultPrevented`) and IME composition. Keyboard-triggered
  * commands never animate. Returns the function that removes the listener.
  */
 export function bindShortcuts(
@@ -95,8 +101,11 @@ export function bindShortcuts(
   registry: CommandRegistry = defaultRegistry,
 ): () => void {
   const onKeyDown = (e: KeyboardEvent) => {
-    if (e.defaultPrevented || e.isComposing || isTypingTarget(e.target)) return;
+    if (e.defaultPrevented || e.isComposing) return;
+    const typing = isTypingTarget(e.target);
+    if (typing && isRichTextTarget(e.target)) return;
     for (const cmd of registry.all()) {
+      if (typing && !cmd.global) continue; // keys typed into a field belong to the field, except a few app-wide ones
       const keys = cmd.shortcut ? [cmd.shortcut, ...(cmd.altShortcuts ?? [])] : (cmd.altShortcuts ?? []);
       if (!keys.some((k) => matchShortcut(e, k))) continue;
       if (cmd.native) return; // the browser's own copy/cut/paste event does the work

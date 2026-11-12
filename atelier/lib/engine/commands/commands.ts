@@ -11,6 +11,8 @@ import {
 } from "../input/transform-ops";
 import { alignRects, distribute, type AlignMode } from "../layout/align";
 import { keyBetween, compareByIndex } from "../model/index-order";
+import { oneStepOn } from "../model/one-step";
+import { nextSiblingIndex, reorderObjects, safeKey, type ZOp } from "./z-order";
 import { defaultsFor } from "../model/defaults";
 import type { ArrowObj, CanvasObject, FrameObj, ObjectType, Rect, Terminal } from "../model/types";
 import { setTheme } from "@/lib/theme";
@@ -46,12 +48,7 @@ export function selectedRoots(doc: BoardDoc, ids: Iterable<string>, includeLocke
   return out;
 }
 
-/** Run `fn` as exactly one undo step: it never merges with the edit before it or the one after it. */
-export function oneStep(doc: BoardDoc, fn: () => void): void {
-  doc.stopCapturing();
-  doc.transact(fn);
-  doc.stopCapturing();
-}
+export const oneStep = oneStepOn;
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -168,78 +165,11 @@ function stylePatch(style: Partial<CanvasObject>, target: CanvasObject): Partial
 
 // ---- z-order --------------------------------------------------------------------------------------------------------
 
-type ZOp = "forward" | "backward" | "front" | "back";
-
-function reordered(ids: string[], sel: Set<string>, op: ZOp): string[] {
-  const arr = [...ids];
-  if (op === "front") return [...arr.filter((i) => !sel.has(i)), ...arr.filter((i) => sel.has(i))];
-  if (op === "back") return [...arr.filter((i) => sel.has(i)), ...arr.filter((i) => !sel.has(i))];
-  if (op === "forward") {
-    for (let i = arr.length - 2; i >= 0; i--) {
-      if (sel.has(arr[i]) && !sel.has(arr[i + 1])) [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
-    }
-  } else {
-    for (let i = 1; i < arr.length; i++) {
-      if (sel.has(arr[i]) && !sel.has(arr[i - 1])) [arr[i], arr[i - 1]] = [arr[i - 1], arr[i]];
-    }
-  }
-  return arr;
-}
-
-function safeKey(a: string | null, b: string | null): string {
-  try {
-    return keyBetween(a, b);
-  } catch {
-    return keyBetween(a, null); // neighbours share a key (concurrent edits): go above the lower one
-  }
-}
-
 function reorder(ctx: CommandCtx, op: ZOp): void {
-  const { doc, selection } = ctx;
-  const roots = selectedRoots(doc, selection.ids);
-  const byParent = new Map<string | null, Set<string>>();
-  for (const o of roots) {
-    const set = byParent.get(o.parentId) ?? new Set<string>();
-    set.add(o.id);
-    byParent.set(o.parentId, set);
-  }
-  const plan: { id: string; index: string }[] = [];
-  for (const [parent, sel] of byParent) {
-    const sibs = doc.childrenOf(parent);
-    const before = sibs.map((o) => o.id);
-    const after = reordered(before, sel, op);
-    if (after.every((id, i) => id === before[i])) continue;
-    const keyOf = new Map(sibs.map((o) => [o.id, o.index]));
-    for (let i = 0; i < after.length; ) {
-      if (!sel.has(after[i])) {
-        i++;
-        continue;
-      }
-      let j = i;
-      while (j < after.length && sel.has(after[j])) j++;
-      let prev = i > 0 ? keyOf.get(after[i - 1])! : null;
-      const upper = j < after.length ? keyOf.get(after[j])! : null;
-      for (let k = i; k < j; k++) {
-        const index = safeKey(prev, upper);
-        plan.push({ id: after[k], index });
-        prev = index;
-      }
-      i = j;
-    }
-  }
-  if (plan.length) oneStep(doc, () => plan.forEach((p) => doc.update(p.id, { index: p.index })));
+  reorderObjects(ctx.doc, selectedRoots(ctx.doc, ctx.selection.ids), op);
 }
 
 // ---- group / ungroup / lock -----------------------------------------------------------------------------------------
-
-function nextSiblingIndex(doc: BoardDoc, parent: string | null, after: string, exclude: Set<string>): string | null {
-  let best: string | null = null;
-  for (const o of doc.childrenOf(parent)) {
-    if (exclude.has(o.id) || o.index <= after) continue;
-    if (best === null || o.index < best) best = o.index;
-  }
-  return best;
-}
 
 function groupSelection(ctx: CommandCtx): void {
   const { doc, selection } = ctx;
@@ -542,8 +472,10 @@ export const BUILTIN_COMMANDS: Command[] = [
       setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
     },
   },
-  { id: "view.find", label: "Find and replace", group: "view", shortcut: "Mod+F", when: (c) => !!c.ui?.openFind, run: (c) => c.ui?.openFind?.() },
-  { id: "view.palette", label: "Command palette", group: "view", shortcut: "Mod+K", when: (c) => !!c.ui?.togglePalette, run: (c) => c.ui?.togglePalette?.() },
+  { id: "view.find", label: "Find and replace", group: "view", shortcut: "Mod+F", global: true, when: (c) => !!c.ui?.openFind, run: (c) => c.ui?.openFind?.() },
+  { id: "view.layers", label: "Layers panel", group: "view", when: (c) => !!c.ui?.togglePanel, run: (c) => c.ui?.togglePanel?.("layers") },
+  { id: "view.inspector", label: "Inspector panel", group: "view", when: (c) => !!c.ui?.togglePanel, run: (c) => c.ui?.togglePanel?.("inspector") },
+  { id: "view.palette", label: "Command palette", group: "view", shortcut: "Mod+K", global: true, when: (c) => !!c.ui?.togglePalette, run: (c) => c.ui?.togglePalette?.() },
 
   // tools
   ...TOOLS.map(({ id, tool, label, shortcut }): Command => ({ id, label, group: "insert", shortcut, run: (c) => c.setTool(tool) })),
