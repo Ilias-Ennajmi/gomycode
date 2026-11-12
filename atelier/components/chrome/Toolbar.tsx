@@ -1,12 +1,13 @@
 "use client";
 
 import { Eraser, Frame, Hand, Highlighter, Image as ImageIcon, MousePointer2, MoveUpRight, PenLine, Shapes, StickyNote, Type, type LucideIcon } from "lucide-react";
-import { createRef, useMemo, useReducer, useState, type KeyboardEvent, type MouseEvent, type RefObject } from "react";
+import { createRef, useCallback, useEffect, useMemo, useReducer, useRef, useState, type KeyboardEvent, type MouseEvent, type RefObject } from "react";
 import { useEditor } from "@/components/editor/EditorContext";
 import { RovingToolbar } from "@/components/ui/RovingToolbar";
 import type { ArrowTool, FrameTool, PenTool, ShapeTool, StickyTool } from "@/lib/engine/input/tools";
 import type { ToolId } from "@/lib/engine/input/tool-machine";
 import { Choice, SwatchGrid, chromeButton } from "./controls";
+import { MoreMenu } from "./MoreMenu";
 import { useActiveTool } from "./hooks";
 import { FramePresetList, HeadChoice, RouteChoice, ShapeKindChoice, StickyColorPicker, StickySizeChoice, Field } from "./pickers";
 import { Popover } from "./Popover";
@@ -57,6 +58,30 @@ export function Toolbar({ insetRight = 0, instant: noMotion = false }: { insetRi
   const [instant, setInstant] = useState(false);
   const anchors = useMemo(() => Object.fromEntries(DEFS.map((d) => [d.tool, createRef<HTMLButtonElement>()])) as Record<string, RefObject<HTMLButtonElement | null>>, []);
 
+  // The tools scroll sideways when the bar is wider than the screen (a phone): fade the edge that has more to show.
+  const scroller = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState({ start: false, end: false });
+  const measure = useCallback(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const start = el.scrollLeft > 1;
+    const end = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    setMore((cur) => (cur.start === start && cur.end === end ? cur : { start, end }));
+  }, []);
+  useEffect(() => {
+    measure();
+    const el = scroller.current;
+    if (!el) return;
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [measure]);
+  const fade = `linear-gradient(to right, ${more.start ? "transparent 0, black 20px" : "black 0"}, ${more.end ? "black calc(100% - 20px), transparent 100%" : "black 100%"})`;
+
   const isActive = (d: Def) => (d.covers ? d.covers.includes(active) : d.tool === active);
 
   const onClick = (d: Def, e: MouseEvent<HTMLButtonElement>) => {
@@ -103,14 +128,21 @@ export function Toolbar({ insetRight = 0, instant: noMotion = false }: { insetRi
     >
       <RovingToolbar
         label="Tools"
-        className="pointer-events-auto flex max-w-full items-center gap-0.5 overflow-x-auto rounded-lg border border-line bg-panel p-1.5 shadow-2 [scrollbar-width:none]"
+        className="pointer-events-auto flex max-w-full items-center gap-0.5 rounded-lg border border-line bg-panel p-1.5 shadow-2"
       >
+        <div
+          ref={scroller}
+          data-toolbar-scroll=""
+          onScroll={measure}
+          style={more.start || more.end ? { maskImage: fade, WebkitMaskImage: fade } : undefined}
+          className="-m-1 flex min-w-0 snap-x snap-proximity scroll-px-6 items-center gap-0.5 overflow-x-auto p-1 [scrollbar-width:none]"
+        >
         {DEFS.map((d) => {
           const on = d.tool !== "image" && isActive(d);
           const Icon = d.tool === "pen" ? penIcon : d.icon;
           const isLocked = on && locked && d.creation;
           return (
-            <span key={d.tool} className="flex items-center gap-0.5">
+            <span key={d.tool} className="flex shrink-0 snap-start items-center gap-0.5">
               {GROUP_STARTS.has(d.tool) ? <span aria-hidden="true" className="mx-1 h-5 w-px shrink-0 bg-line" /> : null}
               <Tip label={isLocked ? `${d.label} (locked)` : d.label} shortcut={d.shortcut}>
                 <button
@@ -135,6 +167,9 @@ export function Toolbar({ insetRight = 0, instant: noMotion = false }: { insetRi
             </span>
           );
         })}
+        </div>
+        <span aria-hidden="true" className="mx-1 h-5 w-px shrink-0 bg-line" />
+        <MoreMenu />
       </RovingToolbar>
       {DEFS.filter((d) => d.popover).map((d) => (
         <Popover

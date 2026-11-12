@@ -13,6 +13,7 @@ import { alignRects, distribute, type AlignMode } from "../layout/align";
 import { cropForAspect, cropPixelAspect } from "../images/crop";
 import { imageSource } from "../images/ops";
 import { IMAGE_COMMANDS } from "./image-commands";
+import { LINK_COMMANDS } from "../links/link-commands";
 import { keyBetween, compareByIndex } from "../model/index-order";
 import { oneStepOn } from "../model/one-step";
 import { nextSiblingIndex, reorderObjects, safeKey, type ZOp } from "./z-order";
@@ -488,6 +489,9 @@ export const BUILTIN_COMMANDS: Command[] = [
   // image tools (crop, masks, value check, replace)
   ...IMAGE_COMMANDS,
   ...MEDIA_COMMANDS,
+
+  // link cards and embeds (paste as text, open, retry, insert by URL)
+  ...LINK_COMMANDS,
 ];
 
 /** Add the built-in commands to a registry (done for the app-wide one on import). */

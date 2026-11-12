@@ -166,3 +166,15 @@ body {
 [data-value-check="true"] [data-object-type]:not([data-object-type="image"]) {
   filter: grayscale(1);
 }
+
+/* Link card thumbnail placeholder while the preview loads: a slow fade, off with reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .link-skeleton {
+    animation: link-skeleton-pulse 1.4s ease-in-out infinite;
+  }
+}
+@keyframes link-skeleton-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}

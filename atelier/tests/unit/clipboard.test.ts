@@ -345,9 +345,9 @@ describe("insertPaste: text, urls and images", () => {
     expect(o.y + o.h / 2).toBeCloseTo(100);
   });
 
-  it("creates a text object with a link mark for a URL", () => {
+  it("creates a text object with a link mark for a URL pasted as text", () => {
     const d = new BoardDoc();
-    const [id] = insertPaste(d, [{ kind: "url", url: "https://example.com/x" }], { x: 0, y: 0 });
+    const [id] = insertPaste(d, [{ kind: "url", url: "https://example.com/x" }], { x: 0, y: 0 }, { urlAsText: true });
     expect(richContentToJSON(d.content(id)!).content![0].content![0]).toEqual({
       type: "text",
       text: "https://example.com/x",

@@ -14,7 +14,10 @@ import { buildRenderTree } from "./render-tree";
 import { useDocObject } from "./useDocObject";
 import { useImageLayerFeed } from "./useImageLayerFeed";
 import { ArrowView } from "./objects/ArrowView";
+import { isPreviewPending } from "@/lib/engine/links/link-cards";
+import { EmbedView } from "./objects/EmbedView";
 import { FrameView } from "./objects/FrameView";
+import { LinkView } from "./objects/LinkView";
 import { ShapeView } from "./objects/ShapeView";
 import { StickyView } from "./objects/StickyView";
 import { StrokeView } from "./objects/StrokeView";
@@ -87,8 +90,8 @@ export const OBJECT_VIEWS: { [K in ObjectType]: ViewOf<K> } = {
   ),
   group: NoView,
   video: PlaceholderView,
-  link: PlaceholderView,
-  embed: PlaceholderView,
+  link: ({ obj, assets, doc }) => <LinkView obj={obj} assets={assets} pending={isPreviewPending(doc, obj.id)} />,
+  embed: ({ obj }) => <EmbedView obj={obj} />,
   swatch: PlaceholderView,
   palette: PlaceholderView,
   typeSpecimen: ({ obj }) => <TypeSpecimenView obj={obj} />,

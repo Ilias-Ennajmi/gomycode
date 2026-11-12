@@ -40,6 +40,7 @@ import { Field, FramePresetList, HeadChoice, RouteChoice, SHAPE_KINDS, ShapeKind
 import { Popover } from "./Popover";
 import { ImageBarControls } from "./ImageBarControls";
 import { SpecimenBarControl } from "./SpecimenBarControl";
+import { LinkBarControls } from "./LinkBarControls";
 import { placeFloating } from "./place";
 import { Tip } from "./Tip";
 import { STICKY_COLORS } from "@/lib/engine/model/defaults";
@@ -243,6 +244,7 @@ function BarView({ objs }: { objs: CanvasObject[] }) {
       {!allLocked && only === "stroke" ? <StrokeControls bar={bar} /> : null}
       {!allLocked && only === "image" ? <ImageBarControls images={objs as ImageObj[]} side={side} /> : null}
       {!allLocked && single?.type === "typeSpecimen" ? <SpecimenBarControl obj={single} side={side} /> : null}
+      {single && (single.type === "link" || single.type === "embed") ? <LinkBarControls obj={single} side={side} /> : null}
       {!allLocked && textish ? <FormatControls bar={bar} single={single!} editing={editingText} /> : null}
       {!allLocked && only && only !== "group" ? <Sep /> : null}
 

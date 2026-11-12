@@ -8,7 +8,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const TOOL_NAMES = ["Select", "Hand", "Sticky note", "Text", "Shapes", "Arrow or line", "Pen", "Frame", "Image"];
+const TOOL_NAMES = ["Select", "Hand", "Sticky note", "Text", "Shapes", "Arrow or line", "Pen", "Frame", "Image", "More objects"];
 
 function mount() {
   const t = makeEditor();
@@ -19,7 +19,7 @@ const toolbar = () => screen.getByRole("toolbar", { name: "Tools" });
 const button = (name: string) => within(toolbar()).getByRole("button", { name });
 
 describe("Toolbar", () => {
-  it("is a labelled toolbar with every Phase 1 tool and no More button", () => {
+  it("is a labelled toolbar with every tool and the More button last", () => {
     mount();
     const names = within(toolbar())
       .getAllByRole("button")
@@ -56,11 +56,15 @@ describe("Toolbar", () => {
     fireEvent.keyDown(button("Select"), { key: "ArrowRight" });
     expect(button("Hand")).toHaveFocus();
     fireEvent.keyDown(button("Hand"), { key: "End" });
+    expect(button("More objects")).toHaveFocus();
+    fireEvent.keyDown(button("More objects"), { key: "ArrowLeft" });
     expect(button("Image")).toHaveFocus();
     fireEvent.keyDown(button("Image"), { key: "ArrowRight" });
+    expect(button("More objects")).toHaveFocus();
+    fireEvent.keyDown(button("More objects"), { key: "ArrowRight" });
     expect(button("Select")).toHaveFocus();
     fireEvent.keyDown(button("Select"), { key: "ArrowLeft" });
-    expect(button("Image")).toHaveFocus();
+    expect(button("More objects")).toHaveFocus();
   });
 
   it("Enter activates the focused tool", () => {

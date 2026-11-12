@@ -6,6 +6,8 @@ import { keyBetween } from "../model/index-order";
 import type { CanvasObject, NewObject, Point, Terminal } from "../model/types";
 import { validateObject } from "../model/validate";
 import { newId } from "@/lib/ids";
+import { classifyUrl } from "../links/classify";
+import { createEmbed, createLinkCard, createPlainLinkCard, EMBED_W, LINK_CARD_H, LINK_CARD_W, type LinkCardDeps } from "../links/link-cards";
 import { writeRichContent, type RichJSON } from "./rich";
 import { ATELIER_MARKER, decodeBase64Utf8, type AtelierPayload } from "./serialize";
 
@@ -57,19 +59,23 @@ function isImageFile(f: File): boolean {
   return f.type ? f.type.startsWith("image/") : IMAGE_EXT.test(f.name);
 }
 
-function textItem(raw: string): PasteItem | null {
+/** More lone URLs than this on separate lines stay one text object (each would start a preview fetch). */
+export const MAX_PASTED_URLS = 20;
+
+/** A lone http(s) URL (embeds and link cards only come from these; a URL inside prose stays text). */
+function loneUrl(t: string): boolean {
+  return !/\s/.test(t) && classifyUrl(t).kind !== "none";
+}
+
+function textItems(raw: string): PasteItem[] {
   const text = raw.replace(/\r\n?/g, "\n").replace(/\s+$/, "");
-  if (!text.trim()) return null;
+  if (!text.trim()) return [];
   const t = text.trim();
-  if (!/\s/.test(t)) {
-    try {
-      const u = new URL(t);
-      if (u.protocol === "http:" || u.protocol === "https:") return { kind: "url", url: t };
-    } catch {
-      /* not a URL */
-    }
-  }
-  return { kind: "text", text, lines: text.split("\n").length };
+  if (loneUrl(t)) return [{ kind: "url", url: t }];
+  // Several lines that are each a URL (a list of links copied from a page): one card per line.
+  const lines = t.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length >= 2 && lines.length <= MAX_PASTED_URLS && lines.every(loneUrl)) return lines.map((url) => ({ kind: "url" as const, url }));
+  return [{ kind: "text", text, lines: text.split("\n").length }];
 }
 
 /**
@@ -86,8 +92,7 @@ export function parseClipboard(input: { html?: string; text?: string; files?: Fi
 
     let text = input.text ?? "";
     if (!text.trim() && input.html) text = htmlToText(input.html);
-    const item = textItem(text);
-    return item ? [item] : [];
+    return textItems(text);
   } catch {
     return [];
   }
@@ -108,6 +113,10 @@ export type PasteOptions = {
   state?: PasteState;
   /** Offset per repeated paste, default 16. */
   step?: number;
+  /** What link cards need to fetch their preview. Without it a pasted URL becomes a plain card with just the domain. */
+  links?: LinkCardDeps;
+  /** Paste as text (Mod+Shift+V): a URL becomes a text object with a link mark instead of an embed or a card. */
+  urlAsText?: boolean;
 };
 
 const IMAGE_CELL = 320;
@@ -206,6 +215,31 @@ function pasteText(doc: BoardDoc, text: string, link: string | null, center: Poi
   return [id];
 }
 
+const URLS_PER_ROW = 4;
+
+/**
+ * Lone URLs: an embed (YouTube, Vimeo, Figma) or a link card each, in a grid around `center` when there are several.
+ * An address that classifies as neither (it cannot, since the parser checked) falls back to text.
+ */
+function pasteUrls(doc: BoardDoc, urls: string[], center: Point, links: LinkCardDeps | undefined): string[] {
+  const classified = urls.map((url) => ({ url, c: classifyUrl(url) }));
+  const hasEmbed = classified.some((x) => x.c.kind === "embed");
+  const cellW = hasEmbed ? EMBED_W : LINK_CARD_W;
+  const cellH = hasEmbed ? Math.max(LINK_CARD_H, EMBED_W) : LINK_CARD_H;
+  const cols = Math.min(URLS_PER_ROW, classified.length);
+  const rows = Math.ceil(classified.length / URLS_PER_ROW);
+  const x0 = center.x - (cols * cellW + (cols - 1) * GUTTER) / 2 + cellW / 2;
+  const y0 = center.y - (rows * cellH + (rows - 1) * GUTTER) / 2 + cellH / 2;
+  const ids: string[] = [];
+  classified.forEach(({ url, c }, i) => {
+    const at = { x: x0 + (i % URLS_PER_ROW) * (cellW + GUTTER), y: y0 + Math.floor(i / URLS_PER_ROW) * (cellH + GUTTER) };
+    if (c.kind === "embed") ids.push(createEmbed(doc, c, url, at));
+    else if (c.kind === "link") ids.push(links ? createLinkCard(doc, c.url, at, links) : createPlainLinkCard(doc, c.url, at));
+    else ids.push(...pasteText(doc, url, null, at));
+  });
+  return ids;
+}
+
 /**
  * Paste: insert items so their middle sits on `at`. Atelier payloads become new objects (arrows rebound to copied
  * targets, otherwise free); text and URLs become text objects (URLs with a link mark); images go to `opts.addImage`
@@ -225,13 +259,17 @@ export function insertPaste(doc: BoardDoc, items: PasteItem[], at: Point, opts: 
 
   const ids: string[] = [];
   const images: File[] = [];
+  const urls: string[] = [];
   doc.transact(() => {
     for (const item of items) {
       if (item.kind === "atelier") ids.push(...pasteAtelier(doc, item.payload, center));
       else if (item.kind === "text") ids.push(...pasteText(doc, item.text, null, center));
-      else if (item.kind === "url") ids.push(...pasteText(doc, item.url, item.url, center));
-      else images.push(item.file);
+      else if (item.kind === "url") {
+        if (opts.urlAsText) ids.push(...pasteText(doc, item.url, item.url, center));
+        else urls.push(item.url);
+      } else images.push(item.file);
     }
+    if (urls.length) ids.push(...pasteUrls(doc, urls, center, opts.links));
   });
 
   if (images.length && opts.addImage) {

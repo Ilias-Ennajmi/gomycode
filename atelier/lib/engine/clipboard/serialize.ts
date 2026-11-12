@@ -104,6 +104,11 @@ export function serializeSelection(
       blocks.push({ tag: "h2", text: o.name });
       plain.push(o.name);
     }
+    if (o.type === "link" || o.type === "embed") {
+      // Pasted somewhere else, a card or an embed is its address.
+      blocks.push({ tag: "p", text: o.url });
+      plain.push(o.url);
+    }
     if (o.type === "image" && o.assetId) {
       const url = opts.assetUrl?.(o.assetId) ?? "";
       if (!seenAssets.has(o.assetId)) {

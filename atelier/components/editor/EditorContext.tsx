@@ -20,6 +20,11 @@ import "@/lib/engine/commands/commands";
 import { bindShortcuts } from "@/lib/engine/commands/shortcuts";
 import { replaceImageWithFile } from "@/lib/engine/commands/image-commands";
 import { screenToCanvas } from "@/lib/engine/geometry/camera";
+import { addUrlToBoard } from "@/lib/engine/links/add-url";
+import { retryLinkPreview } from "@/lib/engine/links/link-cards";
+import { createLinkCardDeps } from "@/lib/engine/links/preview-client";
+import { linkRetry } from "@/lib/engine/links/retry-store";
+import { UrlPromptDialog } from "@/components/chrome/UrlPromptDialog";
 import type { CanvasObject, Point } from "@/lib/engine/model/types";
 
 /** Ids of right-hand panels. The built-in ones are "layers", "inspector" and "find"; later phases add more. */
@@ -220,10 +225,27 @@ export function EditorProvider({
     [handle, toast, assets],
   );
 
+  // Link cards fetch their preview and keep its picture as an asset; without an uploader a pasted URL is a domain-only card.
+  const linkDeps = useMemo(
+    () => (uploader?.addAssetOnly ? createLinkCardDeps({ addAssetOnly: (...a) => uploader.addAssetOnly!(...a) }) : null),
+    [uploader],
+  );
+  const [urlPrompt, setUrlPrompt] = useState<"link" | "embed" | null>(null);
+  // Cards on the canvas offer "Retry preview" through this.
+  useEffect(() => {
+    if (!linkDeps) return;
+    const retry = (id: string) => void retryLinkPreview(handle.doc, id, linkDeps);
+    linkRetry.set(retry);
+    return () => {
+      if (linkRetry.get() === retry) linkRetry.set(null);
+    };
+  }, [handle, linkDeps]);
+
   const clipboard = useClipboard({
     handle,
     ctx: commandCtx,
     addImage: uploader ? (file, at) => uploader.add(file, at) : undefined,
+    links: linkDeps ?? undefined,
   });
   useDropFiles(handle, clipboard.pasteInput);
 
@@ -271,6 +293,8 @@ export function EditorProvider({
         pickImages,
         replaceImage: uploader?.addAssetOnly ? replaceImage : undefined,
         toggleSnap: onToggleSnap,
+        promptUrl: (kind) => setUrlPrompt(kind),
+        linkDeps: () => linkDeps,
       },
     };
   });
@@ -302,6 +326,16 @@ export function EditorProvider({
     <Ctx.Provider value={value}>
       {children}
       <HiddenLayersStyle doc={handle.doc} ids={hiddenIds} />
+      {urlPrompt ? (
+        <UrlPromptDialog
+          kind={urlPrompt}
+          onClose={() => setUrlPrompt(null)}
+          onSubmit={(url) => {
+            addUrlToBoard(commandCtx(), urlPrompt, url, linkDeps);
+            setUrlPrompt(null);
+          }}
+        />
+      ) : null}
     </Ctx.Provider>
   );
 }

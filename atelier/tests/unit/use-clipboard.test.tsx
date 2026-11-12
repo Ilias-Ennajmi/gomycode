@@ -12,10 +12,12 @@ import { SelectionStore } from "@/lib/engine/input/selection-store";
 import { defaultsFor } from "@/lib/engine/model/defaults";
 import type { NewObject, Point } from "@/lib/engine/model/types";
 import { SpatialIndex } from "@/lib/engine/spatial/spatial-index";
+import { previewSettled, type LinkCardDeps } from "@/lib/engine/links/link-cards";
+import { richContentToJSON } from "@/lib/engine/clipboard/rich";
 
 const shape = (id: string, x: number, y: number, w = 100, h = 80) => ({ ...defaultsFor("shape"), id, x, y, w, h }) as NewObject;
 
-function setup(objs: NewObject[] = [], addImage?: (f: File, at: Point) => Promise<unknown>) {
+function setup(objs: NewObject[] = [], addImage?: (f: File, at: Point) => Promise<unknown>, links?: LinkCardDeps) {
   const doc = new BoardDoc();
   doc.createMany(objs);
   doc.stopCapturing();
@@ -42,7 +44,7 @@ function setup(objs: NewObject[] = [], addImage?: (f: File, at: Point) => Promis
     clipboardStyle: { current: null },
   };
   const add = vi.fn(addImage ?? (async () => "img"));
-  const hook = renderHook(() => useClipboard({ handle, ctx: () => ctx, addImage: add }));
+  const hook = renderHook(() => useClipboard({ handle, ctx: () => ctx, addImage: add, links }));
   const move = (x: number, y: number) => container.dispatchEvent(new MouseEvent("pointermove", { clientX: x, clientY: y, bubbles: true }));
   return { doc, selection, container, toasts, handle, ctx, add, hook, move, objects: () => doc.all() };
 }
@@ -144,14 +146,66 @@ describe("paste", () => {
     expect(second.y - first.y).toBeCloseTo(16);
   });
 
-  it("pastes plain text as a text object and a URL with a link", () => {
+  it("pastes plain text as a text object and a lone URL as a link card", () => {
     const t = setup();
     clip("paste", { "text/plain": "hello world" });
     clip("paste", { "text/plain": "https://example.com/a" });
     const [a, b] = t.objects();
     expect(a.type).toBe("text");
-    expect(b.type).toBe("text");
+    expect(b.type).toBe("link");
     expect(t.toasts).toHaveLength(0);
+  });
+
+  it("a lone YouTube URL becomes an embed and is selected", () => {
+    const t = setup();
+    clip("paste", { "text/plain": "https://youtu.be/dQw4w9WgXcQ?t=5" });
+    const [o] = t.objects();
+    expect(o).toMatchObject({ type: "embed", provider: "youtube", embedUrl: "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=5" });
+    expect([...t.selection.ids]).toEqual([o.id]);
+  });
+
+  it("a lone URL becomes a link card that fetches its preview through the given deps", async () => {
+    const deps: LinkCardDeps = {
+      fetchPreview: vi.fn(async () => ({ title: "T", description: "D", siteName: "S", imageUrl: null, faviconUrl: null, finalUrl: "https://example.com/a" })),
+      fetchImage: vi.fn(),
+      uploader: { addAssetOnly: vi.fn() },
+      online: () => true,
+    };
+    const t = setup([], undefined, deps);
+    clip("paste", { "text/plain": "https://example.com/a" });
+    const [o] = t.objects();
+    expect(o.type).toBe("link");
+    await previewSettled(t.doc, o.id);
+    expect(t.doc.get(o.id)).toMatchObject({ title: "T", status: "ready" });
+    expect(deps.fetchPreview).toHaveBeenCalledWith("https://example.com/a");
+  });
+
+  it("a URL inside prose stays text", () => {
+    const t = setup();
+    clip("paste", { "text/plain": "see https://example.com/a for more" });
+    expect(t.objects().map((o) => o.type)).toEqual(["text"]);
+  });
+
+  it("Mod+Shift+V pastes the URL as text with a link mark (even for an embeddable URL)", () => {
+    const t = setup();
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "V", ctrlKey: true, shiftKey: true, bubbles: true }));
+    clip("paste", { "text/plain": "https://youtu.be/dQw4w9WgXcQ" });
+    const [o] = t.objects();
+    expect(o.type).toBe("text");
+    expect(richContentToJSON(t.doc.content(o.id)!).content![0].content![0].marks).toEqual([{ type: "link", attrs: { href: "https://youtu.be/dQw4w9WgXcQ" } }]);
+    // the next plain paste is routed normally again
+    clip("paste", { "text/plain": "https://youtu.be/dQw4w9WgXcQ" });
+    expect(t.objects()[1].type).toBe("embed");
+  });
+
+  it("pasteAsText() reads the clipboard text and pastes it as text", async () => {
+    const t = setup();
+    vi.stubGlobal("navigator", { ...navigator, clipboard: { readText: async () => "https://example.com/a" } });
+    await act(async () => {
+      await t.hook.result.current.pasteAsText();
+    });
+    expect(t.objects().map((o) => o.type)).toEqual(["text"]);
+    vi.unstubAllGlobals();
   });
 
   it("an empty clipboard is a no-op", () => {

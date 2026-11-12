@@ -9,6 +9,7 @@ import { serializeSelection } from "@/lib/engine/clipboard/serialize";
 import { deleteSelection, oneStep, selectedRoots } from "@/lib/engine/commands/commands";
 import type { CommandClipboard, CommandCtx } from "@/lib/engine/commands/registry";
 import { isTypingTarget } from "@/lib/engine/commands/shortcuts";
+import type { LinkCardDeps } from "@/lib/engine/links/link-cards";
 import { boundsOf } from "@/lib/engine/geometry/rect";
 import { screenToCanvas } from "@/lib/engine/geometry/camera";
 import { defaultsFor } from "@/lib/engine/model/defaults";
@@ -26,11 +27,15 @@ export type UseClipboardOptions = {
   addImage?: (file: File, at: Point) => Promise<unknown>;
   /** Public URL of an asset for the readable fallback in copied HTML. Defaults to the shared resolver (https URLs only). */
   assetUrl?: (assetId: string) => string | null;
+  /** What link cards need to fetch their preview. Without it a pasted URL becomes a plain card with just the domain. */
+  links?: LinkCardDeps;
 };
 
 export type ClipboardApi = CommandClipboard & {
-  /** Paste already-extracted clipboard data (also used by drops). `at` is the middle of the pasted content. */
-  pasteInput(input: ClipboardInput, at?: Point): void;
+  /** Paste already-extracted clipboard data (also used by drops). `at` is the middle of the pasted content. `asText` keeps URLs as linked text. */
+  pasteInput(input: ClipboardInput, at?: Point, opts?: { asText?: boolean }): void;
+  /** "Paste as text" (Mod+Shift+V): the clipboard text as a text object, a URL as linked text. */
+  pasteAsText(): Promise<void>;
 };
 
 /** Lines beyond which pasted text asks before it is split into stickies. */
@@ -39,6 +44,8 @@ const LIST_MIN_LINES = 3;
 const LIST_MAX_LINE_CHARS = 100;
 const STICKY_GUTTER = 16;
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|avif|bmp|heic|heif|tiff?|svg)$/i;
+/** How long after Mod+Shift+V the browser's paste event still counts as "paste as text". */
+const PLAIN_PASTE_WINDOW_MS = 1000;
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const isImageFile = (f: File) => (f.type ? f.type.startsWith("image/") : IMAGE_EXT.test(f.name));
@@ -120,6 +127,8 @@ export function useClipboard(opts: UseClipboardOptions): ClipboardApi {
   });
   const pasteState = useRef(createPasteState());
   const lastPointer = useRef<Point | null>(null);
+  /** When Mod+Shift+V was last pressed: the paste event that follows has no flag of its own. */
+  const plainPasteAt = useRef(-Infinity);
 
   const api = useMemo<ClipboardApi>(() => {
     const O = () => latest.current;
@@ -145,7 +154,7 @@ export function useClipboard(opts: UseClipboardOptions): ClipboardApi {
       return data.html ? { ...data, count: roots.length } : null;
     };
 
-    const pasteInput = (input: ClipboardInput, atArg?: Point): void => {
+    const pasteInput = (input: ClipboardInput, atArg?: Point, popts?: { asText?: boolean }): void => {
       const ctx = O().ctx();
       const at = atArg ?? pasteAt();
       try {
@@ -170,6 +179,8 @@ export function useClipboard(opts: UseClipboardOptions): ClipboardApi {
         const addImage = O().addImage;
         const created = insertPaste(ctx.doc, items, at, {
           state: pasteState.current,
+          links: O().links,
+          urlAsText: popts?.asText,
           addImage: addImage
             ? (file, pos) =>
                 addImage(file, pos).then((id) => {
@@ -240,6 +251,15 @@ export function useClipboard(opts: UseClipboardOptions): ClipboardApi {
 
     return {
       pasteInput,
+      async pasteAsText() {
+        const ctx = O().ctx();
+        try {
+          const text = await navigator.clipboard.readText();
+          pasteInput({ text }, undefined, { asText: true });
+        } catch {
+          ctx.toast({ message: "Couldn't read the clipboard. Press Ctrl+Shift+V (⌘⇧V) to paste as text instead." });
+        }
+      },
       async copy() {
         const ctx = O().ctx();
         const data = serialize(ctx);
@@ -304,6 +324,14 @@ export function useClipboard(opts: UseClipboardOptions): ClipboardApi {
   }, [handle]);
 
   useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === "v") plainPasteAt.current = performance.now();
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, []);
+
+  useEffect(() => {
     const O = () => latest.current;
     // Something else (a text field, a text selection on the page) owns the clipboard event.
     const foreign = (e: ClipboardEvent) =>
@@ -337,11 +365,17 @@ export function useClipboard(opts: UseClipboardOptions): ClipboardApi {
     const onPaste = (e: ClipboardEvent) => {
       if (foreign(e) || !e.clipboardData) return;
       e.preventDefault();
-      api.pasteInput({
-        html: e.clipboardData.getData("text/html"),
-        text: e.clipboardData.getData("text/plain"),
-        files: filesOf(e.clipboardData),
-      });
+      const asText = performance.now() - plainPasteAt.current < PLAIN_PASTE_WINDOW_MS;
+      plainPasteAt.current = -Infinity;
+      api.pasteInput(
+        {
+          html: e.clipboardData.getData("text/html"),
+          text: e.clipboardData.getData("text/plain"),
+          files: filesOf(e.clipboardData),
+        },
+        undefined,
+        { asText },
+      );
     };
     document.addEventListener("copy", onCopy);
     document.addEventListener("cut", onCut);

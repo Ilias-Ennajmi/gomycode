@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isAllowedEmbedUrl } from "../links/embed";
 import { normalizeHex } from "./color";
 import type { CanvasObject } from "./types";
 
@@ -202,7 +203,7 @@ const schemas = {
     type: z.literal("embed"),
     provider: z.enum(["youtube", "vimeo", "figma"]),
     url: httpUrl,
-    embedUrl: httpsUrl,
+    embedUrl: httpsUrl.refine(isAllowedEmbedUrl, "must be an allow-listed embed URL"),
     title: capped(300).catch(""),
   }),
   swatch: z.object({

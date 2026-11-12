@@ -1,6 +1,7 @@
 import type { CanvasHandle } from "@/components/canvas/CanvasView";
 import type { BoardDoc } from "../doc/board-doc";
 import type { SelectionStore, ToolId } from "../input/tool-machine";
+import type { LinkCardDeps } from "../links/link-cards";
 import type { CanvasObject } from "../model/types";
 
 export type ToastOptions = {
@@ -24,6 +25,10 @@ export type CommandUI = {
   togglePanel(id: string): void;
   /** Pick a file and swap it into the image `id`, keeping its crop (see replaceImageWithFile). */
   replaceImage(id: string): void;
+  /** Ask for a web address in a small dialog, then add it to the board as a link card or an embed. */
+  promptUrl(kind: "link" | "embed"): void;
+  /** What link cards need to fetch their preview (the "Retry preview" action). Null when there is no uploader. */
+  linkDeps(): LinkCardDeps | null;
 };
 
 /** Clipboard operations behind the copy/cut/paste commands (wired by useClipboard). */
@@ -31,6 +36,8 @@ export type CommandClipboard = {
   copy(): void | Promise<void>;
   cut(): void | Promise<void>;
   paste(): void | Promise<void>;
+  /** Paste the clipboard text as a text object (a URL becomes linked text instead of an embed or a link card). */
+  pasteAsText?(): void | Promise<void>;
 };
 
 export type CommandCtx = {

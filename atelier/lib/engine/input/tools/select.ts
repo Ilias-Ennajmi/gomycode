@@ -5,6 +5,7 @@ import { computeSnap, type Guide } from "../../geometry/snap";
 import type { CanvasObject, Point, Rect } from "../../model/types";
 import { hitHandle, resizeCursor, selectionBox, type HandleHit, type SelectionBox } from "../handles";
 import { pickObject, topSelectable } from "../pick";
+import { activateLinkObject } from "../../links/open";
 import {
   MIN_SIZE,
   applyTransform,
@@ -371,7 +372,11 @@ export function createSelectTool(): Tool {
         ctx.selection.set([o.id]);
         return;
       }
-      if (o.type === "text" || o.type === "sticky" || o.type === "shape") {
+      if (o.type === "link" || o.type === "embed") {
+        // Opens the page (link card) or loads the player (embed).
+        ctx.selection.set([o.id]);
+        activateLinkObject(o);
+      } else if (o.type === "text" || o.type === "sticky" || o.type === "shape") {
         ctx.selection.set([o.id]);
         ctx.editing.start(o.id, { selectAll: false });
       } else if (o.type === "image" && !o.locked) {
@@ -405,6 +410,7 @@ export function createSelectTool(): Tool {
             ctx.setTool("crop"); // Enter on a picture crops it
             return true;
           }
+          if (only.type === "link" || only.type === "embed") return activateLinkObject(only); // opens the page / plays
           if (only.type !== "text" && only.type !== "sticky" && only.type !== "shape") return false;
           ctx.editing.start(only.id);
           return true;
