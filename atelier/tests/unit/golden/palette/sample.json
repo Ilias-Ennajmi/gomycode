@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "board": "Harbour mood",
+  "exportedAt": "2026-11-12T10:00:00.000Z",
+  "colors": [
+    {
+      "name": "Warm Sand",
+      "slug": "warm-sand",
+      "hex": "#e8dcc8",
+      "rgb": [
+        232,
+        220,
+        200
+      ],
+      "oklch": "oklch(0.90 0.03 81)",
+      "weight": 0.4
+    },
+    {
+      "name": "Harbour Blue",
+      "slug": "harbour-blue",
+      "hex": "#2f4a6d",
+      "rgb": [
+        47,
+        74,
+        109
+      ],
+      "oklch": "oklch(0.40 0.07 255)",
+      "weight": 0.35
+    },
+    {
+      "name": "Red",
+      "slug": "red",
+      "hex": "#ff0000",
+      "rgb": [
+        255,
+        0,
+        0
+      ],
+      "oklch": "oklch(0.63 0.26 29)",
+      "weight": 0.25
+    }
+  ]
+}
