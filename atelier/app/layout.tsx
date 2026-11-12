@@ -1,12 +1,23 @@
 import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/inter";
 import "./globals.css";
+import { RegisterSW } from "@/components/RegisterSW";
+import { ThemeSync } from "@/components/ThemeSync";
+import { BRAND, THEME_INIT_SCRIPT } from "@/lib/theme";
 
 export const metadata: Metadata = {
   title: { default: "Atelier", template: "%s · Atelier" },
   description: "A private, offline-first moodboard canvas.",
   applicationName: "Atelier",
-  icons: { icon: "/brand/favicon.svg", apple: "/brand/apple-touch-icon.png" },
+  // The manifest (app/manifest.ts) is linked automatically.
+  icons: {
+    icon: [
+      { url: "/brand/favicon.svg", type: "image/svg+xml" },
+      { url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/brand/apple-touch-icon.png",
+  },
+  appleWebApp: { capable: true, title: "Atelier", statusBarStyle: "default" },
   formatDetection: { telephone: false },
 };
 
@@ -15,21 +26,22 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F5F2EC" },
-    { media: "(prefers-color-scheme: dark)", color: "#121212" },
+    { media: "(prefers-color-scheme: light)", color: BRAND.paper },
+    { media: "(prefers-color-scheme: dark)", color: BRAND.paperDark },
   ],
 };
-
-// Runs before first paint so the theme never flashes. Preference: saved choice, else the system.
-const PREPAINT_SCRIPT = `try{var t=localStorage.getItem("atelier-theme");if(t!=="light"&&t!=="dark"){t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme="light"}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: PREPAINT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <ThemeSync />
+        <RegisterSW />
+      </body>
     </html>
   );
 }

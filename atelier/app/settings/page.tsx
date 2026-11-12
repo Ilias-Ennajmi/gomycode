@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { ArrowLeft } from "lucide-react";
 import { isLocalOnly, requireOwner, responseFromError } from "@/lib/server/owner";
+import { Account, Appearance, Navigation, Storage } from "./sections";
 import { Security, type VerifiedFactor } from "./security";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -38,18 +39,22 @@ export default async function SettingsPage() {
         Back to boards
       </Link>
       <h1 className="mb-8 text-(length:--text-xl) font-semibold text-fg">Settings</h1>
-      {localOnly ? (
-        <section aria-labelledby="security-heading" className="rounded-lg bg-panel p-6 shadow-1">
-          <h2 id="security-heading" className="mb-2 text-(length:--text-lg) font-semibold text-fg">
-            Security
-          </h2>
-          <p className="text-fg-muted">
-            Sign-in settings are not available in local-only mode, which has no account.
-          </p>
-        </section>
-      ) : (
-        <Security initialFactors={factors} />
-      )}
+      <div className="flex flex-col gap-6">
+        <Appearance />
+        <Navigation />
+        {localOnly ? (
+          <section aria-labelledby="security-heading" className="rounded-lg bg-panel p-6 shadow-1">
+            <h2 id="security-heading" className="mb-2 text-(length:--text-lg) font-semibold text-fg">
+              Security
+            </h2>
+            <p className="text-fg-muted">Sign-in settings are not available in local-only mode, which has no account.</p>
+          </section>
+        ) : (
+          <Security initialFactors={factors} />
+        )}
+        <Storage localOnly={localOnly} />
+        <Account localOnly={localOnly} />
+      </div>
     </main>
   );
 }
