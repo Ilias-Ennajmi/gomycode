@@ -8,7 +8,7 @@ import type { NewObject } from "@/lib/engine/model/types";
 import { DEFAULT_NAV_SETTINGS } from "@/lib/settings";
 import { CanvasView, type CanvasHandle } from "@/components/canvas/CanvasView";
 
-const noAssets = { url: () => null };
+const noAssets = { url: () => null, available: () => null };
 
 beforeEach(() => {
   class RO {

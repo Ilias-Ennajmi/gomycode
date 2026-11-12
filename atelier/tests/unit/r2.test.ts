@@ -1,6 +1,6 @@
 import { createHash, createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { presignPut, presignUrl, r2Config } from "@/lib/server/r2";
+import { presignAssetUploads, presignPut, presignUrl, r2Config } from "@/lib/server/r2";
 import { assetKey, isAssetId, newAssetId } from "@/lib/assets/asset-id";
 
 /**
@@ -157,5 +157,38 @@ describe("asset ids and keys", () => {
     const id = "6f1c2d3e-4b5a-4c6d-8e7f-0a1b2c3d4e5f";
     expect(assetKey(id, "original")).toBe(`a/${id}/original`);
     expect(assetKey(id, "w1024")).toBe(`a/${id}/w1024.webp`);
+  });
+});
+
+
+describe("presignAssetUploads", () => {
+  const config = { accountId: "0123456789abcdef0123456789abcdef", accessKeyId: "AKID", secretAccessKey: "s3cret", bucket: "bkt" };
+  const id = "6f1c2d3e-4b5a-4c6d-8e7f-0a1b2c3d4e5f";
+
+  it("signs the original with its own type and each asked-for variant as image/webp, and nothing else", () => {
+    const u = presignAssetUploads({ assetId: id, mime: "image/png", variants: ["w256", "w2048"], config, now: new Date("2026-01-02T03:04:05Z") });
+    expect(Object.keys(u).sort()).toEqual(["original", "w2048", "w256"]);
+    expect(new URL(u.original!).pathname).toBe(`/bkt/a/${id}/original`);
+    expect(new URL(u.w256!).pathname).toBe(`/bkt/a/${id}/w256.webp`);
+    expect(new URL(u.w2048!).pathname).toBe(`/bkt/a/${id}/w2048.webp`);
+    // Different content type signed => different signatures even for the same time.
+    expect(new URL(u.original!).searchParams.get("X-Amz-Signature")).not.toBe(new URL(u.w256!).searchParams.get("X-Amz-Signature"));
+    expect(Object.values(u).join("")).not.toContain("s3cret");
+  });
+
+  it("matches presignPut for the same key", () => {
+    const now = new Date("2026-01-02T03:04:05Z");
+    const u = presignAssetUploads({ assetId: id, mime: "image/jpeg", variants: ["w256"], config, now });
+    expect(u.w256).toBe(presignPut({ key: assetKey(id, "w256"), contentType: "image/webp", config, now }));
+  });
+
+  it("assetKey names every variant", () => {
+    expect(assetKey(id, "w256")).toBe(`a/${id}/w256.webp`);
+    expect(assetKey(id, "w2048")).toBe(`a/${id}/w2048.webp`);
+    expect(assetKey(id, "original")).toBe(`a/${id}/original`);
+  });
+
+  it("throws when R2 is not configured", () => {
+    expect(() => presignAssetUploads({ assetId: id, mime: "image/png", variants: [], config: null })).toThrow();
   });
 });

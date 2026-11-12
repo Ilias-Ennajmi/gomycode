@@ -11,7 +11,7 @@ import { buildRenderTree } from "@/components/canvas/render-tree";
 
 const VIEWPORT = { w: 1000, h: 800 };
 const CAMERA = { x: 0, y: 0, z: 1 };
-const noAssets: AssetResolver = { url: () => null };
+const noAssets: AssetResolver = { url: () => null, available: () => null };
 
 function shape(id: string, x: number, y: number, extra: Partial<NewObject> = {}): NewObject {
   return { ...defaultsFor("shape"), id, x, y, w: 100, h: 80, ...extra } as NewObject;
@@ -116,7 +116,7 @@ describe("ObjectLayer", () => {
     const doc = new BoardDoc();
     doc.create({ ...defaultsFor("image"), id: "img", assetId: "as", x: 0, y: 0, w: 800, h: 600 } as NewObject);
     const calls: string[] = [];
-    const assets: AssetResolver = { url: (id, v) => (calls.push(v), v === "w1024" ? "blob:w" : "blob:o") };
+    const assets: AssetResolver = { url: (id, v) => (calls.push(v), v === "w1024" ? "blob:w" : "blob:o"), available: () => null };
     const view = (z: number) => ({ camera: { x: 0, y: 0, z }, viewport: { w: 4000, h: 3000 } });
     const { container, rerender } = render(<ObjectLayer doc={doc} index={{ visible: () => ["img"] }} assets={assets} view={view(1)} dpr={1} />);
     expect(container.querySelector("img")!.getAttribute("src")).toBe("blob:w"); // 800 px <= 1024
@@ -125,7 +125,7 @@ describe("ObjectLayer", () => {
     expect(container.querySelector("img")!.getAttribute("src")).toBe("blob:o"); // 1600 px
     rerender(<ObjectLayer doc={doc} index={{ visible: () => ["img"] }} assets={assets} view={view(1)} dpr={2} />);
     expect(container.querySelector("img")!.getAttribute("src")).toBe("blob:o"); // 800 * 2 dpr
-    const onlyOriginal: AssetResolver = { url: (_id, v) => (v === "original" ? "blob:o2" : null) };
+    const onlyOriginal: AssetResolver = { url: (_id, v) => (v === "original" ? "blob:o2" : null), available: () => null };
     rerender(<ObjectLayer doc={doc} index={{ visible: () => ["img"] }} assets={onlyOriginal} view={view(0.5)} dpr={1} />);
     expect(container.querySelector("img")!.getAttribute("src")).toBe("blob:o2");
   });

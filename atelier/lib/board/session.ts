@@ -1,5 +1,6 @@
 import { deleteLocalBoardDoc } from "@/components/home/board-docs";
 import { folderPath } from "@/components/home/library";
+import { getAssetMetaStore } from "@/lib/assets/meta-store";
 import { getAssetResolver } from "@/lib/assets/resolver";
 import { AssetUploader, type AssetUploaderOptions } from "@/lib/assets/upload-queue";
 import type { BoardDoc } from "@/lib/engine/doc/board-doc";
@@ -111,6 +112,8 @@ export async function openBoardSession(opts: OpenBoardOptions): Promise<OpenResu
   // After sync has started, so the (one-off, not undoable) upgrade of an older board is pushed like any other edit.
   migrateBoard(doc);
 
+  // What this device already knows about its assets (sizes, variants) is available before any network call.
+  if (!opts.resolver) void getAssetMetaStore().hydrate();
   const uploader = new AssetUploader({ doc, resolver: opts.resolver ?? getAssetResolver(), localOnly, ...opts.uploaderOptions });
 
   let disposed = false;

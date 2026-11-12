@@ -1,4 +1,4 @@
-// Hand-written to match supabase/migrations/0001_atelier_init.sql. Replace with the output of
+// Hand-written to match supabase/migrations/0001_atelier_init.sql and 0002_atelier_phase2.sql. Replace with the output of
 // `supabase gen types typescript --schema atelier` once the schema is deployed (Task 23).
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -22,7 +22,7 @@ export type FolderRow = {
 export type AssetRow = {
   id: string;
   owner_id: string;
-  kind: "image" | "video" | "file";
+  kind: "image" | "video" | "gif" | "file";
   mime: string;
   width: number | null;
   height: number | null;
@@ -35,6 +35,25 @@ export type AssetRow = {
   licence: string | null;
   captured_at: string | null;
   created_at: string;
+  /** 0002 */
+  title: string | null;
+  /** 0 = no palette / perceptual hash yet, 1 = Phase 2 analysis done. */
+  analysis_version: number;
+  hidden: boolean;
+};
+
+export type InboxItemRow = {
+  id: string;
+  owner_id: string;
+  kind: "image" | "video" | "url" | "text";
+  asset_id: string | null;
+  url: string | null;
+  text_body: string | null;
+  title: string | null;
+  source_url: string | null;
+  credit: string | null;
+  created_at: string;
+  placed_at: string | null;
 };
 
 export type BoardRow = {
@@ -94,6 +113,7 @@ export type Database = {
       board_snapshots: Table<BoardSnapshotRow, "board_id" | "state" | "upto_seq" | "kind">;
       asset_usages: Table<AssetUsageRow, "asset_id" | "board_id">;
       error_log: Table<ErrorLogRow, "area" | "message">;
+      inbox_items: Table<InboxItemRow, "kind">;
     };
     Views: Empty;
     Functions: Empty;

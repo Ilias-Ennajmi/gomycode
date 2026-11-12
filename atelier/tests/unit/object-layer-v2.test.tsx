@@ -6,7 +6,7 @@ import { OBJECT_TYPES, type NewObject, type ObjectType } from "@/lib/engine/mode
 import type { AssetResolver } from "@/lib/assets/resolver-types";
 import { ObjectLayer } from "@/components/canvas/ObjectLayer";
 
-const noAssets: AssetResolver = { url: () => null };
+const noAssets: AssetResolver = { url: () => null, available: () => null };
 
 describe("ObjectLayer with the v2 object types", () => {
   it("mounts one element per object of every type without crashing", () => {

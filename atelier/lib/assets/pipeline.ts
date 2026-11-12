@@ -1,6 +1,19 @@
-import { assertAcceptable, browserEnv, ImageError, runPipeline, type ImageErrorReason, type ProcessedImage } from "./pipeline-core";
+import { createLimiter } from "./limiter";
+import {
+  assertAcceptable,
+  browserEnv,
+  ImageError,
+  runPipeline,
+  type ImageErrorReason,
+  type PipelineEnv,
+  type ProcessedImage,
+} from "./pipeline-core";
 
-export { ImageError, MAX_IMAGE_BYTES, type ProcessedImage } from "./pipeline-core";
+export { ImageError, MAX_IMAGE_BYTES, VARIANT_SIZES, variantPlan, type ProcessedImage, type VariantName } from "./pipeline-core";
+
+/** At most this many images are decoded and resized at once (a bulk drop of hundreds must not freeze the tab). */
+export const MAX_CONCURRENT_PROCESSING = 3;
+const limit = createLimiter(MAX_CONCURRENT_PROCESSING);
 
 type Reply =
   | { id: number; ok: true; result: ProcessedImage }
@@ -36,11 +49,18 @@ function getWorker(): Worker | null {
 }
 
 /**
- * Decode, orient (EXIF) and make the 1024 px WebP variant, in a Worker when the browser has one. Throws ImageError
- * (too large, empty, unsupported such as HEIC on Chrome); the message is what a toast should say after the file name.
+ * Decode, orient (EXIF) and make the 256 / 1024 / 2048 px WebP variants that are smaller than the source, in a Worker
+ * when the browser has one. At most MAX_CONCURRENT_PROCESSING run at once. Throws ImageError (too large, empty,
+ * unsupported such as HEIC on Chrome); the message is what a toast should say after the file name.
+ * `opts.env` runs the pipeline on the calling thread with that environment (tests).
  */
-export async function processImage(file: Blob): Promise<ProcessedImage> {
+export function processImage(file: Blob, opts: { env?: PipelineEnv } = {}): Promise<ProcessedImage> {
+  return limit(() => processNow(file, opts.env));
+}
+
+async function processNow(file: Blob, env?: PipelineEnv): Promise<ProcessedImage> {
   assertAcceptable(file);
+  if (env) return runPipeline(file, env);
   const w = getWorker();
   if (!w) {
     if (typeof createImageBitmap === "undefined" || typeof OffscreenCanvas === "undefined") {

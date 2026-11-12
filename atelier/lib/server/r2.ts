@@ -1,4 +1,6 @@
 import { createHash, createHmac } from "node:crypto";
+import { assetKey, type AssetVariant } from "@/lib/assets/asset-id";
+import type { VariantName } from "@/lib/assets/variants";
 
 /*
  * Presigned URLs for Cloudflare R2 (S3 Signature Version 4, query-string auth). Hand-written, like stash/lib/r2.ts,
@@ -107,4 +109,31 @@ export function presignPut({
     signedHeaders: { "content-type": contentType },
     now,
   });
+}
+
+/**
+ * Upload URLs for one asset: the original (PUT with the file's own Content-Type) and each requested WebP variant.
+ * Nothing for a variant that was not asked for.
+ */
+export function presignAssetUploads({
+  assetId,
+  mime,
+  variants,
+  expiresSeconds,
+  now,
+  config = r2Config(),
+}: {
+  assetId: string;
+  mime: string;
+  variants: readonly VariantName[];
+  expiresSeconds?: number;
+  now?: Date;
+  config?: R2Config | null;
+}): Partial<Record<AssetVariant, string>> {
+  const common = { expiresSeconds, now, config };
+  const uploads: Partial<Record<AssetVariant, string>> = {
+    original: presignPut({ key: assetKey(assetId, "original"), contentType: mime, ...common }),
+  };
+  for (const v of variants) uploads[v] = presignPut({ key: assetKey(assetId, v), contentType: "image/webp", ...common });
+  return uploads;
 }

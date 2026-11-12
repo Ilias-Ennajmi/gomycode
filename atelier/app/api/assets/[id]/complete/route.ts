@@ -1,13 +1,15 @@
-import { assetKey, isAssetId } from "@/lib/assets/asset-id";
-import { parseAssetMeta } from "@/lib/assets/asset-schema";
+import { isAssetId } from "@/lib/assets/asset-id";
+import { parseAssetMeta, variantsColumn } from "@/lib/assets/asset-schema";
 import { requireOwner, responseFromError } from "@/lib/server/owner";
+import type { Json } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
 
 const json = (status: number, body: unknown) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
 
 /**
- * The client has PUT both files to R2: record the asset. Idempotent (a retried call updates the same row); an id that
+ * The client has PUT the original and its variants to R2: record the asset (`assets.variants` = `{ w256: true, ...,
+ * original: { bytes } }`). Idempotent (a retried call updates the same row); an id that
  * already belongs to somebody else is a 409 and nothing changes.
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }): Promise<Response> {
@@ -29,18 +31,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
   const parsed = parseAssetMeta(raw);
   if (!parsed.ok) return json(parsed.status, { error: parsed.error });
-  const { mime, bytes, width, height } = parsed.meta;
+  const { mime, bytes, width, height, kind, variants, phash } = parsed.meta;
 
   const { error } = await auth.supabase.from("assets").upsert(
     {
       id,
       owner_id: auth.userId,
-      kind: "image",
+      kind,
       mime,
       width,
       height,
       bytes,
-      variants: { original: assetKey(id, "original"), w1024: assetKey(id, "w1024") },
+      variants: variantsColumn(variants, bytes) as Json,
+      // A retry that does not repeat the hash must not erase it.
+      ...(phash ? { phash } : {}),
     },
     { onConflict: "id" },
   );

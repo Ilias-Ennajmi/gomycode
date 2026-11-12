@@ -43,7 +43,7 @@ describe("EditableContent publishes the editor", () => {
     const doc = new BoardDoc();
     const id = doc.create({ ...defaultsFor("sticky"), x: 0, y: 0 } as NewObject);
     const ref = createRef<CanvasHandle>();
-    const assets = { url: () => null };
+    const assets = { url: () => null, available: () => null };
     render(<CanvasView ref={ref} doc={doc} assets={assets} initialCamera={{ x: 0, y: 0, z: 1 }} />);
     expect(ref.current!.editing.editor).toBeNull();
     act(() => ref.current!.editing.start(id));

@@ -1,12 +1,19 @@
 import { isAssetId, assetKey, type AssetVariant } from "./asset-id";
+import { AssetMetaStore, getAssetMetaStore, type AssetMeta } from "./meta-store";
 import type { AssetResolver } from "./resolver-types";
+import type { VariantName } from "./variants";
 
-export type LocalBlobs = { w1024?: Blob; original?: Blob };
+export type LocalBlobs = Partial<Record<AssetVariant, Blob>>;
+/** What the caller knows about a locally registered asset; kept after the blobs are forgotten. */
+export type LocalInfo = Pick<AssetMeta, "kind" | "width" | "height" | "bytes" | "variants"> & Partial<Pick<AssetMeta, "title" | "provenance" | "palette" | "phash">> & { mime?: string };
 
 function normaliseHost(h: string | null | undefined): string | null {
   const host = (h ?? "").trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "");
   return host || null;
 }
+
+/** Variants a Phase 1 asset has: the 1024 px WebP and the original. */
+const LEGACY: readonly VariantName[] = ["w1024"];
 
 /**
  * Where the canvas gets image bytes: a local blob URL while the upload is still queued (or the page that added the
@@ -15,28 +22,69 @@ function normaliseHost(h: string | null | undefined): string | null {
 export class AssetResolverImpl implements AssetResolver {
   private readonly host: string | null;
   private readonly local = new Map<string, Partial<Record<AssetVariant, string>>>();
+  /** Asset metadata (variants, size). Shared with the rest of the app through getAssetMetaStore(). */
+  readonly meta: AssetMetaStore;
 
-  constructor(opts: { publicHost?: string | null } = {}) {
+  constructor(opts: { publicHost?: string | null; meta?: AssetMetaStore } = {}) {
     // Read with literal property access so Next inlines the NEXT_PUBLIC_ value into the browser bundle.
     const fromEnv = process.env.NEXT_PUBLIC_R2_PUBLIC_HOST || process.env.R2_PUBLIC_HOST;
     this.host = normaliseHost("publicHost" in opts ? opts.publicHost : fromEnv);
+    this.meta = opts.meta ?? new AssetMetaStore({ persist: false });
   }
 
   url(assetId: string, variant: AssetVariant): string | null {
     if (!isAssetId(assetId)) return null;
     const local = this.local.get(assetId);
-    const blobUrl = local?.[variant];
-    if (blobUrl) return blobUrl;
-    return this.host ? `https://${this.host}/${assetKey(assetId, variant)}` : null;
+    const known = this.meta.get(assetId)?.variants ?? LEGACY;
+    // The variant asked for, then w1024, then the original (which always exists).
+    const chain: AssetVariant[] = variant === "original" ? ["original"] : variant === "w1024" ? ["w1024", "original"] : [variant, "w1024", "original"];
+    for (const v of chain) {
+      const blobUrl = local?.[v];
+      if (blobUrl) return blobUrl;
+      if (this.host && (v === "original" || known.includes(v))) return `https://${this.host}/${assetKey(assetId, v)}`;
+    }
+    return null;
   }
 
-  registerLocal(assetId: string, blobs: LocalBlobs): void {
+  available(assetId: string): { variants: VariantName[]; width: number; height: number } | null {
+    if (!isAssetId(assetId)) return null;
+    const m = this.meta.get(assetId);
+    return m ? { variants: [...m.variants], width: m.width, height: m.height } : null;
+  }
+
+  /** Add metadata learned elsewhere (a duplicate's, the server's). */
+  remember(m: AssetMeta): void {
+    this.meta.put(m);
+  }
+
+  /**
+   * Show `blobs` for this asset (an upload in flight, or bytes kept on this device). `info` also records the asset's
+   * size and variants so `available()` knows about it.
+   */
+  registerLocal(assetId: string, blobs: LocalBlobs, info?: LocalInfo): void {
     if (typeof URL === "undefined" || typeof URL.createObjectURL !== "function") return;
     this.forgetLocal(assetId);
     const urls: Partial<Record<AssetVariant, string>> = {};
-    if (blobs.w1024) urls.w1024 = URL.createObjectURL(blobs.w1024);
-    if (blobs.original) urls.original = URL.createObjectURL(blobs.original);
+    for (const [name, blob] of Object.entries(blobs) as [AssetVariant, Blob | undefined][]) {
+      if (blob) urls[name] = URL.createObjectURL(blob);
+    }
     this.local.set(assetId, urls);
+    if (info) {
+      const prev = this.meta.get(assetId);
+      this.meta.put({
+        id: assetId,
+        kind: info.kind,
+        width: info.width,
+        height: info.height,
+        bytes: info.bytes,
+        variants: [...info.variants],
+        palette: info.palette ?? prev?.palette ?? null,
+        phash: info.phash ?? prev?.phash ?? null,
+        title: info.title ?? prev?.title ?? "",
+        provenance: info.provenance ?? prev?.provenance ?? null,
+        analysisVersion: prev?.analysisVersion ?? 0,
+      });
+    }
   }
 
   forgetLocal(assetId: string): void {
@@ -50,5 +98,5 @@ export class AssetResolverImpl implements AssetResolver {
 let shared: AssetResolverImpl | null = null;
 /** The one resolver the whole app shares. */
 export function getAssetResolver(): AssetResolverImpl {
-  return (shared ??= new AssetResolverImpl());
+  return (shared ??= new AssetResolverImpl({ meta: getAssetMetaStore() }));
 }

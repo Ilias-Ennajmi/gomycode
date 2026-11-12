@@ -6,7 +6,7 @@ import { defaultsFor } from "@/lib/engine/model/defaults";
 import type { NewObject } from "@/lib/engine/model/types";
 import { CanvasView, type CanvasHandle } from "@/components/canvas/CanvasView";
 
-const noAssets = { url: () => null };
+const noAssets = { url: () => null, available: () => null };
 let resizeCallbacks: Array<() => void> = [];
 
 beforeEach(() => {

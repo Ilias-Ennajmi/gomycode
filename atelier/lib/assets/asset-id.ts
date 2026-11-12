@@ -1,4 +1,7 @@
-export type AssetVariant = "w1024" | "original";
+import type { VariantName } from "./variants";
+
+/** A stored file of an asset: one of the WebP variants or the untouched original. */
+export type AssetVariant = VariantName | "original";
 
 const ASSET_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -23,5 +26,5 @@ export function isAssetId(v: unknown): v is string {
  * `a/{assetId}/original` without knowing the file type (the type is stored as the object's Content-Type).
  */
 export function assetKey(assetId: string, variant: AssetVariant): string {
-  return variant === "w1024" ? `a/${assetId}/w1024.webp` : `a/${assetId}/original`;
+  return variant === "original" ? `a/${assetId}/original` : `a/${assetId}/${variant}.webp`;
 }
