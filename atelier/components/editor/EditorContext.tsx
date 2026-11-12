@@ -264,6 +264,20 @@ export function EditorProvider({
     input.click();
   }, [handle, clipboard]);
 
+  const pickVideos = useCallback(() => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "video/mp4,video/webm,image/gif,.mp4,.webm,.gif";
+    input.multiple = true;
+    input.onchange = () => {
+      const files = Array.from(input.files ?? []);
+      if (files.length === 0) return;
+      const vp = handle.viewport();
+      clipboard.pasteInput({ files }, screenToCanvas(handle.getCamera(), { x: vp.w / 2, y: vp.h / 2 }));
+    };
+    input.click();
+  }, [handle, clipboard]);
+
   const replaceImage = useCallback(
     (id: string) => {
       const add = uploader?.addAssetOnly?.bind(uploader);
@@ -291,6 +305,9 @@ export function EditorProvider({
         },
         togglePanel: (id) => panels.toggle(id),
         pickImages,
+        pickVideos,
+        addImageFile: uploader ? (file, at) => uploader.add(file, at) : undefined,
+        addAssetFile: uploader?.addAssetOnly ? (file, opts) => uploader.addAssetOnly!(file, opts) : undefined,
         replaceImage: uploader?.addAssetOnly ? replaceImage : undefined,
         toggleSnap: onToggleSnap,
         promptUrl: (kind) => setUrlPrompt(kind),

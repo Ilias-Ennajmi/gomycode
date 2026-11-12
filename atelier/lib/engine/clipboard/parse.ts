@@ -6,6 +6,7 @@ import { keyBetween } from "../model/index-order";
 import type { CanvasObject, NewObject, Point, Terminal } from "../model/types";
 import { validateObject } from "../model/validate";
 import { newId } from "@/lib/ids";
+import { isVideoFile } from "@/lib/assets/video";
 import { classifyUrl } from "../links/classify";
 import { createEmbed, createLinkCard, createPlainLinkCard, EMBED_W, LINK_CARD_H, LINK_CARD_W, type LinkCardDeps } from "../links/link-cards";
 import { writeRichContent, type RichJSON } from "./rich";
@@ -56,6 +57,8 @@ function htmlToText(html: string): string {
 }
 
 function isImageFile(f: File): boolean {
+  // mp4 / webm videos travel the same way as pictures: the uploader tells them apart by type.
+  if (isVideoFile(f)) return true;
   return f.type ? f.type.startsWith("image/") : IMAGE_EXT.test(f.name);
 }
 

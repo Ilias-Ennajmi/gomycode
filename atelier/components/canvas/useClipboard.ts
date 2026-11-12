@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { assertAcceptable, ImageError } from "@/lib/assets/pipeline-core";
 import { getAssetResolver } from "@/lib/assets/resolver";
+import { assertVideoAcceptable, isVideoFile } from "@/lib/assets/video";
 import { createPasteState, insertPaste, parseClipboard, type PasteItem } from "@/lib/engine/clipboard/parse";
 import { writeRichContent } from "@/lib/engine/clipboard/rich";
 import { serializeSelection } from "@/lib/engine/clipboard/serialize";
@@ -48,7 +49,7 @@ const IMAGE_EXT = /\.(png|jpe?g|gif|webp|avif|bmp|heic|heif|tiff?|svg)$/i;
 const PLAIN_PASTE_WINDOW_MS = 1000;
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-const isImageFile = (f: File) => (f.type ? f.type.startsWith("image/") : IMAGE_EXT.test(f.name));
+const isImageFile = (f: File) => isVideoFile(f) || (f.type ? f.type.startsWith("image/") : IMAGE_EXT.test(f.name));
 const fileName = (f: File) => f.name || "image";
 
 function defaultAssetUrl(id: string): string | null {
@@ -167,7 +168,8 @@ export function useClipboard(opts: UseClipboardOptions): ClipboardApi {
             continue;
           }
           try {
-            assertAcceptable(f);
+            if (isVideoFile(f)) assertVideoAcceptable(f);
+            else assertAcceptable(f);
             usable.push(f);
           } catch (e) {
             ctx.toast({ message: `Couldn't add ${fileName(f)}: ${e instanceof Error ? e.message : "it can't be read"}` });

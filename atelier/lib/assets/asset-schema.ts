@@ -77,7 +77,9 @@ export function parseAssetMeta(raw: unknown): AssetMetaResult {
 
   let variants: VariantName[] = ["w1024"];
   if (d.variants) {
-    const plan = variantPlan(d.width, d.height);
+    // A video's or GIF's variants are stills of its poster frame, not shrunken copies of the file: the poster of a small
+    // clip is the frame itself, so w256 and w1024 are always allowed for them (still never a size above the clip's own).
+    const plan = kind === "image" ? variantPlan(d.width, d.height) : [...new Set<VariantName>(["w256", "w1024", ...variantPlan(d.width, d.height)])];
     variants = VARIANT_NAMES.filter((n) => d.variants!.includes(n));
     if (variants.some((v) => !plan.includes(v))) return { ok: false, status: 400, error: "bad-request" };
   }

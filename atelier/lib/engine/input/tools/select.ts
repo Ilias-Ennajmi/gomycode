@@ -5,6 +5,7 @@ import { computeSnap, type Guide } from "../../geometry/snap";
 import type { CanvasObject, Point, Rect } from "../../model/types";
 import { hitHandle, resizeCursor, selectionBox, type HandleHit, type SelectionBox } from "../handles";
 import { pickObject, topSelectable } from "../pick";
+import { toggleVideoPlayback } from "../../media/playback-store";
 import { activateLinkObject } from "../../links/open";
 import {
   MIN_SIZE,
@@ -376,6 +377,9 @@ export function createSelectTool(): Tool {
         // Opens the page (link card) or loads the player (embed).
         ctx.selection.set([o.id]);
         activateLinkObject(o);
+      } else if (o.type === "video") {
+        ctx.selection.set([o.id]);
+        toggleVideoPlayback(o.id);
       } else if (o.type === "text" || o.type === "sticky" || o.type === "shape") {
         ctx.selection.set([o.id]);
         ctx.editing.start(o.id, { selectAll: false });
@@ -403,6 +407,8 @@ export function createSelectTool(): Tool {
       }
       if (e.key === "Enter" || isTypingKey(e)) {
         const only = ctx.selection.size === 1 ? ctx.doc.get([...ctx.selection.ids][0]) : undefined;
+        // Enter plays, pauses and resumes a video or GIF (a locked one too: playing changes nothing).
+        if (only?.type === "video" && e.key === "Enter" && !g && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) return toggleVideoPlayback(only.id);
         if (!only || only.locked || g) return false;
         // Enter edits a text, sticky or shape; typing a character on a selected sticky starts its text with it.
         if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {

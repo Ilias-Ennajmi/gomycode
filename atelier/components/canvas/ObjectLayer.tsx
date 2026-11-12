@@ -23,6 +23,7 @@ import { StickyView } from "./objects/StickyView";
 import { StrokeView } from "./objects/StrokeView";
 import { TextView } from "./objects/TextView";
 import { TypeSpecimenView } from "./objects/TypeSpecimenView";
+import { VideoView } from "./objects/VideoView";
 
 let renderProbe: ((id: string) => void) | null = null;
 /** Test hook: called with the id each time an object node renders. */
@@ -89,7 +90,7 @@ export const OBJECT_VIEWS: { [K in ObjectType]: ViewOf<K> } = {
     </FrameView>
   ),
   group: NoView,
-  video: PlaceholderView,
+  video: ({ obj, assets }) => <VideoView obj={obj} assets={assets} />,
   link: ({ obj, assets, doc }) => <LinkView obj={obj} assets={assets} pending={isPreviewPending(doc, obj.id)} />,
   embed: ({ obj }) => <EmbedView obj={obj} />,
   swatch: PlaceholderView,

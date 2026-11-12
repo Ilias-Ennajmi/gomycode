@@ -9,6 +9,7 @@ import { createLimiter } from "./limiter";
 import { fitWithin, type ProcessedImage } from "./pipeline-core";
 import type { AssetResolverImpl, LocalInfo } from "./resolver";
 import { isVariantName, VARIANT_NAMES, type VariantName } from "./variants";
+import { assertVideoAcceptable, ensurePosterVariants, firstFrameOf, isVideoFile, processVideo, type ProcessedVideo } from "./video";
 
 export type { ProcessedImage } from "./pipeline-core";
 
@@ -25,7 +26,7 @@ export const UPLOAD_CONCURRENCY = 4;
 /** Statuses that will not get better by trying again: the request itself is wrong. */
 const PERMANENT = new Set([400, 404, 409, 413, 415, 422]);
 
-type AssetKind = "image" | "gif";
+type AssetKind = "image" | "gif" | "video";
 type Meta = {
   assetId: string;
   /** The canvas object created for it; null for an asset added without one (replace image, link card, Inbox). */
@@ -48,7 +49,8 @@ type Meta = {
 };
 type StoredVariant = { data: ArrayBuffer; type: string };
 type StoredBlobs = {
-  original: ArrayBuffer;
+  /** A video is kept as the Blob itself (copying 200 MB into an ArrayBuffer would double the memory); images as bytes. */
+  original: ArrayBuffer | Blob;
   originalType: string;
   variants?: Partial<Record<VariantName, StoredVariant>>;
   /** Phase 1 entries kept only the 1024 px variant, in these two fields. */
@@ -79,6 +81,10 @@ export type AssetUploaderOptions = {
   resolver: Pick<AssetResolverImpl, "registerLocal"> & Partial<Pick<AssetResolverImpl, "remember">>;
   /** Decode + variants. Defaults to the worker pipeline. */
   process?: (file: Blob) => Promise<ProcessedImage>;
+  /** Poster capture for mp4 / webm. Defaults to processVideo (a <video> element and a canvas). */
+  processVideo?: (file: Blob) => Promise<ProcessedVideo>;
+  /** First frame of an animated GIF as a WebP, for the poster of a small one. Defaults to a canvas capture; null = none. */
+  firstFrame?: (file: Blob) => Promise<Blob | null>;
   fetch?: typeof fetch;
   /** Waits between retries. Defaults to a timer that an `online` event cuts short. */
   delay?: (ms: number) => Promise<void>;
@@ -271,7 +277,24 @@ export class AssetUploader {
   ): Promise<{ assetId: string; objectId: string | null }> {
     await this.ready;
     const process = this.o.process ?? (await import("./pipeline")).processImage;
-    const processed = await this.limitProcessing(() => process(file));
+    const asVideo = isVideoFile(file);
+    let posterTime = 0;
+    let processed: ProcessedImage;
+    if (asVideo) {
+      // mp4 / webm: the file is the original, its poster frame goes through the image pipeline for the variants.
+      assertVideoAcceptable(file);
+      const read = this.o.processVideo ?? ((f: Blob) => processVideo(f, { process }));
+      const pv = await this.limitProcessing(() => read(file));
+      posterTime = pv.posterTime;
+      processed = { width: pv.width, height: pv.height, mime: pv.mime, original: pv.original, variants: pv.poster.variants, animated: false };
+    } else {
+      processed = await this.limitProcessing(() => process(file));
+      if (processed.animated && (!processed.variants.w256 || !processed.variants.w1024)) {
+        // A small GIF has no resized stills: its first frame is the poster, so the animated file is never shown by default.
+        const frame = await (this.o.firstFrame ?? firstFrameOf)(file);
+        if (frame) processed = { ...processed, variants: ensurePosterVariants(processed.variants, frame) };
+      }
+    }
 
     const assetId = newAssetId();
     const objectId = o.at ? newId() : null;
@@ -284,7 +307,7 @@ export class AssetUploader {
       bytes: processed.original.size,
       width: processed.width,
       height: processed.height,
-      kind: processed.animated ? "gif" : "image",
+      kind: asVideo ? "video" : processed.animated ? "gif" : "image",
       variants,
       // Only canvas images can be re-pointed at a duplicate, so only they send the hash.
       phash: objectId && processed.phash ? processed.phash : null,
@@ -301,8 +324,7 @@ export class AssetUploader {
     if (objectId && o.at) {
       const size = fitWithin(processed.width, processed.height, this.o.displaySide ?? DEFAULT_DISPLAY_SIDE);
       try {
-        this.o.doc.create({
-          ...defaultsFor("image"),
+        const placed = {
           id: objectId,
           assetId,
           x: o.at.x - size.w / 2,
@@ -310,7 +332,13 @@ export class AssetUploader {
           w: size.w,
           h: size.h,
           provenance: o.provenance ?? null,
-        });
+        };
+        // Videos and GIFs are video objects (a poster until played); everything else is a picture.
+        this.o.doc.create(
+          meta.kind === "video" || meta.kind === "gif"
+            ? { ...defaultsFor("video"), ...placed, kind: meta.kind, loop: meta.kind === "gif", muted: true, posterTime }
+            : { ...defaultsFor("image"), ...placed },
+        );
       } catch (e) {
         await this.remove(assetId);
         throw e;
@@ -363,7 +391,11 @@ export class AssetUploader {
     const db = await this.db;
     if (!db) return;
     try {
-      const stored: StoredBlobs = { original: await blobs.original.arrayBuffer(), originalType: blobs.original.type, variants: {} };
+      const stored: StoredBlobs = {
+        original: meta.kind === "video" ? blobs.original : await blobs.original.arrayBuffer(),
+        originalType: blobs.original.type,
+        variants: {},
+      };
       for (const name of orderedVariants(blobs.variants)) {
         const b = blobs.variants[name]!;
         stored.variants![name] = { data: await b.arrayBuffer(), type: b.type };
@@ -530,7 +562,7 @@ export class AssetUploader {
     const { doc } = this.o;
     const id = it.meta.objectId;
     const obj = id ? doc.get(id) : undefined;
-    if (id && obj && obj.type === "image" && obj.assetId === it.assetId) {
+    if (id && obj && (obj.type === "image" || obj.type === "video") && obj.assetId === it.assetId) {
       doc.transactAs(DERIVED_ORIGIN, () => doc.update(id, { assetId: existingId }));
     }
     // The duplicate has the same pixels, so it has the same variants; tell the resolver in case it knows nothing of it.
@@ -556,7 +588,8 @@ function blobsFromStored(stored: StoredBlobs): Blobs {
     if (isVariantName(name) && v) variants[name] = new Blob([v.data], { type: v.type });
   }
   if (stored.w1024 && !variants.w1024) variants.w1024 = new Blob([stored.w1024], { type: stored.w1024Type });
-  return { original: new Blob([stored.original], { type: stored.originalType }), variants };
+  const original = stored.original instanceof Blob ? stored.original : new Blob([stored.original], { type: stored.originalType });
+  return { original, variants };
 }
 
 /**

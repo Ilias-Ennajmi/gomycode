@@ -23,6 +23,12 @@ export type CommandUI = {
   toggleSnap(): void;
   /** Open the panel (Layers, Inspector, ...) or close it when it is the one showing. */
   togglePanel(id: string): void;
+  /** Open the file picker for videos (mp4, webm) and GIFs and add the chosen files at the middle of the view. */
+  pickVideos(): void;
+  /** Add a picture file to the board centred on a canvas point (the uploader); resolves with the new object's id. */
+  addImageFile(file: File, at: { x: number; y: number }): Promise<string>;
+  /** Add a picture as an asset only, with no object (a video's poster frame); resolves with the asset id. */
+  addAssetFile(file: Blob, opts?: { name?: string }): Promise<string>;
   /** Pick a file and swap it into the image `id`, keeping its crop (see replaceImageWithFile). */
   replaceImage(id: string): void;
   /** Ask for a web address in a small dialog, then add it to the board as a link card or an embed. */

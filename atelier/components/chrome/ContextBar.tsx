@@ -30,7 +30,7 @@ import { RovingToolbar } from "@/components/ui/RovingToolbar";
 import { boundsOf, unionRects } from "@/lib/engine/geometry/rect";
 import { framePresetPx } from "@/lib/engine/model/defaults";
 import { oneStepOn } from "@/lib/engine/model/one-step";
-import type { ArrowObj, CanvasObject, FrameObj, ImageObj, ShapeObj, StickyObj, StrokeObj, TextObj } from "@/lib/engine/model/types";
+import type { ArrowObj, CanvasObject, FrameObj, ImageObj, ShapeObj, StickyObj, StrokeObj, TextObj, VideoObj } from "@/lib/engine/model/types";
 import { Choice, ColorChip, SwatchGrid, chromeButton, swatchLabel } from "./controls";
 import { useLiveEditor } from "./hooks";
 import { MenuList } from "./Menu";
@@ -40,6 +40,7 @@ import { Field, FramePresetList, HeadChoice, RouteChoice, SHAPE_KINDS, ShapeKind
 import { Popover } from "./Popover";
 import { ImageBarControls } from "./ImageBarControls";
 import { SpecimenBarControl } from "./SpecimenBarControl";
+import { VideoBarControls } from "./VideoBarControls";
 import { LinkBarControls } from "./LinkBarControls";
 import { placeFloating } from "./place";
 import { Tip } from "./Tip";
@@ -244,6 +245,7 @@ function BarView({ objs }: { objs: CanvasObject[] }) {
       {!allLocked && only === "stroke" ? <StrokeControls bar={bar} /> : null}
       {!allLocked && only === "image" ? <ImageBarControls images={objs as ImageObj[]} side={side} /> : null}
       {!allLocked && single?.type === "typeSpecimen" ? <SpecimenBarControl obj={single} side={side} /> : null}
+      {only === "video" ? <VideoBarControls objs={objs as VideoObj[]} locked={allLocked} side={side} /> : null}
       {single && (single.type === "link" || single.type === "embed") ? <LinkBarControls obj={single} side={side} /> : null}
       {!allLocked && textish ? <FormatControls bar={bar} single={single!} editing={editingText} /> : null}
       {!allLocked && only && only !== "group" ? <Sep /> : null}
