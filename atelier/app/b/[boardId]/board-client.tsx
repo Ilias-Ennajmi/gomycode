@@ -1,20 +1,35 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import * as Y from "yjs";
-import { IndexeddbPersistence } from "y-indexeddb";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { getAssetResolver } from "@/lib/assets/resolver";
 import { AssetUploader } from "@/lib/assets/upload-queue";
-import { BoardDoc } from "@/lib/engine/doc/board-doc";
+import { BoardMessage, BoardOpening } from "@/components/board/BoardMessage";
+import { loadBoardMeta, openBoardSession, renameBoard, type OpenedBoard } from "@/lib/board/session";
+import { recordLeave } from "@/lib/board/leave";
+import { markBoardReady } from "@/lib/board/ready";
+import type { BoardDoc } from "@/lib/engine/doc/board-doc";
 import type { Camera } from "@/lib/engine/geometry/camera";
 import { SpatialIndex } from "@/lib/engine/spatial/spatial-index";
 import { CanvasView, type CanvasHandle } from "@/components/canvas/CanvasView";
+import { toast } from "@/components/chrome/Toast";
+import { EditorChrome } from "@/components/chrome/EditorChrome";
 import { EditorProvider } from "@/components/editor/EditorContext";
 import { EditorOverlays } from "@/components/editor/EditorOverlays";
 import { SETTINGS_KEY, loadSettings, saveSettings, type NavSettings } from "@/lib/settings";
+import type { SyncStatus } from "@/lib/sync/status";
 
-type Session = { doc: BoardDoc; index: SpatialIndex; uploader: AssetUploader; camera: Camera | undefined };
+type Session = {
+  doc: BoardDoc;
+  index: SpatialIndex;
+  uploader: AssetUploader;
+  sync: OpenedBoard["sync"];
+  camera: Camera | undefined;
+  title: string;
+  breadcrumb: string[];
+};
+
+type Phase = { kind: "opening" } | { kind: "not-found" } | { kind: "ready"; session: Session };
 
 const cameraKey = (boardId: string) => `atelier-camera-${boardId}`;
 
@@ -37,12 +52,24 @@ function saveCamera(boardId: string, c: Camera): void {
   }
 }
 
+const noop = () => {};
+
+/** The sync client's status as React state; local-only boards have no client and are always "saved". */
+function useSyncStatus(sync: OpenedBoard["sync"]): SyncStatus {
+  return useSyncExternalStore(
+    (cb) => (sync ? sync.onStatus(cb) : noop),
+    () => sync?.status ?? "saved",
+    () => "saved",
+  );
+}
+
 /**
- * Local-only board: the Yjs document lives in IndexedDB (`atelier-board-{id}`). Server sync replaces the opening
- * code in a later task; the canvas itself does not change.
+ * The board editor. The Yjs document lives in IndexedDB (`atelier-board-{id}`); signed in, a SyncClient keeps it in step
+ * with the server (and a realtime ping from other devices), in local-only mode (decided on the server, passed as a prop)
+ * nothing leaves the device. Leaving the board records when it was opened and which images preview it.
  */
-export function BoardClient({ boardId }: { boardId: string }) {
-  const [session, setSession] = useState<Session | null>(null);
+export function BoardClient({ boardId, localOnly }: { boardId: string; localOnly: boolean }) {
+  const [phase, setPhase] = useState<Phase>({ kind: "opening" });
   const handle = useRef<CanvasHandle | null>(null);
   // The canvas handle as state: the editor (commands, panels, clipboard) mounts once the canvas exists.
   const [canvas, setCanvas] = useState<CanvasHandle | null>(null);
@@ -50,61 +77,103 @@ export function BoardClient({ boardId }: { boardId: string }) {
     handle.current = h;
     setCanvas(h);
   }, []);
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
   const router = useRouter();
   const [settings, setSettings] = useState<NavSettings>(() => loadSettings());
+  const [title, setTitle] = useState("");
+  const [breadcrumb, setBreadcrumb] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
-    const ydoc = new Y.Doc();
-    const persistence = new IndexeddbPersistence(`atelier-board-${boardId}`, ydoc);
-    let opened: { doc: BoardDoc; index: SpatialIndex; uploader: AssetUploader } | null = null;
-    void persistence.whenSynced.then(() => {
-      if (cancelled) return;
-      const doc = new BoardDoc(ydoc);
-      const index = new SpatialIndex(doc);
-      const uploader = new AssetUploader({ doc, resolver: getAssetResolver() });
-      opened = { doc, index, uploader };
-      setSession({ doc, index, uploader, camera: loadCamera(boardId) });
-    });
+    let opened: { board: OpenedBoard; index: SpatialIndex } | null = null;
+    let left = false;
+
+    const leave = () => {
+      if (left || !opened) return;
+      left = true;
+      void recordLeave({ boardId, doc: opened.board.doc, localOnly });
+    };
+    // A page that is hidden may never come back: record now, and let a return from the back/forward cache start over.
+    const onPageHide = () => {
+      leave();
+      void opened?.board.sync?.flush();
+    };
+    const onPageShow = () => {
+      left = false;
+    };
+
+    void (async () => {
+      const result = await openBoardSession({ boardId, localOnly });
+      if (cancelled) {
+        if (result.status === "ready") void result.board.dispose();
+        return;
+      }
+      if (result.status === "not-found") {
+        setPhase({ kind: "not-found" });
+        return;
+      }
+      const board = result.board;
+      const meta = await loadBoardMeta(boardId, board.doc);
+      if (cancelled) {
+        void board.dispose();
+        return;
+      }
+      const index = new SpatialIndex(board.doc);
+      opened = { board, index };
+      window.addEventListener("pagehide", onPageHide);
+      window.addEventListener("pageshow", onPageShow);
+      setTitle(meta.title);
+      setBreadcrumb(meta.breadcrumb);
+      setPhase({ kind: "ready", session: { doc: board.doc, index, uploader: board.uploader, sync: board.sync, camera: loadCamera(boardId), title: meta.title, breadcrumb: meta.breadcrumb } });
+    })();
+
     return () => {
       cancelled = true;
-      opened?.uploader.dispose();
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("pageshow", onPageShow);
+      leave(); // reads the document now; the rest of the clean-up may destroy it
       opened?.index.destroy();
-      opened?.doc.destroy();
-      void persistence.destroy();
-      ydoc.destroy();
-      setSession(null);
+      void opened?.board.dispose();
+      setPhase({ kind: "opening" });
     };
-  }, [boardId]);
+  }, [boardId, localOnly]);
+
+  const session = phase.kind === "ready" ? phase.session : null;
 
   // Remember where the view was, per board, on this device.
   useEffect(() => {
-    if (!session) return;
+    if (!session || !canvas) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const off = handle.current?.subscribeCamera((c) => {
+    const off = canvas.subscribeCamera((c) => {
       clearTimeout(timer);
       timer = setTimeout(() => saveCamera(boardId, c), 500);
     });
     return () => {
       clearTimeout(timer);
-      off?.();
+      off();
     };
-  }, [session, boardId]);
+  }, [session, canvas, boardId]);
+
+  // Performance mark for the e2e budget: the first visible objects are on screen.
+  useEffect(() => {
+    if (!session || !canvas) return;
+    return markBoardReady(canvas.container(), session.doc.all().length > 0);
+  }, [session, canvas]);
 
   // Development and test hook: `localStorage["atelier:expose"] = "1"` publishes the live board on `window.__atelier`.
   useEffect(() => {
-    if (!session) return;
+    if (!session || !canvas) return;
     try {
       if (localStorage.getItem("atelier:expose") !== "1") return;
     } catch {
       return;
     }
     const w = window as unknown as { __atelier?: unknown };
-    w.__atelier = { doc: session.doc, index: session.index, canvas: handle.current };
+    w.__atelier = { doc: session.doc, index: session.index, canvas, sync: session.sync, uploader: session.uploader };
     return () => {
       delete w.__atelier;
     };
-  }, [session]);
+  }, [session, canvas]);
 
   // Navigation settings (snapping, wheel) live here so the snap command can change them for this tab right away;
   // another tab or the settings page changing them arrives as a storage event.
@@ -122,21 +191,53 @@ export function BoardClient({ boardId }: { boardId: string }) {
       return next;
     });
 
+  const status = useSyncStatus(session?.sync ?? null);
+
+  const onTitleChange = useCallback(
+    async (next: string) => {
+      const previous = title;
+      setTitle(next);
+      const r = await renameBoard({ boardId, title: next, localOnly });
+      if (!r.ok) {
+        setTitle(previous);
+        toast({ message: r.reason === "offline" ? "You're offline, so that change wasn't saved." : "Couldn't rename the board." });
+      }
+    },
+    [boardId, localOnly, title],
+  );
+
+  if (phase.kind === "not-found") {
+    return (
+      <BoardMessage title="This board doesn't exist">
+        It may have been deleted, or it belongs to a different account. Check the link, or go back to your boards.
+      </BoardMessage>
+    );
+  }
+  if (!session) return <BoardOpening />;
+
   return (
     <main style={{ position: "fixed", inset: 0, background: "var(--color-bg)" }}>
-      {session ? (
-        <CanvasView
-          ref={canvasRef}
-          doc={session.doc}
-          index={session.index}
-          assets={getAssetResolver()}
-          initialCamera={session.camera}
-          settings={settings}
-          cameraShortcuts={false /* the command registry binds Shift+1/2 and Mod +/-/0 */}
-        />
-      ) : null}
-      {session && canvas ? (
+      <div ref={setSlot} data-chrome-slot="" />
+      <CanvasView
+        ref={canvasRef}
+        doc={session.doc}
+        index={session.index}
+        assets={getAssetResolver()}
+        initialCamera={session.camera}
+        settings={settings}
+        cameraShortcuts={false /* the command registry binds Shift+1/2 and Mod +/-/0 */}
+      />
+      {canvas ? (
         <EditorProvider handle={canvas} uploader={session.uploader} onToggleSnap={toggleSnap} navigate={(href) => router.push(href)}>
+          <EditorChrome
+            boardId={boardId}
+            title={title}
+            onTitleChange={(t) => void onTitleChange(t)}
+            breadcrumb={breadcrumb}
+            status={status}
+            localOnly={localOnly}
+            slot={slot}
+          />
           <EditorOverlays />
         </EditorProvider>
       ) : null}

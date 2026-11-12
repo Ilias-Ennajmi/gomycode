@@ -54,6 +54,11 @@ export type AssetUploaderOptions = {
   dbName?: string;
   /** Longest side of the image object created for a new image. */
   displaySide?: number;
+  /**
+   * Local-only mode (no server, no R2): images are kept as blobs in IndexedDB and shown from there; nothing is queued and
+   * `/api/assets` is never called.
+   */
+  localOnly?: boolean;
 };
 
 /**
@@ -170,6 +175,7 @@ export class AssetUploader {
       await this.remove(assetId);
       throw e;
     }
+    if (this.o.localOnly) return objectId; // the blob in IndexedDB is the only copy; there is nothing to upload
     this.blobs.set(assetId, blobs);
     this.queue.set(assetId, { assetId, objectId, name: meta.name, state: "queued", attempts: 0, meta, putOriginal: false, putVariant: false });
     this.emit();
@@ -205,7 +211,7 @@ export class AssetUploader {
       const metas = (await idbRequest(tx.objectStore(META).getAll())) as Meta[];
       metas.sort((a, b) => a.createdAt - b.createdAt);
       for (const meta of metas) {
-        this.queue.set(meta.assetId, { assetId: meta.assetId, objectId: meta.objectId, name: meta.name, state: "queued", attempts: 0, meta, putOriginal: false, putVariant: false });
+        if (!this.o.localOnly) this.queue.set(meta.assetId, { assetId: meta.assetId, objectId: meta.objectId, name: meta.name, state: "queued", attempts: 0, meta, putOriginal: false, putVariant: false });
         const blobs = await this.readBlobs(meta.assetId);
         if (blobs) this.o.resolver.registerLocal(meta.assetId, blobs);
       }
@@ -355,4 +361,32 @@ export class AssetUploader {
     });
     if (!done.ok) throw new HttpError(done.status, "Finishing the upload");
   }
+}
+
+/**
+ * Local-only home screen: makes the stored 1024 px blobs of these assets available through the resolver, so board
+ * cards can show their image mosaic after a reload (the editor registers them while a board is open, nothing else does).
+ * Resolves with how many were found; never rejects.
+ */
+export async function registerStoredAssets(resolver: Pick<AssetResolverImpl, "registerLocal">, assetIds: string[], dbName: string = DB_NAME): Promise<number> {
+  if (assetIds.length === 0) return 0;
+  const db = await idbOpen(dbName, (d) => {
+    d.createObjectStore(META, { keyPath: "assetId" });
+    d.createObjectStore(BLOBS);
+  }).catch(() => null);
+  if (!db) return 0;
+  let found = 0;
+  try {
+    for (const id of assetIds) {
+      const stored = (await idbRequest(db.transaction(BLOBS, "readonly").objectStore(BLOBS).get(id))) as StoredBlobs | undefined;
+      if (!stored) continue;
+      resolver.registerLocal(id, { w1024: new Blob([stored.w1024], { type: stored.w1024Type }) });
+      found++;
+    }
+  } catch {
+    /* unreadable: the cards keep their paper tile */
+  } finally {
+    db.close();
+  }
+  return found;
 }

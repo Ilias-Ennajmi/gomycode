@@ -5,7 +5,7 @@ import type { ImageObj } from "@/lib/engine/model/types";
 import { isAssetId } from "@/lib/assets/asset-id";
 import { fitWithin, ImageError, MAX_IMAGE_BYTES, runPipeline, type PipelineEnv } from "@/lib/assets/pipeline-core";
 import { AssetResolverImpl } from "@/lib/assets/resolver";
-import { AssetUploader, type ProcessedImage } from "@/lib/assets/upload-queue";
+import { AssetUploader, registerStoredAssets, type ProcessedImage } from "@/lib/assets/upload-queue";
 import { backoffDelay } from "@/lib/sync/backoff";
 
 beforeEach(() => {
@@ -308,5 +308,63 @@ describe("AssetUploader", () => {
     off();
     expect(seen[0]).toBe(1);
     expect(seen.at(-1)).toBe(0);
+  });
+});
+
+describe("AssetUploader in local-only mode", () => {
+  const local = (net = fakeNetwork(), dbName = "atelier-uploads-local-test") => {
+    const doc = new BoardDoc();
+    const resolver = new AssetResolverImpl({ publicHost: null });
+    const uploader = new AssetUploader({ doc, resolver, process: async () => processed(), fetch: net.fetch, delay: async () => {}, localOnly: true, dbName });
+    return { doc, resolver, uploader, net };
+  };
+
+  it("puts the image on the board with a local blob and never calls the network", async () => {
+    const { doc, resolver, uploader, net } = local();
+    const id = await uploader.add(png(), { x: 100, y: 100 });
+    await uploader.whenIdle();
+    const obj = doc.get(id) as ImageObj;
+    expect(obj.type).toBe("image");
+    expect(resolver.url(obj.assetId, "w1024")).toMatch(/^blob:/);
+    expect(uploader.pending()).toBe(0);
+    expect(net.fetch).not.toHaveBeenCalled();
+    expect(net.calls).toHaveLength(0);
+  });
+
+  it("keeps the bytes in IndexedDB so a reload still shows the image, still without uploading", async () => {
+    const net = fakeNetwork();
+    const name = "atelier-uploads-local-reload";
+    const first = local(net, name);
+    const id = await first.uploader.add(png(), { x: 0, y: 0 });
+    const assetId = (first.doc.get(id) as ImageObj).assetId;
+    first.uploader.dispose();
+
+    const secondResolver = new AssetResolverImpl({ publicHost: null });
+    const second = new AssetUploader({ doc: new BoardDoc(), resolver: secondResolver, process: async () => processed(), fetch: net.fetch, delay: async () => {}, localOnly: true, dbName: name });
+    await second.ready;
+    expect(secondResolver.url(assetId, "w1024")).toMatch(/^blob:/);
+    expect(second.pending()).toBe(0);
+    expect(net.calls).toHaveLength(0);
+    second.dispose();
+  });
+});
+
+describe("registerStoredAssets (home screen, local-only)", () => {
+  it("makes the stored preview blobs of the given assets resolvable and skips unknown ones", async () => {
+    const name = "atelier-uploads-home-previews";
+    const net = fakeNetwork();
+    const doc = new BoardDoc();
+    const u = new AssetUploader({ doc, resolver: new AssetResolverImpl({ publicHost: null }), process: async () => processed(), fetch: net.fetch, delay: async () => {}, localOnly: true, dbName: name });
+    const id = await u.add(png(), { x: 0, y: 0 });
+    const assetId = (doc.get(id) as ImageObj).assetId;
+    u.dispose();
+
+    const fresh = new AssetResolverImpl({ publicHost: null });
+    expect(fresh.url(assetId, "w1024")).toBeNull();
+    const found = await registerStoredAssets(fresh, [assetId, "00000000-0000-4000-8000-00000000dead"], name);
+    expect(found).toBe(1);
+    expect(fresh.url(assetId, "w1024")).toMatch(/^blob:/);
+    expect(await registerStoredAssets(fresh, [], name)).toBe(0);
+    expect(net.calls).toHaveLength(0);
   });
 });

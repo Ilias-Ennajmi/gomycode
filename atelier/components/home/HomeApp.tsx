@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Settings, Star, Trash2, WifiOff, LayoutGrid, Folder as FolderIcon } from "lucide-react";
 import { buttonPrimary } from "@/components/ui/controls";
+import { getAssetResolver } from "@/lib/assets/resolver";
+import { registerStoredAssets } from "@/lib/assets/upload-queue";
 import type { BoardSummary, Folder } from "@/lib/sync/board-list-cache";
 import { BoardCard } from "./BoardCard";
 import { ConfirmFolderDelete, MoveDialog, NameDialog } from "./BoardDialogs";
@@ -13,6 +15,7 @@ import { FolderTree } from "./FolderTree";
 import { ToastHost, useToast } from "./HomeToast";
 import { NewBoardDialog, type NewBoardInput } from "./NewBoardDialog";
 import { folderPath, viewBoards, type View } from "./library";
+import { setPreviewResolver } from "./preview-url";
 import { useLibrary } from "./useLibrary";
 
 type DialogState =
@@ -34,6 +37,22 @@ export function HomeApp({ localOnly }: { localOnly: boolean }) {
   const [query, setQuery] = useState("");
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const closeDialog = () => setDialog(null);
+
+  // Cards show their image mosaic through the asset resolver (R2 variants, or local blobs where it holds them).
+  useEffect(() => {
+    setPreviewResolver((assetId) => getAssetResolver().url(assetId, "w1024"));
+  }, []);
+  // Local-only boards keep their images as blobs in IndexedDB: hand the previews to the resolver, then redraw the cards.
+  const [, redraw] = useState(0);
+  const previewIds = list.boards.flatMap((b) => b.preview).join(",");
+  useEffect(() => {
+    if (!localOnly || !previewIds) return;
+    let alive = true;
+    void registerStoredAssets(getAssetResolver(), previewIds.split(",")).then((n) => alive && n > 0 && redraw((x) => x + 1));
+    return () => {
+      alive = false;
+    };
+  }, [localOnly, previewIds]);
 
   const searching = query.trim() !== "";
   const boards = viewBoards(list, view, query);
