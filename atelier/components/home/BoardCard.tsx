@@ -17,7 +17,7 @@ export type CardHandlers = {
 };
 
 /** The card's picture: up to four images as a mosaic, else a paper tile naming the first frame. */
-function Preview({ board }: { board: BoardSummary }) {
+function Preview({ board, dim = false }: { board: BoardSummary; dim?: boolean }) {
   const urls = board.preview.map(previewUrl).filter((u): u is string => Boolean(u)).slice(0, 4);
   const layout = urls.length >= 3 ? "grid-cols-2 grid-rows-2" : urls.length === 2 ? "grid-cols-2" : "";
   return (
@@ -29,7 +29,7 @@ function Preview({ board }: { board: BoardSummary }) {
         <div className={`grid h-full w-full gap-px bg-line ${layout}`}>
           {urls.map((u, i) => (
             // eslint-disable-next-line @next/next/no-img-element
-            <img key={`${u}-${i}`} src={u} alt="" crossOrigin="anonymous" loading="lazy" decoding="async" className={`h-full w-full object-cover ${urls.length === 3 && i === 0 ? "row-span-2" : ""}`} />
+            <img key={`${u}-${i}`} src={u} alt="" crossOrigin="anonymous" loading="lazy" decoding="async" className={`h-full w-full object-cover ${urls.length === 3 && i === 0 ? "row-span-2" : ""} ${dim ? "opacity-60" : ""}`} />
           ))}
         </div>
       ) : board.firstFrameName ? (
@@ -46,9 +46,7 @@ export function BoardCard({ board, trash, disabled, handlers }: { board: BoardSu
     const left = board.deletedAt ? daysLeftInTrash(board.deletedAt) : 0;
     return (
       <article className="flex flex-col">
-        <div className="opacity-70">
-          <Preview board={board} />
-        </div>
+        <Preview board={board} dim />
         <div className="flex items-start justify-between gap-2 px-1 pt-2">
           <div className="min-w-0">
             <p className="truncate font-medium">{board.title}</p>
