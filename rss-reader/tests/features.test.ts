@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { FEATURES, matchFeatures } from "@/components/layout/FeaturesSheet";
-import { FR } from "@/lib/i18n";
+import { FR } from "@/lib/i18n-fr";
 
 test("every feature and its place has a French version", () => {
   const missing = FEATURES.flatMap((f) => [f.title, f.where]).filter((text) => !(text in FR));

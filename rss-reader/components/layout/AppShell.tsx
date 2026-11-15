@@ -22,9 +22,8 @@ import { OfflineSupport } from "@/components/layout/OfflineSupport";
 import { ChromeCollapse } from "@/components/layout/ChromeCollapse";
 import { showChrome } from "@/lib/hooks/useChrome";
 import { useReaderPrefs } from "@/lib/hooks/useReaderPrefs";
-import { AudioProvider } from "@/components/audio/AudioProvider";
+import { AudioProvider, useAudio } from "@/components/audio/AudioProvider";
 import { NowPlayingBar } from "@/components/audio/NowPlayingBar";
-import { NowPlayingSheet } from "@/components/audio/NowPlayingSheet";
 import { WhatsNew } from "@/components/layout/WhatsNew";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 import { refreshFeeds, refreshToastMessage, useAutoRefresh, useFeeds } from "@/lib/hooks/useFeeds";
@@ -34,6 +33,21 @@ import { useT, tr } from "@/lib/i18n";
 
 // Dialogs and the less-used screens load right after the first paint instead of with the
 // page, so the list shows up sooner.
+// The full-screen player is big and only wanted once something is playing and opened; after
+// the first time it stays mounted so it can slide away.
+const NowPlayingSheetLazy = dynamic(
+  () => import("@/components/audio/NowPlayingSheet").then((m) => m.NowPlayingSheet),
+  { ssr: false }
+);
+function NowPlayingSheetOnDemand() {
+  const { expanded } = useAudio();
+  const [opened, setOpened] = React.useState(false);
+  React.useEffect(() => {
+    if (expanded) setOpened(true);
+  }, [expanded]);
+  return opened ? <NowPlayingSheetLazy /> : null;
+}
+
 const DiscoverDialog = dynamic(
   () => import("@/components/discover/DiscoverDialog").then((m) => m.DiscoverDialog),
   { ssr: false }
@@ -477,7 +491,7 @@ function AppShellInner() {
       </div>
       <NowPlayingBar />
       <BottomNav />
-      <NowPlayingSheet />
+      <NowPlayingSheetOnDemand />
       <WhatsNew />
 
       <SaveLinkDialog open={saveLinkOpen} onOpenChange={setSaveLinkOpen} />

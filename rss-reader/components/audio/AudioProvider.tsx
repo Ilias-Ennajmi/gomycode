@@ -15,6 +15,7 @@ import { isDownloaded, removeDownload, sourceOf } from "@/lib/downloads";
 import { attachFx, type AudioFx } from "@/lib/audio-fx";
 import { usePref } from "@/lib/prefs";
 import { tr } from "@/lib/i18n";
+import { originOf, originBlocked, blockOrigin, remember } from "@/lib/audio-storage";
 
 // One audio player for the whole app, like a podcast app: an episode keeps playing while
 // you read something else, the bar at the bottom controls it, and the phone's lock screen
@@ -146,49 +147,12 @@ export function useAudio() {
   return value;
 }
 
-const BLOCKED_KEY = "fx-blocked-origins";
-
-function originOf(url: string) {
-  try {
-    return new URL(url).origin;
-  } catch {
-    return "";
-  }
-}
-
-/** Servers that refused CORS: their episodes stream plainly, without effects. */
-function originBlocked(origin: string) {
-  try {
-    return (JSON.parse(localStorage.getItem(BLOCKED_KEY) ?? "[]") as string[]).includes(origin);
-  } catch {
-    return false;
-  }
-}
-
-function blockOrigin(origin: string) {
-  try {
-    const list = JSON.parse(localStorage.getItem(BLOCKED_KEY) ?? "[]") as string[];
-    localStorage.setItem(BLOCKED_KEY, JSON.stringify([...new Set([...list, origin])].slice(-100)));
-  } catch {
-    // Not remembered: asked again next time.
-  }
-}
-
 function readRate() {
   try {
     const value = Number(localStorage.getItem(RATE_KEY));
     return AUDIO_RATES.includes(value as (typeof AUDIO_RATES)[number]) ? value : 1;
   } catch {
     return 1;
-  }
-}
-
-function remember(key: string, value: unknown) {
-  try {
-    if (value === null) localStorage.removeItem(key);
-    else localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // Storage blocked: only this visit remembers.
   }
 }
 

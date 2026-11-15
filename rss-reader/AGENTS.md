@@ -500,6 +500,24 @@ columns (styles only on existing nodes) when `reader-prefs.mode === "pages"`, ch
 `ReaderMenu` (⋯); `StarterPacks` + `POST /api/feeds/batch` follow a category's catalogue
 bundle on first run and from Settings.
 
+**Loaded on demand.** `lib/i18n-fr.ts` (the French strings) is imported dynamically by
+`lib/i18n.tsx` when the locale is French; `tr()` and `t()` answer in English until it has
+arrived, and `LocaleProvider` redraws when it does. Tests import the table from
+`@/lib/i18n-fr`, never from `@/lib/i18n` (a static import would pull it into the main
+bundle). `NowPlayingSheet` is loaded by `AppShell` the first time the player is opened.
+Check the effect of a change with `NEXT_DIST_DIR=.next-build npm run build` (the
+`/reader` line is the first-load size) and `git checkout tsconfig.json` afterwards.
+
+**Where the big files went.** The parts that don't hold a component's state moved out of
+the five largest components: `components/articles/card/CardParts.tsx` (from `ArticleCard`:
+actions, related coverage, video badge, quick look), `components/articles/list/ListParts.tsx`
+(from `ArticleList`: search filters, empty states, Later titles),
+`components/articles/reader/ReaderParts.tsx` (from `ArticleReader`: up next, AI summary, the
+full-page bar, resume), `components/audio/player/{PlayerParts,ShowCard,QueueList,PlayerMenu,Shared}.tsx`
+(from `NowPlayingSheet`) and `lib/audio-storage.ts` (origin helpers for the effects, the
+small localStorage writer; from `AudioProvider`). The components still hold the logic and
+state (500–850 lines each): split further only along a seam that has its own state.
+
 ## Gotchas learned the hard way
 
 - **Next.js 15.** Route `params` are promises (`props: { params: Promise<{ id: string }> }`,
@@ -643,8 +661,12 @@ Built in this order (see `git log -- rss-reader`):
 30. Podcasts, video, AI: automatic downloads, effects on streams that allow it, longer
     transcripts, DeArrow for older videos, natural voice in Listen to Later, meaning search
     over every article.
+31. Faster and cleaner: the French table is its own chunk (loaded only when French is
+    chosen) and the full-screen player loads when first opened (/reader first load 297 →
+    267 kB); the parts of the five biggest components moved to sibling folders; a coverage
+    spec opens Settings, Discover, News, makes a highlight and replays an offline change.
 
 ## Open ideas (not built yet)
 
 - "Mark read when scrolled past" in lists.
-- Android shortcuts for Search, Highlights and Snoozed (needs a new APK).
+- Android shortcut for Snoozed (needs a new APK; Search and Highlights already have one).
