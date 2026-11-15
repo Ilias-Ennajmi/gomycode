@@ -5,38 +5,24 @@ import {
   ChevronDown,
   FileText,
   FolderPlus,
-  GripVertical,
   Headphones,
-  ListEnd,
   ListMusic,
-  ListStart,
   ListVideo,
   Car,
-  MoreHorizontal,
   Play,
   Scissors,
   Share,
   SkipForward,
   Sparkles,
-  Text,
-  X,
 } from "lucide-react";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { clock, durationLabel, useVideoExtras } from "@/lib/hooks/useVideo";
+import { durationLabel, useVideoExtras } from "@/lib/hooks/useVideo";
 import { useReaderState } from "@/lib/hooks/useReaderState";
 import { useBackToClose } from "@/lib/hooks/useHistorySync";
 import { haptic } from "@/lib/native";
-import {
-  AUDIO_RATES,
-  episodeOf,
-  resumePoint,
-  useAudio,
-  type Episode,
-} from "@/components/audio/AudioProvider";
+import { episodeOf, resumePoint, useAudio, type Episode } from "@/components/audio/AudioProvider";
 import { useArticle } from "@/lib/hooks/useArticles";
 import { useArticleHighlights } from "@/lib/hooks/useHighlights";
-import { useFeeds } from "@/lib/hooks/useFeeds";
 import { shareLink } from "@/lib/share";
 import { isSnip } from "@/lib/snips";
 import { SnipCard } from "@/components/audio/EpisodeNotes";
@@ -60,24 +46,18 @@ import {
   SpeedButton,
   usePlayerTime,
 } from "@/components/audio/PlayerControls";
-import { SNIP_WINDOWS, useSnipWindow } from "@/lib/snips";
-import { useSkipSponsors } from "@/lib/hooks/useSponsors";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useT, tr } from "@/lib/i18n";
-import { usePref } from "@/lib/prefs";
+import { useT } from "@/lib/i18n";
 import { DownloadButton } from "@/components/audio/Downloads";
-import { AUTO_DEFAULTS, type AutoDownloadPrefs } from "@/lib/auto-downloads";
 import { requestAppEvent } from "@/lib/app-events";
+import { PlayerMenu } from "@/components/audio/player/PlayerMenu";
+import { QueueList } from "@/components/audio/player/QueueList";
+import { ShowCard } from "@/components/audio/player/ShowCard";
+import {
+  IdleControls,
+  SuggestedNext,
+  ChapterScrubber,
+} from "@/components/audio/player/PlayerParts";
+import { Empty } from "@/components/audio/player/Shared";
 
 /**
  * The full-screen player, laid out like a podcast app's: the artwork, the title, a scrubber
@@ -484,42 +464,6 @@ function CollectButton({ articleId }: { articleId: string }) {
   );
 }
 
-/** Before it plays: where it stopped as a line, and one big button to start. */
-function IdleControls({ episode, savedAt }: { episode: Episode; savedAt: number }) {
-  const { t } = useT();
-  const audio = useAudio();
-  const length = episode.durationSeconds ?? 0;
-  const percent = length ? Math.min(100, (savedAt / length) * 100) : 0;
-  return (
-    <div className="mt-4 w-full">
-      <div className="h-1 w-full overflow-hidden rounded-full bg-foreground/15">
-        <div className="h-full bg-foreground" style={{ width: `${percent}%` }} />
-      </div>
-      <div className="mt-1 flex justify-between text-[11px] tabular-nums text-muted-foreground">
-        <span>{clock(savedAt)}</span>
-        <span>{length ? `-${clock(Math.max(0, length - savedAt))}` : "--:--"}</span>
-      </div>
-      <div className="mt-3 flex items-center justify-center gap-3">
-        <button
-          type="button"
-          onClick={() => audio.enqueue(episode, "last")}
-          className="flex h-11 items-center gap-1.5 rounded-full px-4 text-sm font-medium text-muted-foreground ring-1 ring-border hover:bg-accent"
-        >
-          <ListEnd className="h-4 w-4" /> {t("Queue")}
-        </button>
-        <button
-          type="button"
-          onClick={() => audio.play(episode, savedAt)}
-          className="flex h-14 items-center gap-2 rounded-full bg-foreground px-7 text-base font-semibold text-background transition-transform active:scale-95"
-        >
-          <Play className="h-5 w-5 fill-current" />
-          {savedAt > 0 ? `Resume at ${clock(savedAt)}` : t("Play")}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 /** "Skip ahead": to the next chapter, when there is one. */
 function NextChapterButton({ chapters }: { chapters: { t: number; title: string }[] }) {
   const { t } = useT();
@@ -542,135 +486,6 @@ function NextChapterButton({ chapters }: { chapters: { t: number; title: string 
   );
 }
 
-/** About the show: its picture, name, description, and the way to its page. */
-function ShowCard({ episode, onOpenShow }: { episode: Episode; onOpenShow: () => void }) {
-  const { t } = useT();
-  const { feeds, mutate } = useFeeds();
-  const { setView } = useReaderState();
-  const feed = feeds.find((f) => f.id === episode.feedId);
-  const [more, setMore] = React.useState(false);
-  const [following, setFollowing] = React.useState(false);
-  const external = episode.id.startsWith("ext:");
-  const followedUrl = external && episode.feedUrl && feeds.some((f) => f.url === episode.feedUrl);
-  async function follow() {
-    if (!episode.feedUrl) return;
-    setFollowing(true);
-    try {
-      const res = await fetch("/api/feeds", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: episode.feedUrl, kind: "podcast" }),
-      });
-      if (!res.ok) throw new Error();
-      await mutate();
-      toast.success(`Following ${episode.feedTitle}`);
-    } catch {
-      toast.error(tr("Couldn't follow this show"));
-    } finally {
-      setFollowing(false);
-    }
-  }
-  const description = feed?.description?.replace(/<[^>]+>/g, " ").trim();
-  return (
-    <MediaCard id="about-show" title={t("About the podcast")}>
-      <div className="flex items-center gap-3">
-        <Art
-          src={feed?.coverUrl ?? episode.imageUrl ?? feed?.faviconUrl}
-          name={episode.feedTitle}
-          className="h-12 w-12 rounded-lg text-lg"
-        />
-        <p className="min-w-0 flex-1 truncate font-semibold">{episode.feedTitle}</p>
-        {feed ? (
-          <button
-            type="button"
-            onClick={() => {
-              setView({ type: "feed", id: feed.id, label: feed.title });
-              onOpenShow();
-            }}
-            className="h-8 shrink-0 rounded-full px-3 text-xs font-semibold ring-1 ring-border hover:bg-accent"
-          >
-            {t("Following")}
-          </button>
-        ) : external && episode.feedUrl ? (
-          <button
-            type="button"
-            disabled={Boolean(followedUrl) || following}
-            onClick={() => void follow()}
-            className="h-8 shrink-0 rounded-full bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-60"
-          >
-            {followedUrl ? t("Following") : following ? "…" : t("Follow")}
-          </button>
-        ) : null}
-      </div>
-      {description && (
-        <p className={cn("mt-3 text-sm text-muted-foreground", !more && "line-clamp-3")}>
-          {description}
-        </p>
-      )}
-      {description && description.length > 160 && (
-        <button
-          type="button"
-          onClick={() => setMore((v) => !v)}
-          className="mt-1 text-sm font-semibold hover:underline"
-        >
-          {more ? t("see less") : t("… see more")}
-        </button>
-      )}
-    </MediaCard>
-  );
-}
-
-/** Nothing queued: the next one from the show (or your Later), one tap away. */
-function SuggestedNext({
-  article,
-  onOpen,
-}: {
-  article: ArticleSummary;
-  onOpen: (article: ArticleSummary) => void;
-}) {
-  const audio = useAudio();
-  const next = episodeOf(article);
-  return (
-    <div className="flex items-center gap-3">
-      <button
-        type="button"
-        onClick={() => onOpen(article)}
-        className="flex min-w-0 flex-1 items-center gap-3 text-left"
-      >
-        {article.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={article.imageUrl}
-            alt=""
-            className="h-14 w-14 shrink-0 rounded-lg object-cover"
-          />
-        ) : (
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <Headphones className="h-5 w-5" />
-          </span>
-        )}
-        <span className="min-w-0 flex-1">
-          <span className="line-clamp-2 text-sm font-semibold leading-snug">{article.title}</span>
-          <span className="block truncate text-xs text-muted-foreground">
-            {article.feed.title}
-            {article.durationSeconds ? ` · ${durationLabel(article.durationSeconds)}` : ""}
-          </span>
-        </span>
-      </button>
-      {next && (
-        <button
-          type="button"
-          onClick={() => audio.enqueue(next, "next")}
-          aria-label={`Play ${article.title} next`}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground ring-1 ring-border hover:bg-accent"
-        >
-          <ListStart className="h-4 w-4" />
-        </button>
-      )}
-    </div>
-  );
-}
-
 function Artwork({ episode, current }: { episode: Episode; current: boolean }) {
   const { playing } = useAudio();
   return (
@@ -687,327 +502,5 @@ function Artwork({ episode, current }: { episode: Episode; current: boolean }) {
         className="h-full w-full text-6xl"
       />
     </div>
-  );
-}
-
-/** The scrubber with chapter marks along it and the loaded stretch shown lighter. */
-function ChapterScrubber({ chapters }: { chapters: { t: number; title: string }[] }) {
-  const { t } = useT();
-  const { duration, buffered, seek, sponsors } = useAudio();
-  const current = usePlayerTime();
-  const [dragging, setDragging] = React.useState<number | null>(null);
-  const shown = dragging ?? current;
-  const pct = (s: number) => (duration ? Math.min(100, (s / duration) * 100) : 0);
-  return (
-    <div>
-      <div className="relative">
-        {/* Loaded so far, under the track. */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute left-0 top-1/2 h-[0.3rem] -translate-y-1/2 rounded-full bg-foreground/15"
-          style={{ width: `${pct(buffered)}%` }}
-        />
-        {/* Sponsor reads, which the player jumps over. */}
-        {sponsors.map((segment) => (
-          <span
-            key={segment.start}
-            aria-hidden
-            className="pointer-events-none absolute top-1/2 z-[1] h-[0.3rem] -translate-y-1/2 rounded-full bg-amber-400/80"
-            style={{
-              left: `${pct(segment.start)}%`,
-              width: `${Math.max(0.6, pct(segment.end) - pct(segment.start))}%`,
-            }}
-          />
-        ))}
-        <input
-          type="range"
-          min={0}
-          max={Math.max(1, Math.floor(duration))}
-          step={1}
-          value={Math.floor(shown)}
-          onChange={(event) => setDragging(Number(event.target.value))}
-          onPointerUp={() => {
-            if (dragging !== null) seek(dragging);
-            setDragging(null);
-          }}
-          onKeyUp={() => {
-            if (dragging !== null) seek(dragging);
-            setDragging(null);
-          }}
-          aria-label={t("Position")}
-          aria-valuetext={`${clock(shown)} of ${clock(duration)}`}
-          className="audio-scrubber relative w-full"
-          style={{ "--progress": `${pct(shown)}%` } as React.CSSProperties}
-        />
-        {chapters.slice(1).map((chapter) => (
-          <span
-            key={chapter.t}
-            aria-hidden
-            className="pointer-events-none absolute top-1/2 h-[0.3rem] w-[2px] -translate-y-1/2 bg-background/80"
-            style={{ left: `calc(${pct(chapter.t)}% - 1px)` }}
-          />
-        ))}
-      </div>
-      <div className="mt-1 flex items-center justify-between gap-3 text-[11px] tabular-nums text-muted-foreground">
-        <span className="shrink-0">{clock(shown)}</span>
-        <span className="min-w-0 truncate text-center font-medium text-foreground/80">
-          {chapterAt(chapters, shown)}
-        </span>
-        <span className="shrink-0">
-          {duration ? `-${clock(Math.max(0, duration - shown))}` : "--:--"}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function chapterAt(chapters: { t: number; title: string }[], seconds: number) {
-  let title = "";
-  for (const chapter of chapters) if (chapter.t <= seconds + 0.5) title = chapter.title;
-  return title;
-}
-
-/** Up next, reorderable by dragging the handle; a row's × removes it. */
-function QueueList() {
-  const { t } = useT();
-  const { queue, dequeue, moveInQueue, clearQueue, play } = useAudio();
-  const [dragIndex, setDragIndex] = React.useState<number | null>(null);
-  const [overIndex, setOverIndex] = React.useState<number | null>(null);
-  const rows = React.useRef<HTMLLIElement[]>([]);
-
-  const indexAtY = (y: number) => {
-    let index = queue.length - 1;
-    rows.current.forEach((row, i) => {
-      const box = row?.getBoundingClientRect();
-      if (box && y < box.top + box.height / 2 && i < index) index = i;
-    });
-    return index;
-  };
-
-  if (queue.length === 0) {
-    return (
-      <Empty text="Nothing queued. Long-press an episode and choose “Play next” or “Add to queue”." />
-    );
-  }
-  return (
-    <div>
-      <ol className="space-y-1">
-        {queue.map((item, i) => (
-          <li
-            key={item.id}
-            ref={(node) => {
-              if (node) rows.current[i] = node;
-            }}
-            className={cn(
-              "flex items-center gap-2 rounded-xl bg-card/60 py-2 pl-1 pr-2 ring-1 ring-border/50 transition-transform",
-              dragIndex === i && "opacity-60",
-              overIndex === i && dragIndex !== null && dragIndex !== i && "ring-primary"
-            )}
-          >
-            <span
-              className="flex h-10 w-8 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground"
-              aria-label={t("Drag to reorder")}
-              onPointerDown={(event) => {
-                event.currentTarget.setPointerCapture(event.pointerId);
-                setDragIndex(i);
-                haptic();
-              }}
-              onPointerMove={(event) => {
-                if (dragIndex === null) return;
-                setOverIndex(indexAtY(event.clientY));
-              }}
-              onPointerUp={(event) => {
-                const to = indexAtY(event.clientY);
-                if (dragIndex !== null && to !== dragIndex) moveInQueue(dragIndex, to);
-                setDragIndex(null);
-                setOverIndex(null);
-              }}
-            >
-              <GripVertical className="h-4 w-4" />
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                dequeue(item.id);
-                play(item, 0);
-              }}
-              className="flex min-w-0 flex-1 items-center gap-3 text-left"
-            >
-              {item.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={item.imageUrl}
-                  alt=""
-                  className="h-10 w-10 shrink-0 rounded-lg object-cover"
-                />
-              ) : (
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <Headphones className="h-4 w-4" />
-                </span>
-              )}
-              <span className="min-w-0 flex-1">
-                <span className="line-clamp-2 text-sm font-medium leading-snug">{item.title}</span>
-                <span className="block truncate text-xs text-muted-foreground">
-                  {item.feedTitle}
-                  {item.durationSeconds ? ` · ${durationLabel(item.durationSeconds)}` : ""}
-                </span>
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => dequeue(item.id)}
-              aria-label={`Remove ${item.title} from the queue`}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </li>
-        ))}
-      </ol>
-      <button
-        type="button"
-        onClick={clearQueue}
-        className="mt-3 w-full rounded-full py-2 text-xs font-medium text-muted-foreground hover:bg-accent/60"
-      >
-        {t("Clear the queue")}
-      </button>
-    </div>
-  );
-}
-
-function Empty({ text }: { text: string }) {
-  return <p className="px-3 py-8 text-center text-sm text-muted-foreground">{text}</p>;
-}
-
-/** Share this moment, open the episode, and the show's own settings (speed, skip intro). */
-function PlayerMenu({
-  episode,
-  current,
-  onEpisodePage,
-}: {
-  episode: Episode;
-  current: boolean;
-  onEpisodePage: () => void;
-}) {
-  const { shareMoment, showPrefs, setShowPrefs, fx } = useAudio();
-  const prefs = showPrefs(episode.feedId);
-  const [snipWindow, setSnipWindow] = useSnipWindow();
-  const [skipSponsors, setSkipSponsors] = useSkipSponsors();
-  const catalogue = episode.id.startsWith("ext:");
-  const { t } = useT();
-  const [auto, setAuto] = usePref<AutoDownloadPrefs>("auto-download", AUTO_DEFAULTS);
-  const autoOn = auto.shows.includes(episode.feedId);
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          aria-label={t("More")}
-          className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-accent/60"
-        >
-          <MoreHorizontal className="h-5 w-5" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
-        {current && (
-          <DropdownMenuItem onSelect={() => void shareMoment()} className="gap-2">
-            <Share className="h-4 w-4" /> {t("Share this moment")}
-          </DropdownMenuItem>
-        )}
-        {current && (
-          <DropdownMenuItem onSelect={() => requestAppEvent("car-mode")} className="gap-2">
-            <Car className="h-4 w-4" /> {t("Car mode")}
-          </DropdownMenuItem>
-        )}
-        {!catalogue && (
-          <DropdownMenuItem onSelect={onEpisodePage} className="gap-2">
-            <Text className="h-4 w-4" /> {t("Episode page")}
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuCheckboxItem checked={skipSponsors} onCheckedChange={setSkipSponsors}>
-          {t("Skip sponsors")}
-        </DropdownMenuCheckboxItem>
-        {!catalogue && (
-          <DropdownMenuCheckboxItem
-            checked={autoOn}
-            onCheckedChange={(on) =>
-              setAuto((prev) => ({
-                ...prev,
-                shows: on
-                  ? [...prev.shows.filter((id) => id !== episode.feedId), episode.feedId]
-                  : prev.shows.filter((id) => id !== episode.feedId),
-              }))
-            }
-          >
-            {t("Download new episodes on Wi-Fi")}
-          </DropdownMenuCheckboxItem>
-        )}
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-xs">
-          {t("Sound")}
-          <span className="block font-normal text-muted-foreground">
-            {fx.active
-              ? fx.trim && fx.saved() >= 1
-                ? `${t("Silences trimmed")}: ${clock(fx.saved())}`
-                : t("On for this episode")
-              : t("From the next episode, if its show allows it, or on a download")}
-          </span>
-        </DropdownMenuLabel>
-        <DropdownMenuCheckboxItem checked={fx.boost} onCheckedChange={fx.setBoost}>
-          {t("Voice boost")}
-        </DropdownMenuCheckboxItem>
-        <DropdownMenuCheckboxItem checked={fx.trim} onCheckedChange={fx.setTrim}>
-          {t("Trim silences")}
-        </DropdownMenuCheckboxItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-xs">{t("A snip keeps the last")}</DropdownMenuLabel>
-        <DropdownMenuRadioGroup
-          value={String(snipWindow)}
-          onValueChange={(value) => setSnipWindow(Number(value) === 60 ? 60 : 30)}
-        >
-          {SNIP_WINDOWS.map((seconds) => (
-            <DropdownMenuRadioItem key={seconds} value={String(seconds)}>
-              {seconds} {t("seconds")}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-xs">
-          {t("Speed for")} {episode.feedTitle}
-        </DropdownMenuLabel>
-        <DropdownMenuRadioGroup
-          value={prefs.rate === undefined ? "default" : String(prefs.rate)}
-          onValueChange={(value) =>
-            setShowPrefs(episode.feedId, {
-              ...prefs,
-              rate: value === "default" ? undefined : Number(value),
-            })
-          }
-        >
-          <DropdownMenuRadioItem value="default">{t("Same as everywhere")}</DropdownMenuRadioItem>
-          {AUDIO_RATES.map((rate) => (
-            <DropdownMenuRadioItem key={rate} value={String(rate)}>
-              {rate}×
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-xs">
-          {t("Skip the start of each episode")}
-        </DropdownMenuLabel>
-        <DropdownMenuRadioGroup
-          value={String(prefs.skipIntro ?? 0)}
-          onValueChange={(value) =>
-            setShowPrefs(episode.feedId, { ...prefs, skipIntro: Number(value) || undefined })
-          }
-        >
-          {[0, 15, 30, 45, 60, 90].map((seconds) => (
-            <DropdownMenuRadioItem key={seconds} value={String(seconds)}>
-              {seconds === 0 ? t("Don't skip") : `${seconds} seconds`}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }
