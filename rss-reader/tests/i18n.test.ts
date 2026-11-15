@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { FR } from "@/lib/i18n";
+import { FR } from "@/lib/i18n-fr";
 
 // Every string the code passes to t("…") or tr("…") has a French version, so switching to
 // French never leaves a stray English label on a translated screen.
