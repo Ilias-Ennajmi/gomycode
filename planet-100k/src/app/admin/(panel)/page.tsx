@@ -1,21 +1,24 @@
 import { headers } from 'next/headers';
 import { rpc } from '@/core/db';
-import type { AdminOverview, AdminStore, StoreStatus } from '@/core/types';
-import { saveStore, setCampaign, setStoreActive } from '../actions';
+import type { AdminOverview, StoreStatus } from '@/core/types';
+import { saveSettings, saveStore, setCampaign, setStoreActive } from '../actions';
 import { CopyButton } from '../_ui/Buttons';
 
 const FLASH: Record<string, string> = {
   campaign: 'Le jeu a été mis à jour.',
-  store: 'Le magasin a été mis à jour.',
+  store: 'La ville a été mise à jour.',
   saved: 'Modifications enregistrées.',
-  created: 'Magasin ajouté. Il est inactif tant que vous ne l’activez pas.',
+  settings: 'Réglages généraux enregistrés.',
+  created: 'Ville ajoutée. Elle est inactive tant que vous ne l’activez pas.',
 };
 
 const ERRORS: Record<string, string> = {
   invalid: 'Certaines valeurs ne sont pas valides. Vérifiez la chance de gain, le nombre de bons et le code magasin (6 chiffres).',
-  slug_taken: 'Ce lien est déjà utilisé par un autre magasin. Choisissez-en un autre.',
-  below_winners: 'Le nombre de bons ne peut pas être inférieur au nombre de bons déjà gagnés dans ce magasin.',
-  not_found: 'Ce magasin est introuvable.',
+  settings: 'Réglages non enregistrés. Le lien Instagram doit commencer par https:// et l’âge être un nombre.',
+  dates: 'La date de fin doit être après la date de début.',
+  slug_taken: 'Ce lien est déjà utilisé par une autre ville. Choisissez-en un autre.',
+  below_winners: 'Le nombre de bons ne peut pas être inférieur au nombre de bons déjà gagnés dans cette ville.',
+  not_found: 'Cette ville est introuvable.',
 };
 
 const STATUS: Record<StoreStatus, { label: string; tone: string }> = {
@@ -23,58 +26,12 @@ const STATUS: Record<StoreStatus, { label: string; tone: string }> = {
   paused: { label: 'Désactivé', tone: 'warn' },
   not_started: { label: 'Pas encore ouvert', tone: 'warn' },
   ended: { label: 'Terminé', tone: 'dark' },
-  sold_out: { label: 'Tous les bons gagnés', tone: 'dark' },
+  sold_out: { label: 'Bons épuisés', tone: 'dark' },
 };
 
 const percent = (ratio: number) => String(Math.round(ratio * 100000) / 1000).replace('.', ',');
 
-function odds(ratio: number): string {
-  if (ratio <= 0) return 'Personne ne peut gagner.';
-  if (ratio >= 1) return 'Chaque partie gagne.';
-  return `Environ 1 gagnant toutes les ${Math.round(1 / ratio)} parties.`;
-}
-
-function StoreForm({ s }: { s?: AdminStore }) {
-  return (
-    <form action={saveStore} style={{ display: 'grid', gap: 12 }}>
-      <input type="hidden" name="id" value={s?.id ?? ''} />
-      <div className="grid2">
-        <label className="f">
-          Ville
-          <input name="city" defaultValue={s?.city} maxLength={60} required />
-        </label>
-        <label className="f">
-          Nom du magasin <small>Facultatif, par exemple Morocco Mall.</small>
-          <input name="store_name" defaultValue={s?.store_name} maxLength={80} />
-        </label>
-        <label className="f">
-          Bons d&apos;achat à gagner
-          <input name="prizes_total" type="number" min={0} max={1000} defaultValue={s?.prizes_total ?? 1} required />
-        </label>
-        <label className="f">
-          Chance de gain par partie (%)
-          <input name="chance" inputMode="decimal" defaultValue={s ? percent(s.win_probability) : '2'} required />
-        </label>
-        {s ? (
-          <label className="f">
-            Code magasin <small>6 chiffres, pour la remise des bons.</small>
-            <input name="staff_pin" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} defaultValue={s.staff_pin} required />
-          </label>
-        ) : (
-          <label className="f">
-            Fin du lien <small>Laissez vide pour utiliser la ville.</small>
-            <input name="slug" maxLength={40} placeholder="casablanca-morocco-mall" />
-          </label>
-        )}
-      </div>
-      <div>
-        <button className="b b-dark">{s ? 'Enregistrer' : 'Ajouter le magasin'}</button>
-      </div>
-    </form>
-  );
-}
-
-export default async function Stores({ searchParams }: { searchParams: Promise<{ ok?: string; err?: string }> }) {
+export default async function Dashboard({ searchParams }: { searchParams: Promise<{ ok?: string; err?: string }> }) {
   const { ok, err } = await searchParams;
   const { settings, stores } = await rpc<AdminOverview>('admin_overview');
   const h = await headers();
@@ -86,7 +43,7 @@ export default async function Stores({ searchParams }: { searchParams: Promise<{
   return (
     <>
       <div className="bo-head">
-        <h1>Magasins</h1>
+        <h1>Tableau de bord</h1>
         <form action={setCampaign} className="row">
           <span className="badge" data-tone={settings.campaign_active ? 'ok' : 'red'}>
             {settings.campaign_active ? 'Jeu ouvert' : 'Jeu arrêté partout'}
@@ -110,15 +67,7 @@ export default async function Stores({ searchParams }: { searchParams: Promise<{
       )}
 
       <div className="kpis">
-        <div className="kpi">
-          <b>{sum('registered')}</b>
-          <span>inscrits</span>
-        </div>
-        <div className="kpi">
-          <b>{sum('played')}</b>
-          <span>parties jouées</span>
-        </div>
-        <div className="kpi">
+        <div className="kpi" data-tone="dark">
           <b>
             {sum('winners')}/{sum('prizes_total')}
           </b>
@@ -128,83 +77,167 @@ export default async function Stores({ searchParams }: { searchParams: Promise<{
           <b>{sum('redeemed')}</b>
           <span>bons remis en magasin</span>
         </div>
-      </div>
-
-      <div className="stores">
-        {stores.map((s) => {
-          const link = `${origin}/jeu/${s.slug}`;
-          const st = STATUS[s.status];
-          return (
-            <section className="store" key={s.id} data-off={!s.active}>
-              <div className="store-head">
-                <div>
-                  <h2 className="store-city">{s.city}</h2>
-                  {s.store_name && <p className="store-sub">{s.store_name}</p>}
-                </div>
-                <span className="badge" data-tone={st.tone}>
-                  {st.label}
-                </span>
-              </div>
-
-              <div>
-                <div className="meter" aria-hidden="true">
-                  <i style={{ width: `${s.prizes_total ? Math.min(100, (s.winners / s.prizes_total) * 100) : 0}%` }} />
-                </div>
-                <p className="store-sub" style={{ marginTop: 6 }}>
-                  {s.winners} bon{s.winners > 1 ? 's' : ''} gagné{s.winners > 1 ? 's' : ''} sur {s.prizes_total},
-                  dont {s.redeemed} remis
-                </p>
-              </div>
-
-              <dl className="facts">
-                <div>
-                  <dt>Inscrits</dt>
-                  <dd>{s.registered}</dd>
-                </div>
-                <div>
-                  <dt>Parties</dt>
-                  <dd>{s.played}</dd>
-                </div>
-                <div>
-                  <dt>Chance</dt>
-                  <dd>{percent(s.win_probability)} %</dd>
-                </div>
-              </dl>
-              <p className="store-sub">
-                {odds(s.win_probability)} Code magasin : <strong>{s.staff_pin}</strong>
-              </p>
-
-              <div className="linkrow">
-                <code>{link}</code>
-                <CopyButton text={link} />
-              </div>
-
-              <div className="row">
-                <form action={setStoreActive}>
-                  <input type="hidden" name="id" value={s.id} />
-                  <input type="hidden" name="active" value={String(!s.active)} />
-                  <button className={s.active ? 'b' : 'b b-red'}>{s.active ? 'Désactiver' : 'Activer'}</button>
-                </form>
-                <a className="b b-quiet" href={`/admin/qr/${s.slug}`} download={`qr-100k-${s.slug}.png`}>
-                  QR code
-                </a>
-                <a className="b b-quiet" href={`/admin/participants?store=${s.id}`}>
-                  Participants
-                </a>
-              </div>
-
-              <details className="edit">
-                <summary>Modifier les lots et la chance de gain</summary>
-                <StoreForm s={s} />
-              </details>
-            </section>
-          );
-        })}
+        <div className="kpi">
+          <b>{sum('played')}</b>
+          <span>parties jouées</span>
+        </div>
+        <div className="kpi">
+          <b>{sum('registered')}</b>
+          <span>inscrits</span>
+        </div>
       </div>
 
       <section className="panel">
-        <h2>Ajouter un magasin</h2>
-        <StoreForm />
+        <h2>Réglages généraux</h2>
+        <form action={saveSettings} className="settings-line">
+          <label className="f">
+            Début (heure du Maroc)
+            <input type="datetime-local" name="starts_at" defaultValue={settings.starts_at} />
+          </label>
+          <label className="f">
+            Fin (heure du Maroc)
+            <input type="datetime-local" name="ends_at" defaultValue={settings.ends_at} />
+          </label>
+          <label className="f">
+            Âge minimum
+            <input type="number" name="min_age" min={0} max={99} defaultValue={settings.min_age} required />
+          </label>
+          <label className="f">
+            Lien Instagram
+            <input type="url" name="instagram_url" defaultValue={settings.instagram_url} placeholder="https://www.instagram.com/…" />
+          </label>
+          <button className="b b-dark" style={{ height: 42 }}>
+            Enregistrer
+          </button>
+        </form>
+        <p style={{ color: 'var(--smoke)', fontSize: 13.5 }}>
+          Dates vides : le jeu est ouvert sans limite. Lien Instagram vide : pas de bouton « Suivre Planet Sport »
+          après la partie.
+        </p>
+      </section>
+
+      <section style={{ display: 'grid', gap: 12 }}>
+        <h2>Villes</h2>
+        <div className="tablewrap">
+          <table className="t stores">
+            <thead>
+              <tr>
+                <th>Ville</th>
+                <th>État</th>
+                <th>Bons gagnés</th>
+                <th className="r">Remis</th>
+                <th className="r">Inscrits</th>
+                <th className="r">Parties</th>
+                <th>Nom du magasin</th>
+                <th>Bons à gagner</th>
+                <th>Chance (%)</th>
+                <th>Code magasin</th>
+                <th>Lien et QR code</th>
+                <th>
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {stores.map((s) => {
+                const link = `${origin}/jeu/${s.slug}`;
+                const st = STATUS[s.status];
+                const fid = `s-${s.id}`;
+                return (
+                  <tr key={s.id} data-off={!s.active}>
+                    <td>
+                      <a className="city" href={`/admin/participants?store=${s.id}`} title={`Voir les participants de ${s.city}`}>
+                        {s.city}
+                      </a>
+                    </td>
+                    <td>
+                      <span className="badge" data-tone={st.tone}>
+                        {st.label}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="row row-tight">
+                        <strong>
+                          {s.winners}/{s.prizes_total}
+                        </strong>
+                        <div className="meter" aria-hidden="true">
+                          <i style={{ width: `${s.prizes_total ? Math.min(100, (s.winners / s.prizes_total) * 100) : 0}%` }} />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="r">{s.redeemed}</td>
+                    <td className="r">{s.registered}</td>
+                    <td className="r">{s.played}</td>
+                    <td>
+                      <input form={fid} className="cellinput name" name="store_name" defaultValue={s.store_name} maxLength={80} placeholder="Facultatif" aria-label={`Nom du magasin, ${s.city}`} />
+                    </td>
+                    <td>
+                      <input form={fid} className="cellinput num" name="prizes_total" type="number" min={0} max={1000} defaultValue={s.prizes_total} required aria-label={`Bons à gagner, ${s.city}`} />
+                    </td>
+                    <td>
+                      <input form={fid} className="cellinput num" name="chance" inputMode="decimal" defaultValue={percent(s.win_probability)} required aria-label={`Chance de gain en pourcentage, ${s.city}`} />
+                    </td>
+                    <td>
+                      <input form={fid} className="cellinput pin" name="staff_pin" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} defaultValue={s.staff_pin} required aria-label={`Code magasin, ${s.city}`} />
+                    </td>
+                    <td>
+                      <div className="row row-tight">
+                        <CopyButton text={link} label="Lien" />
+                        <a className="b b-quiet" href={`/admin/qr/${s.slug}`} download={`qr-100k-${s.slug}.png`}>
+                          QR code
+                        </a>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="row row-tight">
+                        <form id={fid} action={saveStore}>
+                          <input type="hidden" name="id" value={s.id} />
+                          <input type="hidden" name="city" value={s.city} />
+                          <button className="b b-dark">Enregistrer</button>
+                        </form>
+                        <form action={setStoreActive}>
+                          <input type="hidden" name="id" value={s.id} />
+                          <input type="hidden" name="active" value={String(!s.active)} />
+                          <button className={s.active ? 'b' : 'b b-red'}>{s.active ? 'Désactiver' : 'Activer'}</button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p style={{ color: 'var(--smoke)', fontSize: 13.5 }}>
+          Chance de gain : 2 % correspond à environ un gagnant toutes les 50 parties. Une ville s’arrête toute seule
+          quand tous ses bons sont gagnés.
+        </p>
+      </section>
+
+      <section className="panel">
+        <h2>Ajouter une ville</h2>
+        <form action={saveStore} className="settings-line">
+          <input type="hidden" name="id" value="" />
+          <label className="f">
+            Ville
+            <input name="city" maxLength={60} required />
+          </label>
+          <label className="f">
+            Nom du magasin
+            <input name="store_name" maxLength={80} placeholder="Facultatif" />
+          </label>
+          <label className="f">
+            Bons à gagner
+            <input name="prizes_total" type="number" min={0} max={1000} defaultValue={1} required />
+          </label>
+          <label className="f">
+            Chance de gain (%)
+            <input name="chance" inputMode="decimal" defaultValue="2" required />
+          </label>
+          <button className="b b-dark" style={{ height: 42 }}>
+            Ajouter
+          </button>
+        </form>
       </section>
 
       <section className="panel">

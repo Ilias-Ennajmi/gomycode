@@ -1,65 +1,27 @@
-import { rpc } from '@/core/db';
-import type { AdminOverview } from '@/core/types';
-import { changePassword, saveSettings } from '../../actions';
-
-const FLASH: Record<string, string> = {
-  saved: 'Réglages enregistrés.',
-  password: 'Mot de passe modifié.',
-};
+import { changePassword } from '../../actions';
 
 const ERRORS: Record<string, string> = {
-  invalid: "Certaines valeurs ne sont pas valides. Le lien Instagram doit commencer par https://.",
-  dates: 'La date de fin doit être après la date de début.',
   mismatch: 'Les deux nouveaux mots de passe ne sont pas identiques.',
   bad_password: 'Le mot de passe actuel est incorrect.',
   too_short: 'Le nouveau mot de passe doit contenir au moins 10 caractères.',
 };
 
-export default async function Settings({ searchParams }: { searchParams: Promise<{ ok?: string; err?: string }> }) {
+export default async function Password({ searchParams }: { searchParams: Promise<{ ok?: string; err?: string }> }) {
   const { ok, err } = await searchParams;
-  const { settings } = await rpc<AdminOverview>('admin_overview');
-
   return (
     <>
-      <h1>Réglages</h1>
-      {ok && FLASH[ok] && (
+      <h1>Mot de passe</h1>
+      {ok === 'password' && (
         <p className="flash" role="status">
-          {FLASH[ok]}
+          Mot de passe modifié.
         </p>
       )}
       {err && (
         <p className="flash" data-tone="err" role="alert">
-          {ERRORS[err] ?? ERRORS.invalid}
+          {ERRORS[err] ?? 'Le mot de passe n’a pas pu être modifié.'}
         </p>
       )}
-
-      <form className="panel" action={saveSettings}>
-        <h2>Période et conditions du jeu</h2>
-        <div className="grid2">
-          <label className="f">
-            Début <small>Heure du Maroc. Vide : ouvert dès maintenant.</small>
-            <input type="datetime-local" name="starts_at" defaultValue={settings.starts_at} />
-          </label>
-          <label className="f">
-            Fin <small>Heure du Maroc. Vide : pas de date de fin.</small>
-            <input type="datetime-local" name="ends_at" defaultValue={settings.ends_at} />
-          </label>
-          <label className="f">
-            Âge minimum <small>Affiché dans le formulaire et le règlement.</small>
-            <input type="number" name="min_age" min={0} max={99} defaultValue={settings.min_age} required />
-          </label>
-          <label className="f">
-            Lien Instagram <small>Bouton affiché après la partie. Vide : pas de bouton.</small>
-            <input type="url" name="instagram_url" defaultValue={settings.instagram_url} placeholder="https://www.instagram.com/…" />
-          </label>
-        </div>
-        <div>
-          <button className="b b-dark">Enregistrer les réglages</button>
-        </div>
-      </form>
-
       <form className="panel" action={changePassword}>
-        <h2>Mot de passe du back-office</h2>
         <div className="grid2">
           <label className="f">
             Mot de passe actuel

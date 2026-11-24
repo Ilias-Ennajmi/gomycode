@@ -82,7 +82,7 @@ export async function saveSettings(form: FormData) {
   const minAge = Number(str(form, 'min_age'));
   const instagram = str(form, 'instagram_url');
   if (!Number.isInteger(minAge) || minAge < 0 || minAge > 99 || (instagram && !/^https:\/\/[^\s]+$/.test(instagram))) {
-    redirect('/admin/reglages?err=invalid');
+    redirect('/admin?err=settings');
   }
   const res = await rpc<Ok>('admin_save_settings', {
     starts_at: str(form, 'starts_at'),
@@ -91,7 +91,7 @@ export async function saveSettings(form: FormData) {
     instagram_url: instagram,
   });
   revalidatePath('/admin', 'layout');
-  redirect(res.ok ? '/admin/reglages?ok=saved' : `/admin/reglages?err=${res.error ?? 'invalid'}`);
+  redirect(res.ok ? '/admin?ok=settings' : `/admin?err=${res.error === 'dates' ? 'dates' : 'settings'}`);
 }
 
 export async function changePassword(form: FormData) {

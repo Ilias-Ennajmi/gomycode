@@ -30,7 +30,7 @@ export default async function Reglement() {
       <h2>Comment jouer</h2>
       <ul>
         <li>Scannez le QR code affiché en magasin et remplissez le formulaire.</li>
-        <li>Lancez la machine. Si elle affiche 100K, vous gagnez.</li>
+        <li>Lancez la machine. Si elle aligne 1, 0, 0, vous gagnez.</li>
         <li>Le résultat est tiré au sort par notre serveur au moment où vous lancez la machine.</li>
       </ul>
 

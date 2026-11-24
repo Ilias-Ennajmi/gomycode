@@ -2,7 +2,7 @@ export default function NotFound() {
   return (
     <main className="stage">
       <header className="stage-top">
-        <img className="stage-logo" src="/brand/planet-sport-white.png" alt="Planet Sport" width={785} height={118} />
+        <img className="stage-logo" src="/brand/planet-sport-black.png" alt="Planet Sport" width={785} height={118} />
       </header>
       <div className="stage-body">
         <h1 className="display">Page introuvable</h1>

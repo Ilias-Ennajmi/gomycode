@@ -4,28 +4,34 @@ import { useEffect, useRef, useState } from 'react';
 import type { GameState, Me, StoreStatus } from '@/core/types';
 import { register, resume, spin, type RegisterResult } from './actions';
 
-type Sym = '1' | '0' | 'K' | 'ballon' | 'sneaker' | 'basket' | 'trophee' | 'sifflet';
+type Sym = '1' | '0' | 'ballon' | 'sneaker' | 'basket' | 'trophee' | 'sifflet';
 type Screen = 'intro' | 'form' | 'machine' | 'won' | 'lost' | 'closed';
 type Phase = 'idle' | 'loop' | 'land';
 
-const ALL: Sym[] = ['1', '0', 'K', 'ballon', 'sneaker', 'basket', 'trophee', 'sifflet'];
+const ALL: Sym[] = ['1', '0', 'ballon', 'sneaker', 'basket', 'trophee', 'sifflet'];
 const OBJECTS: Sym[] = ['ballon', 'sneaker', 'basket', 'trophee', 'sifflet'];
-const JACKPOT: Sym[] = ['1', '0', '0', 'K'];
+const JACKPOT: Sym[] = ['1', '0', '0'];
+// Chaque rouleau montre son symbole au centre et un bout de ses voisins.
+const IDLE: Sym[][] = [
+  ['trophee', 'ballon', 'sifflet'],
+  ['sifflet', 'sneaker', 'basket'],
+  ['ballon', 'trophee', 'sneaker'],
+];
 const DEVICE_KEY = 'ps100k_device';
-const LAND_MS = [1300, 1750, 2200, 2700];
+const LAND_MS = [1400, 1950, 2600];
 
 const pick = (from: Sym[]): Sym => from[Math.floor(Math.random() * from.length)];
 
 function losingLine(): Sym[] {
   for (;;) {
-    const line = [pick(ALL), pick(ALL), pick(ALL), pick(ALL)];
+    const line = [pick(ALL), pick(ALL), pick(ALL)];
     if (line.some((s, i) => s !== JACKPOT[i])) return line;
   }
 }
 
 function loopStrip(): Sym[] {
-  const eight = [...ALL].sort(() => Math.random() - 0.5);
-  return [...eight, eight[0]];
+  const eight = [...ALL, pick(OBJECTS)].sort(() => Math.random() - 0.5);
+  return [...eight, ...eight.slice(0, 3)];
 }
 
 function fingerprint(): string {
@@ -65,7 +71,7 @@ function store(id: string) {
 }
 
 function Symbol({ sym }: { sym: Sym }) {
-  if (sym === '1' || sym === '0' || sym === 'K') return <span className="sym">{sym}</span>;
+  if (sym === '1' || sym === '0') return <span className="sym">{sym}</span>;
   return (
     <span className="sym">
       <img src={`/reel/${sym}.webp`} alt="" width={360} height={360} draggable={false} />
@@ -90,7 +96,8 @@ function Reel({ phase, strip, landMs }: { phase: Phase; strip: Sym[]; landMs: nu
     };
   }, [phase]);
 
-  const offset = phase === 'land' && go ? strip.length - 1 : 0;
+  // Le symbole visé est centré dans la fenêtre : 0,28 cellule au-dessus, autant en dessous.
+  const index = phase === 'land' && go ? strip.length - 2 : 1;
   return (
     <div className="reel">
       <div
@@ -99,7 +106,7 @@ function Reel({ phase, strip, landMs }: { phase: Phase; strip: Sym[]; landMs: nu
         style={
           phase === 'loop'
             ? undefined
-            : ({ transform: `translateY(calc(var(--cell) * -${offset}))`, '--land': `${landMs}ms` } as React.CSSProperties)
+            : ({ transform: `translateY(calc(var(--cell) * ${0.28 - index}))`, '--land': `${landMs}ms` } as React.CSSProperties)
         }
       >
         {strip.map((s, i) => (
@@ -110,18 +117,68 @@ function Reel({ phase, strip, landMs }: { phase: Phase; strip: Sym[]; landMs: nu
   );
 }
 
-function Machine({ phase, strips, won }: { phase: Phase; strips: Sym[][]; won: boolean }) {
+function Machine({
+  phase,
+  strips,
+  won,
+  pulled,
+  onPull,
+}: {
+  phase: Phase;
+  strips: Sym[][];
+  won: boolean;
+  pulled: boolean;
+  onPull: () => void;
+}) {
   return (
-    <div className="machine" data-won={won} aria-hidden="true">
-      <div className="machine-window">
-        {strips.map((strip, i) => (
-          <Reel key={i} phase={phase} strip={strip} landMs={LAND_MS[i]} />
-        ))}
+    <div className="machine-wrap">
+      <div className="machine" data-won={won} aria-hidden="true">
+        <p className="machine-sign">100K</p>
+        <div className="machine-window">
+          <i className="payline payline-l" />
+          <i className="payline payline-r" />
+          {strips.map((strip, i) => (
+            <Reel key={i} phase={phase} strip={strip} landMs={LAND_MS[i]} />
+          ))}
+        </div>
+        <p className="machine-led">1000 DH</p>
       </div>
-      <p className="machine-plate">Alignez 1 · 0 · 0 · K</p>
+      <button
+        type="button"
+        className="lever"
+        data-pulled={pulled}
+        onClick={onPull}
+        disabled={phase !== 'idle' || pulled}
+        aria-label="Tirer le levier pour lancer la machine"
+      >
+        <span className="lever-base" />
+        <span className="lever-arm" />
+      </button>
     </div>
   );
 }
+
+const ICONS = {
+  form: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" />
+    </svg>
+  ),
+  play: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2.5" y="7" width="15" height="12" rx="2.5" />
+      <path d="M7.5 7v12M12.5 7v12M20 15V7" />
+      <circle cx="20" cy="5" r="2" fill="currentColor" />
+    </svg>
+  ),
+  ticket: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z" />
+      <path d="M14 6v2.5M14 11v2M14 15.5V18" />
+    </svg>
+  ),
+};
 
 function closedCopy(status: StoreStatus, city: string, startsAt: string | null): { title: string; text: string } {
   switch (status) {
@@ -179,7 +236,8 @@ export default function Game({ initial }: { initial: GameState }) {
   const [sending, setSending] = useState(false);
 
   const [phase, setPhase] = useState<Phase>('idle');
-  const [strips, setStrips] = useState<Sym[][]>(JACKPOT.map((s) => [s]));
+  const [strips, setStrips] = useState<Sym[][]>(IDLE);
+  const [pulled, setPulled] = useState(false);
   const [flashWin, setFlashWin] = useState(false);
   const [spinError, setSpinError] = useState('');
   const spinning = useRef(false);
@@ -229,7 +287,7 @@ export default function Game({ initial }: { initial: GameState }) {
       store(res.deviceId);
       setParticipantId(res.participantId);
       setFirstName(form.fullName.trim().split(/\s+/)[0] ?? '');
-      setStrips(JACKPOT.map((s) => [s]));
+      setStrips(IDLE);
       setScreen('machine');
       return;
     }
@@ -252,6 +310,7 @@ export default function Game({ initial }: { initial: GameState }) {
     if (spinning.current) return;
     spinning.current = true;
     setSpinError('');
+    setPulled(true);
     const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (!calm) {
       setStrips(JACKPOT.map(() => loopStrip()));
@@ -267,7 +326,8 @@ export default function Game({ initial }: { initial: GameState }) {
 
     if (!res.ok) {
       setPhase('idle');
-      setStrips(JACKPOT.map((s) => [s]));
+      setStrips(IDLE);
+      setPulled(false);
       spinning.current = false;
       if (res.error === 'closed') {
         setStatus(res.status);
@@ -285,16 +345,16 @@ export default function Game({ initial }: { initial: GameState }) {
     const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
     if (calm) {
-      setStrips(line.map((s) => [s]));
+      setStrips(line.map((s, i) => [IDLE[i][0], s, IDLE[i][2]]));
       setFlashWin(result.won);
       await wait(900);
     } else {
       await wait(Math.max(0, 1000 - (Date.now() - started)));
       setStrips(
-        line.map((final, i) => [...Array.from({ length: 12 + i * 5 }, () => pick(i % 2 ? OBJECTS : ALL)), final]),
+        line.map((final, i) => [...Array.from({ length: 14 + i * 6 }, () => pick(ALL)), final, pick(OBJECTS)]),
       );
       setPhase('land');
-      await wait(LAND_MS[3] + 250);
+      await wait(LAND_MS[2] + 250);
       setFlashWin(result.won);
       await wait(result.won ? 1100 : 800);
     }
@@ -311,32 +371,44 @@ export default function Game({ initial }: { initial: GameState }) {
   return (
     <main className="stage" data-mood={screen === 'won' ? 'win' : undefined}>
       <header className="stage-top">
-        <img className="stage-logo" src="/brand/planet-sport-white.png" alt="Planet Sport" width={785} height={118} />
+        <img className="stage-logo" src={screen === 'won' ? '/brand/planet-sport-white.png' : '/brand/planet-sport-black.png'} alt="Planet Sport" width={785} height={118} />
         <p className="stage-place">{place}</p>
       </header>
 
       {screen === 'intro' && (
         <div className="stage-body">
-          <Machine phase="idle" strips={JACKPOT.map((s) => [s])} won={false} />
-          <h1 className="display" ref={heading} tabIndex={-1}>
-            100 000 abonnés, ça se fête
-          </h1>
-          <p className="lede">
-            Pour nos 100K sur Instagram, tentez de gagner un <strong>bon d&apos;achat de 1000 DH</strong> à dépenser
-            chez Planet Sport.
-          </p>
-          <ol className="steps">
-            <li>Remplissez vos informations.</li>
-            <li>Lancez la machine. Vous avez une seule tentative.</li>
-            <li>Si elle affiche 100K, présentez votre code en caisse pour recevoir votre bon.</li>
+          <div className="hero">
+            <p className="hero-kicker">Merci pour les</p>
+            <h1 className="hero-number" ref={heading} tabIndex={-1}>
+              100K
+            </h1>
+            <p className="hero-sub">abonnés sur Instagram</p>
+          </div>
+          <div className="prize">
+            <span className="prize-icon">{ICONS.ticket}</span>
+            <span>
+              <small>À gagner dans ce magasin</small>
+              <b>Bon d&apos;achat de 1000 DH</b>
+            </span>
+          </div>
+          <ol className="how">
+            <li>
+              <span className="how-icon">{ICONS.form}</span>
+              Inscrivez-vous
+            </li>
+            <li>
+              <span className="how-icon">{ICONS.play}</span>
+              Lancez la machine
+            </li>
+            <li>
+              <span className="how-icon">{ICONS.ticket}</span>
+              Alignez 1 · 0 · 0
+            </li>
           </ol>
-          <p className="note">
-            En jouant, vous acceptez qu&apos;une photo soit prise en magasin et publiée sur notre Instagram si vous
-            gagnez.
-          </p>
           <button className="btn" onClick={() => setScreen('form')}>
-            Suivant
+            Je participe
           </button>
+          <p className="note">Une seule tentative par personne. Les gagnants sont pris en photo en magasin.</p>
         </div>
       )}
 
@@ -461,11 +533,11 @@ export default function Game({ initial }: { initial: GameState }) {
           <h1 className="display display-sm" ref={heading} tabIndex={-1}>
             {firstName ? `À vous de jouer, ${firstName}` : 'À vous de jouer'}
           </h1>
-          <Machine phase={phase} strips={strips} won={flashWin} />
+          <Machine phase={phase} strips={strips} won={flashWin} pulled={pulled} onPull={onSpin} />
           <p className="lede" aria-live="polite">
             {busy
               ? 'La machine tourne…'
-              : 'Vous avez une seule tentative. Si la machine affiche 100K, le bon de 1000 DH est à vous.'}
+              : 'Une seule tentative. Alignez 1, 0, 0 et le bon de 1000 DH est à vous.'}
           </p>
           {spinError && (
             <p className="alert" role="alert">
@@ -492,7 +564,11 @@ export default function Game({ initial }: { initial: GameState }) {
               />
             ))}
           </div>
-          <Machine phase="idle" strips={JACKPOT.map((s) => [s])} won />
+          <div className="tiles" aria-hidden="true">
+            {JACKPOT.map((d, i) => (
+              <span key={i}>{d}</span>
+            ))}
+          </div>
           <h1 className="display win-title" ref={heading} tabIndex={-1}>
             Félicitations{firstName ? `, ${firstName}` : ''} !
           </h1>
@@ -511,7 +587,7 @@ export default function Game({ initial }: { initial: GameState }) {
             </ol>
           )}
           {instagram && (
-            <a className="btn btn-gold" href={instagram} target="_blank" rel="noopener noreferrer">
+            <a className="btn btn-yellow" href={instagram} target="_blank" rel="noopener noreferrer">
               Suivre Planet Sport
             </a>
           )}
@@ -524,7 +600,7 @@ export default function Game({ initial }: { initial: GameState }) {
             Pas cette fois
           </h1>
           <p className="lede">
-            La machine n&apos;a pas affiché 100K. Merci d&apos;avoir joué{firstName ? `, ${firstName}` : ''}, et merci
+            La machine n&apos;a pas aligné 1, 0, 0. Merci d&apos;avoir joué{firstName ? `, ${firstName}` : ''}, et merci
             de faire partie de nos 100 000 abonnés.
           </p>
           {instagram && (

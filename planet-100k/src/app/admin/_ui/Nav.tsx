@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const LINKS = [
-  { href: '/admin', label: 'Magasins' },
+  { href: '/admin', label: 'Tableau de bord' },
   { href: '/admin/participants', label: 'Participants' },
-  { href: '/admin/reglages', label: 'Réglages' },
+  { href: '/admin/reglages', label: 'Mot de passe' },
 ];
 
 export default function Nav() {

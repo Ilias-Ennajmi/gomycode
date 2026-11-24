@@ -1,7 +1,7 @@
 # Planet Sport 100K
 
-Jeu concours mobile pour les 100 000 abonnés Instagram de Planet Sport : une machine à quatre rouleaux,
-un bon d'achat de 1000 DH à gagner quand elle affiche 1 · 0 · 0 · K, un stock de bons par ville.
+Jeu concours mobile pour les 100 000 abonnés Instagram de Planet Sport : une machine à trois rouleaux avec levier,
+un bon d'achat de 1000 DH à gagner quand elle aligne 1 · 0 · 0, un stock de bons par ville.
 
 ## Les pages
 
