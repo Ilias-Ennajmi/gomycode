@@ -35,7 +35,7 @@ function French({ minAge }: { minAge: number }) {
       <h2>Les lots</h2>
       <ul>
         <li>Chaque gagnant reçoit un bon d&apos;achat de 1000 DH à dépenser chez Planet Sport.</li>
-        <li>Le nombre de bons est limité dans chaque ville et pour chaque journée.</li>
+        <li>Le nombre de bons est limité dans chaque magasin et pour chaque journée.</li>
         <li>Le bon est personnel. Il ne peut être ni échangé contre de l&apos;argent, ni cédé, ni remplacé.</li>
       </ul>
 
@@ -111,7 +111,7 @@ function Arabic({ minAge }: { minAge: number }) {
       <h2>الجوائز</h2>
       <ul>
         <li>يحصل كل فائز على قسيمة شراء بقيمة 1000 درهم تُستعمل في متاجر Planet Sport.</li>
-        <li>عدد القسائم محدود في كل مدينة وفي كل يوم.</li>
+        <li>عدد القسائم محدود في كل متجر وفي كل يوم.</li>
         <li>القسيمة شخصية، ولا يمكن استبدالها بمبلغ مالي أو التنازل عنها أو تعويضها.</li>
       </ul>
 

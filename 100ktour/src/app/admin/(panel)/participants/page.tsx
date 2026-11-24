@@ -26,11 +26,12 @@ const when = (local: string) => {
   return `${day}/${m} à ${t}`;
 };
 
-type Search = { store?: string; filter?: string; q?: string; page?: string; ok?: string };
+type Search = { city?: string; store?: string; filter?: string; q?: string; page?: string; ok?: string };
 
 export default async function Participants({ searchParams }: { searchParams: Promise<Search> }) {
   const sp = await searchParams;
   const store = /^[0-9a-f-]{36}$/.test(sp.store ?? '') ? sp.store! : '';
+  const city = (sp.city ?? '').slice(0, 60);
   const filter = FILTERS.some((f) => f.v === sp.filter) ? sp.filter! : 'all';
   const q = (sp.q ?? '').slice(0, 80);
   const page = Math.max(1, Number(sp.page) || 1);
@@ -39,6 +40,7 @@ export default async function Participants({ searchParams }: { searchParams: Pro
     rpc<AdminOverview>('admin_overview'),
     rpc<{ rows: AdminParticipant[]; total: number }>('admin_participants', {
       store_id: store,
+      city: store ? '' : city,
       filter,
       q,
       limit: PAGE,
@@ -46,7 +48,9 @@ export default async function Participants({ searchParams }: { searchParams: Pro
     }),
   ]);
 
+  const cities = [...new Set(stores.map((s) => s.city))];
   const query = new URLSearchParams();
+  if (city && !store) query.set('city', city);
   if (store) query.set('store', store);
   if (filter !== 'all') query.set('filter', filter);
   if (q) query.set('q', q);
@@ -77,14 +81,30 @@ export default async function Participants({ searchParams }: { searchParams: Pro
       <form className="panel" method="get">
         <div className="grid2">
           <label className="f">
-            Magasin
+            Ville
+            <select name="city" defaultValue={city}>
+              <option value="">Toutes les villes</option>
+              {cities.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="f">
+            Magasin <small>Facultatif</small>
             <select name="store" defaultValue={store}>
               <option value="">Tous les magasins</option>
-              {stores.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.city}
-                  {s.store_name ? `, ${s.store_name}` : ''}
-                </option>
+              {cities.map((c) => (
+                <optgroup key={c} label={c}>
+                  {stores
+                    .filter((s) => s.city === c)
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.store_name || `${c}, magasin principal`}
+                      </option>
+                    ))}
+                </optgroup>
               ))}
             </select>
           </label>
@@ -103,8 +123,13 @@ export default async function Participants({ searchParams }: { searchParams: Pro
             <input name="q" defaultValue={q} placeholder="Nom, téléphone, email ou code" />
           </label>
         </div>
-        <div>
-          <button className="b">Filtrer</button>
+        <div className="row">
+          <button className="b b-dark">Filtrer</button>
+          {(city || store || filter !== 'all' || q) && (
+            <a className="b b-quiet" href="/admin/participants">
+              Effacer les filtres
+            </a>
+          )}
         </div>
       </form>
 

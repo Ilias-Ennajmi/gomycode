@@ -43,6 +43,7 @@ export type AdminStore = {
   status: StoreStatus;
   registered: number;
   played: number;
+  played_today: number;
   winners: number;
   redeemed: number;
   last_play: string | null;

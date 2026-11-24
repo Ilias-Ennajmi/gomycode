@@ -39,18 +39,25 @@ export async function logout() {
   redirect('/admin/login');
 }
 
+/** Retour au tableau de bord, en gardant la ville concernée dépliée. */
+function toDashboard(flag: 'ok' | 'err', value: string, city?: string, extra = ''): never {
+  const q = new URLSearchParams({ [flag]: value });
+  if (city) q.set('ville', city);
+  redirect(`/admin?${q.toString()}${extra}`);
+}
+
 export async function setCampaign(form: FormData) {
   await requireAdmin();
   await rpc<Ok>('admin_set_campaign', { active: str(form, 'active') === 'true' });
   revalidatePath('/admin', 'layout');
-  redirect('/admin?ok=campaign');
+  toDashboard('ok', 'campaign');
 }
 
 export async function setStoreActive(form: FormData) {
   await requireAdmin();
   await rpc<Ok>('admin_set_store_active', { id: str(form, 'id'), active: str(form, 'active') === 'true' });
   revalidatePath('/admin', 'layout');
-  redirect('/admin?ok=store');
+  toDashboard('ok', 'store', str(form, 'city'));
 }
 
 export async function saveStore(form: FormData) {
@@ -59,15 +66,17 @@ export async function saveStore(form: FormData) {
   const ratio = percentToRatio(str(form, 'chance'));
   const prizes = Number(str(form, 'prizes_total'));
   const city = str(form, 'city');
+  const storeName = str(form, 'store_name');
   const pin = str(form, 'staff_pin');
   if (ratio === null || !Number.isInteger(prizes) || prizes < 0 || !city || (id && !/^\d{6}$/.test(pin))) {
-    redirect('/admin?err=invalid');
+    toDashboard('err', 'invalid', city);
   }
   const res = await rpc<Ok>('admin_save_store', {
     id,
-    slug: slugify(str(form, 'slug') || city),
+    // Le lien du jeu : choisi à la création, puis figé pour ne pas casser les QR codes imprimés.
+    slug: slugify(str(form, 'slug') || `${city} ${storeName}`),
     city,
-    store_name: str(form, 'store_name'),
+    store_name: storeName,
     prizes_total: prizes,
     win_probability: ratio,
     staff_pin: pin,
@@ -78,8 +87,16 @@ export async function saveStore(form: FormData) {
     active: false,
   });
   revalidatePath('/admin', 'layout');
-  if (!res.ok) redirect(`/admin?err=${res.error ?? 'invalid'}${res.winners ? `&n=${res.winners}` : ''}`);
-  redirect(`/admin?ok=${id ? 'saved' : 'created'}`);
+  if (!res.ok) toDashboard('err', res.error ?? 'invalid', city);
+  toDashboard('ok', id ? 'saved' : 'created', city);
+}
+
+export async function deleteStore(form: FormData) {
+  await requireAdmin();
+  const res = await rpc<Ok>('admin_delete_store', { id: str(form, 'id') });
+  revalidatePath('/admin', 'layout');
+  if (!res.ok) toDashboard('err', res.error ?? 'invalid', str(form, 'city'));
+  toDashboard('ok', 'deleted', str(form, 'city'));
 }
 
 export async function saveSettings(form: FormData) {
@@ -140,7 +157,7 @@ export async function newPin(form: FormData) {
   await requireAdmin();
   await rpc<Ok>('admin_new_pin', { id: str(form, 'id') });
   revalidatePath('/admin', 'layout');
-  redirect('/admin?ok=pin');
+  toDashboard('ok', 'pin', str(form, 'city'));
 }
 
 export async function backupNow() {

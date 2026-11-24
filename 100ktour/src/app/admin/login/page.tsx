@@ -16,7 +16,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
     <main className="login">
       <form className="login-card" action={login}>
         <img src="/brand/planet-sport-black.png" alt="Planet Sport" width={785} height={118} />
-        <h1>Back-office 100K</h1>
+        <h1>Back-office 100K Tour</h1>
         <label className="f">
           Mot de passe
           <input type="password" name="password" autoComplete="current-password" required autoFocus />
