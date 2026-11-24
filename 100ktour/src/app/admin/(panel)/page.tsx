@@ -213,7 +213,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                     <td>
                       <div className="row row-tight">
                         <CopyButton text={link} label="Lien" />
-                        <a className="b b-quiet" href={`/admin/qr/${s.slug}`} download={`qr-100k-${s.slug}.png`}>
+                        <a className="b b-quiet" href={`/admin/qr/${s.slug}`} download={`qr-100ktour-${s.slug}.png`}>
                           QR code
                         </a>
                       </div>

@@ -13,7 +13,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
   return new Response(new Uint8Array(png), {
     headers: {
       'Content-Type': 'image/png',
-      'Content-Disposition': `attachment; filename="qr-100k-${slug}.png"`,
+      'Content-Disposition': `attachment; filename="qr-100ktour-${slug}.png"`,
       'Cache-Control': 'no-store',
     },
   });

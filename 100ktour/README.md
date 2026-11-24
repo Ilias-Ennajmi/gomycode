@@ -20,7 +20,26 @@ un bon d'achat de 1000 DH à gagner quand elle aligne 1 · 0 · 0, un stock de b
   L'adresse IP ne sert qu'à freiner les abus, car un Wi-Fi de magasin partage la même adresse.
 - Le magasin est verrouillé pendant le tirage : le dernier bon ne peut pas être gagné deux fois.
 - Quand tous les bons d'une ville sont gagnés, le jeu s'y arrête et affiche un message.
-- Un gagnant reçoit un code unique (`PS-XXXXXX`). Le magasin le valide une seule fois.
+- **Créneau de gain** (facultatif, par ville) : heure d'ouverture, heure de montée, heure de fermeture et
+  nombre de gagnants par jour. La chance reste à son niveau de base jusqu'à l'heure de montée, puis grimpe
+  jusqu'à 100 % à la fermeture (carré du temps écoulé). Une fois le quota du jour atteint, la ville se ferme
+  jusqu'au lendemain. Hors horaires, le jeu est fermé.
+- Un gagnant reçoit un code unique (`PS-XXXXXX`). Le magasin le valide une seule fois, avec son code à
+  6 chiffres et le nom de la personne qui remet le bon.
+
+## Langues, son, liens
+
+- Le joueur choisit le français ou l'arabe au premier écran (`src/app/jeu/[slug]/i18n.ts`).
+- Les sons sont synthétisés dans le navigateur ; la vibration ne fonctionne que sur Android.
+- Les écrans de fin renvoient vers le site, Instagram et TikTok (réglages généraux du back-office). Avec un
+  numéro WhatsApp, le gagnant peut envoyer son code à Planet Sport en un geste.
+
+## Sauvegardes
+
+Chaque nuit à 23 h 30 (heure du Maroc), Vercel Cron appelle `/api/backup`, qui copie tous les participants
+dans un stockage Vercel Blob privé, hors de la base de données. Il faut pour cela créer un Blob store dans
+Vercel et le relier au projet (variable `BLOB_READ_WRITE_TOKEN`). Sans ce stockage, seul l'export Excel
+manuel est disponible.
 
 ## Architecture
 
@@ -42,7 +61,7 @@ tests/           tests unitaires et vérification des règles du tirage
 
 ## Installation
 
-1. Appliquer `supabase/migrations/0001_ps100k_init.sql` sur le projet Supabase.
+1. Appliquer les fichiers de `supabase/migrations/` dans l'ordre sur le projet Supabase.
 2. Générer deux secrets et le mot de passe initial, puis les enregistrer dans la base :
 
    ```sql
@@ -52,7 +71,7 @@ tests/           tests unitaires et vérification des règles du tirage
    ```
 
 3. Renseigner les variables de `.env.example` dans Vercel (ou dans `.env.local` en local).
-4. Dans Vercel, le dossier racine du projet est `planet-100k`.
+4. Dans Vercel, le dossier racine du projet est `100ktour` et la branche de production est `main`.
 
 ## Commandes
 
