@@ -53,6 +53,11 @@ svg {
   display: block;
 }
 
+/* Les logos portent leurs dimensions d'origine : la hauteur suit la largeur affichée. */
+img {
+  height: auto;
+}
+
 button,
 input,
 select {
@@ -1709,4 +1714,282 @@ table.t.stores {
 .window-note {
   color: var(--smoke);
   flex: 1 1 260px;
+}
+
+/* ---- back-office : villes repliables et fiches magasin */
+
+.cities {
+  display: grid;
+  gap: 12px;
+}
+
+.city-group,
+.panel-details {
+  background: var(--white);
+  border-radius: 16px;
+}
+
+.city-group > summary,
+.panel-details > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  padding: 16px 20px;
+  border-radius: 16px;
+}
+
+.city-group > summary::-webkit-details-marker,
+.panel-details > summary::-webkit-details-marker,
+.add-store > summary::-webkit-details-marker {
+  display: none;
+}
+
+.city-group > summary:hover,
+.panel-details > summary:hover {
+  background: #fbfaf7;
+}
+
+.city-group > summary:focus-visible,
+.panel-details > summary:focus-visible,
+.add-store > summary:focus-visible {
+  outline: 3px solid var(--yellow);
+  outline-offset: -3px;
+}
+
+.city-name {
+  font-family: var(--display);
+  font-size: 32px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  min-width: 150px;
+}
+
+.city-sub {
+  color: var(--smoke);
+  font-size: 14px;
+}
+
+.city-won {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.city-won .meter {
+  display: inline-block;
+}
+
+.chevron {
+  margin-left: auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--chalk);
+  position: relative;
+  flex: none;
+}
+
+.chevron::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  width: 9px;
+  height: 9px;
+  border-right: 2.5px solid var(--black);
+  border-bottom: 2.5px solid var(--black);
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+
+details[open] > summary .chevron::before {
+  transform: translateY(4px) rotate(-135deg);
+}
+
+.city-body {
+  display: grid;
+  gap: 12px;
+  padding: 0 14px 14px;
+}
+
+.store-card {
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.store-card[data-off='true'] {
+  background: #f7f5f1;
+}
+
+.store-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.store-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.store-card h3 {
+  font-size: 18px;
+  font-weight: 750;
+  margin: 0;
+}
+
+.store-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.store-stats div {
+  background: var(--chalk);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.store-stats dt {
+  font-size: 12.5px;
+  color: var(--smoke);
+}
+
+.store-stats dd {
+  margin: 0;
+  font-weight: 750;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.store-form {
+  display: grid;
+  gap: 12px;
+}
+
+.store-form fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px 12px;
+  align-items: end;
+}
+
+.store-form legend {
+  font-weight: 750;
+  font-size: 13.5px;
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.pin-row {
+  display: flex;
+  gap: 6px;
+}
+
+.pin-row input {
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+}
+
+.store-note,
+.help {
+  color: var(--smoke);
+  font-size: 13.5px;
+}
+
+.store-note code {
+  font-size: 12.5px;
+  background: var(--chalk);
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+
+.add-store {
+  border: 1.5px dashed var(--line);
+  border-radius: 14px;
+}
+
+.add-store > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 16px;
+  font-weight: 700;
+  font-size: 14.5px;
+}
+
+.add-store > summary::before {
+  content: '+';
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--black);
+  color: var(--white);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.add-city {
+  background: var(--white);
+}
+
+.add-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  align-items: end;
+  padding: 0 16px 16px;
+}
+
+.add-form .b,
+.store-form > .row .b {
+  height: 42px;
+}
+
+.panel-details > summary h2 {
+  margin: 0;
+}
+
+.panel-body {
+  display: grid;
+  gap: 12px;
+  padding: 0 20px 20px;
+}
+
+@media (max-width: 640px) {
+  .city-group > summary,
+  .panel-details > summary {
+    padding: 14px;
+    gap: 6px 12px;
+  }
+  .city-name {
+    font-size: 28px;
+    min-width: 0;
+  }
+  .city-body {
+    padding: 0 8px 8px;
+  }
+  .store-card {
+    padding: 12px;
+  }
 }

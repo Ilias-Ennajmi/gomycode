@@ -66,14 +66,14 @@ const fr = {
   closed: {
     sold_out: {
       title: 'Tous les bons ont été gagnés',
-      text: "Les bons d'achat mis en jeu à {city} ont tous trouvé leur gagnant. Merci d'avoir fêté nos 100K avec nous.",
+      text: "Les bons d'achat mis en jeu dans ce magasin ont tous trouvé leur gagnant. Merci d'avoir fêté nos 100K avec nous.",
     },
     not_started: { title: 'Le jeu ouvre bientôt', text: 'Revenez à partir du {when} pour tenter votre chance.' },
     soon: 'Revenez très vite pour tenter votre chance.',
     ended: { title: 'Le jeu est terminé', text: "Merci à toutes et à tous d'avoir fêté nos 100K avec nous." },
     paused: {
       title: 'Le jeu est en pause',
-      text: "Le jeu n'est pas ouvert à {city} pour le moment. Demandez à l'équipe du magasin ou réessayez un peu plus tard.",
+      text: "Le jeu n'est pas ouvert dans ce magasin pour le moment. Demandez à l'équipe du magasin ou réessayez un peu plus tard.",
     },
     off_hours: {
       title: 'Le jeu est fermé pour le moment',
@@ -81,7 +81,7 @@ const fr = {
     },
     day_done: {
       title: 'Le bon du jour a été gagné',
-      text: "Le bon mis en jeu aujourd'hui à {city} a trouvé son gagnant. Revenez demain pour tenter votre chance.",
+      text: "Le bon mis en jeu aujourd'hui dans ce magasin a trouvé son gagnant. Revenez demain pour tenter votre chance.",
     },
   },
 };
@@ -151,14 +151,14 @@ const ar: Dict = {
   closed: {
     sold_out: {
       title: 'تم ربح جميع القسائم',
-      text: 'جميع قسائم الشراء المخصصة لمدينة {city} وجدت فائزيها. شكراً لاحتفالكم معنا بـ 100K.',
+      text: 'جميع قسائم الشراء المخصصة لهذا المتجر وجدت فائزيها. شكراً لاحتفالكم معنا بـ 100K.',
     },
     not_started: { title: 'اللعبة ستبدأ قريباً', text: 'عد ابتداءً من {when} لتجرب حظك.' },
     soon: 'عد قريباً لتجرب حظك.',
     ended: { title: 'انتهت اللعبة', text: 'شكراً لكم جميعاً على الاحتفال معنا بـ 100K.' },
     paused: {
       title: 'اللعبة متوقفة مؤقتاً',
-      text: 'اللعبة غير متاحة حالياً في {city}. اسأل فريق المتجر أو حاول لاحقاً.',
+      text: 'اللعبة غير متاحة حالياً في هذا المتجر. اسأل فريق المتجر أو حاول لاحقاً.',
     },
     off_hours: {
       title: 'اللعبة مغلقة حالياً',
@@ -166,7 +166,7 @@ const ar: Dict = {
     },
     day_done: {
       title: 'تم ربح قسيمة اليوم',
-      text: 'قسيمة اليوم في {city} وجدت فائزها. عد غداً لتجرب حظك.',
+      text: 'قسيمة اليوم في هذا المتجر وجدت فائزها. عد غداً لتجرب حظك.',
     },
   },
 };
